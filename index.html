@@ -127,18 +127,29 @@
 #omniTab .kpis{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:14px}
 #omniTab .kpi{background:#fff;border:1px solid #dde6ef;border-radius:10px;padding:10px 16px;min-width:130px}
 #omniTab .kpi .v{font-size:20px;font-weight:700;color:#0f4d8f}
+#omniTab .kpi .v.v-Smooth{color:#1c9e57}
+#omniTab .kpi .v.v-Erratic{color:#1b62c4}
+#omniTab .kpi .v.v-Intermittent{color:#e39a12}
+#omniTab .kpi .v.v-Lumpy{color:#d6453a}
 #omniTab .kpi .k{font-size:11.5px;color:#5b7188}
 #omniTab svg text{font-family:'Segoe UI',Tahoma,sans-serif}
 #omniTab .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
 @media(max-width:980px){#omniTab .grid2{grid-template-columns:1fr}}
-#skuTbl{width:100%;border-collapse:collapse;font-size:12px}
-#skuTbl th{background:#eef4fa;text-align:left;padding:6px;border-bottom:2px solid #c9d8e6;cursor:pointer;white-space:nowrap}
-#skuTbl td{padding:5px 6px;border-bottom:1px solid #edf2f7}
+#skuTbl{width:100%;border-collapse:collapse;font-size:12px;table-layout:auto}
+#skuTbl th,#skuTbl td{padding:6px 8px;text-align:left;vertical-align:top}
+#skuTbl th{background:#eef4fa;border-bottom:2px solid #c9d8e6;cursor:pointer;white-space:nowrap}
+#skuTbl td{border-bottom:1px solid #edf2f7;vertical-align:middle}
+#skuTbl th:nth-child(1),#skuTbl td:nth-child(1){white-space:nowrap}
+#skuTbl th:nth-child(2),#skuTbl td:nth-child(2){min-width:260px;white-space:normal}
+#skuTbl th:nth-child(7),#skuTbl td:nth-child(7),#skuTbl th:nth-child(8),#skuTbl td:nth-child(8),#skuTbl th:nth-child(9),#skuTbl td:nth-child(9),#skuTbl th:nth-child(10),#skuTbl td:nth-child(10){text-align:right}
 #skuTbl tr:hover{background:#f0f7ff;cursor:pointer}
 .badge{display:inline-block;padding:1px 8px;border-radius:10px;font-size:11px;font-weight:600}
 .b-Smooth{background:#d9f2e2;color:#116b3a}.b-Erratic{background:#dbe9ff;color:#1b4f9c}
 .b-Intermittent{background:#fff0d4;color:#8a5a00}.b-Lumpy{background:#fde0dc;color:#a02318}
 .b-NoSale,.b-NoSale31M{background:#e8ecf1;color:#5b7188}
+.st-match{background:#d9f2e2;color:#116b3a}
+.st-matchcode{background:#fff0d4;color:#8a5a00}
+.st-nodata{background:#e8ecf1;color:#5b7188}
 #modal{display:none;position:fixed;inset:0;background:rgba(10,25,45,.55);z-index:1200;align-items:center;justify-content:center}
 #modal .box{background:#fff;border-radius:12px;max-width:960px;width:94%;max-height:92vh;overflow:auto;padding:18px 20px}
 #modal .x{float:right;border:0;background:#eef2f7;border-radius:6px;padding:4px 12px;cursor:pointer;font-size:14px}
@@ -7336,8 +7347,10 @@
  <div class="kpis">
   <div class="kpi"><div class="v" id="k1">-</div><div class="k">รหัสที่ผ่านตัวกรอง</div></div>
   <div class="kpi"><div class="v" id="k2">-</div><div class="k">ยอดขายรวม (ลบ.)</div></div>
-  <div class="kpi"><div class="v" id="k3">-</div><div class="k">Smooth + Erratic</div></div>
-  <div class="kpi"><div class="v" id="k4">-</div><div class="k">Intermittent + Lumpy</div></div>
+  <div class="kpi"><div class="v v-Smooth" id="kSmooth">-</div><div class="k">Smooth</div></div>
+  <div class="kpi"><div class="v v-Erratic" id="kErratic">-</div><div class="k">Erratic</div></div>
+  <div class="kpi"><div class="v v-Intermittent" id="kIntermittent">-</div><div class="k">Intermittent</div></div>
+  <div class="kpi"><div class="v v-Lumpy" id="kLumpy">-</div><div class="k">Lumpy</div></div>
   <div class="kpi"><div class="v" id="k5">-</div><div class="k">ไม่มียอดขาย</div></div>
  </div>
  <div class="bar">
@@ -7356,7 +7369,7 @@
  </div>
  <div class="card"><h3>③ รายชื่อ SKU</h3>
   <div style="overflow:auto;max-height:520px"><table id="skuTbl"><thead><tr>
-   <th data-k="code">รหัส</th><th>ชื่อสินค้า (ตาม Price List)</th><th>หมวด</th><th>ประเภท</th><th>ฝ่าย</th><th>กลุ่ม</th><th data-k="adi" style="text-align:right" title="โดยเฉลี่ยกี่เดือนถึงขายได้ 1 ครั้ง (31 ÷ เดือนที่มีขาย) ยิ่งสูง = ยิ่งขายนานๆ ครั้ง">ADI</th><th style="text-align:right" title="ความผันผวนของขนาดออเดอร์ในเดือนที่ขายได้ ค่าสูง = บางเดือนน้อย บางเดือนก้อนใหญ่">CV²</th><th data-k="qty" style="text-align:right">Qty รวม</th><th data-k="sale" style="text-align:right">ยอดขาย (ลบ.)</th><th>Remark</th>
+   <th data-k="code">รหัส</th><th>ชื่อสินค้า (ตาม Price List)</th><th>หมวด</th><th>ประเภท</th><th>ฝ่าย</th><th>กลุ่ม</th><th data-k="adi" title="โดยเฉลี่ยกี่เดือนถึงขายได้ 1 ครั้ง (31 ÷ เดือนที่มีขาย) ยิ่งสูง = ยิ่งขายนานๆ ครั้ง">ADI</th><th title="ความผันผวนของขนาดออเดอร์ในเดือนที่ขายได้ ค่าสูง = บางเดือนน้อย บางเดือนก้อนใหญ่">CV²</th><th data-k="qty">Qty รวม</th><th data-k="sale">ยอดขาย (ลบ.)</th><th>Remark</th>
   </tr></thead><tbody id="skuBody"></tbody></table></div>
   <div class="hint" id="tblNote"></div>
  </div>
@@ -7533,10 +7546,15 @@ function table(){
   for(const r of rows.slice(0,400)){
     const it=r.it;
     let rk=[];
-    if(it.cls=='NoSale')rk.push('<span class="badge b-NoSale">ไม่พบยอดขายใน DB</span>');
-    if(it.dbn)rk.push(`<span class="hint" title="ชื่อใน DB: ${it.dbn.replace(/"/g,'&quot;')}" style="cursor:help">≠DB</span>`);
+    if(it.cls=='NoSale'){
+      rk.push('<span class="badge st-nodata">No data in DB</span>');
+    }else if(it.dbn){
+      rk.push(`<span class="badge st-matchcode" title="ชื่อใน DB: ${it.dbn.replace(/"/g,'&quot;')}" style="cursor:help">Match code</span>`);
+    }else{
+      rk.push('<span class="badge st-match">Match</span>');
+    }
     if(it.rk)rk.push(`<span class="hint">${it.rk}</span>`);
-    h+=`<tr data-c="${it.c}"><td>${it.c}</td><td>${it.n}</td><td>${it.cat}</td><td>${it.pt}</td><td>${it.sh.join(', ')}</td><td><span class="badge b-${it.cls}">${CLS_TH[it.cls]||it.cls}</span></td><td style="text-align:right">${it.adi??'-'}</td><td style="text-align:right">${it.cv2??'-'}</td><td style="text-align:right">${Math.round(r.qty).toLocaleString()}</td><td style="text-align:right">${(r.sale/1e6).toFixed(2)}</td><td>${rk.join(' ')}</td></tr>`;}
+    h+=`<tr data-c="${it.c}"><td>${it.c}</td><td>${it.n}</td><td>${it.cat}</td><td>${it.pt}</td><td>${it.sh.join(', ')}</td><td><span class="badge b-${it.cls}">${CLS_TH[it.cls]||it.cls}</span></td><td>${it.adi??'-'}</td><td>${it.cv2??'-'}</td><td>${Math.round(r.qty).toLocaleString()}</td><td>${(r.sale/1e6).toFixed(2)}</td><td>${rk.join(' ')}</td></tr>`;}
   $('skuBody').innerHTML=h;
   $('tblNote').textContent=`แสดง ${Math.min(rows.length,400)} จาก ${rows.length} รหัสที่ผ่านตัวกรอง — คลิกแถวเพื่อดูกราฟรายตัว`;
   $('skuBody').querySelectorAll('tr').forEach(tr=>tr.addEventListener('click',()=>openSku(tr.dataset.c)));
@@ -7545,8 +7563,10 @@ function kpis(){
   const a=agg();
   $('k1').textContent=a.cnt.toLocaleString();
   $('k2').textContent=(a.tot/1e6).toLocaleString(undefined,{maximumFractionDigits:1});
-  $('k3').textContent=(a.cls.Smooth+a.cls.Erratic).toLocaleString();
-  $('k4').textContent=(a.cls.Intermittent+a.cls.Lumpy).toLocaleString();
+  $('kSmooth').textContent=a.cls.Smooth.toLocaleString();
+  $('kErratic').textContent=a.cls.Erratic.toLocaleString();
+  $('kIntermittent').textContent=a.cls.Intermittent.toLocaleString();
+  $('kLumpy').textContent=a.cls.Lumpy.toLocaleString();
   $('k5').textContent=a.cls.NoSale.toLocaleString();
 }
 function render(){kpis();chart1();chart2();chart4();table();
