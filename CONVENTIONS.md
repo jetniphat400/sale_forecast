@@ -1,0 +1,47 @@
+# CONVENTIONS
+
+## Code Structure
+
+- Separate data access, computation and presentation into different modules.
+- Each function does one thing, takes inputs and returns outputs, without hidden side effects.
+- No magic numbers in code; all tunable values belong in `config.yaml`.
+- No hardcoded absolute paths; use paths relative to the project root.
+
+## Data Correctness
+
+- Keep raw pulled data separate from processed data and never overwrite raw.
+- Validate data before use, checking for negative values, dates outside the expected range,
+  unmatched item codes and duplicates.
+- Validation failures must be raised loudly, never silently skipped.
+- Write tests for invariants such as forecasts never being negative, monthly totals matching
+  the sum of daily records, and SKU counts staying consistent before and after processing.
+- Every number delivered must be verifiable against a direct recomputation.
+
+## Reproducibility
+
+- Pin library versions in `requirements.txt`, because different `statsforecast` versions can
+  produce different results.
+- Set random seeds where any randomness exists.
+- Record for every run which data cutoff date and which config were used, so results can be
+  compared across runs.
+
+## Git
+
+- Small, focused commits with descriptive messages.
+- Never commit data files or credentials.
+- Never commit generated output, since it can always be regenerated.
+
+## Logging
+
+- Use the `logging` module rather than `print`.
+- Every script must report how many rows were processed, how many were dropped, and why.
+
+## Documentation
+
+- Docstrings state what a function does, what it takes and what it returns.
+- Comments explain why, not what.
+- Record decisions with their reasoning in `STATUS.md`.
+
+---
+
+**Rule: every task must begin by reading `STATUS.md` and `CONVENTIONS.md`.**

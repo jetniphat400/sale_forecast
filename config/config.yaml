@@ -1,0 +1,74 @@
+# ============================================================
+# Sales Forecast — Configuration
+# Edit the values below. Lines starting with # are comments and
+# are ignored — they are just notes explaining what each setting does.
+# ============================================================
+
+# --- Data source ---------------------------------------------------
+# The database table that holds raw sales data.
+source_table: "[salewarehouse].[dbo].[cube_Sale_APD]"
+
+# --- Date range to pull/analyze -------------------------------------
+# Format: YYYY-MM-DD
+date_range:
+  start: "2024-01-01"
+  end: "2026-08-28"   # today's date; update as needed
+
+# --- Reference files -------------------------------------------------
+# Path to the price list file (relative to the project root).
+pricelist_path: "reference/pricelist.xlsx"
+
+# --- Pilot categories --------------------------------------------------
+# Type-level values (not Category-level), confirmed against reference/pricelist.xlsx
+# (Product Type column, visible sheets only) on 2026-08-31. Type level was chosen
+# over Category level because Category would also pull in Fuse link, HRC fuse,
+# Low Tension Fuse Switch and Fuse Holder — different products with different
+# demand behaviour. See STATUS.md Locked Decisions for the full reasoning.
+pilot_categories:
+  fuse_cutout: "High Voltage Distribution Fuse Cutout"     # 10 items, from reference/pricelist.xlsx Product Type column
+  surge_arrester: "Medium Voltage Surge Arrester"          # 58 items, from reference/pricelist.xlsx Product Type column
+
+# --- Business unit filter --------------------------------------------------
+# Required because 72 productCateName values, including Fuse and Surge Arrester,
+# appear under more than one division in cube_Sale_APD — category name alone is
+# not a safe key. See STATUS.md Phase 2 Step 1 for the evidence.
+division: "PEM101"
+
+# --- Revenue type filter --------------------------------------------------
+# Fixed to Omni Channel because this project's scope is the Omni Channel
+# business unit; other channels are out of scope for forecasting.
+revenue_type: "Omni Channel"
+
+# --- Sales status basis --------------------------------------------------
+# Actual plus MPS matches the Phase 1 convention.
+status_basis:
+  - "Actual"
+  - "MPS"
+
+# --- Pilot item codes --------------------------------------------------
+# Specific item codes to use for initial testing.
+pilot_item_codes:
+  - "EEE-F-FC-1040010002"
+  - "HS-F-99-02110"
+  - "HS-F-99-0213"
+
+# --- Moving-average windows to test (in months) -------------------------
+moving_average_windows:
+  - 3
+  - 6
+  - 12
+
+# --- Backtesting ---------------------------------------------------------
+# Number of months to hold out at the end of the series to test forecast
+# accuracy against actual results.
+backtest_holdout_months: 6
+
+# --- Error metrics ---------------------------------------------------------
+# Metrics used to score forecast accuracy.
+# MAPE (Mean Absolute Percentage Error) is intentionally excluded:
+# months with zero actual demand cause a division-by-zero in the MAPE
+# formula, which makes it unreliable for this dataset.
+error_metrics:
+  - "MAE"   # Mean Absolute Error
+  - "RMSE"  # Root Mean Squared Error
+  - "Bias"  # Average signed error (over- vs under-forecasting)

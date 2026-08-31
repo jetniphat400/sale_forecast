@@ -1,0 +1,8 @@
+pandas
+openpyxl
+pyodbc
+SQLAlchemy
+python-dotenv
+pyyaml
+matplotlib
+statsforecast
