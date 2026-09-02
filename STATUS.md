@@ -15,7 +15,8 @@ Phases:
   then the full Fuse + Surge Arrester category scope. DONE.
 - **A — Fix potentially wrong foundations**: three checks against existing data (whether
   `forecast_date` is revised after PO intake, why 2025 sales fell 26%, and which date field the
-  demand series is keyed on). NEXT, not blocked.
+  demand series is keyed on). **DONE (2026-09-02), answered with caveats — none of the three
+  closes with full certainty; see Current Status Summary and the detailed log entry below.**
 - **B — Close Phase 2 down to item level**: item-level forecasting, cross-division demand,
   no-history items, forward-test log rebuild, missing tests, and an end-to-end pipeline.
 - **C — Expand to all 445 item codes**: PEM102, PEM103, PEM104, PEM107 and CI101.
@@ -58,23 +59,54 @@ distinguishable from the plain mean. Aggregation to Category/Type level cut zero
 39.3% to 0% and the validation-to-test overfitting gap from 127% to under 4%. All methods
 under-forecast on average — expected, since point forecasts target the mean while real demand
 contains spikes; this must be compensated through safety stock in Phase 4, not by changing the
-model.
+model. **Phase A caveat (2026-09-02, moderate confidence)**: a meaningful but UNQUANTIFIED share
+of this measured bias's magnitude may be inflated by one item's (`EEE-F-FC-1040010002`) real,
+large 2025-collapse/2026-recovery swing landing inside the backtest's actual test window — see
+the Phase A log entry below. The bias's existence is not in doubt (the structural reason above
+still holds), but its exact SIZE should not be locked into a Phase 4 safety-stock policy before
+this is isolated (flagged for the Modeler, not yet done).
 
 **Phase A — Fix potentially wrong foundations: NEXT, not blocked.** Three checks, all answerable
-with existing data, must run before any further modelling or expansion work:
-1. Whether `forecast_date` is revised after the PO is received rather than fixed at intake. This
-   matters because the two headline business facts — a 6-day median order notice and 73.2%
-   on-time delivery — both depend on it: if delivery dates are rescheduled after intake, the
-   improvement from 57.8% to 73.2% on-time may reflect rescheduling rather than genuinely better
-   fulfilment.
-2. Why 2025 sales fell 26% — open for several rounds already. This matters because every
-   forecasting model under-forecasts on average, and that bias may be an artifact of training on
-   the depressed 2025 period and testing on the recovered 2026 period; using that bias to size
-   safety stock would bake the artifact into the system permanently.
-3. Whether the demand series used for forecasting is keyed on `createDate` (the PO receipt date)
-   or `forecast_date` (the contractual delivery date). Inventory planning needs the date stock
-   must be available by, so if the series is keyed on the wrong field, the timing of every
-   inventory parameter downstream is wrong.
+with existing data. **Answered 2026-09-02** by a three-agent Explorer+Validator/Analyst/Validator
+investigation, merged by a Synthesizer (per `AGENTS.md`) — full detail in the dated log entry
+below and in `output/summary/phaseA_synthesis.md`; none of the three closes with full certainty:
+1. **Whether `forecast_date` is revised after the PO is received rather than fixed at intake —
+   UNRESOLVED, and found to be fundamentally undetectable from this data (no audit/history table
+   or per-row modification timestamp exists anywhere in the schema), high confidence in that
+   negative finding.** However, every test run bounds any possible revision at under ~2.5% of
+   rows with no consistent direction — high confidence this is too small to explain either the
+   6-day median notice or the 57.8%→73.2% on-time improvement. **Practical conclusion: the two
+   headline figures are NOT overturned by this finding, but "forecast_date is fixed at intake"
+   remains an assumption, not a proven fact.**
+2. **Why 2025 sales fell 26% — ANSWERED, moderate-to-high confidence, mostly real not an
+   artifact, but with a genuine partial confound.** The "26%" is a Jan-Jul-window-only figure
+   (full calendar 2025 vs. 2024 is only -7.2%). 51% of the Jan-Jul decline traces to ONE item
+   (`EEE-F-FC-1040010002` — one of this project's three focus codes) with a flat unit price
+   throughout: a real volume collapse-then-recovery, not a price or classification effect, and
+   the same item is separately the largest driver (46.5%) of the 2025→2026 recovery. No
+   whole-population reporting/classification cliff was found (unlike the 2022/2023 and
+   2023/2024 breaks). **But a real, partial customer-reclassification confound exists**: 26 of
+   127 "dropped" customers (58.5% of that cohort's ฿46.24M value) actually continued doing
+   business, just relabelled from Omni Channel/PEM101 to Tendering or another division — one
+   account alone (`CS07977`) accounts for 23.6% of the whole headline decline this way. **Bias
+   consequence, not resolved by this task**: since the dominant item's real recovery swing sits
+   inside the Phase 2/3.1 backtest's actual test window, a meaningful but UNQUANTIFIED share of
+   the measured forecasting bias may be inflated by this one item/window, separate from the
+   already-recorded structural reason (point forecasts vs. spiky demand). Locking Phase 4 safety
+   stock to the current bias figures without isolating this item's contribution risks baking in
+   a one-time event's magnitude — flagged as a new, untested gap for the Modeler.
+3. **Which date field the demand series is keyed on — ANSWERED, high confidence.** Direct code
+   read confirms every pipeline script (`load_data.py`, `load_data_full.py`, `aggregate_levels.py`,
+   `backtest.py`, `backtest_aggregate.py`) keys monthly aggregation on `createDate`, never
+   `forecast_date`. **This is the wrong field for inventory-timing purposes.** Re-keying on
+   `forecast_date` moves 11.53% of quantity and 14.98% of value to a different calendar month,
+   materially changes at least one month for 86.6% of comparable items, and — most importantly —
+   makes 72,889 already-placed, already-contractually-due units (2.15% of scope demand, 64,134 of
+   them due the very next month) INVISIBLE to a `createDate`-keyed model, since they fall beyond
+   its observed window. Recommendation (moderate-to-high confidence, conditional on item 1
+   above): **re-key the series on `forecast_date`, captured as a frozen snapshot at time of use
+   (not a live re-query)**, since item 1 could not rule out revision, only bound its impact as
+   small. No code was changed to implement this — see the new Phase B action item below.
 
 **Phase B — Close Phase 2 down to item level.** Design how the Category and Type level results
 support item-level forecasting: item level showed 74% of series with no stable rolling-origin
@@ -87,7 +119,24 @@ which must not simply be dropped, since new items with no history are often the 
 to stock out; (3) the forward-test log, generated for 58 items and six models, which no longer
 matches the current scope. Also clear technical debt: write the tests `CONVENTIONS.md` requires
 but which do not yet exist, and build a pipeline that runs end to end, since the 21 committed
-scripts currently have no documented run order.
+scripts currently have no documented run order. **Two new action items from Phase A
+(2026-09-02), added to the Phase B task list**:
+- **Re-key the series and re-run all backtests.** Every backtest result produced so far in this
+  project (Phase 2's Category/Type model selection, the item-level backtest, rolling-origin
+  stability, the rule-based-selection comparison, the combination-variant test — everything that
+  reads `output/data/processed_pilot_sales_monthly.csv`, `processed_fuse_surge_monthly.csv`,
+  `processed_full_category_sales_monthly.csv`, or any series built by `load_data.py`,
+  `load_data_full.py`, `aggregate_levels.py`, `backtest.py` or `backtest_aggregate.py`) **was
+  produced with the series keyed on `createDate`, which Phase A found to be the wrong field for
+  inventory-timing purposes.** These results are not necessarily wrong in direction, but they are
+  not currently trustworthy as inventory-timing inputs and must be re-run once the series is
+  re-keyed to `forecast_date` (captured as a frozen snapshot at data-pull time, not re-queried
+  live, since Phase A could not rule out revision after intake — see above).
+- **Re-measure bias with `EEE-F-FC-1040010002` separated out.** Before any bias figure is used to
+  size safety stock, recompute it with this item (and/or its Type) held out or isolated, since its
+  real 2025-collapse/2026-recovery swing sits inside the existing backtest's test window and may
+  be inflating the measured bias magnitude (Phase A, moderate confidence, unquantified — not yet
+  done by any agent).
 
 **Phase C — Expand to all 445 item codes**, covering PEM102, PEM103, PEM104, PEM107 and CI101.
 Data quality for these divisions has never been checked and may differ from PEM101.
@@ -1488,7 +1537,10 @@ model choice was written to `config/config.yaml`. Scripts:
   analysis does not itself design or validate any such intervention.
 - **What the data could not resolve**: whether forecast_date in cube_Sale_APD
   represents a fixed PO-intake promise or a continuously-updated latest plan
-  (Part 2's open caveat, unresolved); whether Cube_CES's own PlanDelDate is
+  (Part 2's open caveat — **re-tested in the Phase A investigation, 2026-09-02: still formally
+  unresolved and undetectable in this schema, but every test bounds any revision at under ~2.5%
+  of rows with no consistent direction, too small to explain the 6-day notice or the 57.8%→73.2%
+  on-time swing — see the Phase A log entry below**); whether Cube_CES's own PlanDelDate is
   similarly revised over a contract's life (not tested — if PlanDelDate is
   also updated after the fact, "notice" as computed here could understate
   the true original promise, though this would not change the late-vs-
@@ -1829,6 +1881,118 @@ Full detail: `output/summary/phase4_warehouse_flow_investigation_report.md`; CSV
   rather than topology (needs business/operations input); the true meaning/role of the 20
   unidentified warehouse codes.
 
+**Phase A — Fix potentially wrong foundations: DONE (2026-09-02), answered with caveats.** First
+task run under the `AGENTS.md` multi-agent structure: three agents dispatched in parallel
+(A1 = Explorer+Validator combined, A2 = Analyst, A3 = Validator), then a Synthesizer merged their
+findings. INVESTIGATION ONLY: no min/max calculated, no model built, `config/config.yaml` not
+touched, no code changed. Scripts: `src/investigate_forecastdate_revision.py` (A1),
+`src/investigate_2025_decline.py` (A2); A3 worked from existing pulls, no new script. Reports:
+`output/summary/phaseA_a1_forecastdate_revision_findings.md`,
+`phaseA_a2_2025_decline_findings.md`, `phaseA_a3_date_keying_findings.md`,
+`phaseA_synthesis.md`. Supporting CSVs: `output/summary/phaseA_a{1,2,3}_*.csv`;
+raw/processed pulls: `output/data/phaseA_a{1,2}_*.csv`.
+
+- **A1 — is `forecast_date` fixed at PO intake or revised later? Unresolved, high confidence in
+  the negative finding, high confidence the effect (if any) is too small to matter.** Anomaly
+  check (Part 0, requested by the user): independently re-verified, with a fresh unfiltered
+  query, that the reported table-wide 1970/2032 epoch anomaly and future-dated `createDate` do
+  NOT reach the 128-item scope or the 3 focus codes (0 rows found in either direction) — both
+  fields are safe to use for this scope. Cross-table comparison: `cube_Sale_APD.forecast_date`
+  matches `Cube_CES.ForecastDelDate` EXACTLY on 100% of joinable rows (effectively the same
+  field); it disagrees with `PlanDelDate` on 2.3-3.2% of rows depending on scope, with NO
+  consistent direction (64% earlier/36% later) — consistent with STATUS.md's existing
+  "PlanDelDate and ForecastDelDate identical on 97.9% of rows" finding, not a contradiction.
+  Revision search: (a) same-`createDate`-different-`forecast_date` cases in `cube_Sale_APD`
+  (0.25% of groups, 68 groups/158 rows) ALL show differing quantities — the established
+  split-lot signature, zero cases at the 3 focus codes, **this sharpens (not resolves) the
+  Phase 3.1 "cannot rule out a continuously-updated plan" caveat toward "very likely explained"**;
+  (b) `Cube_CES`'s finer PlanID grain: only 6 of 159 disagreeing pairs (0.033% of rows) are
+  genuinely ambiguous and irresolvable from the data (2 of the 6 have no `ActualDelDate` yet —
+  will resolve on their own once delivered); (c) **confirmed, extending the earlier
+  108-table/Root-cause-of-2022/2023-break search to the column level: no audit/history table or
+  per-row modification-timestamp column exists anywhere for either table** — revision-in-place is
+  fundamentally UNDETECTABLE from this data model, not merely "not found." **Net conclusion,
+  stated plainly per instruction (absence of evidence is not evidence of fixedness)**: whether
+  `forecast_date` is ever revised remains an open, unprovable question, but every test bounds any
+  possible revision at under ~2.5% of rows with no consistent direction — too small to be the
+  primary driver of the 15-point on-time swing or the 6-day median notice figure. **The 6-day
+  notice and 73.2% on-time figures are NOT overturned by this finding.**
+- **A2 — why did 2025 sales fall 26%? Answered, moderate-to-high confidence, mostly real with a
+  genuine partial confound.** The "26%" is specific to the Jan-Jul window (full calendar-year
+  2025 vs. 2024 is only -7.2% — Aug-Dec 2025 actually exceeded Aug-Dec 2024 by 29.6%, meaning the
+  recovery began within 2025 itself, before 2026). **51% of the Jan-Jul decline traces to ONE
+  item, `EEE-F-FC-1040010002`** (one of the 3 focus codes) — flat unit price throughout, a
+  genuine volume collapse (buyers ~36→9) then recovery (→~30 buyers by 2026), not a price/mix/
+  classification effect; this same item is separately the largest driver (46.5%) of the
+  2025→2026 recovery per the earlier "History depth" task — i.e. one real item swinging both
+  directions. **Recording-artifact test (same method as the 2022/2023 break): no whole-population
+  cliff found** — the decline is gradual (-6.3% at the Dec2024→Jan2025 boundary, unlike the
+  prior breaks' >6x/>100x jumps), no aggregate `revenue_type`/`status` shift, and the WHOLE
+  PEM101 division declined similarly (-29.1%) regardless of revenue_type. **But a real, partial
+  customer-reclassification confound exists underneath**: of 127 customers who appear to have
+  "dropped" after Jan-Jul 2024, 26 (58.5% of that cohort's ₿46.24M value) in fact continued doing
+  business, just relabelled from Omni Channel/PEM101 to Tendering or another division — one
+  account, `CS07977`, accounts for 23.6% of the ENTIRE headline decline this way (its Omni
+  Channel activity fell to ~zero while its Tendering activity rose to ~₿263M). The other 101 of
+  127 dropped customers show zero activity anywhere post-2024 (likely genuine churn, not
+  independently confirmed). **The 2 Lumpy focus items (`HS-F-99-02110`, `HS-F-99-0213`) both
+  GREW through the 2025 dip window** — contrary to the aggregate pattern, too small in scale to
+  move the total. **Unresolved (stopping rule applied)**: why `EEE-F-FC-1040010002`'s buyer base
+  broadly paused in H1 2025 — no stock/supply/contract-cycle data exists in this database to test
+  this (consistent with the Phase 4 groundwork finding that no historical stock-level series
+  exists); needs business confirmation.
+- **A3 — which date field keys the demand series? Answered, high confidence.** Direct code read
+  (not inference) of `src/load_data.py`, `load_data_full.py`, `aggregate_levels.py` (default
+  `date_col="createDate"`, never overridden), `backtest.py`, and `backtest_aggregate.py`: **all
+  five key monthly aggregation on `createDate`**; zero references to `forecast_date` in any
+  pipeline script (only in one-off investigation scripts). Validated the reusable pull
+  (`raw_order_leadtime_128items.csv`, 27,479 rows) directly: reconciles exactly to STATUS.md's
+  prior figures (1 null forecast_date, 15 negative-interval rows), zero epoch/future-date
+  anomalies in this scope (independently reproduced A1's Part-0 check), 53 exact full-row
+  duplicates flagged (consistent with this project's existing "keep all rows" decision, not a
+  new problem). **Built both series and compared over the common 32-month window**: total qty
+  createDate-keyed 3,359,079 vs. forecast_date-keyed 3,286,187 (-2.17%), fully reconciled to the
+  unit — 72,889 units (64,134 of them due September 2026 alone) shift to real future delivery
+  dates beyond the current window. Gross month-to-month reallocation: **11.53% of qty, 14.98% of
+  value**; **940 of 3,584 item-months (26.2%) change materially** (threshold: ≥5 units or ≥20% of
+  the item's own mean monthly qty, stated explicitly); **97 of 112 items (86.6%) affected in at
+  least one month**. Demand classification (ADI/CV²) changes for 11 of 112 items (9.8%, 7
+  borderline Intermittent↔Lumpy, 4 more consequential ADI-crossing changes) — **all 3 focus items
+  KEEP their classification (Erratic, Lumpy, Lumpy) under both keyings**, though all three still
+  show materially reshuffled individual months. **Consequence**: `createDate`-keying
+  under-recognises near-term future contractual demand (the invisible 72,889 units above) — a
+  stockout-risk-direction bias, not a uniform one. **Recommendation: key the series on
+  `forecast_date`**, explicitly conditional on A1's revision finding (see Synthesizer resolution
+  below).
+- **Synthesizer — merged conclusions, no direct contradictions found (high confidence in that
+  specific check).** A3's conditional recommendation is resolved: **it STANDS, with a caveat, not
+  blocked** — A1 did not find revision, only failed to rule it out, and bounded its impact as too
+  small to matter; A3's own fallback (capture `forecast_date` as a frozen snapshot at time of use,
+  never a live re-query, consistent with `CONVENTIONS.md`'s reproducibility rule) should be
+  applied regardless of how the unresolved question eventually settles. **A2's decline driver and
+  the Phase 2/3.1 under-forecasting bias question connect in a way no single agent tested
+  directly**: since `EEE-F-FC-1040010002`'s real, large recovery swing sits inside the actual
+  6-month backtest test window, a meaningful but UNQUANTIFIED share of the measured bias
+  MAGNITUDE (not its mere existence) is plausibly inflated by this one item/window overlap,
+  separate from the already-recorded structural reason (point forecasts vs. spiky demand). No
+  agent recomputed bias with this item held out — **flagged as a new, untested gap for the
+  Modeler**, not resolved here. Checked deliberately for contradictions against STATUS.md: **none
+  found** — the closest candidates (the Phase 3.1 forecast_date-stepping caveat; the 97.9%
+  PlanDelDate/ForecastDelDate match) are refinements/consistent numbers, not contradictions.
+- **What the data could not resolve (9 items, full detail with owning team in
+  `phaseA_synthesis.md` §5)**: whether `forecast_date` is ever revised in place (needs a genuine
+  audit/snapshot table or IT/business confirmation — undetectable otherwise); the cause of the
+  2.3-3.2% `forecast_date`/`PlanDelDate` disagreement; 2 remaining ambiguous `Backlog`-status
+  PlanID pairs (will resolve once delivered); root cause of `EEE-F-FC-1040010002`'s H1-2025
+  buyer-base pause (needs stock/supply/contract data); whether the 101 zero-post-2024-activity
+  "dropped" customers are genuinely lost (needs account-status confirmation, largest few named in
+  the synthesis report); the mechanism behind `CS07977`'s/`CS00477`'s Omni Channel→Tendering
+  relabelling (needs the sales team who classifies `revenue_type`); how much of the measured
+  forecasting bias traces to the one-item/window overlap (needs the Modeler); how a real
+  Max-Min policy would respond to the re-keying shift (needs the Modeler, in Phase E); whether
+  A3's 53 flagged duplicate rows overlap the project's previously-classified duplicate-vs-split-
+  lot sets (small targeted follow-up, not chased here per the stopping rule).
+
 ## 3. Business Findings
 
 These describe how this business actually operates, established from data investigation (not
@@ -1839,9 +2003,16 @@ phase, particularly Phase 4. Full methodology, confidence levels and caveats are
 
 - **Customers give almost no order notice.** Median notice is 6 days; only 5.9% of orders give
   a month or more. This is far too short to produce or procure against — orders can only be
-  filled from stock already held.
+  filled from stock already held. **Phase A caveat (2026-09-02, high confidence)**: this figure
+  depends on `forecast_date` not being revised after PO intake; revision-in-place cannot be
+  proven or disproven from this data (no audit trail exists), but every test run bounds any
+  possible revision at under 2.5% of rows with no consistent direction — too small to explain
+  this figure, so it stands, though "forecast_date is fixed at intake" remains an assumption.
 - **On-time delivery has improved but is not yet good.** 73.2% on-time in 2026 (partial year),
-  up from 57.8% in 2023. 8.8% of deliveries are late, with a median lateness of 2 days.
+  up from 57.8% in 2023. 8.8% of deliveries are late, with a median lateness of 2 days. **Phase A
+  caveat (2026-09-02, high confidence)**: same caveat as above — this 15-point improvement is
+  not explained by date rescheduling (bounded effect too small), reinforcing this finding rather
+  than weakening it, but the underlying fixedness of `forecast_date` remains unproven.
 - **Late deliveries are not, in the main, an order-timing problem.** 69.5% of late deliveries
   had adequate notice (at or above the overall median) and were still late — pointing to
   supply/stock availability rather than customers ordering too close to the delivery date.
@@ -1946,6 +2117,19 @@ phase, particularly Phase 4. Full methodology, confidence levels and caveats are
 
 ## 5. Open Questions
 
+- **Phase A residual items (found 2026-09-02)** — unresolved, non-blocking for the phases that
+  follow, but flagged for specific owning teams (full detail with owner per item in
+  `output/summary/phaseA_synthesis.md` §5): whether `forecast_date` is ever revised in place
+  after PO intake (undetectable in this schema — needs a genuine audit/snapshot table or IT/
+  business confirmation); the cause of the 2.3-3.2% `forecast_date`/`PlanDelDate` disagreement;
+  root cause of `EEE-F-FC-1040010002`'s H1-2025 buyer-base pause (needs stock/supply/contract
+  data the business holds, not this database); whether the 101 zero-post-2024-activity "dropped"
+  customers are genuinely lost (needs account-status confirmation from the sales team); the
+  mechanism behind `CS07977`'s and `CS00477`'s Omni Channel→Tendering relabelling (needs the
+  sales team who classifies `revenue_type`); **how much of the measured Phase 2/3.1 forecasting
+  bias traces to the `EEE-F-FC-1040010002` collapse-recovery cycle landing inside the backtest
+  window, vs. general demand shape — needs the Modeler, not yet attempted, and should happen
+  before Phase 4 locks in a safety-stock policy from the current bias figures.**
 - **Rule-based selection's sufficiency-gate design (found 2026-09-01)** — unresolved,
   non-blocking. Our 24-month hard-cutoff gate (Naive below it) erases the classification
   stability advantage that the underlying SBC/KH/PK rules otherwise show — a smoother/rolling
