@@ -6,3 +6,4 @@ python-dotenv
 pyyaml
 matplotlib
 statsforecast
+scipy
