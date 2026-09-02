@@ -8,13 +8,58 @@ below for why earlier documents said 448). Data source: SQL Server table
 `[salewarehouse].[dbo].[cube_Sale_APD]`.
 
 Phases:
-- **1 — Trend**: exploratory sales trend dashboard.
-- **2 — Model design**: using Fuse Cutout and Surge Arrester product groups as the pilot.
-- **3.1 — Sales forecasting model**.
-- **3.2 — External factors**.
-- **4 — Inventory Max-Min for MRP**.
+- **1 — Trend**: exploratory sales trend dashboard. DONE.
+- **1.5 — Data quality**: not in the original plan; added because modelling could not safely
+  proceed without it. DONE.
+- **2 — Model selection**: using Fuse Cutout and Surge Arrester product groups as the pilot,
+  then the full Fuse + Surge Arrester category scope. DONE.
+- **3.1 — Expand coverage**: extend from the 128-item pilot scope to all 445 codes, covering
+  PEM102, PEM103, PEM104, PEM107 and CI101. NEXT, not blocked.
+- **3.2 — External factors**. BLOCKED.
+- **4 — Inventory Max-Min for MRP**. BLOCKED.
 
 ## 2. Phase Status
+
+### Current Status Summary (2026-09-02)
+
+**Phase 1 — Trend: DONE.** Demand classified by ADI and CV²; dashboard published on GitHub
+Pages with daily drill-down. The ₿2,015.3 million figure was reproduced exactly once the
+snapshot date (2026-08-25) and filter combination (`revenue_type = 'Omni Channel'`,
+`status IN ('Actual','MPS')`) were established.
+
+**Phase 1.5 — Data Quality: DONE.** Not in the original plan — proved necessary before
+modelling could safely proceed. Key findings: `forecast_date` is the contractual delivery
+date, and reading it correctly showed most apparent duplicate rows are split lots, not
+errors. MPS means "PO Received" and is confirmed demand — it must never be dropped from any
+query or model. `Cube_CES` agrees with `cube_Sale_APD` at 99.79% row level and extends usable
+history back to January 2023. All queries must filter on `division = 'PEM101'`, because 72
+category names (including Fuse and Surge Arrester) appear under more than one division.
+
+**Phase 2 — Model Selection: DONE.** The selected approach is Combination forecasting — the
+arithmetic mean of the six candidate models (Naive, MA3, MA6, MA12, Croston, SBA) — applied at
+Category and Type level, monthly granularity. Evidence: no single model won consistently at
+any level; rule-based selection (SBC, Kostenko-Hyndman, Petropoulos-Kourentzes) did not beat
+combination; median and trimmed-mean variants were directionally better but not statistically
+distinguishable from the plain mean. Aggregation to Category/Type level cut zero periods from
+39.3% to 0% and the validation-to-test overfitting gap from 127% to under 4%. All methods
+under-forecast on average — expected, since point forecasts target the mean while real demand
+contains spikes; this must be compensated through safety stock in Phase 4, not by changing the
+model.
+
+**Phase 3.1 — Expand coverage: NEXT, not blocked.** Extend from the 128-code pilot scope to
+all 445 codes, covering PEM102, PEM103, PEM104, PEM107 and CI101. Data quality for these
+divisions has not been checked and may differ from PEM101.
+
+**Phase 3.2 — External factors: BLOCKED**, pending utility budget data, EGP bid announcements
+and sales team insight.
+
+**Phase 4 — Inventory Max-Min: BLOCKED**, pending lead time per item, minimum order
+quantities, and make-versus-buy classification — none of which exist in the database.
+
+*Full evidence, methodology and per-task detail for every finding above is preserved in the
+detailed log below, in chronological order.*
+
+---
 
 **Phase 1 — Trend: DONE**
 - Linked pricelist to database via item code: **corrected to 343 of 445 matched** (visible
@@ -937,9 +982,643 @@ change or a genuine business change. Script: `src/investigate_2023_break.py`. Ou
   bucket (a small counter-example of explicitly-tagged Tendering/Total Customer Solution rows
   exists alongside them, so this cannot be assumed either way).
 
-**Phase 3.2, Phase 4 — NOT STARTED**
+**Phase 3.1 — Category/Type-level top-down expansion: DONE (2026-08-31); no model chosen.**
 
-## 3. Locked Decisions (with reasons)
+Decision (user, 2026-08-31): forecasting proceeds top-down — Category, then Type, then item
+codes only when a specific code needs attention. Purpose is operations/inventory planning, so
+directional error (Bias) matters as much as absolute error. This expands the earlier
+Type-level pilot (58/68 items) to the **full Fuse + Surge Arrester category scope** for
+aggregation purposes; it does not replace the Type-level pilot's original reason for existing
+(see Locked Decisions) — aggregating quantities across dissimilar products for a top-down
+series is a different operation from fitting one item-level model to mixed products.
+
+- **Scope (Part 1)**: 128 item codes across 8 Types, 2 Categories (`Fuse`, `Surge Arrester`),
+  from visible pricelist sheets. 113 have sales history anywhere in `cube_Sale_APD`; 15 have
+  none (`EEE-F-FL-1040030100`, three more `EEE-F-FL-5920-353-...` codes, `FC-A-38-00203`, nine
+  `HS-F-99-...` codes — see `output/summary/part1_category_scope_all_codes.csv`). Under the
+  established filters (`division='PEM101'`, `revenue_type='Omni Channel'`, status Actual/MPS,
+  `createDate >= 2024-01-01`): 112 of 113 forecastable codes have activity (one,
+  `EEE-F-FL-5920-353-02600`, has history elsewhere but zero rows under these filters); total
+  qty 3,348,542, total value ฿689,580,695. Validated: no negative qty/sale, no out-of-range
+  dates, daily-to-monthly reconciliation exact. Per-Type breakdown in
+  `output/summary/part1_scope_report_by_type.csv`.
+- **Aggregation effect (Part 2)**: item level averages 39.3% zero months and 50% of the 113
+  items classify Lumpy/Intermittent. Type level (8 series) averages 5.2% zero months, 12%
+  Lumpy/Intermittent. Category level (2 series) is 0.0% zero months, 0% Lumpy/Intermittent —
+  both Category series and 7 of 8 Type series are Smooth or Erratic (never zero) at monthly
+  grain. This is a large, real effect, not an artifact. One exception: `Low Voltage Fuse
+  Switch Disconectors` (2 items, ฿22.1M) stays Intermittent even aggregated to Type level —
+  genuinely thin, and cannot be pooled further without violating the hierarchy (its
+  Fuse-Category siblings are different products). Full stats:
+  `output/summary/part2_{item,type,category}_level_stats.csv`.
+- **Granularity (Part 3)**: 9 of 10 Category/Type series already have 0% zero periods at
+  monthly grain, so coarsening to 2-month (15 periods) or quarterly (10 periods) buckets only
+  throws away data points for no benefit — monthly recommended for those 9. Exception: `Low
+  Voltage Fuse Switch Disconectors` — quarterly nudges % zero from 41.9% to 40.0% and ADI from
+  1.72 to 1.67 (stays Intermittent either way); a marginal, not decisive, improvement. Not
+  written to `config.yaml`. Detail: `output/summary/part3_granularity_test.csv`.
+- **Backtest (Part 4)**: Naive, MA3/MA6/MA12, Croston, SBA tested at Category and Type level,
+  monthly grain, identical settings to the item-level backtest for direct comparability.
+  Rolling-origin: 7 origins (train sizes 13,15,17,19,21,23,25 months). **Stable winner (same
+  model at every origin): 0 of 10 series (0%)** — reported directly, not glossed over; see
+  `output/summary/part4_rolling_origin_stability.csv` for the full per-origin winner spread
+  before treating any single model as settled. Train(19)/Val(6)/Test(6): MAE-best and
+  Bias-best model disagree for 6 of 10 series (60%) — see
+  `output/summary/part4_model_selection.csv` for which direction each disagreement runs
+  (under- vs. over-forecasting risk). Full MAE/RMSE/Bias per series/model/origin:
+  `output/summary/part4_rolling_origin_results.csv`, `part4_validation_results.csv`,
+  `part4_test_results.csv`.
+- **Item-level vs. aggregate comparison (Part 5)**: validation-to-test MAE gap (mean
+  gap ÷ mean validation MAE, same method used for the item-level 127% figure) falls from
+  **+127.0% at item level to +31.9% at Category/Type level** — a real, large reduction in
+  overfitting risk from aggregation. Rolling-origin winner stability does **not** improve
+  (25.9% stable at item level → 0% at Category/Type level) — aggregation fixes zero-inflation
+  and overfitting risk but not which-model-wins instability; stated plainly since it is not an
+  improvement. MAE-best/Bias-best disagreement rate is similar-to-slightly-worse at the
+  aggregate level (60% vs. 53%), though n=10 series is too small to treat that comparison
+  alone as conclusive. Full comparison table:
+  `output/summary/part5_item_vs_aggregate_comparison.csv`.
+- **Outputs (Part 6)**: final recommendation table (model, granularity, confidence per
+  Category/Type) in `output/summary/part6_final_recommendation_table.csv`. No series reached
+  HIGH confidence on model choice, because none had a stable rolling-origin winner; most rated
+  LOW or LOW-MEDIUM. 10 forecast-vs-actual charts (2 Category + 8 Type) in `output/charts/`.
+  **`config/config.yaml` was not modified** — no model or granularity choice was written to
+  it, per instruction.
+- **What the data could not resolve**: which single model to lock in per Category/Type (no
+  stable winner at any of the 10 series); whether item-level forecasts should be derived by
+  disaggregating a Category/Type forecast (e.g. by historical share) — not tested, this task
+  covered aggregation and comparison only.
+
+**Phase 3.2 — NOT STARTED. Phase 4 groundwork survey: DONE (2026-08-31); Phase 4 itself not started.**
+
+Survey only, scope = the same 128 items (Fuse + Surge Arrester categories). No min/max values
+calculated, no model built or changed, `config.yaml` not touched. Full detail in
+`output/summary/phase4_part1_*.csv` through `phase4_part7_*.csv`.
+
+- **Cube_Inventory_Exact (current stock)**: single current-state snapshot (2026-08-30, no time
+  dimension — confirmed, only 1 distinct date). Covers 125/128 items. Minimum/maximum are set
+  **per warehouse**, not per item (items are stocked across up to 20 warehouses); 81 of 119
+  multi-warehouse items have genuinely different min/max per warehouse, so there is no single
+  "the" min/max without a business decision on which warehouse(s) count. 82/128 items have any
+  nonzero min/max set at all; expressed as months of recent sales cover, these range from
+  under 1 month to 1700+ months for thin movers — a strong, concrete sign several existing
+  settings are stale rather than actively maintained (7 items have a nonzero min/max but zero
+  recent sales, an outright contradiction). **Data-quality caveat**: 8 of the 125 matched items
+  carry a DIFFERENT `product_category` inside this table (Suspension Insulator, Power
+  Capacitor) than Fuse/Surge Arrester — same class of itemcode-ambiguity issue as the earlier
+  pricelist-vs-database Surge Arrester voltage-tier disagreement; not resolved here.
+- **Cube_Inventory_Aging**: despite its name, this table has **no age-bucket structure** —
+  `Condition`, `Type` and `ItemStatus` are constant across all 441,427 rows. It is actually a
+  GL-account-level stock valuation snapshot (single timestamp, no history). It cannot answer
+  "how long has this stock been held" as-is. Its `GLDescription` field (Finished
+  goods/Raw materials) turned out useful for classification (see below), which was not what
+  the table's name suggested it would be useful for.
+- **Lead time**: no source has both clean data and full coverage. `Cube_emanu.leadtime` is
+  genuine manufacturing job cycle time (proven: `leadtime` exactly equals
+  `DATEDIFF(day, createJobDate, lastestReceiptDate)` for every sampled row; no supplier/vendor
+  field exists in the table at all) — but it has no itemcode column and no data since March
+  2019, so it is unusable regardless. `Cube_PO_Exact` gives clean, real, item-linked observed
+  vendor lead time (16–189 days, mean 70) but only for 7/128 items (5.5%).
+  `Cube_PriceList.DeliveryTime` covers 62/128 (48.4%), genuinely supplier-linked. Best coverage
+  is `Cube_Quotation.ctr_leadtime` at 100/128 (78.1%) usable numeric rows, but 60% of its raw
+  values are the placeholder text "Process" and the numeric remainder is highly inconsistent
+  per item (78 of 100 items have std > half their mean) — it is a quotation-stage promised
+  delivery time, order-circumstance-dependent, not a validated procurement lead time.
+  **Conclusion: lead time must be obtained from (or confirmed with) the purchasing team** for
+  full coverage; the sources above can only serve as a partial cross-check.
+- **Finished goods vs. raw material classification**: **122/128 Finished Goods, 6/128 Raw
+  Material — HIGH confidence**, confirmed by three independent tables in exact agreement
+  (`Cube_ItemList.Assortment1`, `Cube_Inventory_Aging.GLDescription`, and presence of a bill of
+  materials in `Cube_BOM_Exact`: all 117 FG-classified items have a BOM, none of the 6 RM items
+  do). The 6 RM items are the `FC-A-...` Fuse Holder codes. **Make vs. buy** (whether any item
+  is ever purchased complete from an outside vendor instead of manufactured) is NOT reliably
+  answerable from data alone: all FG items have a BOM and none appear in the raw-material PO
+  table (`cube_po`) under their own code (suggesting they are manufactured, not bought
+  complete), but 48 items have a nonzero `PurchasePrice` in `Cube_ItemList` — ambiguous, could
+  mean occasional outside sourcing or just a recorded reference price. `manufacturing_type`
+  (MTS/MTO/ETO) in `cube_Sale_APD` covers 113/128 items but is an ORDER-level attribute (100 of
+  113 items show more than one value across their own sales rows), not a fixed per-item
+  classification, and it describes production strategy, not make-vs-buy.
+- **Seasonal pattern**: only 2 complete years (2024, 2025) plus one partial (2026, through
+  August) are available. June is high across both categories in all 3 years; a few other
+  months disagree year to year. **Stated explicitly: 2 data points cannot statistically
+  distinguish a real seasonal cycle from coincidence — no seasonal pattern is confirmed by this
+  data**, regardless of what the raw numbers suggest visually.
+- **Historical stock-level time series**: does not exist. Both inventory tables are single
+  current-state snapshots. `cube_inventory_tran` holds movements (QtyIn/QtyOut), covering
+  34/128 items (26.6%, 9,652 rows, 2016–2026 including current data) — re-queried for this
+  128-item scope; **this supersedes a prior session's narrower 58-item-scope finding of 13
+  items/2017-2021 only, which should not be reused for this wider scope.** A stock-level
+  history could in principle be reconstructed from these movements, not attempted here.
+  **Unresolved caveat**: all 9,652 matched rows carry `gl_desc = 'Raw materials'`, including 28
+  items that are classified Finished Goods everywhere else — a real conflict, flagged but not
+  investigated further.
+- **Related tables and match rates**: full table in
+  `output/summary/phase4_part6_related_tables.csv`. Best additional coverage:
+  `Cube_Quotation` 116/128 (90.6%), `Cube_ReceiveRM` 82/128 (64.1%, has Supplier + Receive_date
+  but no order date, so cannot alone give lead time), `Cube_PriceList` 62/128 (48.4%).
+  `cube_po` (raw-material/component purchase orders) has **zero** overlap with the 128
+  finished-goods codes — consistent with these items being manufactured, not purchased
+  complete under their own code.
+- **What the data could not resolve**: which warehouse(s) should count for each item's Max-Min
+  policy; the `cube_inventory_tran` GL-classification conflict; whether any item is genuinely
+  make-or-buy dual-sourced; whether the 8 itemcode/category-mismatched items in
+  `Cube_Inventory_Exact` are collision or data-entry error; whether a real seasonal pattern
+  exists at all.
+
+**Phase 4 (Max-Min build) itself — NOT STARTED.**
+
+**Phase 3.1 — Rule-based model selection vs. empirical selection: DONE
+(2026-09-01).** Scope: the same 128 items, 138 series (2 Category, 8 Type,
+128 Item, 16 of the items are "NoSale" with zero history — 122 series carry
+through the analysis). Full detail in `output/summary/rule_part1_*.csv`
+through `rule_part6_*.csv`; charts in `output/charts/rule_strategy_comparison_*.png`.
+
+- **Correction made before implementation**: the task's own instructions
+  initially stated SBC (2005) recommends Croston for Erratic demand. The
+  primary source (Kostenko & Hyndman 2006, reproducing SBC's own Figure 1,
+  https://robjhyndman.com/papers/idcat.pdf) was fetched and verified to say
+  the opposite — Croston for Smooth ONLY, SBA for Erratic/Lumpy/Intermittent.
+  Flagged to the user with the exact quote; user confirmed to follow the
+  verified primary source. **Do not use the "Croston for Erratic" framing
+  again — it is factually wrong and was corrected here.**
+- **Characteristics (Parts 1-2)**: measured ADI, CV², %zero, trend
+  (OLS slope, significance = p<0.05 AND fitted change >20% of series mean —
+  our own magnitude threshold, not from a published source), a heuristic
+  single-changepoint level-shift screen (Welch's t, |t|>3 and >50% mean
+  change — explicitly NOT a formal structural-break test), and month-of-year
+  strength (eta-squared on de-trended residuals, reported as **observation
+  only** — 2 complete years cannot confirm seasonality). Classification is
+  stable across first-12/first-24/full-history windows for 100% of Category
+  series, 87.5% of Type series, 64.8% of Item series — reported plainly,
+  including which item series flip classification across windows
+  (`rule_part2_stability_summary.csv`).
+- **Rule sets implemented (Part 3)**, each verified against a primary or
+  authoritative reference implementation before coding, not invented:
+  - **SBC (2005)**: thresholds ADI=1.32, CV²=0.49; Croston for Smooth, SBA
+    otherwise.
+  - **KH (2006)**: exact non-linear boundary (their eq. 2, using a per-series
+    fitted interval-smoothing parameter α — via statsforecast's
+    golden-section SES optimiser on the inter-demand-interval series,
+    bounds 0.1–0.3), cross-checked against Nikolaos Kourentzes' own
+    reference R implementation (`idclass.R`,
+    https://github.com/trnnick/tsintermittent). Corrected corner values
+    confirmed from the paper: p=4/3 (not 1.32), v=0.5 (not 0.49) at the
+    α=0 limit.
+  - **PK (2015)**: identical KH boundary, with an SES override whenever
+    ADI≤1 (demand in every period) — also verified against the same
+    reference implementation (`use.ses <- p <= 1`).
+  - **Extended layer (our own addition, explicitly NOT from any of the three
+    papers)**: Naive when history <24 months or classification is unstable
+    across windows; SES (no trend) or Holt (significant trend) for the
+    Smooth quadrant, generalising P&K's ADI≤1 principle to the whole Smooth
+    region since none of the three papers model trend. **Consequence worth
+    remembering**: because Smooth is exactly the region SBC/KH assign to
+    Croston, plain "Croston" never survives as a final recommendation under
+    any rule set once this layer is applied — the `*_base` columns in
+    `rule_part3_model_assignments.csv` hold the un-layered literature rule
+    if that's ever needed instead.
+  - **Bug fixed during implementation**: `numpy.bool_(True) is True`
+    evaluates to `False` (numpy bools are distinct objects from Python's
+    `True`/`False` singletons) — a stability flag read back from CSV via
+    `is True` silently forced every series to "Naive". Fixed to `== True`.
+    Worth remembering for any future code comparing a CSV-round-tripped
+    boolean with `is`.
+- **Strategy comparison on the test set (Part 4)**: train=19/val=6/test=6
+  months, rule-based classification computed on train+val only (no test
+  leakage). **Combination forecasting (equal-weight average of
+  Naive/MA3/MA6/MA12/Croston/SBA) has the best MAE and RMSE at ALL THREE
+  levels**, and the best MASE at Category and Type level. **Rule-based
+  selection (SBC/KH/PK — nearly identical results to each other) does NOT
+  outperform Combination, and is WORSE than plain Naive on MASE at Type and
+  Item level.** Stated directly per instruction, not softened. MAE-best and
+  Bias-best strategy disagree on 0% (Category), 12.5% (Type), 27.7% (Item)
+  of series — full detail and direction in `rule_part4_mae_vs_bias_best.csv`.
+- **Rolling-origin rule stability (Part 5)**: the **underlying** SBC/KH/PK
+  classification-driven choice (before our sufficiency gate) is genuinely
+  far more stable across 7 rolling origins than empirical validation-based
+  selection was in prior work — 100% (Category), 87.5% (Type), 84-89%
+  (Item), vs. empirical's ~0% (Category/Type) and ~26% (Item), established
+  previously. **This specific literature premise IS supported.** However,
+  the **final, practically-deployable** layered choice is much less stable
+  (0-32%), because our own 24-month sufficiency gate mechanically forces a
+  Naive→non-Naive flip once a series crosses that threshold — an artifact
+  of our gate design, not evidence the underlying rule itself is unstable,
+  but it means the practical version tested here does not yet deliver the
+  stability benefit in deployable form.
+- **Bottom line (Part 6)**: the evidence supports **Combination forecasting**
+  over rule-based selection for actual forecast accuracy at all three
+  levels. Rule-based selection's genuine advantage — much greater stability
+  of the underlying classification across time — is real and measured, but
+  was not preserved through to a deployable recommendation because of our
+  own sufficiency-gate design, not a flaw in the cited literature. No model
+  choice was written to `config/config.yaml`.
+- **What the data could not resolve**: the sufficiency-gate design that
+  would let rule-based selection realise its stability advantage in
+  practice; whether the Smooth-quadrant SES/Holt generalisation (vs. the
+  literal ADI≤1-only P&K rule) is the better design choice; whether a
+  different combination weighting would beat simple equal-weight averaging;
+  whether any real seasonal pattern exists (2 complete years, unconfirmable
+  regardless of further analysis of this same dataset).
+
+**Phase 3.1 — Bias, overfitting gap and margin follow-up: DONE (2026-09-01).**
+Reporting task on the rule-based-selection results above: re-reported Bias
+and MAE-vs-Bias disagreement (both already computed, just not surfaced as
+headlines previously), and newly computed the validation-to-test overfitting
+gap per strategy (this did NOT exist before — only the empirical-selection
+gap had ever been computed) and a winner-margin significance check. Full
+detail in `output/summary/rule_part7_*.csv`.
+
+- **Bias**: every one of the 4 strategies UNDER-forecasts on average, at all
+  3 levels — consistent with the Increasing trend found in most Smooth
+  series (backward-looking models undershoot a growing series). Ranked by
+  |Bias| (smallest first), Combination has the smallest bias magnitude at
+  every level (Category -12,139; Type -3,045; Item -216 units/month), Naive
+  is close behind, and Empirical has the LARGEST bias magnitude at Category
+  and Type level (-17,181 and -3,964) — worth remembering when weighing
+  stockout risk, since Empirical is chosen for lowest validation MAE with no
+  regard for directional bias.
+- **MAE-vs-Bias disagreement**: 0% (Category), 12.5% (Type), 27.7% (Item) of
+  series have a different best STRATEGY under MAE than under |Bias|. An
+  earlier, separate analysis (comparing the 6 base MODELS empirically, not
+  these 4 coarser strategies) found 53.4%/60% — the same underlying pattern
+  holds (MAE-best and Bias-best often differ) but at a lower rate once
+  choices are coarsened to 4 strategies. Largest individual disagreements in
+  `rule_part7_mae_bias_disagreement_detail.csv`.
+- **Overfitting gap per strategy (NEWLY COMPUTED)**: **Empirical selection has
+  the LARGEST validation-to-test gap at every level (32.7% Category, 31.2%
+  Type, 9.8% Item)** — the only strategy that tunes on validation error, so
+  this is exactly the selection-induced overfitting theory predicts.
+  Combination has the SMALLEST gap at Category and Type level (3.8%, 4.2%);
+  at Item level most strategies actually score BETTER on test than
+  validation (negative gap — Naive -6.6%, Rule-KH/SBC -5.2%, Combination
+  -0.9%), meaning noise dominates any true overfitting signal there, while
+  Rule-PK (+2.0%) and Empirical (+9.8%) are the only two with a positive
+  (worsening) gap. **Rule-based selection and Combination DO reduce
+  overfitting relative to Empirical, as theory predicts** — this is now
+  directly measured, not assumed.
+- **Winner margin / significance check**: Combination has the best point-
+  estimate MAE at all 3 levels, but a PAIRED comparison against the
+  runner-up (same series, both strategies — more appropriate than an
+  unpaired spread since the two are scored on identical series) gives a
+  paired t-statistic of only 0.26 (Category), 0.37 (Type) and 1.05 (Item) —
+  **none clear a conventional significance bar (~2)**. Combination's edge at
+  any single level, taken alone, could plausibly be noise. Combination's
+  case rests on being the most CONSISTENT top performer across MAE, RMSE,
+  bias magnitude and overfitting gap, across all 3 independent levels
+  simultaneously (triangulation), not on any one comparison being
+  individually decisive.
+- **The 16 no-history items**: unchanged from the prior task — 16 items
+  have zero sales in the analysis window (`rule_part7_no_history_items.csv`
+  lists them), excluded from every backtest/strategy metric (no train/val/
+  test split is possible with zero data). No forecast is currently produced
+  for them by this pipeline; they would need a different, no-history-specific
+  treatment if needed for Phase 4, out of this pipeline's scope.
+- **Stability-gate mechanism explained (not changed)**: the extended layer's
+  hard 24-month minimum-history cutoff means 6 of the 7 rolling-origin test
+  points (13-23 months) can NEVER pass the gate, mechanically forcing Naive
+  at every one of them regardless of the underlying ADI/CV² classification's
+  actual stability — this is why "base" (un-gated) stability was 84-100%
+  but "final" (gated) stability was only 0-32% in the prior task: almost
+  entirely the gate's own hard cutoff, not genuine boundary-crossing.
+  Alternatives (not applied, listed for a future decision): lower the
+  minimum-history threshold; make the gate continuous/graduated rather than
+  a hard on/off switch; relax the stability sub-check so it can evaluate
+  before 24 months; drop the stability sub-check entirely; or re-run the
+  Part 5 rolling-origin test restricted to origins ≥24 months to isolate the
+  gate's own behaviour once it can actually fire.
+- **What the data could not resolve**: whether Combination's edge over the
+  runner-up at any given level is more than noise (paired t below ~2 at
+  every level); which stability-gate alternative would work best (not
+  tested, presented as options only).
+
+**Combination-variant test, order-notice lead time, on-time delivery
+baseline, and their connection — DONE (2026-09-01).** Three independent
+questions plus a connecting analysis, run in one task at the user's request.
+No inventory calculation was implemented (out of scope, per instruction). No
+model choice was written to `config/config.yaml`. Scripts:
+`src/combination_variants.py`, `src/order_leadtime.py`,
+`src/delivery_performance.py`, `src/leadtime_delivery_link.py`. Full detail:
+`output/summary/combo_variant_*.csv`, `leadtime_*.csv`, `delivery_*.csv`,
+`link_*.csv`; charts in `output/charts/` (same prefixes).
+
+- **Part 1 — median/trimmed-mean/robust-subset combination vs. the current
+  arithmetic mean: the arithmetic mean is NOT clearly beaten, medium
+  confidence.** Reused the existing infrastructure exactly (`build_all_series`,
+  the 6 base models, the 19/6/6 train/val/test split, and the paired-t
+  methodology already used for the strategy comparison) — nothing rebuilt.
+  Tested Mean (current), Median, TrimmedMean (drops 1 highest + 1 lowest of
+  6), and RobustSubsetMedian (median of {Naive, MA3, MA6, MA12} only,
+  excluding Croston/SBA — reasoned from this project's own prior finding that
+  Croston/SBA over-forecast Intermittent items by +25 to +27 units/month and
+  showed slow-adapting dormancy behaviour, see the backtest-anomalies note
+  above; not a generic literature choice). On point estimates, a variant DOES
+  beat Mean's test-set MAE at every level: RobustSubsetMedian at Category
+  (13,485 vs. 14,606, +7.7%) and Type (3,760 vs. 4,011, +6.2%); Median at Item
+  (384.5 vs. 389.3, +1.3%). **But paired t-tests (same methodology as the
+  prior rule-based-selection task) find none of these margins statistically
+  distinguishable from Mean at conventional significance**, except at
+  Category level where Median and TrimmedMean nominally clear |t|>2 (2.34,
+  2.94) — reported with the caveat that Category level has only 2 series, so
+  a 2-observation paired test is very weak evidence regardless of the t-value.
+  Bias also improves with every non-Mean variant at every level (smaller
+  |Bias| than Mean throughout), and the validation-to-test gap is smaller (or
+  negative, i.e. test outperforms validation) for every non-Mean variant at
+  Category and Type level. **Conclusion, stated directly per instruction:
+  the evidence leans toward RobustSubsetMedian/Median being marginally better
+  than the current Mean on point estimates, bias and overfitting gap
+  simultaneously (the same triangulation logic used to justify Combination
+  over rule-based selection previously), but — matching that same prior
+  finding's pattern — the margin over the runner-up does not clear a
+  significance bar at Type or Item level, and the Category-level significance
+  rests on only 2 series. This is NOT strong enough evidence to recommend
+  switching away from the arithmetic mean; the current approach is not
+  beaten with confidence, but a reasoned case exists for revisiting this with
+  more series/history in the future.**
+- **Part 2 — order notice is very short overall: high confidence.** Business
+  definition used directly (not re-derived): `createDate` = PO received,
+  `forecast_date` = contractual delivery date; notice = forecast_date -
+  createDate. Scope: 128 items, same filters as the rest of this project
+  (division=PEM101, revenue_type=Omni Channel, status Actual/MPS,
+  createDate>=2024-01-01) — a scope decision stated explicitly, not a data
+  limit. 27,479 rows pulled; 1 row has no forecast_date; 15 rows (0.05%) have
+  a negative interval (forecast_date before createDate, a data anomaly,
+  excluded and reported separately). **Median notice is only 6 days, mean
+  10.9 days, heavily right-skewed (skewness 9.95) — a small minority of
+  orders carry very long notice, but the bulk have almost none.** Only
+  **5.88% of orders carry at least 1 month's notice, 2.22% at least 2 months,
+  1.29% at least 3 months** (full cumulative table in
+  `leadtime_notice_buckets_overall.csv`) — the overwhelming majority of
+  demand cannot be met by producing/purchasing to order under any reasonable
+  lead time; most of it requires stock on hand. By product type, medians
+  range 3-10 days (Medium Voltage Surge Arrester shortest at 3, Low Voltage
+  Fuse Switch Disconectors longest at 10) — all still far under a month. By
+  customer, high dispersion exists (std of per-customer medians = 33.7 days,
+  range 0-510 days across 638 customers) — a few customers consistently give
+  much longer notice, most do not. **By year, the pattern is STABLE**: median
+  notice 6.0 days in both complete years 2024 and 2025 (2026 partial, also
+  6-7 days, not used for the stability comparison). **Spike-month orders
+  carry statistically significantly longer notice than normal-month orders
+  (Mann-Whitney p<0.0001) but the practical difference is small (median 7
+  days vs. 6 days)** — value-weighted, spike months hold ₿36.6M in orders
+  with <30 days' notice vs. ₿28.1M with ≥30 days, so spike-month demand is
+  NOT predominantly long-notice. **Data-quality caveat carried forward
+  explicitly**: an earlier investigation found forecast_date sometimes steps
+  forward across a contract's repeated rows (multi-tranche updates) — this
+  script cannot rule out that forecast_date reflects a continuously-updated
+  latest plan rather than a fixed promise made at PO intake, which could bias
+  the very short median downward. Not resolved here.
+- **Part 3 — on-time delivery baseline (Cube_CES): 64.9% on time, 26.3%
+  early, 8.8% late (vs. Plan) — high confidence, 98.8% of rows assessable.**
+  Scope: 128 items, ManuDivision=PEM101, RevenueType=Omni Channel, Status IN
+  ('Actual','Backlog'), CtrDate>=2023-01-01 (the evidenced Cube_CES boundary
+  from the earlier row-level-verification task) — a deliberately LONGER
+  window than the 2024+ demand-forecasting scope, since this is a delivery-
+  performance baseline, not a model-fitting window. 36,382 rows pulled;
+  **98.80% assessable** (Status='Actual' with a non-null ActualDelDate); 434
+  rows (1.19%) are Status='Backlog' (not yet delivered — reported as current
+  backlog below, not an outcome) and 1 row is an unexplained small gap
+  (Status='Actual' but missing ActualDelDate). Results against
+  ForecastDelDate are nearly identical (64.0/26.2/9.8%) because PlanDelDate
+  and ForecastDelDate are literally identical on 97.9% of assessable rows —
+  the two comparisons are not independent checks. Lateness distribution
+  (late rows only): median 2 days late, mean 5.8 days, heavily right-skewed
+  (skewness 17.0, max 729 days) — most late deliveries are only slightly
+  late, with a long tail of a few very late ones. By product type, %% late
+  ranges from 1.6% (Low Voltage Fuse Switch Disconectors) to 12.8% (HRC
+  fuse). By customer, %% late varies widely across the top 15 (0.6% to
+  33.3%) — late deliveries concentrate heavily in specific customers, not
+  evenly spread (see `delivery_by_top15_customers.csv`). **By year, on-time
+  performance has IMPROVED steadily: 57.8%/61.0%/68.6%/73.2% on-time in
+  2023/2024/2025/2026, and %% late has fallen from 24.4% (2023) to 2.8%
+  (2026, partial)** — a real, large, monotonic improvement, though 2023's
+  figure should be read with the Cube_CES boundary caveat in mind (dense data
+  only begins Jan 2023). Spike-month orders are somewhat more likely to be
+  late (13.1% vs. 8.6% for normal months; chi-square p<0.0001, statistically
+  significant, computed on a spike-month definition recomputed directly on
+  Cube_CES's own quantity using the identical 3x-median rule — NOT the exact
+  same month list as Part 2's cube_Sale_APD-based spikes, stated explicitly
+  since the source table, date field and window differ). **Current backlog**:
+  434 rows / 153 contracts / 65 items / 61 customers, total 67,509 units
+  outstanding; **only 2.76% of backlog rows are already overdue against
+  Plan** (median "age" is -7 days, i.e. most backlog is not yet due) — the
+  backlog is not, in aggregate, a large pile of already-broken promises, it
+  is mostly still within its planned window. Backlog concentrates in a
+  handful of items (`LS-F-99-1004`, the `EEE-F-FL-1040030xxx` family) and
+  customers (`CS06836`, `CS03051`) — full detail in
+  `delivery_backlog_by_item.csv` / `_by_customer.csv`.
+- **Part 4 — late deliveries did NOT have unusually short notice; the
+  majority (69.5%) had normal-or-longer notice and were still late —
+  moderate-to-high confidence.** Computed self-contained within Cube_CES
+  (PlanDelDate - CtrDate, on the identical rows already classified
+  on-time/late in Part 3) rather than joining across to Part 2's
+  cube_Sale_APD figures, because Cube_CES splits contracts into finer
+  PlanID-level rows than cube_Sale_APD, so a cross-table join risked a
+  many-to-many mismatch — a reasoned methodology choice, stated explicitly.
+  26 of 35,947 rows (0.07%) excluded for a negative notice anomaly, same
+  class as Part 2's finding. **Late deliveries had a LONGER median notice (6
+  days) than on-time/early deliveries (5 days)** — statistically significant
+  (Mann-Whitney p=1.6e-37) due to the very large sample, but the direction is
+  the OPPOSITE of "late because of short notice," and the practical
+  difference (1 day) is tiny. Using a data-driven cutoff (the overall median
+  notice of this scope, 5 days) to classify each of the 3,146 late
+  deliveries: **961 (30.5%) had below-median (SHORT_NOTICE) notice; 2,185
+  (69.5%) had at-or-above-median notice and were STILL late
+  (ADEQUATE_NOTICE_STILL_LATE)**. Weighted by quantity, the pattern holds
+  (391,182 units in the ADEQUATE_NOTICE_STILL_LATE bucket vs. 148,351 in
+  SHORT_NOTICE). The split is broadly similar across product types (24.5% to
+  53.8% SHORT_NOTICE, i.e. ADEQUATE_NOTICE_STILL_LATE is the majority
+  category for 7 of 8 types) and stable across years (24-34% SHORT_NOTICE,
+  no trend). By customer, the split varies a lot (e.g. `CS07050`: 7 of 79
+  late orders were SHORT_NOTICE (8.9%) vs. `CS06836`: 57 of 91 (62.6%)) —
+  the demand-timing vs. supply-planning mix is customer-specific, not
+  uniform. **Practical conclusion, stated directly**: most of the observed
+  late-delivery problem in this scope is NOT explained by customers ordering
+  too close to the delivery date — it looks more like a supply/planning
+  problem that inventory (Max-Min) could plausibly help address, though this
+  analysis does not itself design or validate any such intervention.
+- **What the data could not resolve**: whether forecast_date in cube_Sale_APD
+  represents a fixed PO-intake promise or a continuously-updated latest plan
+  (Part 2's open caveat, unresolved); whether Cube_CES's own PlanDelDate is
+  similarly revised over a contract's life (not tested — if PlanDelDate is
+  also updated after the fact, "notice" as computed here could understate
+  the true original promise, though this would not change the late-vs-
+  nonlate DIRECTION already found, since both groups would be equally
+  affected); the root cause of WHY the ADEQUATE_NOTICE_STILL_LATE deliveries
+  were late (capacity, component shortage, scheduling — no cause field exists
+  in Cube_CES to test this); why 2023's on-time rate is markedly lower than
+  2024-2026 (could be genuine improvement, or a residual effect of the
+  evidenced Jan-2023 Cube_CES data-density boundary — not disentangled here);
+  whether the RobustSubsetMedian/Median combination variants' Category-level
+  significance would hold up with more than 2 series (structurally
+  untestable with only 2 Category series in this scope).
+
+**Stock-availability hypothesis investigation — DONE (2026-09-01).**
+INVESTIGATION ONLY, per instruction: no min/max values calculated, nothing
+built, `config/config.yaml` not touched. Tests whether late deliveries are
+caused by stock being unavailable when the order arrives — motivated by the
+prior task's finding that median customer notice is only 6 days, far too
+short to produce/procure against. **The data has no field stating why a
+delivery was late, and no historical stock-level time series exists
+(STATUS.md, Phase 4 groundwork survey) — this hypothesis CANNOT be proven
+directly.** This task gathers the strongest available INDIRECT evidence
+across four angles. Script: `src/investigate_stock_availability_hypothesis.py`
+(reuses `processed_ces_delivery_assessable.csv`, `phase4_part1_minmax_vs_sales.csv`,
+`delivery_ces_spike_months.csv`, `processed_order_leadtime_clean.csv` — nothing
+rebuilt). Full detail: `output/summary/hyp_part1_*.csv` through `hyp_part5_*.csv`;
+charts in `output/charts/hyp_part1_*.png` through `hyp_part4_*.png`.
+
+- **Part 1 — late rate vs. min/max configuration: NO SUPPORTIVE RELATIONSHIP
+  FOUND, high confidence in this negative result.** Stated plainly per
+  instruction, not spun toward the hypothesis. Item-level (87 of 112 items
+  with >=10 assessable orders): configured items (min or max >0) actually
+  have a HIGHER mean late rate (9.9%) than unconfigured items (8.3%), though
+  not statistically significant (Mann-Whitney p=0.30). Pooled/volume-weighted:
+  the same direction, and this one IS statistically significant (8.86% vs.
+  5.72%, chi-square p=0.027) — opposite to what the hypothesis would predict.
+  Among configured items, months-of-cover vs. late rate: a weak negative
+  Spearman correlation (rho=-0.146, p=0.215, i.e. more cover very mildly
+  associated with LESS late — the only result pointing the hypothesis's
+  direction here — but not statistically significant) and a low-cover vs.
+  high-cover split shows LOW-cover items slightly LESS late (8.74% vs. 9.43%,
+  p=0.48, not significant). **Conclusion: the item's CURRENT min/max
+  configuration status, as recorded in Cube_Inventory_Exact today, does not
+  meaningfully predict its historical late-delivery rate — if anything the
+  weak signal runs opposite to the hypothesis.** This is not surprising given
+  the earlier Phase 4 finding that many existing min/max settings look stale
+  (some represent 1700+ months of cover) rather than actively-maintained
+  policy — a stale, disconnected-from-demand setting would not be expected to
+  correlate with delivery outcomes either way.
+- **Part 2 — order size, late vs. on-time: WEAK BUT STATISTICALLY
+  SIGNIFICANT SUPPORT, moderate confidence.** Comparing each order's quantity
+  to that item's own median order size (67 of 112 items had enough late AND
+  on-time orders to compare): late orders average 3.13x their item's typical
+  size vs. 2.45x for on-time orders (medians tie at 1.0x for both — the
+  effect lives in the upper tail, not a shift in the typical order).
+  Mann-Whitney on the full distributions is significant (p<0.0001). Late
+  rate rises with order size in a clean, monotonic, statistically significant
+  step from the smallest quartile (7.45%) to the largest (9.94%,
+  chi-square p<0.0001). **However, this pooled pattern is NOT clearly
+  replicated item-by-item**: only 38 of 67 items (56.7%) individually show a
+  larger median late-order size than their own on-time median — not
+  significantly different from chance (sign-test p=0.33) — so the pooled
+  effect may partly reflect pooling across items of different typical sizes
+  rather than a uniform per-item mechanism. **Conclusion: large orders
+  (relative to an item's own norm) run modestly, but not dramatically, later
+  more often — consistent with "stock on hand was insufficient for the
+  order's size" rather than "stock was completely absent," but the effect is
+  real, not large, and not uniform across items.**
+- **Part 3 — timing: STRONG, CONVERGING SUPPORT, high confidence.** Late
+  deliveries by month (2023-2026, full table in
+  `hyp_part3_late_deliveries_by_month.csv`) show a clear downward trend
+  matching Part 3 of the prior task's on-time-improvement finding (late rate
+  fell from ~22-31% in early 2023 to 1.4-4.6% by mid-2026). Spike months
+  (recomputed directly on Cube_CES quantity, same 3x-median rule used
+  throughout this project — 7.4% of item-months, 4.4% of ActualQty volume in
+  this scope, NOT the same figure as the original 58-item-pilot 16.6%/3.4%
+  finding, which used a different table and narrower item scope) have a
+  materially higher late rate (13.05% vs. 8.64% for normal months,
+  chi-square p<0.0001). **The NEW lag test — whether an item's late
+  deliveries follow shortly (1-2 months) after that item's OWN spike month —
+  is also statistically significant**: late rate is 10.78% in the 1-2 months
+  immediately following a spike vs. 8.56% at baseline (chi-square p=0.011).
+  **This is the single piece of evidence in this task most directly
+  consistent with a "stock was drawn down by a spike and not replenished in
+  time" mechanism**, since it shows an effect that specifically follows,
+  rather than merely coincides with, high-volume periods.
+- **Part 4 — customer differences: ITEM MIX DOMINATES, WITH AN IMPORTANT
+  UNEXPLAINED RESIDUAL — moderate confidence, genuinely nuanced.** Across the
+  top 15 customers, an item-mix-adjusted "expected" late rate (each
+  customer's own item purchase mix, weighted by each item's all-customer late
+  rate) correlates strongly with their ACTUAL late rate (Spearman rho=0.64,
+  p=0.010) — **customers with high late rates are largely the ones who
+  happen to buy the items that run late for everyone, not idiosyncratic
+  "bad" customers.** This favors an item/stock-level explanation over a
+  customer-behaviour explanation, matching the hypothesis's framing. Deep
+  dive on the lowest (`CS00089`, 0.59% late) vs. highest (`CS05661`, 33.27%
+  late) top-15 customers: the high-late customer orders much larger
+  quantities (median 200 vs. 50 units, mean 279 vs. 75) and gives longer
+  notice (median 9 vs. 1 day) — notice period is clearly NOT the explanation
+  here (the high-late customer already gives MORE notice). **But a
+  head-to-head check on the 11 items BOTH customers buy is the most striking
+  finding of this task**: the high-late customer is 28-100% late on every
+  one of these shared items while the low-late customer is 0% late on the
+  IDENTICAL items (mean gap +42.8 percentage points) — a pure item/stock
+  effect should hit any customer buying that item similarly, so this residual
+  is NOT explained by item identity alone. The most likely visible
+  contributor is order size (this pair's median order sizes differ 4x,
+  consistent with Part 2's size effect), but **the data cannot confirm this
+  is the whole explanation** — some customer- or allocation-specific factor
+  (e.g. priority given to certain accounts, or how orders are batched) cannot
+  be ruled out from what is available.
+- **Part 5 — synthesis estimate: LEANS TOWARD SUPPORTING the hypothesis,
+  LOW-MODERATE confidence, presented as a range not a figure.** Evidence
+  scorecard: 3 of 4 testable angles point toward the hypothesis (order size,
+  spike-timing lag, and item-mix dominance over customer behaviour); Part 1
+  (the most directly relevant data — actual current stock policy) does NOT
+  support it. **Estimated range: roughly 35-65% of the 3,172 late deliveries
+  in this scope could plausibly have been prevented by adequate stock on
+  hand** — stated explicitly as a reasoned judgment range built from
+  correlational evidence, NOT a measurement, because no historical
+  stock-level data exists to verify it directly. Assumptions stated
+  explicitly in the script's own output (see console log / STATUS.md summary
+  message): (1) Part 1's relationships are assumed causal, but item type,
+  customer mix and manufacturing complexity are not controlled for; (2) the
+  order-size and spike-lag effects are assumed consistent with a
+  stock-drawdown mechanism, but could also reflect genuinely longer
+  production time for larger/post-spike orders; (3) the item-mix effect could
+  also proxy for item-specific manufacturing difficulty rather than only
+  stock availability — this data cannot separate the two; (4) this is not a
+  measurement of stockouts coincident with late orders, only an inference
+  from correlates — a planning input to prioritize further investigation,
+  not a validated figure.
+- **BOTTOM-LINE VERDICT: the evidence LEANS TOWARD SUPPORTING the stock-
+  availability hypothesis, but is not strong enough to treat as confirmed,
+  and one of the four angles (Part 1, arguably the most directly relevant)
+  does not support it at all.** This is reported as a genuinely mixed,
+  leaning-supportive picture — not a confirmation — consistent with the
+  instruction not to read a supportive conclusion into weak or absent
+  relationships.
+- **What the data could not resolve**: whether stock was actually unavailable
+  at the moment any specific late order arrived (no historical stock-level
+  data exists — the core, unfixable limitation of this whole investigation);
+  why Part 1 shows no supportive relationship despite Parts 2-4 leaning
+  supportive (possible explanations — stale/disconnected min-max settings,
+  warehouse-level aggregation blurring the true per-item picture, or the
+  hypothesis being wrong for the min-max mechanism specifically even if right
+  in general — not distinguishable here); whether the Part 4 head-to-head
+  residual (+42.8 points on identical items) is fully explained by order size
+  or partly by a customer-/allocation-specific factor; whether the Part 2
+  item-level order-size effect (56.7% of items, not significant) would
+  strengthen with more data or is genuinely a pooling artifact; whether the
+  Part 3 post-spike-lag effect reflects stock drawdown specifically or a
+  general capacity/scheduling strain following any high-volume period.
+
+## 3. Business Findings
+
+These describe how this business actually operates, established from data investigation (not
+assumption) during Phase 1.5 and the Phase 3.1 follow-on tasks. They shape every downstream
+phase, particularly Phase 4. Full methodology, confidence levels and caveats are in the
+"Combination-variant test, order-notice lead time, on-time delivery baseline" and
+"Stock-availability hypothesis investigation" entries above.
+
+- **Customers give almost no order notice.** Median notice is 6 days; only 5.9% of orders give
+  a month or more. This is far too short to produce or procure against — orders can only be
+  filled from stock already held.
+- **On-time delivery has improved but is not yet good.** 73.2% on-time in 2026 (partial year),
+  up from 57.8% in 2023. 8.8% of deliveries are late, with a median lateness of 2 days.
+- **Late deliveries are not, in the main, an order-timing problem.** 69.5% of late deliveries
+  had adequate notice (at or above the overall median) and were still late — pointing to
+  supply/stock availability rather than customers ordering too close to the delivery date.
+- **Late rates stay elevated for 1-2 months after an item's own demand spike** (10.78% vs.
+  8.56% baseline, p=0.011) — the clearest available signal of stock being drawn down by a
+  spike and not replenished in time.
+- **Roughly 35-65% of late deliveries could plausibly be prevented by stock availability** —
+  stated as a range, not a point estimate, because this is inferred from correlational
+  evidence (order size, spike timing, item-mix effects), not measured directly: no historical
+  stock-level time series exists in the database.
+
+## 4. Locked Decisions (with reasons)
 
 - **Run all real work in Claude Code on the local machine, connecting directly to SQL Server.**
   CSV exports are deprecated because they go stale and require re-exporting every month.
@@ -991,9 +1670,40 @@ change or a genuine business change. Script: `src/investigate_2023_break.py`. Ou
   unresolved but is side-stepped for modelling by filtering on `itemcode`, not
   `productTypeName` (see `src/load_data.py`). See the "Data quality closed out" note above for
   full detail. **Modelling and backtest work may now proceed.**
+- **Follow the phase order; do not skip ahead (2026-09-02).** Later phases consume the outputs
+  of earlier ones — calculating inventory parameters (Phase 4) before forecasting is complete
+  and stable across all SKUs (Phase 3.1) would mean rebuilding Phase 4 on a changed foundation.
+  **Phase 3.1 must complete before Phase 4 begins.**
+- **The existing min/max values in the inventory system cannot be used as inputs to any
+  calculation (2026-09-02).** Evidence: 46 of 128 items have no setting at all; settings range
+  from under 1 month to over 1,700 months of cover; 81 of 119 multi-warehouse items disagree
+  across warehouses; 7 items carry a setting despite having no sales. They may be used only as
+  a comparison baseline to show what would change under a new policy. There is currently no
+  systematic inventory planning system — that is what Phase 4 will create.
 
-## 4. Open Questions
+## 5. Open Questions
 
+- **Rule-based selection's sufficiency-gate design (found 2026-09-01)** — unresolved,
+  non-blocking. Our 24-month hard-cutoff gate (Naive below it) erases the classification
+  stability advantage that the underlying SBC/KH/PK rules otherwise show — a smoother/rolling
+  confidence check might preserve it, not attempted here. Also unresolved: whether the
+  Smooth-quadrant SES/Holt generalisation (our own addition) should be scoped more narrowly to
+  match Petropoulos & Kourentzes' literal ADI≤1 condition instead. See the Phase 3.1 rule-based
+  selection note above.
+- **Phase 4 groundwork gaps (found 2026-08-31)** — unresolved, non-blocking for now. Which
+  warehouse(s) should count toward each item's Max-Min policy (min/max genuinely differ by
+  warehouse for the same item); the `cube_inventory_tran` GL-classification conflict (28 of 34
+  covered items show `gl_desc='Raw materials'` there despite being Finished Goods everywhere
+  else); whether any of the 128 items are genuinely make-or-buy dual-sourced; whether the 8
+  itemcode/category-mismatched items in `Cube_Inventory_Exact` (Suspension Insulator, Power
+  Capacitor labels on Fuse/Surge Arrester codes) are itemcode collision or a data-entry error;
+  whether a real seasonal pattern exists (only 2 complete years available — cannot be settled
+  without more history). See the Phase 4 groundwork survey note above for full detail.
+- **Which model to use per Category/Type (found 2026-08-31)** — unresolved, non-blocking for
+  now. None of the 10 Category/Type series had a stable rolling-origin winner (0/10), so no
+  single model choice is currently evidenced as reliable enough to lock in. Would need either
+  more history (more origins to test stability against) or a different evaluation design
+  (e.g. ensembling) before a production choice is defensible. See the Phase 3.1 note above.
 - The repository is public and `index.html` contains embedded sales figures (confirmed
   2026-08-31: a full 448-item, 32-month dataset including sales values, quantities, and daily
   drill-down records is embedded as plain JSON in the page — not obfuscated). Decision for now
@@ -1025,13 +1735,18 @@ change or a genuine business change. Script: `src/investigate_2023_break.py`. Ou
   row count). What would settle it: visibility into the view/procedure that populates
   `jobcode` — currently unprovable from a read-only data investigation.
 
-## 5. Missing Data by Phase
+## 6. Missing Data by Phase
 
-- **Phase 2 and 3.1**: need nothing beyond the sales data already available.
+- **Phase 2 and 3.1 (item-level pilot)**: needed nothing beyond the sales data already
+  available.
 - **Phase 3.2**: needs utility budget data from PEA, MEA and EGAT, EGP bid announcements, and
   sales team insight. Collection format not yet agreed.
-- **Phase 4**: needs the inventory cube table name and columns, vendor lead times, the list of
-  which codes are genuinely finished goods, and storm season impact data.
+- **Phase 4**: must be requested externally — none of the following exist in the database:
+  - Lead time per item, from purchasing.
+  - Minimum order quantities and lot sizes.
+  - Make-versus-buy classification per item.
+  - Target service level.
+  - Whether stock is planned per warehouse or company-wide.
 
 ---
 

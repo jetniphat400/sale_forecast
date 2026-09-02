@@ -72,3 +72,36 @@ error_metrics:
   - "MAE"   # Mean Absolute Error
   - "RMSE"  # Root Mean Squared Error
   - "Bias"  # Average signed error (over- vs under-forecasting)
+
+# --- Phase 2 — forecasting method (locked 2026-09-02) -----------------------
+# Combination forecasting: the arithmetic mean of the models listed below.
+# Chosen because no single model won consistently at any level, and
+# rule-based selection (SBC / Kostenko-Hyndman / Petropoulos-Kourentzes) did
+# not beat this simple combination in backtesting. See STATUS.md Phase 2 for
+# the full evidence.
+forecast_method: "combination_mean"
+
+# The models averaged into the combination forecast. Same six models used
+# throughout backtesting (Naive baseline, then Moving Average, then Croston
+# and SBA — see STATUS.md Locked Decisions for why TensorFlow/Prophet were
+# excluded).
+combination_models:
+  - "Naive"
+  - "MA3"
+  - "MA6"
+  - "MA12"
+  - "Croston"
+  - "SBA"
+
+# Level at which the combination forecast is applied. Category/Type level,
+# not item level: aggregation cut zero periods from 39.3% to 0% and the
+# validation-to-test overfitting gap from 127% to under 4%.
+forecast_level:
+  - "category"
+  - "type"
+
+# Time bucket for the forecast. Monthly was tested against coarser buckets
+# (2-month, quarterly, 6-month) at Category/Type level; those series already
+# have 0% zero periods monthly, so coarsening would only discard data points
+# for no benefit.
+forecast_granularity: "monthly"
