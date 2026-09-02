@@ -13,10 +13,24 @@ Phases:
   proceed without it. DONE.
 - **2 — Model selection**: using Fuse Cutout and Surge Arrester product groups as the pilot,
   then the full Fuse + Surge Arrester category scope. DONE.
-- **3.1 — Expand coverage**: extend from the 128-item pilot scope to all 445 codes, covering
-  PEM102, PEM103, PEM104, PEM107 and CI101. NEXT, not blocked.
-- **3.2 — External factors**. BLOCKED.
-- **4 — Inventory Max-Min for MRP**. BLOCKED.
+- **A — Fix potentially wrong foundations**: three checks against existing data (whether
+  `forecast_date` is revised after PO intake, why 2025 sales fell 26%, and which date field the
+  demand series is keyed on). NEXT, not blocked.
+- **B — Close Phase 2 down to item level**: item-level forecasting, cross-division demand,
+  no-history items, forward-test log rebuild, missing tests, and an end-to-end pipeline.
+- **C — Expand to all 445 item codes**: PEM102, PEM103, PEM104, PEM107 and CI101.
+- **D — Phase 4 groundwork**: finished-goods movement history, assembly time, and which
+  warehouse stages hold sellable stock. Runs only after Phase C, never in parallel with it.
+- **E — Phase 4 proper**: calculate Max-Min and simulate it against historical demand.
+- **F — Measure the value**: compare against the team's current method and the
+  no-intervention baseline.
+
+**This phase order is binding (2026-09-02): later phases consume earlier phases' outputs, so no
+phase may be skipped or reordered, and Phase D never runs in parallel with Phase C.** Phases 3.1,
+3.2 and 4 from the original plan are superseded by this A-F sequence. The detailed log in
+Section 2 below records work completed under the prior numbering and is not renamed
+retroactively — where it says "Phase 3.1," that work is now part of Phase B or C's foundation,
+and where it says "Phase 4," that refers to what is now Phases D/E.
 
 ## 2. Phase Status
 
@@ -46,18 +60,53 @@ under-forecast on average — expected, since point forecasts target the mean wh
 contains spikes; this must be compensated through safety stock in Phase 4, not by changing the
 model.
 
-**Phase 3.1 — Expand coverage: NEXT, not blocked.** Extend from the 128-code pilot scope to
-all 445 codes, covering PEM102, PEM103, PEM104, PEM107 and CI101. Data quality for these
-divisions has not been checked and may differ from PEM101.
+**Phase A — Fix potentially wrong foundations: NEXT, not blocked.** Three checks, all answerable
+with existing data, must run before any further modelling or expansion work:
+1. Whether `forecast_date` is revised after the PO is received rather than fixed at intake. This
+   matters because the two headline business facts — a 6-day median order notice and 73.2%
+   on-time delivery — both depend on it: if delivery dates are rescheduled after intake, the
+   improvement from 57.8% to 73.2% on-time may reflect rescheduling rather than genuinely better
+   fulfilment.
+2. Why 2025 sales fell 26% — open for several rounds already. This matters because every
+   forecasting model under-forecasts on average, and that bias may be an artifact of training on
+   the depressed 2025 period and testing on the recovered 2026 period; using that bias to size
+   safety stock would bake the artifact into the system permanently.
+3. Whether the demand series used for forecasting is keyed on `createDate` (the PO receipt date)
+   or `forecast_date` (the contractual delivery date). Inventory planning needs the date stock
+   must be available by, so if the series is keyed on the wrong field, the timing of every
+   inventory parameter downstream is wrong.
 
-**Phase 3.2 — External factors: BLOCKED**, pending utility budget data, EGP bid announcements
-and sales team insight.
+**Phase B — Close Phase 2 down to item level.** Design how the Category and Type level results
+support item-level forecasting: item level showed 74% of series with no stable rolling-origin
+winner and a 127% validation-to-test overfitting gap, while Category level was stable — so
+confirm Combination forecasting at item level too, where it already showed the smallest bias
+(-216, item level). Resolve three open items: (1) the ₿60.6 million of cross-division demand
+currently filtered out, since inventory is shared across divisions and excluding 14.3% of demand
+would systematically under-provision; (2) the 16 items with no history and 15 with no sales,
+which must not simply be dropped, since new items with no history are often the ones most likely
+to stock out; (3) the forward-test log, generated for 58 items and six models, which no longer
+matches the current scope. Also clear technical debt: write the tests `CONVENTIONS.md` requires
+but which do not yet exist, and build a pipeline that runs end to end, since the 21 committed
+scripts currently have no documented run order.
 
-**Phase 4 — Inventory Max-Min: BLOCKED**, pending lead time per item, minimum order
-quantities, and make-versus-buy classification — none of which exist in the database.
+**Phase C — Expand to all 445 item codes**, covering PEM102, PEM103, PEM104, PEM107 and CI101.
+Data quality for these divisions has never been checked and may differ from PEM101.
+
+**Phase D — Phase 4 groundwork.** Search across tables at once, not one at a time, for finished
+goods movement history, assembly time, and which warehouse stages hold sellable stock. **Runs
+only after Phase C, never in parallel with it** — if Phase C changes the forecasting approach,
+this groundwork would need redoing.
+
+**Phase E — Phase 4 proper**: calculate Max-Min and simulate it against historical demand.
+
+**Phase F — Measure the value**: compare against the team's current method, and estimate what
+would happen with no intervention at all, since on-time delivery has already improved from 57.8%
+to 73.2% with no system in place.
 
 *Full evidence, methodology and per-task detail for every finding above is preserved in the
-detailed log below, in chronological order.*
+detailed log below, in chronological order. The detailed log uses the phase numbering (3.1, 3.2,
+4) in effect at the time each task was completed; that numbering is superseded by the A-F plan
+above and is not renamed retroactively.*
 
 ---
 
@@ -1594,6 +1643,192 @@ charts in `output/charts/hyp_part1_*.png` through `hyp_part4_*.png`.
   Part 3 post-spike-lag effect reflects stock drawdown specifically or a
   general capacity/scheduling strain following any high-volume period.
 
+**Phase 4 prep investigation: production strategy, warehouse structure, actual lead time,
+lot-size evidence — DONE (2026-09-02).** INVESTIGATION ONLY, per instruction: no min/max
+calculated, no model built, `config/config.yaml` not touched. Scope: the same 128 items (Fuse
++ Surge Arrester). Business context supplied by the user for this task: lead time is roughly
+1.5-2 months as a working default (to be made configurable per item later); products are a mix
+of made in-house and assembled from purchased parts; MOQ depends on make-to-stock vs.
+make-to-order; warehouses are separated by business unit and planning should work per warehouse
+first, then roll up company-wide. Scripts: `src/production_strategy_investigation.py` (Parts
+1-2), `src/warehouse_structure_investigation.py` (Part 3), `src/leadtime_actual_investigation.py`
+(Part 4), `src/order_quantity_patterns_investigation.py` (Part 5). Full detail and confidence
+levels: `output/summary/phase4_prep_investigation_report.md`; per-item/per-type CSVs:
+`output/summary/part1_*.csv` through `part5_*.csv` (this task's numbering restarts at part1,
+distinct from the earlier Phase 4 groundwork survey's `phase4_part*.csv` files, which this task
+does not replace).
+
+- **Part 1 — manufacturing_type re-confirmed as an order-level, not item-level, field, high
+  confidence.** Whole-table distinct values: MTS 69.7%, MTO 22.7%, blank 5.3%, ETO 2.3% (read as
+  the standard Make-to-Stock/Make-to-Order/Engineer-to-Order abbreviations — no lookup table
+  defines them explicitly). Covers 113/128 items (88.3%), but 100 of those 113 (88.5%) show MORE
+  THAN ONE value across their own rows — this matches and extends the earlier Phase 4 groundwork
+  survey's finding, now with the exact per-item mixed-value rate measured. **New corroborating
+  evidence**: `Cube_Inventory_Exact` has two production-order WIP staging locations literally
+  named `FMTS`/`FMTO`; 69 of 128 items have rows under BOTH, independently confirming the same
+  item is staged under both strategies depending on the order. **No other table in the database
+  has an item-level production-strategy field** (re-confirmed against the earlier
+  `src/investigate_leadtime_classification.py` survey).
+- **Part 2 — inferring production strategy from Cube_CES delivery timing: reasoned inference,
+  not fact, moderate confidence on the classification, high confidence on the underlying
+  statistics.** Interval = ActualDelDate - CtrDate, Status='Actual', PEM101/Omni Channel,
+  CtrDate >= 2023-01-01 (reusing the existing Cube_CES pull). 35,930 valid observations (17 rows,
+  0.05%, excluded for a negative-interval anomaly, same class as previously documented). Bands
+  used (own reasoned judgment, stated explicitly): Likely MTS <= 14 days; Likely MTO 30-75 days
+  (brackets the stated 45-60 day default with a +/-15 day buffer); else Cannot determine
+  (including when IQR exceeds the median, i.e. spread as large as the central value).
+  **Result: 32 items (25.0%, ₿348.5M/50.5% of scope value) Likely MTS; ZERO items (0.0%) Likely
+  MTO; 92 items (71.9%, ₿337.3M/48.9% of value, plus the remaining no-value items) Cannot
+  Determine.** MTS items' median interval is 2-11 days. **No item lands confidently in the
+  make-to-order band** - this reinforces, at item level, the project's existing finding that
+  customer notice (median 6 days) is far too short to produce against, so even nominally-MTO
+  items are in practice delivered fast. Stated explicitly per instruction: this is inference from
+  delivery timing, not a recorded fact - the data cannot confirm WHY a delivery was fast or slow.
+- **Part 3 — warehouse structure: transfers CONFIRMED, business-unit mapping CANNOT be
+  determined, high confidence on both conclusions.** No warehouse master/lookup table exists
+  anywhere in the database (0 tables named like `%warehouse%`) - codes are only ever a short
+  string on inventory/transaction rows. 34 distinct warehouse codes hold the 128-item scope in
+  the current `Cube_Inventory_Exact` snapshot (76 table-wide). **Business unit mapping: no
+  reliable answer exists.** `company` has only 2 values table-wide (PEM, CI) - too coarse.
+  Joining warehouse to sales `division` (table-wide) shows 33 of 34 codes used across MULTIPLE
+  divisions, even codes whose numeric suffix visually resembles a division (e.g. `F101` mostly
+  PEM101 but also PPD101/PEM102-OLD/PCE101/PTS) - though this test is itself confounded by the
+  project's already-documented itemcode-reuse-across-division issue, so it is not fully
+  decisive either way; no positive evidence of a clean mapping was found regardless. **Where
+  items are held**: 125/128 items appear in the snapshot; 119 of those 125 (95.2%) are held in
+  MORE THAN ONE warehouse (median 7, max 20) - multi-warehouse stocking is the norm, matching
+  the earlier groundwork survey's min/max-per-warehouse finding. **Stock transfers: CONFIRMED,
+  decisively.** `cube_inventory_tran`'s `transtype` codes 150/151 behave as an exact
+  transfer-out/transfer-in pair (150 = 100% QtyOut-only, 151 = 100% QtyIn-only, table-wide).
+  1,572 matched (item, order reference, date) groups, **100% with an EXACT quantity match**
+  between the paired rows - decisive, not coincidental. Spans 2016-09-12 to 2026-08-28 (present
+  day). Dominant route: QA -> WH01 -> FG01 -> FG02 (quality hold -> main warehouse -> finished-
+  goods branches). Coverage caveat: `cube_inventory_tran` covers only 34/128 items at all, and
+  only 6 of those 34 show a confirmed transfer - a lower bound, not proof the rest never
+  transfer. **Practical conclusion: warehouses cannot be treated as fully independent for
+  planning - goods routinely move between them.**
+- **Part 4 — actual lead time vs. the stated 45-60 day default: observed reality is far faster
+  for nearly all items, high confidence in the measurement, explicit scope caveat on what it
+  means.** Same 35,930 observations as Part 2. **108 of 112 items with data (96.4%) are FASTER
+  than 45 days; only 2 (1.8%) fall within 45-60 days; 2 (1.8%) are slower.** Overall
+  median-of-item-medians is 6.0 days (p10=2, p25=3, p75=8, p90=19.3, max=196). At product-type
+  level, all 8 types have a median faster than 45 days (range 3-9 days); none exceed 60.
+  **Spread is large**: item-level IQR ranges 0-305 days; 67 of 112 items (59.8%) have an IQR
+  LARGER than their own median - the spread is at least as big as the typical value for a
+  majority of items, so a single point lead-time estimate would understate real variability for
+  most of this scope. **Explicit scope caveat**: this measures order-to-delivery time (PO
+  received to delivered), NOT procurement or production lead time. Since most orders are filled
+  from stock (Part 2), this measure mostly reflects allocation/logistics speed for those orders
+  and likely UNDERSTATES true production/procurement lead time for items rarely actually
+  produced-to-order in this window; for the few genuinely slow items it cannot say how much of
+  the delay was production vs. an unrelated cause (no cause field exists). It is a useful
+  cross-check on the stated default, not a replacement for a purchasing/production-confirmed
+  figure.
+- **Part 5 — order quantity patterns: suggestive lot-size/MOQ evidence, moderate confidence,
+  not proof.** 82 of 112 items with any 2024+ sales have >=10 orders (the minimum treated as
+  meaningful). 40 of 82 (48.8%) have a single quantity value covering >=25% of that item's
+  orders; 53 of 82 (64.6%) have >=80% of orders landing on an exact multiple of some number >1;
+  68 of 82 (82.9%) show EITHER signal, 14 (17.1%) show neither. Recurring values: **3** is
+  extremely common (many Fuse Cutout/Surge Arrester items order overwhelmingly in 3s or
+  multiples of 3); **10** is a common base multiple for larger-volume items (orders commonly
+  100/200/500). By product type, 5 of 8 types show a strong signal in >=80% of their items.
+  **Not strong enough to set an actual lot size/MOQ value for any item from data alone** - round
+  quantities could reflect a real production/purchasing constraint OR customer ordering habit
+  (buying in round tens); the data cannot distinguish these. Must be confirmed by the business.
+- **What the data could not resolve**: why 92 of 128 items (72%) cannot be classified MTS/MTO
+  from delivery timing (insufficient or too-inconsistent observed deliveries, not a fixable
+  data-quality defect); the true meaning of several low-volume warehouse codes (`CL`, `AST`,
+  `NCRM`, `F-RD`) - read from abbreviation/usage pattern only, not documented anywhere; whether
+  round order quantities reflect a genuine constraint or customer habit; which warehouse(s)
+  should count toward each item's inventory policy (carried over from the earlier Phase 4
+  groundwork survey, still open).
+- **Updated Phase 4 missing-data picture (see Section 6 below)**: lead time and MOQ/lot size
+  still must come from the business - this task could only produce indirect, partial,
+  non-authoritative cross-checks for both, not the figures themselves. Make-vs-buy and
+  warehouse-to-business-unit ownership are similarly still not answerable from data.
+
+**Warehouse flow, stage dwell time, sellable stock, and double-counting verification — DONE
+(2026-09-02).** INVESTIGATION ONLY, per instruction: no min/max calculated, no model built,
+`config/config.yaml` not touched. Follow-up to the same-day Phase 4 prep investigation above,
+after the user corrected two assumptions: **(1) the 45-60 day figure is upstream parts
+procurement time (ordering parts for assembly), not delivery time** — this is why observed
+order-to-delivery time is much shorter, since customer orders are filled from stock already
+held; **(2) warehouses are STAGES of one process (inspection -> storage -> ready to ship), not
+separate locations or business units** — summing a per-warehouse min/max would double-count the
+same goods moving through stages; planning must be at item level across all warehouses combined,
+distinguishing which stages hold sellable stock. Scripts:
+`src/warehouse_flow_mapping.py` (Part 1), `src/warehouse_dwell_time.py` (Part 2),
+`src/warehouse_sellable_stock.py` (Part 3), `src/warehouse_double_counting_check.py` (Part 4).
+Full detail: `output/summary/phase4_warehouse_flow_investigation_report.md`; CSVs
+`output/summary/part1_all_transfer_routes.csv` through `part4_conservation_check.csv`.
+
+- **Critical scope limitation, applies to Parts 1/2/4**: `cube_inventory_tran` (the only movement
+  ledger in the database) covers 34/128 items at all, and of those, only **6 show any confirmed
+  transfer — all 6 are the Raw Material Fuse Holder codes** (`FC-A-27-00102/00202/00203`,
+  `FC-A-38-00102/00202/00203`), not Finished Goods. **Every finding on warehouse flow, stage
+  dwell time, and transfer-based double-counting is evidenced ONLY for these 6 items (4.7% of
+  the 128-item scope) and cannot be confirmed to hold for the 122 Finished Goods items that carry
+  the great majority of this project's value.**
+- **Part 1 — full flow map, high confidence within the 6-item scope.** All 41 observed routes
+  reported (not just the dominant path) in `part1_all_transfer_routes.csv`. **Movement is
+  predominantly forward but NOT strictly one-way**: 10 of 31 warehouse pairs show CONFIRMED
+  bidirectional movement at meaningful volume (e.g. WH01->QA = 96,450 units, 21% of the QA->WH01
+  direction) — not just the dominant QA->WH01->FG01->FG02 path. 14 of 34 warehouse codes present
+  in the current snapshot have movement evidence and could be assigned a role; **20 have ZERO
+  movement evidence and are listed UNIDENTIFIED, per instruction — no role assigned by inference
+  from the name** (`AST`, `F-RD`, `F103`, `F106`, `F107`, `F109`, `F2-2`, `FG03`, `FG12`, `FG16`,
+  `FG17`, `FG23`, `FG24`, `NCRM`, `W4-1`, `WH04`, `WH05`, `WH06`, `WH07`, `WH24`) — most likely
+  the ledger's narrow coverage, not proof of inactivity.
+- **Part 2 — stage dwell time, moderate confidence on the 6-item numbers, cannot generalise to
+  FG.** FIFO lot-matching (standard aging technique, stated explicitly as a method, not a
+  recorded fact): median dwell QA=4 days, WH01=37, WH21=58, FG01=27, FG02=~0, CL=8 (full table
+  `part2_stage_dwell_time.csv`). **Total system time (first receipt to eventual issue-to-
+  production), pooled: median 42 days, mean 69.3, IQR [24,90], range [0,962]** — per-item medians
+  range from 34 to 650 days, huge variability. **What this adds to the 45-60 day procurement
+  default**: median +42 days of internal handling AFTER procurement, BEFORE any assembly time —
+  variability this large means a single point figure would badly understate real total lead
+  time. **Hard gap, stated explicitly**: the ledger's exit event (issue to a production job,
+  confirmed from descriptions like "Production: DF16/001LOT2.001") is NOT a sale — the
+  assembly-time segment from raw-material consumption to the resulting Finished Good becoming
+  stock is not observable anywhere in this data. **The full chain the user asked for (procurement
+  + internal handling + assembly = total lead time to sellable) cannot be completed from data —
+  the assembly segment is a hard, unrecoverable gap, not a matter of writing a different query.**
+- **Part 3 — which stock is sellable: high confidence this cannot be directly measured, and a
+  self-caught methodology error corrected before reporting.** Neither `cube_Sale_APD` nor
+  `Cube_CES` has a warehouse column (checked directly) — no sales record can ever be tied to the
+  warehouse it shipped from, for any item. **An initial classification pass wrongly flagged every
+  code with zero issue-events among the 6 RM items (including FG01/FG11/FG21) as "not
+  available"** — caught and corrected: those 6 items hold almost none of FG01's stock (144,094
+  units across the full 128-item scope), so the ledger's silence there proves nothing about the
+  Finished Goods sitting there. **Only 2 exclusions are actually justified: `QA`** (567,306 units
+  handled, only 22 — 0.004% — ever issued externally, a pass-through inspection gate matching the
+  business's own description) **and `FMTS`/`FMTO`** (evidenced broadly across 74/103 of 128
+  items — negligible settled stock, large `tobe_received`, production WIP). **Confirmed NOT
+  available: QA, FMTS, FMTO — 1,639 of 179,135 total on-hand units (0.91%). The remaining 99.09%
+  sits in warehouses where availability CANNOT be confirmed either way** — not the same as
+  calling it sellable. Whether FG01/FG02/FG11/FG21 hold genuinely sellable Finished Goods stock
+  is plausible from topology (Part 1) but **not confirmed by behaviour — must come from the
+  business.**
+- **Part 4 — no-double-counting conclusion: CONFIRMED, high confidence for the 6-item scope.**
+  All 1,572 transfer groups have exactly 2 legs and an exact quantity match (re-confirmed); each
+  pair shares one order-reference document (a single business event, not two independent
+  stock-creation events); 3 harmless same-warehouse self-transfers found (net zero, flagged not
+  investigated further). **New aggregate conservation check**: (total received - total issued)
+  matches current on-hand stock EXACTLY for 2 of 6 items, within 1.5% for the other 4, with no
+  systematic over-recovery in any consistent direction (the opposite of what duplication would
+  produce). The 8 previously-flagged itemcode/category-collision items hold only 6 units total,
+  spread across ordinary codes — negligible, no warehouse exclusion warranted on that basis.
+  **Item-level planning summed across all warehouses is CONFIRMED CORRECT; no warehouse should
+  be excluded from the total on data-quality grounds** (though FMTS/FMTO should be reported
+  separately as work-in-progress, not available stock, per Part 3). Directly verified only for
+  the 6-item subset; the same structural/conceptual argument extends to the rest of the scope
+  but is not independently ledger-tested there, since no ledger covers those items.
+- **What the data could not resolve**: assembly/production time from raw-material issue to the
+  resulting Finished Good becoming stock (a hard, unrecoverable gap — no field links these
+  events); which warehouse stage(s) hold sellable Finished Goods stock, confirmed by behaviour
+  rather than topology (needs business/operations input); the true meaning/role of the 20
+  unidentified warehouse codes.
+
 ## 3. Business Findings
 
 These describe how this business actually operates, established from data investigation (not
@@ -1638,12 +1873,15 @@ phase, particularly Phase 4. Full methodology, confidence levels and caveats are
   is `PEM103-Version2` with no space (verified directly against the file on 2026-08-29).
 - **"Drop" and "Surge" are product names, not analytical terms.** Drop means Drop Out Fuse
   Cutout, Surge means Surge Arrester.
-- **Pilot item codes are `EEE-F-FC-1040010002`, `HS-F-99-02110` and `HS-F-99-0213`.** All
-  three were confirmed present in the pricelist. **Confirmed sufficient (2026-08-31)**: they
-  cover two distinct demand patterns found in Phase 2 Step 1 — one Erratic item
-  (`EEE-F-FC-1040010002`) that dominates its type at ~60% of its type's total sales value, and
-  two Lumpy items (`HS-F-99-02110`, `HS-F-99-0213`) sitting mid-rank (9th and 11th of 58) in
-  their type, representative of the bulk of that group.
+- **Focus item codes are `EEE-F-FC-1040010002`, `HS-F-99-02110` and `HS-F-99-0213`, and remain
+  the focus codes throughout every phase (A-F), not just the pilot.** All three were confirmed
+  present in the pricelist. **Confirmed sufficient (2026-08-31)**: they cover two distinct
+  demand patterns found in Phase 2 Step 1 — one Erratic item (`EEE-F-FC-1040010002`) that
+  dominates its type at ~60% of its type's total sales value, and two Lumpy items
+  (`HS-F-99-02110`, `HS-F-99-0213`) sitting mid-rank (9th and 11th of 58) in their type,
+  representative of the bulk of that group. **Reaffirmed 2026-09-02**: any item-level check,
+  backtest, or worked example in Phase A onward should use these three codes first, before
+  generalising to the wider scope.
 - **Pilot scope is the Type level (2026-08-31)**: `High Voltage Distribution Fuse Cutout`
   (10 items) and `Medium Voltage Surge Arrester` (58 items). Reason: the Category level (Fuse,
   Surge Arrester) would also pull in Fuse link, HRC fuse, Low Tension Fuse Switch and Fuse
@@ -1680,6 +1918,31 @@ phase, particularly Phase 4. Full methodology, confidence levels and caveats are
   across warehouses; 7 items carry a setting despite having no sales. They may be used only as
   a comparison baseline to show what would change under a new policy. There is currently no
   systematic inventory planning system — that is what Phase 4 will create.
+- **The stated 45-60 day lead time is upstream parts-procurement time, not delivery time
+  (business correction, 2026-09-02).** This is why observed order-to-delivery time (median 6
+  days, measured 2026-09-02) is much shorter than the stated default — customer orders are
+  filled from stock already held, not produced/procured against per order. True total lead time
+  to a sellable Finished Good = procurement (45-60 days, business figure) + internal
+  handling/staging time after receipt (median +42 days for the 6 raw-material items with any
+  movement evidence, highly variable, see the warehouse-flow investigation) + assembly time
+  (not observable in any data source — a hard gap). **Phase 4 must use a total lead time built
+  from all three segments, not the 45-60 day procurement figure alone**, and the assembly
+  segment must come from the business since no data links raw-material consumption to a
+  resulting Finished Good becoming stock.
+- **Warehouses are STAGES of one process, not separate locations or business units (business
+  correction, 2026-09-02).** Confirmed by data: goods transfer between warehouse codes (1,572
+  exact-quantity-matched transfers), predominantly forward (inspection -> storage -> downstream
+  stocking) but with genuine bidirectional movement too. **Phase 4 will therefore plan inventory
+  at ITEM LEVEL across all warehouses combined, never per warehouse** — summing independently-
+  sized per-warehouse min/max would double-count the same goods as they move through stages.
+  This was verified, not just assumed: transfer-pair quantities match exactly, each pair ties to
+  one order-reference document, and aggregate received-minus-issued reconciles with current
+  on-hand stock (exact for 2 of 6 tested items, within 1.5% for the rest) — the signature of
+  sequential movement, not duplication. Within the item-level total, **only `QA` (inspection)
+  and `FMTS`/`FMTO` (production work-in-progress) are confirmed NOT yet available for use** (0.91%
+  of current on-hand stock); which of the remaining warehouse codes hold genuinely SELLABLE
+  Finished Goods stock could not be confirmed from data (no sales table has a warehouse field)
+  and must be confirmed by the business.
 
 ## 5. Open Questions
 
@@ -1741,12 +2004,65 @@ phase, particularly Phase 4. Full methodology, confidence levels and caveats are
   available.
 - **Phase 3.2**: needs utility budget data from PEA, MEA and EGAT, EGP bid announcements, and
   sales team insight. Collection format not yet agreed.
-- **Phase 4**: must be requested externally — none of the following exist in the database:
-  - Lead time per item, from purchasing.
-  - Minimum order quantities and lot sizes.
-  - Make-versus-buy classification per item.
-  - Target service level.
-  - Whether stock is planned per warehouse or company-wide.
+- **Phase 4**: must be requested externally — none of the following exist in the database as an
+  authoritative, item-level figure (updated 2026-09-02 after the warehouse-flow follow-up
+  investigation, which corrected two earlier assumptions — see Locked Decisions above — and
+  RESOLVED the planning-unit question below):
+  - **Confirmed procurement lead time per item, from purchasing.** The stated 45-60 days is the
+    business's own figure for ordering parts, not something this project can derive or verify
+    end-to-end from data. Still needed as the authoritative starting segment of total lead time.
+  - **Assembly/production time, from raw-material issue to the resulting Finished Good becoming
+    stock.** Confirmed a HARD gap (2026-09-02): no field in any table links a raw-material
+    consumption event to the resulting assembled item later becoming stock. Cannot be derived
+    from data under any query design — must come from production/the business.
+  - **Minimum order quantities and lot sizes.** No field states these directly. 68 of 82
+    testable items show quantity-clustering evidence consistent with a lot size (2026-09-02
+    prep investigation) — suggestive, not sufficient to set a value.
+  - **Make-versus-buy classification per item.** FG/RM split is known with high confidence
+    (122/128 FG, 6/128 RM, earlier Phase 4 groundwork survey); whether any FG item is genuinely
+    dual-sourced (made in-house AND sometimes bought complete) remains unanswerable from data.
+  - **Target service level.** No data source addresses this at all.
+  - ~~Whether stock is planned per warehouse, per business unit, or company-wide~~ —
+    **RESOLVED 2026-09-02 by business correction, confirmed by data.** Warehouses are process
+    stages, not business units or independent planning locations. Phase 4 plans at ITEM LEVEL
+    across all warehouses combined; confirmed transfers between warehouses mean a per-warehouse
+    model would double-count. Which specific stage(s) hold sellable Finished Goods stock (as
+    opposed to `QA`/`FMTS`/`FMTO`, confirmed not-yet-available) still needs business
+    confirmation — no sales table has a warehouse field to verify this from data.
+
+## 7. Red Team Review Findings (2026-09-02)
+
+Weaknesses identified in a red-team review of the project, recorded here so they are not lost.
+None of these are resolved by this entry — they are the reason Phases A, B and F exist in the
+revised plan (Section 1/2 above), and Phase F in particular exists specifically to answer the
+last two points.
+
+- **Aggregating quantities across different products within a category has no physical
+  meaning.** Summing, for instance, fuse cutouts and fuse links into one Category-level series
+  adds together units of different physical products — the resulting number does not correspond
+  to anything a person could count. Part of the apparent benefit of aggregation (the
+  zero-inflation and overfitting-gap reduction reported for Category/Type level in Phase 2) may
+  be an artifact of summing many series together — a well-known statistical smoothing effect —
+  rather than evidence the aggregated series is itself meaningful for planning. This is the
+  reason Phase B exists: to design how Category/Type results actually support item-level
+  forecasting, rather than treating the aggregate result as an end in itself.
+- **Cross-division demand is filtered out while inventory is shared.** ₿60.6 million (14.3%) of
+  sales for the pilot item codes sits under divisions other than PEM101 and is currently excluded
+  from every forecast, even though inventory is not divided by division — the same physical stock
+  can fill an order recorded under any division. Excluding this demand systematically
+  under-provisions. Carried into Phase B as an open item to resolve, not yet fixed.
+- **No cost data exists.** Holding cost, stockout cost and unit cost are all absent from every
+  table surveyed so far. Without them, a target service level cannot be chosen on an economic
+  basis (the trade-off between holding more stock and risking a stockout has no cost basis to
+  optimise against) — it can only be picked as a policy choice, not derived from data.
+- **The project has never been compared against the team's current working method.** Every
+  result so far (model accuracy, bias, on-time delivery) is reported in isolation; none of it has
+  been measured against what the team already does without this project. Its value is therefore
+  unproven, not just unquantified. This is what Phase F is for.
+- **The problem may be smaller than assumed, and is already improving without intervention.**
+  On-time delivery rose from 57.8% to 73.2% (2023 to 2026, partial year) with no forecasting or
+  inventory system in place. Phase F must estimate what a no-intervention baseline looks like
+  going forward, since some or all of the apparent opportunity may already be closing on its own.
 
 ---
 
