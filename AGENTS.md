@@ -1,13 +1,42 @@
 # AGENTS
 
-This file defines how multi-agent work is organised on this project. It applies to every phase
-of work (see `STATUS.md` for the current phase plan), not to any single phase.
+This file defines how multi-agent work is organised on this project, when it applies. It applies
+to every phase of work (see `STATUS.md` for the current phase plan) — but **multiple agents are
+not the default**. Whether a given phase (or task within a phase) uses one agent or several is a
+decision the Orchestrator must justify with the decomposition test below, not an assumption.
 
-## Structure
+## Multi-agent systems are not universally better
 
-One **Orchestrator** coordinates five worker agents: **Explorer**, **Validator**, **Analyst**,
-**Modeler**, **Synthesizer**. The Orchestrator breaks a phase into tasks and dispatches them to
-the worker agents; it does not do the work itself.
+Research on multi-agent systems shows they do not automatically outperform a single agent.
+Coordination failures account for roughly 37% of all failures in common multi-agent frameworks;
+running multiple agents costs around 15x the tokens of a single interaction; and a single
+well-prompted agent often matches or beats a multi-agent setup on tasks that fit inside one
+context window. Multiple agents pay off only when work genuinely splits into independent
+subtasks that need different skills — not by default, and not just because a task is large or a
+phase has several parts.
+
+## Decomposition test (apply before splitting any work)
+
+Before the Orchestrator splits a task across multiple agents, it must apply this test:
+
+- **Split only when both hold**: (a) the subtasks are independent of each other's *results* —
+  none needs to know what another found before it can start or finish its own work; and (b) the
+  subtasks require *different capabilities* (e.g. database search vs. statistical analysis vs.
+  model backtesting), not the same kind of work merely chunked into pieces.
+- **If subtasks share the same context, or one genuinely must run before another can start
+  (a real sequential dependency), use a single agent** for that piece of work instead of
+  splitting it across agents that would only end up passing state back and forth.
+- **Default to a single agent when unsure.** The burden of proof is on splitting, not on staying
+  single: an unnecessary split costs roughly 15x the tokens for no accuracy benefit, and adds a
+  coordination-failure risk that a single agent does not carry.
+
+## Structure (when the decomposition test says to split)
+
+One **Orchestrator** coordinates up to five worker agents: **Explorer**, **Validator**,
+**Analyst**, **Modeler**, **Synthesizer**. The Orchestrator breaks the split-worthy part of a
+phase into tasks and dispatches them to the worker agents that fit; it does not do the work
+itself. Not every phase uses every role, and several phases use only one worker agent for most or
+all of their work — see "Per-phase agent pattern" below for what this project actually does.
 
 ```
                     Orchestrator
@@ -21,7 +50,9 @@ Explorer   Validator    Analyst      Modeler        Synthesizer
 
 ### Orchestrator
 - Reads `STATUS.md` and `CONVENTIONS.md` before dispatching any task.
-- Breaks a phase into tasks and dispatches them to the worker agents.
+- Applies the decomposition test above before splitting any task — does not split by default.
+- Breaks a phase into tasks and dispatches them to the worker agents (one agent, if the
+  decomposition test says so).
 - Checks whether agents' findings conflict with each other.
 - Decides when a phase has enough evidence to close.
 - Updates `STATUS.md` at the end of a phase.
@@ -77,9 +108,22 @@ Explorer   Validator    Analyst      Modeler        Synthesizer
 5. **Write results to `output/summary/`, in a separate file per agent.** Each agent's output must
    be independently readable and attributable to that agent.
 6. **Read `STATUS.md` and `CONVENTIONS.md` before starting any task.**
+7. **Separate what is confirmed from data from what is inferred.** Every output must mark each
+   claim as either directly confirmed (a query result, a direct recomputation) or inferred/
+   interpreted from it. **A receiving agent must never treat another agent's inference as fact**
+   — it must independently verify before relying on it as established, or carry it forward
+   explicitly labelled as "inferred by [agent]," never stated as settled.
+8. **Cite the source of every figure passed between agents.** Every number one agent hands to
+   another agent, to the Orchestrator, or to the Synthesizer must cite the query, script, or file
+   it came from, so it can be checked independently rather than taken on trust.
+9. **When agents disagree, the Synthesizer reports both positions with their evidence and leaves
+   the decision to the human. It does not pick a side.** Resolving a genuine disagreement between
+   two agents' findings is not the Synthesizer's job — surfacing it clearly enough for a human to
+   decide is.
 
 ## Orchestrator rules
 
+- Apply the decomposition test before splitting any task; default to a single agent when unsure.
 - Dispatch independent tasks in parallel; only serialise tasks that genuinely depend on each
   other's output.
 - Never skip a phase — later phases consume earlier phases' outputs, so skipping ahead means
@@ -89,3 +133,36 @@ Explorer   Validator    Analyst      Modeler        Synthesizer
   evidence intact.
 - Close each phase by updating `STATUS.md` with what was found, at what confidence, and what
   remains open.
+
+## Per-phase agent pattern
+
+Which pattern a phase uses, and why, decided by applying the decomposition test above — not a
+fixed default. Recorded here so the reasoning is not re-litigated each time; see `STATUS.md` for
+the phases' actual status and findings.
+
+- **Phase A** used **three parallel agents** because the three questions (is `forecast_date`
+  revised, why did 2025 fall, which date field keys the series) were independent of each other's
+  results and needed different capabilities (Explorer+Validator, Analyst, Validator). **Done.**
+- **Phase B is mixed.** Designing how Category level supports item level, and confirming
+  combination forecasting, uses a **single Modeler**, because it needs all three aggregation
+  levels (Category, Type, Item) in one view to reason about consistently — splitting them would
+  mean passing shared context back and forth, which the decomposition test rules out. The three
+  open items — cross-division demand, items with no history, and the stale forward-test log —
+  run as **three parallel agents**, because they are independent of each other's results (each can
+  be resolved without knowing the others' outcome). Writing tests and the pipeline uses a **single
+  agent**, because it needs the whole codebase in view to place tests and wire a run order
+  consistently, not a chunk of it in isolation.
+- **Phase C** uses **five parallel Validators**, one per division (PEM102, PEM103, PEM104,
+  PEM107, CI101), for data-quality checks that are independent of each other and identical in
+  kind — then a **single Modeler** runs all forecasts in one pass (needs the combined dataset in
+  one view), then a **Synthesizer** compares divisions against PEM101.
+- **Phase D** uses **three parallel Explorers**, one each for finished-goods movement history,
+  assembly time, and sellable-stock stages — independent searches needing the same capability
+  (database search) but over disjoint questions — with the stopping rule applied strictly (each
+  Explorer must stop and report a gap rather than keep searching), then a **Synthesizer**.
+- **Phase E** uses a **single Modeler** for Max-Min calculation and simulation, since it combines
+  forecast, lead time and variability in one calculation that cannot be usefully split (the three
+  inputs share context and feed one result), with a separate **Validator** recomputing every
+  figure independently as a check.
+- **Phase F** uses a **single Analyst** — one coherent comparison (this project's method vs. the
+  team's current method vs. no intervention), not a task that splits into independent pieces.
