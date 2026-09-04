@@ -184,12 +184,21 @@ begin.
 **Every one of the five divisions differs from PEM101 in some material way — none is ready to
 forecast unchanged.** Four (PEM102, PEM103, PEM107, CI101) need an explicit scope/filter decision
 first; PEM104 is blocked on data volume. **Step 2 (Modeler backtest) is NOT yet started.**
-**Scope corrected 2026-09-04 (Locked Decisions, "Project scope correction")**: PEM102's and
-PEM107's `-OLD` scope/filter question is now decided (exclude, do not combine — see Locked
-Decisions); CI101's cross-division scope question is now decided (include, count the
-PEM101-tagged 37.2%); PEM104 is confirmed excluded from forecasting specifically (placeholder for
-Phase 4), not merely "blocked" pending more evidence; PEM103's Tendering-channel scope question
-remains open, unchanged by this correction.
+**Scope corrected 2026-09-04, then corrected again the same day (Locked Decisions, "Project scope
+correction" then "Division source-of-truth correction")**: the first correction decided to
+exclude `-OLD`-suffixed divisions; the second reversed that — the pricelist is authoritative for
+an item's division, and `division` is never used as a query filter at all, `-OLD` tags included.
+PEM102's and PEM107's scope/filter question is resolved by this reversal (no filter, so no
+combine/exclude decision needed); CI101's cross-division question is likewise resolved (include,
+automatically, since `division` is no longer filtered); PEM104 stays confirmed excluded from
+**forecasting** specifically (placeholder for Phase 4, unrelated to the division-tagging
+question); PEM103's Tendering-**channel** scope question remains open, unaffected by either
+correction (it concerns `revenue_type`, not `division`). A full-scope re-validation on the
+corrected basis (445 codes) is DONE — see the dated log entry below and
+`output/summary/phaseC_revalidation_report.md`: no double-counting found between `-OLD`-tagged
+and normally-tagged rows, PEM102/PEM107 regain their 2024 history, CI101's totals rise 59.94%,
+PEM102's 38.40%, PEM107's 90.01%. Broader per-division readiness verdicts (collisions, pricelist
+mismatches, demand classification) are **not yet re-derived** on this basis.
 
 **Phase D — Phase 4 groundwork.** Search across tables at once, not one at a time, for finished
 goods movement history, assembly time, and which warehouse stages hold sellable stock. **Runs
@@ -2750,6 +2759,81 @@ an applied decision.
   five divisions, so every transferability judgment above is based on data-quality/demand-shape
   evidence only, not measured model performance.
 
+**Phase C sheet-to-division mapping (Explorer) — DONE (2026-09-04).** Fresh, single-method,
+Omni-Channel-scoped query across all 445 codes (no reuse of the five Validators' channel-blind
+figures). Full detail in `output/summary/phaseC_sheetmap_report.md`. PEM101 (98.80%), PEM103
+(97.06%) and PEM104 (100.00%, n=12) map cleanly (≥95% threshold) from sheet to same-named
+division; **PEM102 (72.25%), PEM107 (52.63%) and CI101 (62.52%) do not** — the database's
+`division` column, not the sheet name, would be needed as a grouping key under a
+division-filtered design. This finding is what directly motivated the division source-of-truth
+correction below: rather than adding "use `division`, not sheet, for these three" as another
+special case, the pricelist-is-authoritative principle removes the need to choose a grouping key
+from the database at all.
+
+**Division source-of-truth correction and full-scope re-validation — DONE (2026-09-04).** The
+`-OLD`-suffix exclusion decision (recorded above the same day) is reversed — see Locked
+Decisions, "Division source-of-truth correction," for the reasoning. This entry records the
+re-validation run on the corrected (no-`division`-filter) basis, across all 445 visible-pricelist
+codes, per the six checks specified for this task. Script:
+`src/investigations/phaseC_full_scope_revalidation.py`. Full detail, every figure cited to its
+CSV: `output/summary/phaseC_revalidation_report.md`.
+
+- **Sheet uniqueness — RECONFIRMED, high confidence.** No item code appears on more than one
+  visible sheet (445 distinct codes; the script raises an error and stops if any code did — none
+  did).
+- **Totals per division, before (division_db_raw == home division only) vs. after (no division
+  filter) — high confidence, directly queried, no date filter applied (full history).** Value
+  shifts materially for **CI101 (+59.94%, ₿104.1M→₿166.5M)**, **PEM102 (+38.40%,
+  ₿116.3M→₿161.0M)**, and **PEM107 (+90.01%, ₿218.0M→₿414.2M)** — PEM107 very nearly doubles.
+  PEM101 (+1.22%) and PEM103 (+3.03%) shift only slightly (neither was part of the `-OLD` mirror
+  pattern). PEM104 is unchanged (0.00%) — none of its 12 transactions carry a non-home division
+  tag. Full table: `phaseC_revalidation_02_totals_before_after_per_division.csv`.
+- **Double-counting between `-OLD`-tagged and normally-tagged rows — the highest-risk check,
+  NEGATIVE FINDING, high confidence.** 11 `(contractid, itemcode)` candidate pairs found with
+  activity under both an `-OLD` tag and a normal tag (all PEM102↔PEM107-OLD or
+  PEM107↔PEM102-OLD, consistent with the known mirror pattern). Using this project's established
+  split-lot key (exact match on qty, sale AND forecast_date = confirmed duplicate; any difference
+  = distinct instalment), **0 of the 11 are confirmed duplicates** — every pair differs on at
+  least one field, most often `forecast_date` (consistent with genuine multi-tranche orders
+  entered under different tags at different times, the same phenomenon already documented for the
+  tag transition itself). **No double-counting was found.** This is method-bound (it only tests
+  the exact-match signal already established as this project's duplicate key; see
+  `phaseC_revalidation_report.md` §2 for the stated limitation), so it is reported as a strong
+  negative finding, not an absolute guarantee. Full detail:
+  `phaseC_revalidation_03_old_tag_candidates.csv`.
+- **Cube_CES reconciliation per division, re-run on the new basis — high confidence, one
+  consistent method across all six divisions.** All six divisions sit in a **98.57%-100.00%**
+  band: CI101 98.57%, PEM101 99.63%, PEM102 98.72%, PEM103 98.76%, PEM104 100.00% (n=12, low
+  weight), PEM107 99.26%. PEM101's 99.63% here differs slightly from the 99.79% recorded
+  elsewhere in this file — expected pull-to-pull drift on a live, growing table, not a
+  discrepancy in method. Full table: `phaseC_revalidation_04_cube_ces_reconciliation_per_division.csv`.
+- **Usable date range per division, re-derived — high confidence, confirms the pre-stated
+  expectation.** **PEM102 and PEM107 regain their full 2024 history**: PEM102's earliest usable
+  `createDate` moves from ~January 2025 to **2024-01-24**; PEM107's moves from ~January 2025 to
+  **2024-01-03** — each division's real 2024 activity, previously sitting only under the other's
+  `-OLD` tag, is now counted under its own pricelist division. Full table:
+  `phaseC_revalidation_05_usable_date_range_per_division.csv`.
+- **No-history recount — 105 of 445 (23.6%), UNCHANGED from the `-OLD`-excluded basis, high
+  confidence.** Expected: removing the division filter only adds rows for codes that already have
+  *some* `cube_Sale_APD` history under a different tag; it adds nothing for a code with zero rows
+  in that table under any division. **Reconciled against the existing 128-item-scope config
+  lists**: all 6 `excluded_item_codes` and all 10 `placeholder_item_codes` are among the 105 —
+  consistent, **0 genuine conflicts** (double-checked directly against
+  `task2_per_item_classification_final.csv`: every placeholder item's own
+  `has_any_row_cube_Sale_APD_nofilter` was already `False`, so their absence here confirms rather
+  than contradicts their existing classification). **89 of the 105 are NOT YET covered by either
+  list** (by sheet: PEM103 37, PEM107 24, PEM101-non-Fuse/Surge 11, PEM102 10, PEM104 7, CI101 0)
+  — genuinely new information (the existing lists only ever covered the 128-item PEM101 pilot
+  scope). **Classifying these 89 (exclude/placeholder/other) is NOT done here** — an
+  Orchestrator/business decision needing multi-table evidence this check did not gather, per
+  `AGENTS.md`'s Explorer/Validator boundary; carried to Open Questions below. One consolidated
+  list for all 445 codes: `phaseC_revalidation_06_consolidated_item_status_445.csv`.
+- **What this does NOT re-derive**: the broader Phase C step 1 readiness verdicts (category/type
+  name collisions, pricelist mismatches, ADI/CV² demand classification, readiness wording) still
+  reflect the division-filtered basis and are **not** re-run by this entry — only the six checks
+  this task specified. Re-deriving full readiness per division against the new basis is separate,
+  not-yet-done work.
+
 ## 3. Business Findings
 
 These describe how this business actually operates, established from data investigation (not
@@ -2845,20 +2929,22 @@ phase, particularly Phase 4. Full methodology, confidence levels and caveats are
     pilot only because Fuse and Surge Arrester products — the pilot's chosen Type-level scope —
     happen to exist exclusively in that one sheet; nothing about that pilot choice restricts the
     project as a whole.
-  - **Exclusion — `-OLD` suffix**: any `division` value carrying the suffix `-OLD` (e.g.
-    `PEM102-OLD`, `PEM107-OLD`) is excluded from the project scope, confirmed by the user. Reason:
-    Phase C step 1 found these rows carry swapped or legacy tags whose meaning could not be
-    established from data — `PEM102`'s real 2024 activity sits under `division='PEM107-OLD'` and
-    `PEM107`'s real 2024 activity sits under `division='PEM102-OLD'` (see the Phase C step 1 log
-    entry above and `output/summary/phaseC_synthesis_report.md` §5), and no audit trail exists to
-    confirm which tag is authoritative for which period. **This decision explicitly overrides**
-    the Phase C step 1 Validators' recommendation to *combine* `PEM102`+`PEM107-OLD` and
+  - **Exclusion — `-OLD` suffix — SUPERSEDED 2026-09-04, see "Division source-of-truth
+    correction" below. Reversed the same day it was written, kept here struck through, not
+    deleted, so the mistake is traceable.** ~~any `division` value carrying the suffix `-OLD`
+    (e.g. `PEM102-OLD`, `PEM107-OLD`) is excluded from the project scope, confirmed by the user.
+    Reason: Phase C step 1 found these rows carry swapped or legacy tags whose meaning could not
+    be established from data — `PEM102`'s real 2024 activity sits under `division='PEM107-OLD'`
+    and `PEM107`'s real 2024 activity sits under `division='PEM102-OLD'` (see the Phase C step 1
+    log entry above and `output/summary/phaseC_synthesis_report.md` §5), and no audit trail exists
+    to confirm which tag is authoritative for which period. This decision explicitly overrides the
+    Phase C step 1 Validators' recommendation to combine `PEM102`+`PEM107-OLD` and
     `PEM107`+`PEM102-OLD` (open question 2, Section 5 below) — the combine option is not adopted.
-    **Consequence, stated plainly**: PEM102's usable history stays at ~January 2025 rather than
+    Consequence, stated plainly: PEM102's usable history stays at ~January 2025 rather than
     extending back to January 2024, and PEM107's stays at ~January 2025 rather than extending back
     to January 2024, since each division's pre-2025 activity sits under the excluded `-OLD` tag of
-    the *other* division. This is a real loss of usable history, accepted in exchange for not
-    guessing which of two contradictory tag conventions is correct.
+    the other division. This is a real loss of usable history, accepted in exchange for not
+    guessing which of two contradictory tag conventions is correct.~~
   - **Exclusion — PEM104**: `PEM104` is in scope for product identification (its codes are part
     of the 445) but **excluded from forecasting**, confirmed by the user. Reason: Phase C step 1
     found only 12 transactions across 17 calendar months for PEM104's codes — too few to fit any
@@ -2892,7 +2978,67 @@ phase, particularly Phase 4. Full methodology, confidence levels and caveats are
     pipeline script (`load_data.py`, `load_data_full.py`, etc.) has been updated to read the new
     list-shaped config instead of the old scalar `division` value — those scripts still filter on
     `PEM101` alone until updated. This entry documents the corrected scope decision; wiring it
-    into the data-loading code is separate, not-yet-done work.
+    into the data-loading code is separate, not-yet-done work. **SUPERSEDED 2026-09-04 — see
+    "Division source-of-truth correction" immediately below: `divisions_in_scope` is itself
+    replaced by a sheet→division mapping, and the wiring described as "not yet done" here has now
+    been done, on the corrected basis, not the `-OLD`-excluded basis this bullet describes.**
+- **Division source-of-truth correction (2026-09-04): the pricelist is authoritative for which
+  division a product belongs to; the database's `division` column is reference-only and is never
+  used to filter which rows count as an item's sales.** Reverses the `-OLD`-suffix exclusion above
+  **the same day it was written**, per the user's direct correction. Recorded plainly: the
+  exclusion decision was wrong not because the underlying evidence was wrong (the PEM102/PEM107
+  tag-swap pattern is real and still unexplained — see Phase C step 1 above), but because it
+  answered the wrong question. Faced with an unreliable database column, the prior entry asked
+  "should we exclude the unreliable values?" instead of "what is the source of truth for this
+  attribute, and does the database even need to agree with it?" The pricelist already *is* the
+  source of truth for which division a product belongs to — that was true before the `-OLD`
+  question ever came up, it was simply never applied to this decision. Once asked correctly, the
+  fix is not exclusion but **not filtering on `division` at all**: an item's division is whatever
+  pricelist sheet it appears on; its sales are every Omni Channel row for its item code,
+  regardless of what division tag that row happens to carry, `-OLD` included. This gap is why
+  `CONVENTIONS.md` now also carries a rule (2026-09-04) that the pricelist is the authoritative
+  source for product attributes and that "what is the source of truth" must be asked before "should
+  this value be excluded."
+  - **The corrected rule**: pull Omni Channel sales for an item code with no `division` filter in
+    the query at all. Attach the item's division as a lookup from the pricelist sheet it belongs
+    to (`PEM101`→PEM101, `PEM102`→PEM102, `PEM103`→PEM103, `PEM104`→PEM104,
+    `PEM107 CT-Version 2`→PEM107, `CI101`→CI101). The database's own `division` value on each row
+    is kept as a separate reference column for inspection, never used as a filter or as the
+    division of record.
+  - **Expected consequences, stated before re-validation so they can be checked against it**:
+    PEM107 and PEM102 regain their full 2024 history (previously only visible by explicitly
+    combining with the other's `-OLD` tag, which was itself rejected above before this reversal);
+    CI101 automatically includes its `PEM101`-tagged 37.2% share, with no special-case scope
+    decision needed (it was never really a CI101-specific exception — it is the same "don't filter
+    on division" rule already required for PEM102/PEM107); every readiness verdict in
+    `output/summary/phaseC_synthesis_report.md` and `phaseC_sheetmap_report.md` that was computed
+    under a `division`-filtered pull (PEM101, PEM102, PEM103, PEM107, CI101 — everything except the
+    already-unfiltered totals) must be treated as **not yet re-derived on this basis** until the
+    re-validation below is complete.
+  - **Written into `config/config.yaml`**: `divisions_in_scope` (the list from the entry above) is
+    removed. Replaced with a `sheet_to_division` mapping (which division to record for an item
+    found on a given sheet) and a `division_source: "pricelist"` flag stating explicitly that
+    `division` is attached from the pricelist and never used to filter a query. See
+    `config/config.yaml`.
+  - **Written into code**: `src/load_data_full.py`, `src/investigations/load_data.py` (the
+    original pilot loader this project has always called `src/load_data.py` in prose — moved to
+    `src/investigations/` in the 2026-09-04 reorg, flagged here rather than silently assumed to be
+    the same path) and `src/score_forward_test_v2.py` all built their SQL `WHERE` clause with
+    `AND division = '{division}'`, sourced from `config["division"]`. All three are fixed: the
+    `division` clause is removed from the query; `load_data_full.py` and
+    `src/investigations/load_data.py` now attach each row's division from the pricelist and keep
+    the database's own value as a separate `division_db_raw` reference column.
+    `src/score_forward_test_v2.py`'s actuals pull needed the same filter removed but does not
+    carry a division column downstream, so nothing was attached there. Confirmed by direct search
+    (not assumed): no other script in `src/` builds a SQL `WHERE` clause on `division`; the only
+    other file matching the old pattern is `src/investigations/score_forward_test.py`, the
+    superseded v1 of the scoring script (replaced by `score_forward_test_v2.py`, not called by
+    `src/run_pipeline.py`) — left unmodified as dead/archived code, flagged here rather than
+    silently fixed or silently ignored.
+  - **Re-validation status**: see the dated Phase C step-1 re-validation log entry below (this
+    file, added 2026-09-04) for the checks re-run on this new basis (double-counting between
+    tagged variants, Cube_CES reconciliation, usable date ranges, no-history recount, totals
+    before/after) and their results and confidence levels.
 - **GATE LIFTED (2026-08-31).** Originally: data quality must be fully resolved before any
   modelling or backtest work begins. Resolution, by decision where evidence ran out: (1) of
   the original 55 duplicate-vs-split-lot sets, 35 (64%) are confirmed genuine (26
@@ -3090,10 +3236,13 @@ phase, particularly Phase 4. Full methodology, confidence levels and caveats are
      else? Unprovable from read-only data (no audit/change-log table exists) — needs IT/business
      confirmation. Blocks a firm filter decision for both PEM102 and PEM107.
   2. ~~Whether to combine `division IN ('PEM102','PEM107-OLD')` and `division IN ('PEM107',
-     'PEM102-OLD')`~~ — **DECIDED 2026-09-04, see Locked Decisions, "Project scope correction":
-     do not combine. Both `-OLD`-suffixed values are excluded from project scope.** The
-     *mechanism* behind the tag swap (item 1 above) remains unresolved, but the filter decision
-     no longer depends on resolving it.
+     'PEM102-OLD')`~~ — **SUPERSEDED again, same day, see Locked Decisions, "Division
+     source-of-truth correction": the question itself no longer applies.** The intermediate
+     answer ("do not combine, exclude both `-OLD` values") is itself superseded — the corrected
+     rule filters on `division` not at all, so there is nothing to combine or exclude; `-OLD` rows
+     are counted like any other row once the item's pricelist division matches. The *mechanism*
+     behind the tag swap (item 1 above) remains unresolved, but no filter decision depends on it
+     any more.
   3. ~~CI101's cross-division scope decision~~ — **RESOLVED 2026-09-04, see Locked Decisions,
      "Project scope correction": CI101 is in scope, and the 37.2% recorded under
      `division='PEM101'` is genuine Omni Channel demand for CI101's item codes and must be
@@ -3106,7 +3255,12 @@ phase, particularly Phase 4. Full methodology, confidence levels and caveats are
      is the blocking question for PEM104 specifically.
   6. **Per-division no-history-item classification** (exclude vs. placeholder, following PEM101's
      own Phase B precedent) has not been done for any of the five divisions — each Validator only
-     identified the candidate items and their trace status.
+     identified the candidate items and their trace status. **Quantified precisely for the full
+     445-code scope by the 2026-09-04 full-scope re-validation** (see the dated log entry above):
+     105 of 445 codes have no Omni-Channel history anywhere, 16 already covered by the existing
+     128-item-scope config lists (consistent, no conflicts), **89 not yet classified by any list**
+     (PEM103 37, PEM107 24, PEM101-non-Fuse/Surge 11, PEM102 10, PEM104 7, CI101 0) — the
+     classification itself remains undone, this only narrows and counts the gap.
   7. Minor pricelist data-quality items not investigated further, per the stopping rule: the
      `DS-F-99-0308` within-sheet pricelist duplicate (CI101; also explains the project's existing
      446-rows-vs-445-codes note in Section 1); PEM107's 4 likely "xxx"-placeholder codes and 2

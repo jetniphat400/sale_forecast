@@ -16,6 +16,16 @@
 - Write tests for invariants such as forecasts never being negative, monthly totals matching
   the sum of daily records, and SKU counts staying consistent before and after processing.
 - Every number delivered must be verifiable against a direct recomputation.
+- **The pricelist is the authoritative source for product attributes, including category, type
+  and division. Database columns for those same attributes are reference-only** — record them for
+  inspection, but never filter or classify on them. **When a database value looks unreliable, the
+  first question is what the source of truth for that attribute is, not whether to exclude the
+  value.** This rule exists because a `division = 'PEM101'` project-scope error was first
+  "fixed" by excluding the database's unreliable `-OLD`-suffixed division tags — which would have
+  discarded roughly 26-40% of two divisions' real sales — before the actual fix was recognized:
+  the pricelist already determines an item's division, so the database's `division` column should
+  never have been used as a filter at all. See `STATUS.md` Locked Decisions, "Division
+  source-of-truth correction," for the full account.
 
 ## Reproducibility
 

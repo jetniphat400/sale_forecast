@@ -28,45 +28,53 @@ pilot_categories:
   fuse_cutout: "High Voltage Distribution Fuse Cutout"     # 10 items, from reference/pricelist.xlsx Product Type column
   surge_arrester: "Medium Voltage Surge Arrester"          # 58 items, from reference/pricelist.xlsx Product Type column
 
-# --- Business unit / division scope -----------------------------------------
-# CORRECTED 2026-09-04 (see STATUS.md Locked Decisions, "Project scope
-# correction"). The old scalar `division: "PEM101"` recorded a PILOT condition
-# (Phase 2 used PEM101 alone because Fuse and Surge Arrester products exist
-# only in that sheet) as if it were the whole project's scope -- wrong, and it
-# caused confusion once Phase C needed the other divisions. `division` is a
-# GROUPING KEY for products (which pricelist sheet/business-unit a product
-# belongs to), not a scope filter -- it is still required in every query
-# because 72 productCateName values, including Fuse and Surge Arrester, appear
-# under more than one division, so category/type name alone is not a safe key
-# (STATUS.md Phase 2 Step 1). The project's actual scope is every division
-# that appears in the pricelist's visible sheets, listed below.
-divisions_in_scope:
-  - "PEM101"   # pilot division -- Fuse and Surge Arrester products exist only here
-  - "PEM102"
-  - "PEM103"
-  - "PEM104"   # in scope for product identification only -- see
-               # divisions_excluded_from_forecasting below; still forecasting-excluded
-  - "PEM107"
-  - "CI101"    # previously miscategorised as a candidate to drop as "a separate
-               # company" -- corrected: it is in the pricelist, so it is in scope.
-               # 37.2% of its product value is recorded under division PEM101 and
-               # is genuine Omni Channel demand -- must be counted, not discarded.
+# --- Business unit / division -------------------------------------------------
+# CORRECTED 2026-09-04 (see STATUS.md Locked Decisions, "Division source-of-truth
+# correction"). SUPERSEDES this same day's earlier fix, which removed the
+# `divisions_in_scope` list this section used to hold and replaced `division`
+# with a single fixed value's exclusion rule (`excluded_division_suffix: "-OLD"`,
+# now deleted, not just commented out). That fix addressed the SYMPTOM -- an
+# unreliable database column -- rather than asking what the source of truth
+# for a product's division actually is. It already is the pricelist. The
+# corrected rule: **the pricelist is authoritative for which division a
+# product belongs to; the database's own `division` column on cube_Sale_APD is
+# reference-only and is NEVER used to filter which rows count as an item's
+# sales.** PEM102 and PEM107 products carry each other's `-OLD` tags in a
+# mirror pattern nobody can explain (STATUS.md Phase C step 1); excluding
+# those rows, as the prior fix did, would have discarded roughly 26% of
+# PEM102's and 40% of PEM107's real Omni-Channel sales value
+# (output/summary/phaseC_sheetmap_report.md). Queries now select by itemcode +
+# revenue_type only -- no `division = ...` clause anywhere, `-OLD` tags
+# included, not excluded.
+division_source: "pricelist"   # Explicit flag: division is attached from the
+                                # pricelist sheet an item appears on, never read
+                                # from or filtered by the database's `division`
+                                # column. The database value is kept only as a
+                                # reference column (division_db_raw) for
+                                # inspecting discrepancies, never as a filter.
 
-# Division VALUES excluded outright, regardless of item code: any value carrying
-# the suffix "-OLD" (e.g. PEM102-OLD, PEM107-OLD). Confirmed by the user
-# (2026-09-04). Reason: Phase C step 1 found these rows carry swapped/legacy
-# tags whose meaning could not be established from data -- PEM102's real 2024
-# activity sits under PEM107-OLD and PEM107's real 2024 activity sits under
-# PEM102-OLD, with no audit trail to say which tag is authoritative for which
-# period (output/summary/phaseC_synthesis_report.md §5). This explicitly
-# OVERRIDES the Phase C Validators' recommendation to combine PEM102+PEM107-OLD
-# and PEM107+PEM102-OLD -- that combine option was considered and rejected, not
-# merely left undone. Consequence: PEM102's and PEM107's usable history stays
-# at ~January 2025 rather than extending back to January 2024.
-excluded_division_suffix: "-OLD"
+# Sheet name (exactly as it appears in reference/pricelist.xlsx) -> division
+# name to record for every item found on that sheet. Confirmed against the
+# pricelist's own `business` column, which matches this mapping exactly for
+# all six sheets (output/summary/phaseC_sheetmap_report.md §1).
+sheet_to_division:
+  "PEM101-Version 2": "PEM101"    # pilot division -- Fuse/Surge Arrester exist only here
+  "PEM102-Version 2": "PEM102"
+  "PEM103-Version2": "PEM103"     # note: no space before "Version2" -- the visible sheet;
+                                   # a similarly-named hidden sheet has a space (STATUS.md)
+  "PEM104": "PEM104"              # in scope for product ID; excluded from FORECASTING only,
+                                   # see divisions_excluded_from_forecasting below
+  "PEM107 CT-Version 2": "PEM107"
+  "CI101": "CI101"                # previously miscategorised as a candidate to drop as "a
+                                   # separate company" -- it is in the pricelist, so it is in
+                                   # scope. Its ~37% PEM101-tagged sales share is now included
+                                   # automatically, since division is no longer a query filter.
 
 # Divisions in scope for product identification but excluded from forecasting
-# specifically. Confirmed by the user (2026-09-04).
+# specifically. Confirmed by the user (2026-09-04). UNRELATED to the division
+# source-of-truth correction above -- PEM104 stays excluded from forecasting
+# for a data-volume reason (too few transactions to fit any model), not a
+# division-tagging reason, and this decision is not reversed by that correction.
 divisions_excluded_from_forecasting:
   PEM104: "Only 12 transactions across 17 months (STATUS.md Phase C step 1) --
     too few to fit any model at any aggregation level. Receives a placeholder
@@ -74,15 +82,12 @@ divisions_excluded_from_forecasting:
     codes recorded in reference/pricelist.xlsx (PEM104 sheet) and
     output/summary/phaseC_PEM104_item_codes.txt."
 
-# NOT YET DONE: no pipeline script (load_data.py, load_data_full.py, etc.) has
-# been updated to read divisions_in_scope / excluded_division_suffix /
-# divisions_excluded_from_forecasting instead of the old scalar `division`
-# value below. This config change documents the corrected scope decision;
-# wiring it into the data-loading code is separate, not-yet-done work.
-
-# Legacy scalar, kept only so any script not yet migrated to the fields above
-# keeps working unchanged -- this is the PILOT division, NOT the project scope.
-# Do not read this key as "the project's division filter."
+# Legacy scalar, kept only so any script not yet migrated to sheet_to_division
+# keeps working unchanged -- this is the PILOT division, NOT a project-wide
+# filter. Must NEVER be used as a `division = ...` clause in any query; see
+# src/load_data_full.py, src/investigations/load_data.py and
+# src/score_forward_test_v2.py for the corrected query pattern (itemcode +
+# revenue_type only, division attached from sheet_to_division afterward).
 division: "PEM101"
 
 # --- Revenue type filter --------------------------------------------------
