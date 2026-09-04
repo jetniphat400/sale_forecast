@@ -7,3 +7,4 @@ pyyaml
 matplotlib
 statsforecast
 scipy
+pytest==9.1.1
