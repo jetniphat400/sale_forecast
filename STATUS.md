@@ -108,35 +108,70 @@ below and in `output/summary/phaseA_synthesis.md`; none of the three closes with
    (not a live re-query)**, since item 1 could not rule out revision, only bound its impact as
    small. No code was changed to implement this — see the new Phase B action item below.
 
-**Phase B — Close Phase 2 down to item level.** Design how the Category and Type level results
-support item-level forecasting: item level showed 74% of series with no stable rolling-origin
-winner and a 127% validation-to-test overfitting gap, while Category level was stable — so
-confirm Combination forecasting at item level too, where it already showed the smallest bias
-(-216, item level). Resolve three open items: (1) the ₿60.6 million of cross-division demand
-currently filtered out, since inventory is shared across divisions and excluding 14.3% of demand
-would systematically under-provision; (2) the 16 items with no history and 15 with no sales,
-which must not simply be dropped, since new items with no history are often the ones most likely
-to stock out; (3) the forward-test log, generated for 58 items and six models, which no longer
-matches the current scope. Also clear technical debt: write the tests `CONVENTIONS.md` requires
-but which do not yet exist, and build a pipeline that runs end to end, since the 21 committed
-scripts currently have no documented run order. **Two new action items from Phase A
-(2026-09-02), added to the Phase B task list**:
-- **Re-key the series and re-run all backtests.** Every backtest result produced so far in this
-  project (Phase 2's Category/Type model selection, the item-level backtest, rolling-origin
-  stability, the rule-based-selection comparison, the combination-variant test — everything that
-  reads `output/data/processed_pilot_sales_monthly.csv`, `processed_fuse_surge_monthly.csv`,
-  `processed_full_category_sales_monthly.csv`, or any series built by `load_data.py`,
-  `load_data_full.py`, `aggregate_levels.py`, `backtest.py` or `backtest_aggregate.py`) **was
-  produced with the series keyed on `createDate`, which Phase A found to be the wrong field for
-  inventory-timing purposes.** These results are not necessarily wrong in direction, but they are
-  not currently trustworthy as inventory-timing inputs and must be re-run once the series is
-  re-keyed to `forecast_date` (captured as a frozen snapshot at data-pull time, not re-queried
-  live, since Phase A could not rule out revision after intake — see above).
-- **Re-measure bias with `EEE-F-FC-1040010002` separated out.** Before any bias figure is used to
-  size safety stock, recompute it with this item (and/or its Type) held out or isolated, since its
-  real 2025-collapse/2026-recovery swing sits inside the existing backtest's test window and may
-  be inflating the measured bias magnitude (Phase A, moderate confidence, unquantified — not yet
-  done by any agent).
+**Phase B, B1/B2/B3 — DONE (2026-09-02), single Modeler (per `AGENTS.md`: all three
+aggregation levels needed in one view, each step depends on the previous — not split).** Full
+detail, confidence levels and CSVs in `output/summary/b1_rekeying_report.md`,
+`b2_bias_isolation_report.md`, `b3_item_level_approach_report.md`, and the dated log entry
+further down.
+- **B1 (re-key and re-run)**: `load_data.py`/`load_data_full.py` now pull `forecast_date`
+  (frozen snapshot, recorded) alongside `createDate`, building BOTH monthly series (the
+  createDate one kept as an exact alias under its original filename, nothing deleted). Fresh
+  pull confirms Phase A's re-keying magnitude (-2.52% in-window qty this run, vs. -2.17% in
+  Phase A — the small difference is real data growth between pulls, stated explicitly, not
+  drift in method). **Re-run backtest result is genuinely mixed, not a clean improvement or
+  regression**: train/val/test (the last 6 of 31 months) IMPROVES under forecast_date at every
+  level (Item Combination MAE 389.4→353.2, -9.3%), but rolling-origin (7 origins across the
+  whole series) WORSENS at every level (Item Combination MAE 391.4→432.2, +10.4%) — 21 of 21
+  level/model cells material in BOTH evaluations, in OPPOSITE directions. High confidence in
+  the numbers (cross-checked exactly against the existing `rule_part4_test_results_per_series.csv`
+  before trusting the new pipeline); moderate confidence only in a proposed explanation (the
+  test window sits where forecast_date's smoothing effect concentrates; not proven). **CORRECTED
+  2026-09-02 (see the dated log entry below, and `output/summary/b4_leakage_and_windowposition_report.md`):
+  this "window-position" framing was too generous — direct per-origin testing found the
+  improvement is NOT a smooth gradient at Category/Type level (correlation ≈0, and the trend
+  through 6 of 7 origins actually runs the WRONG way, getting worse as origins approach the
+  present, before an abrupt reversal only at the exact final origin); only Item level shows a
+  genuine, moderate gradual trend. The more accurate, narrower finding: the improvement is
+  concentrated in one specific 6-month test window, not demonstrated to generalize.**
+- **B2 (bias with item isolated)**: level-dependent, not one answer. At the item's own Type
+  (`High Voltage Distribution Fuse Cutout`), excluding it removes 87-90% of Combination's bias —
+  **substantially an artifact at that level, high confidence**. At Category level (`Fuse`),
+  excluding it removes only 5-9% — **the negative bias PERSISTS as a real, broad property of the
+  rest of the category, high confidence**. Control check (`Surge Arrester`, untouched) behaves
+  as expected.
+- **B3 (aggregation approach for item-level forecasting)**: compared Direct / Top-down /
+  Reconciled at item level (forecast_date-keyed, test set). Top-down has the best point estimate
+  (MAE 341.6 vs. 350.0 Direct vs. 350.0 Reconciled) but **no pairwise difference clears
+  significance** (paired t all under 2) — stated directly, no approach is clearly better in
+  general. **The one clear, well-evidenced finding: the benefit DOES depend on the item's share
+  of its Type** — the dominant focus item (`EEE-F-FC-1040010002`, 48.3% of its Type) improves
+  16.1% under Top-down; the two minor/mid-rank focus items barely move. High confidence in
+  direction, moderate in magnitude (only one genuinely dominant item exists in this scope to
+  test).
+
+**Phase B — Close Phase 2 down to item level. B1/B2/B3 (the single-Modeler portion, per
+`AGENTS.md`) DONE 2026-09-02** — re-keying, bias re-measurement, and the aggregation-level
+question are answered below (full detail and confidence levels in the Current Status Summary
+and the dated log entry further down). **Remaining Phase B work, NOT YET DONE**: the three
+parallel-agent open items (₿60.6 million cross-division demand currently filtered out, since
+inventory is shared across divisions and excluding 14.3% of demand would systematically
+under-provision; the 16 items with no history and 15 with no sales, which must not simply be
+dropped, since new items with no history are often the ones most likely to stock out; the
+forward-test log, generated for 58 items and six models, which no longer matches the current
+scope) and the single-agent technical-debt work (writing the tests `CONVENTIONS.md` requires,
+and building a pipeline that runs end to end, since the 21+ committed scripts still have no
+documented run order). **CORRECTED 2026-09-04 (see the dated log entry further down, and
+`output/summary/synthesis_report.md` §3): the "16 items with no history and 15 with no sales"
+figure above assumed a 31-item excluded population. A live re-derivation found this is WRONG --
+the true population is 16 items total (the 15 are a SUBSET of the 16, not an additional 15 on
+top); no second bucket of "rows present but zero total sales" items exists at this scope. All
+three parallel open items in this paragraph (cross-division demand, no-history items, forward-test
+log) are now DONE as of 2026-09-04 -- see the dated log entry below for full findings.**
+**Phase B CLOSED 2026-09-04**: the remaining single-agent technical-debt work (tests, end-to-end
+pipeline) is also DONE -- see the "Phase B closeout" dated log entry near the end of this section,
+and the new Locked Decisions below (cross-division scope, the 6 excluded items, the 10 placeholder
+items, and the final Top-down combination method with its evaluation policy). Phase C may now
+begin.
 
 **Phase C — Expand to all 445 item codes**, covering PEM102, PEM103, PEM104, PEM107 and CI101.
 Data quality for these divisions has never been checked and may differ from PEM101.
@@ -1993,6 +2028,616 @@ raw/processed pulls: `output/data/phaseA_a{1,2}_*.csv`.
   A3's 53 flagged duplicate rows overlap the project's previously-classified duplicate-vs-split-
   lot sets (small targeted follow-up, not chased here per the stopping rule).
 
+**Phase B, tasks B1/B2/B3 — DONE (2026-09-02).** Single Modeler, per `AGENTS.md` (this part of
+Phase B needs all three aggregation levels — Category, Type, Item — in one view, and each step
+depends on the previous, so it is not split across agents). Scope: the 128 item codes in Product
+Cate. Fuse and Surge Arrester, at Category/Type/Item level, with the three focus codes
+(`EEE-F-FC-1040010002`, `HS-F-99-02110`, `HS-F-99-0213`) given particular attention throughout.
+Modified: `src/load_data.py`, `src/load_data_full.py`. New: `src/backtest_rekeyed.py`,
+`src/bias_item_isolation.py`, `src/item_level_reconciliation.py`. Full reports:
+`output/summary/b1_rekeying_report.md`, `b2_bias_isolation_report.md`,
+`b3_item_level_approach_report.md`; CSVs `output/summary/b1_*.csv`, `b2_*.csv`, `b3_*.csv`; charts
+`output/charts/b1_focus_*.png`, `b3_*_approach_comparison.png`. No model choice written to
+`config/config.yaml`.
+
+- **B1 — re-key the demand series and re-run every backtest.** `load_data.py`/`load_data_full.py`
+  now pull `forecast_date` alongside `createDate` in the same query, validate it (nulls and
+  negative-interval rows excluded from the forecast_date-keyed series only — 0.004%/0.05% of
+  rows respectively on this fresh pull, matching Phase A's rates; epoch/future-date anomaly
+  re-checked on the fresh pull, 0 found, Phase A's negative finding re-confirmed not assumed),
+  and build monthly series BOTH ways: `processed_..._createDate.csv` / `..._forecastDate.csv`.
+  **The original unsuffixed filename is kept as an exact alias of the createDate-keyed series —
+  every existing script that reads it keeps working unmodified, nothing deleted.**
+  `forecast_date` is frozen as a snapshot at pull time (a `snapshot_pull_date` column is written
+  into the output, e.g. 2026-09-02 15:52:39 for the 128-item pull), never re-queried live, since
+  Phase A could not rule out revision after intake. Both keyings are restricted to the identical
+  **31-month window (2024-01 to 2026-07)** that every existing backtest result was computed on —
+  32 complete months were actually available on this run (real time has advanced since the
+  original pull), and the newest month was deliberately excluded and stated explicitly, not
+  silently absorbed, to keep this a true apples-to-apples comparison.
+  - **Re-keying magnitude, this fresh pull**: in-window qty createDate=3,239,577 vs.
+    forecast_date=3,157,956 (**-2.52%**) — close to but not identical to Phase A's -2.17%,
+    explained by real data growth between pulls on a live database, stated explicitly.
+  - **Pipeline validation re-confirmed passing**: 0 negative qty in either keyed series; every
+    item has exactly 31 months in both; monthly totals reconcile exactly to their own filtered
+    daily source (the aggregation function raises loudly otherwise — did not raise).
+  - **Cross-check, high confidence**: this run's freshly recomputed createDate-keyed Combination
+    test-set MAE/RMSE/Bias/MASE match the EXISTING `rule_part4_test_results_per_series.csv`
+    (from the earlier `evaluate_strategies.py` task) EXACTLY, to the decimal, at all 3 levels —
+    validates the new pipeline before trusting anything computed on the new key.
+  - **Backtest result is genuinely mixed, not a clean improvement or regression — reported
+    plainly, not smoothed into one verdict.** Train/val/test (last 6 of 31 months) IMPROVES under
+    forecast_date at every level for every model except Naive (Item Combination MAE
+    389.4→353.2, -9.3%; Category 14,606.4→14,143.4, -3.2%; Type 4,010.8→3,808.4, -5.0%). Naive
+    gets dramatically WORSE (Item 437.6→566.1). **Rolling-origin (7 origins across the whole
+    series) WORSENS at every level for every model** (Item Combination MAE 391.4→432.2, +10.4%;
+    Category 14,392.3→18,601.9, +29.3%; Type 3,946.8→4,974.1, +26.0%). **21 of 21 level/model
+    cells are material in BOTH evaluation methodologies, in OPPOSITE directions** — high
+    confidence in the numbers, moderate confidence only in a proposed (not proven) explanation
+    that the train/val/test window sits where forecast_date's demand-smoothing effect
+    concentrates while earlier rolling-origin windows do not benefit the same way. **CORRECTED
+    2026-09-02, see the follow-up log entry below**: direct per-origin testing found this was too
+    generous a framing — not a smooth gradient at Category/Type level, but improvement
+    concentrated in one specific final test window.
+  - **Bias**: Combination's bias gets slightly MORE negative under forecast_date at every level
+    in train/val/test (Category -12,138.8→-13,946.4; Type -3,045.1→-3,496.2; Item
+    -216.1→-249.0, a 13-15% worsening) despite MAE improving — picked up directly by B2.
+  - **Validation-to-test gap**: createDate's gap stays small (+3.8% to -0.9%); forecast_date's
+    gap is large and NEGATIVE (-19.9% to -30.5%, test much better than validation predicted) —
+    reported, not investigated further (flagged for the Modeler).
+  - **Focus items** (Combination, test set): all three improve on both MAE and \|Bias\| under
+    forecast_date-keying (`EEE-F-FC-1040010002` MAE 1970.8→1206.1; `HS-F-99-02110` 611.6→503.8;
+    `HS-F-99-0213` 272.5→228.5).
+  - **No STATUS.md conclusion is overturned**: Combination remains competitive under both
+    keyings and both evaluation methods (Phase 2's selection stands); every existing backtest
+    output in `output/summary/` (rule_part4_*, part4_*, combo_variant_*) should be treated as
+    superseded once forecast_date-keyed results are adopted, per the Phase A action item.
+- **B2 — re-measure bias with `EEE-F-FC-1040010002` separated, high confidence, level-dependent
+  answer.** At the item's own Type (`High Voltage Distribution Fuse Cutout`, 10 items),
+  excluding it removes **87-90% of Combination's bias** at both keyings (createDate -2,198.5→
+  -212.0; forecastDate -1,393.7→-177.1) — every one of the 6 base models shows the same pattern
+  (77-124% removed). **Earlier bias measurement at this Type's level was substantially an
+  artifact of this one item.** At Category level (`Fuse`, 6 Types including this one), excluding
+  it removes only **5-9%** of Combination's bias (createDate -21,054.6→-19,068.0; forecastDate
+  -25,606.2→-24,389.7) — **the negative bias PERSISTS as a real, broad property of the rest of
+  the Fuse category, not explained by this one item.** Control check (`Surge Arrester`, which
+  never contained this item) behaves as expected, unaffected. At Item level (mean across all
+  113 items), excluding it moves the mean only slightly (-3.5% to -6.5%) — expected, since one
+  item carries limited weight in an equal-weighted mean of 113. **Practical implication**: use
+  the Category-level bias figure for Fuse as-is for safety stock; treat the
+  `High Voltage Distribution Fuse Cutout` Type-level bias figure with caution (mostly this one
+  item's collapse-recovery cycle, not the other 9 items' stable behaviour); the item itself
+  needs individual handling, not a Type-level blanket policy.
+- **B3 — how aggregate levels should support item-level forecasting.** Compared Direct /
+  Top-down (allocate Type-level Combination forecast by each item's historical qty share of its
+  Type) / Reconciled (Direct forecasts rescaled per Type per month to sum to the Type forecast),
+  all at item level, forecast_date-keyed series (B1's recommendation — a stated scope choice,
+  not re-tested against createDate here), test set. **Top-down has the best point estimate**
+  (mean item MAE 341.6 vs. 350.0 Direct vs. 350.0 Reconciled) **but no pairwise difference
+  clears significance** (paired t = -1.52, -0.34, +1.51, all \|t\|<2, same paired-t methodology
+  as the prior winner-margin check) — stated directly per instruction, no approach is clearly
+  better in general. **The one clear, well-evidenced finding: the benefit is share-of-Type-
+  dependent.** The one focus item that is genuinely dominant in its Type
+  (`EEE-F-FC-1040010002`, 48.3% of `High Voltage Distribution Fuse Cutout`'s train+val qty)
+  improves 16.1% in MAE and 19.4% in \|Bias\| under Top-down (1206.1→1011.9 MAE); the two
+  minor/mid-rank focus items (`HS-F-99-02110` 1.2% share, `HS-F-99-0213` 3.2% share) barely move
+  (503.8→497.3 and 228.5→228.5). Splitting all 113 items by a 30%-dominance threshold shows the
+  same pattern at smaller scale (minor items -2.5% MAE under Top-down, dominant items' pooled
+  MAE also favours Top-down). **High confidence in direction, moderate in exact magnitude**
+  (only one genuinely dominant item exists in this 128-item scope to test the sharpest case).
+  A conditional/blended policy (Top-down for dominant items, Direct for minor ones) is better
+  supported by this evidence than picking one approach uniformly, but was not itself built or
+  tested here.
+- **What the data could not resolve**: why rolling-origin and train/val/test disagree in
+  direction under re-keying (a plausible mechanism offered, not proven); the cause of
+  forecast_date's large negative validation-to-test gap; whether the Type's other 9 items
+  (excluding `EEE-F-FC-1040010002`) have their own unrelated bias problem worth investigating
+  individually; whether a conditional Top-down/Direct policy by item dominance would outperform
+  either approach used uniformly (not built); item-level rolling-origin stability was not
+  re-tested on the forecast_date key (out of this task's scope).
+
+**Phase B follow-up — was the re-keying improvement leakage? Why did rolling-origin and
+train/val/test disagree? — DONE (2026-09-02).** Single Validator (per `AGENTS.md`: re-examines
+one series, results must be interpreted together, not split). Script:
+`src/leakage_check_forecastdate.py`. Full detail:
+`output/summary/b4_leakage_and_windowposition_report.md`; CSVs `output/summary/b4_*.csv`; chart
+`output/charts/b4_per_origin_mae_comparison.png`. No model choice written to `config.yaml`; no
+existing file modified.
+
+- **Part 1 — future-dated rows quantified, high confidence.** Pull date (cited from the
+  `snapshot_pull_date` column): 2026-09-02 15:52:39. **472 of 27,584 raw rows (1.71%) have
+  `forecast_date` after the pull date** (qty 77,966, ฿26.3M, 66 items) — overwhelmingly dated
+  2026-09 (440 rows), with a small tail through 2027-05. **Decisive check: ZERO of these 472
+  rows fall inside the 31-month window (2024-01 to 2026-07) used for every backtest, and
+  therefore zero fall inside the final 6-month test window or any rolling-origin test window** —
+  the window ends more than a month before the pull happened, so every future-dated row is
+  necessarily dated after the window closes, not inside it.
+- **Part 2 — the train/val/test improvement is NOT leakage from this mechanism, high
+  confidence.** Built a third series (`forecastDateNoLeak`) excluding the 472 future-dated rows
+  and re-ran the identical backtest: **results are numerically IDENTICAL to the existing
+  `forecastDate` series at every level and model** (confirmed two ways: a row-level
+  itemcode+year_month merge-diff shows 0.0 total quantity difference; the full backtest re-run
+  matches MAE/RMSE/Bias/MASE to 6 decimal places). This is a mathematical consequence of Part 1's
+  finding (nothing was actually excluded within the window), not a new discovery, but it directly
+  answers the question asked: **the train/val/test improvement survives unchanged — it is not
+  explained by this specific leakage mechanism.**
+- **Part 3 — the direction conflict is NOT well explained by a smooth "window-position" effect
+  at Category/Type level; only partially at Item level — high confidence in the numbers,
+  corrects the earlier framing.** Per-origin Combination MAE, createDate vs forecast_date, across
+  all 7 rolling origins: at **Category and Type level, forecast_date gets steadily WORSE from
+  origin 1 through origin 6** (Category: +13% to +46% worse, monotonically worsening — the
+  opposite of a "closer to present is better" trend), **then abruptly reverses only at the exact
+  final origin** (train_size=25, the same split train/val/test used: Category -3.2%, Type
+  -5.0%). Correlation(train_size, %diff) is essentially zero at Category (-0.006) and weak at
+  Type (-0.178) — precisely because the trend runs the wrong way for 6 of 7 origins and the sign
+  flip is concentrated entirely in the last point. **Item level shows a real, moderate declining
+  trend** (correlation -0.679, +23% down to -9% roughly monotonically from origin 2 onward) —
+  genuine partial support for a gradual effect at this level only. **Verdict, stated directly:
+  the improvement is concentrated in ONE SPECIFIC 6-month test window (2026-02 to 2026-07), not
+  demonstrated to be a generalizable property of forecast_date-keying.** The prior "window-
+  position effect, moderate confidence, not proven" note (B1) is corrected, not silently
+  replaced — flagged explicitly in both places it was recorded, above.
+- **Part 4 — recommendation for future-dated rows (reasoning only, nothing implemented).** For
+  backtesting: add an explicit, automatic guard asserting the pull date is at least `HOLDOUT`
+  months past the test window's last month before scoring any window (a config-level check,
+  e.g. `backtest.require_closed_test_window: true`, enforced in code) — this task had to build
+  ad hoc tooling to confirm the window happened to be closed; that verification should be
+  automatic going forward, not manual. For Phase 4 live forecasts: future-dated rows are
+  confirmed, deterministic demand and should be treated like this project's existing MPS/Backlog
+  rows (Phase 1.5 locked decision — never dropped) — Phase 4's demand figure for a future period
+  should explicitly separate (a) already-booked order quantity (read from the order book) from
+  (b) a statistical forecast for the not-yet-placed remainder, reported as two components, not
+  blended into one number. Concrete enough to write into `config.yaml`/code next task; not done
+  here, per instruction.
+- **What the data could not resolve**: what specifically makes the 2026-02-to-2026-07 window
+  favourable to forecast_date-keying when 6 of 7 other windows are not (candidate factors — a
+  specific demand event, a seasonal effect, a data-completeness artifact — not tested); whether
+  this favourable window would persist if rolled forward as new data accrues (cannot be tested
+  without more data); the mechanism behind Item level's stronger but still moderate trend versus
+  Category/Type's near-absence of one.
+
+**Date-column Validator investigation — was `createDate` misread as the customer order date?
+DONE (2026-09-04).** Single Validator, per `AGENTS.md` (one coherent question, the date columns
+must be understood together, not split across agents). Motivated by the fact that
+`createDate` = PO-received was accepted at Phase 2 Step 1 from a within-table name-matching test
+(0 mismatches vs. the table's own `year`/`month` columns), never from behavioral proof, and a
+separate column `PODate` exists in the same table. INVESTIGATION ONLY: no code/config changed,
+nothing committed. Script: `src/datecol_validator_investigation.py`. Full report with every
+figure's source citation: `output/summary/datecol_validator_report.md`; supporting CSVs
+`output/summary/datecol_p*.csv`; charts `output/charts/datecol_*.png`.
+
+- **Part 1 — every date column mapped, high confidence.** `INFORMATION_SCHEMA.COLUMNS` confirms
+  (not assumed from memory) `cube_Sale_APD` has exactly 8 date/datetime columns: `createDate`,
+  `PODate`, `forecast_date`, `timeStamp`, `customer_entry`, `warranty_date`, `newCustomerDate`,
+  `plan_date`. Base scope (128 items, `division='PEM101'`, no other filter): 27,679 rows.
+  **createDate == PODate exactly on 99.9458% of rows (27,664 of 27,679); only 15 rows disagree,
+  ALL 15 with PODate EARLIER than createDate (never the reverse), median gap 8 days, max 44
+  days** — a small, one-directional data-entry-lag signature, not a systematic misread. **Focus
+  codes: 100.00% match, 0 mismatches out of 633 rows.** `timeStamp` is reconfirmed as a pure
+  ETL/refresh artifact (all 27,679 rows land on ONE calendar date spanning 64.2 seconds, and that
+  date has itself moved forward since the last check — 2026-08-30 in the earlier Phase 2 finding,
+  now 2026-09-03 — confirming it re-stamps on every reload). **createDate shows NO comparable
+  load-batch signature** (652 distinct calendar dates, max 0.42% of rows on any single date) —
+  createDate is NOT also a load artifact. **Weekday distribution**: createDate and PODate are a
+  clean 5-business-day spread with zero weekend rows; `forecast_date` is a completely different
+  shape (37.4% Friday, small nonzero weekend share) — confirming forecast_date is a scheduled
+  delivery-date concept, not a raw event date (honest limitation noted: the business-day-only
+  createDate/PODate pattern cannot itself distinguish "genuine customer ordering behavior" from
+  "business-side data entry only happening on business days"). **Cross-check against `Cube_CES`
+  (an independently-populated table, not a copy within the same row)**: 99.82% of rows join on
+  (contractid, itemcode); grain confirmed safe (0 of 70,826 pairs have >1 distinct `CtrDate`/
+  `ReceiveCtrDate`). **PODate matches `Cube_CES.CtrDate` and `.ReceiveCtrDate` at 100.000%**;
+  createDate matches both at 99.946% (same 15-row exception); `forecast_date` matches at only
+  6.49% (median/mean offset 6.0/10.8 days) — independently confirming forecast_date is a
+  genuinely different concept from the order/contract date. **Re-verified the task brief's cited
+  narrow-sample "`CtrDate`==`ReceiveCtrDate` 100%" note at full 128-item scope (not assumed
+  still true)**: on ALL `Cube_CES` statuses it drops to 86.95%, but this is explained, not a
+  contradiction — pre-contract stages (`P2`/CES-native-`MPS`/`N/A`/`P3`) have BOTH fields NULL
+  (not yet "received"), scored as non-equal by a strict day-diff without being a genuine
+  disagreement. Restricted to `Status IN ('Actual','Backlog')` (this project's established
+  `Cube_CES` basis): **99.921% identical (62,166 rows)** — confirms, at full scope, what the
+  prior narrow 3-period sample suggested.
+- **Part 2 — what is createDate, actually? Moderate-to-high confidence it is the true
+  order/contract date, not a record-creation artifact.** The record-creation-artifact hypothesis
+  predicts a load-batch/weekend-clustering signature and a large, one-directional gap against an
+  independent source; neither was found (createDate agrees with `Cube_CES.CtrDate`, populated by
+  a different process, 99.95% of the time). **Honest caveat, not force-resolved**: this cannot
+  fully rule out that createDate/PODate/CtrDate all really represent "when the contract was keyed
+  into these systems" rather than the literal moment of customer intent — no external,
+  non-database record exists to close that gap (same class of limitation as Phase A1's
+  unresolved `forecast_date`-revision question). **Re-keying quantification (same method as the
+  existing createDate-vs-forecast_date comparison, Phase A/B1, for direct comparability)**: only
+  7 of 27,665 modelling-scope rows (0.0253%) would move to a different calendar month if keyed on
+  PODate instead of createDate — qty moved 27 units (0.0008% of window total), sale moved
+  ₿49,335 (0.0071% of window total) — **three orders of magnitude smaller than the
+  createDate-vs-forecast_date re-keying (11.53% qty / 14.98% value)**, itself strong evidence
+  createDate and PODate are not meaningfully different fields.
+- **Part 3 — order notice recomputed on PODate: CONFIRMS, does not overturn, the existing 6-day
+  median, high confidence.** Same modelling scope and row set both ways: median 6.0 days
+  (createDate) vs 6.0 days (PODate); mean 10.92 vs 10.93; ≥30-day share 5.866% vs 5.892%; ≥60-day
+  and ≥90-day shares identical to 3 decimals. **Feb-Jul 2026 test window back-dated-entry check
+  (was there a batch of createDate-much-later-than-PODate rows explaining the Phase B1/B4
+  divergence?): NO, high confidence in this negative finding.** TEST window (2026-02 to
+  2026-07, 5,794 rows): only 4 rows (0.069%) show any createDate≠PODate gap, 18 units/₿38,835
+  affected (~0.002-0.024% of the window) — not even the highest of the three rolling windows
+  (TRAIN's rate is 0.072%; VAL shows zero such rows at all). This rules OUT the createDate/PODate
+  back-dating mechanism specifically as an explanation for the B1/B4 anomaly; it does not
+  identify the true cause, which remains open (already recorded as such in the B4 log entry
+  above) — stated explicitly as correlation-not-mechanism, per instruction.
+- **Part 4 — recommendation: no change needed, and NO CONTRADICTION with STATUS.md.** createDate
+  and PODate are functionally the same field for every purpose tested here; continue keying
+  order-intake/notice-period metrics on createDate (or PODate, interchangeably). **This finding
+  does not touch the separate, already-recorded Phase A/B1 recommendation to key the
+  INVENTORY-AVAILABILITY series on `forecast_date`** — that recommendation concerns a completely
+  different pair of concepts (order date vs. delivery date), reconfirmed here as genuinely
+  distinct (6.49% exact match, ~6-10 day offset). Per instruction, explicitly flagging whether
+  this reverses STATUS.md's Phase 1.5/Phase 2 Step 1 assumption that createDate = PO received:
+  **it does not reverse it — it independently CONFIRMS it**, now via cross-table behavioral
+  evidence rather than a within-table name-matching test. The task brief's premise that this
+  assumption "was inherited and never tested" is now closed: it has been tested, and held up,
+  with one narrow (0.054% of rows, always-lagging, non-blocking) exception recorded above.
+- **What the data could not resolve**: whether createDate/PODate/CtrDate record the literal
+  moment of customer order intent vs. contract-entry date (needs an external non-database record
+  or IT/business confirmation — undetectable otherwise, same class as Phase A1's open item); the
+  mechanism behind the 15 rows (0.054%) where createDate lags PODate by up to 44 days (too rare
+  to chase further, ₿0.13M total value, non-blocking); what actually explains the Feb-Jul 2026
+  rolling-origin-vs-train/val/test divergence (this task rules out one specific candidate
+  mechanism, does not identify the true cause — already an open item, not newly created here);
+  the business reason two separately-named fields (`CtrDate`/`ReceiveCtrDate` in `Cube_CES`;
+  `createDate`/`PODate` in `cube_Sale_APD`) exist for what is, on the Actual/Backlog basis, a
+  >99.9%-identical value (needs the source system's own documentation or IT confirmation).
+
+**Modeler tasks 1-3 (window explanation, leakage guard, conditional item policy) — DONE
+(2026-09-04).** Single Modeler, per the task brief's own decomposition note (the three tasks are
+sequential/dependent -- Task 1's finding about window representativeness bears directly on how
+Task 3 must be interpreted, so not split across agents). Scripts:
+`src/task1_item_isolation_rolling_origin.py`, `src/task1_large_order_examination.py`,
+`src/leakage_guard.py` (+ edits to `src/backtest_rekeyed.py`, `src/leakage_check_forecastdate.py`),
+`src/task2_leakage_guard_test.py`, `src/task3_conditional_item_policy.py`. Outputs:
+`output/summary/task1_*.csv`, `task3_*.csv`; charts `output/charts/task1_seven_origin_with_without_item.png`,
+`task1_large_order_concentration.png`, `task3_rolling_origin_approach_comparison.png`,
+`task3_share_distribution.png`. Per role boundary (`AGENTS.md`): this Modeler reports performance
+only -- no model/policy choice is written to `config/config.yaml` for Task 1 or Task 3; Task 2's
+config change is the one explicitly-instructed exception.
+
+- **Task 1 -- does excluding `EEE-F-FC-1040010002` explain the origin-7 (Feb-Jul 2026) reversal?
+  NO, high confidence, at every level tested -- the item is not the cause.** Full 7-origin
+  rolling-origin rerun (`output/summary/task1_rolling_origin_item_excluded.csv`,
+  `task1_per_origin_with_without_comparison.csv`, `task1_reversal_verdict.csv`), Combination
+  model, both date keys, Category="Fuse" and Type="High Voltage Distribution Fuse Cutout"
+  rebuilt with vs. without the item (reusing `bias_item_isolation.build_group_series`), Item
+  level via the existing cross-item mean (112 vs. 111 items, same convention as B2).
+  - **Correction/clarification to how `b4_per_origin_comparison.csv`'s existing Category/Type
+    rows should be read**: those rows are POOLED means across BOTH categories (Fuse, Surge
+    Arrester) and all 8 Types in scope respectively -- NOT Fuse-specific or Fuse-Cutout-Type-
+    specific figures, confirmed by direct recomputation (mean of Fuse's and Surge Arrester's own
+    origin-7 Combination MAE, 25534.86 and 3677.86, averages to exactly the 14606.36 the existing
+    b4 "Category" row reports). This is not a contradiction of B4's numbers (they are correct as
+    computed) but a reading-caveat future use of that file should carry forward.
+  - **Category level, isolated to "Fuse" alone**: origin 7 is essentially a WASH, not a
+    reversal -- WITH the item, createDate MAE=25534.86 vs. forecast_date MAE=25606.21 (forecast_date
+    +0.3%, i.e. very slightly WORSE, not better); WITHOUT the item, +3.3% (still not better). The
+    "Category-level reversal" the pooled b4 figure showed is driven by Surge Arrester (the
+    control, structurally unrelated to this item), not by Fuse.
+  - **Type level (the item's own Type), isolated**: WITH the item, origin 7 forecast_date is
+    38.9% better (MAE 2281.55->1393.69); WITHOUT the item, forecast_date is 68.7% better
+    (590.50->185.03) -- the advantage gets LARGER, not smaller, once the item is excluded. Also
+    found: WITH the item, the per-origin pattern at this isolated Type is already mixed (origins
+    2-4 show forecast_date better by 25-30%), not the clean "worse-then-reverse" the pooled
+    8-Type b4 figure showed -- another consequence of the pooling-across-groups artifact above.
+  - **Item level (cross-item mean)**: origin 7, WITH the item -9.3% vs. WITHOUT -7.9% -- barely
+    moves (1 of 112 items in an arithmetic mean), reversal persists essentially unchanged.
+  - **Verdict: the reversal does NOT disappear at any level -- it persists everywhere tested and
+    actually STRENGTHENS at Type level. `EEE-F-FC-1040010002` is not the explanation for the
+    aggregate-level origin-7 anomaly.**
+- **Task 1, part 2 -- order-timing examination: a real, item-and-window-SPECIFIC smoothing
+  pattern exists, moderate-to-high confidence, but does not by itself explain the aggregate
+  finding above.** `output/summary/task1_large_order_concentration_summary.csv`,
+  `task1_orders_anomalous_window_detail.csv`, `task1_orders_contrast_window_detail.csv`. "Large
+  order" defined explicitly as row qty >= the item's own 90th percentile of row qty over its full
+  history (192.7 units) -- used as a labelled secondary/robustness check only, since it leaves too
+  few rows (6 in-window, 1 in the contrast window) to be the primary evidence; the PRIMARY
+  analysis uses ALL orders in each window (116 rows anomalous, 11 contrast), which gives the same
+  qualitative answer.
+  - Anomalous window (forecast_date in Feb-Jul 2026), ALL orders: createDate-month HHI=0.284 (7
+    months touched) vs. forecast_date-month HHI=0.213 (6 months) -- forecast_date IS more spread
+    out (lower HHI = less concentrated) than createDate here. Large-orders-only (n=6): same
+    direction, HHI 0.500->0.389.
+  - Contrast (same item, Feb-Jul 2025, non-anomalous per Task 1 part 1): the pattern REVERSES --
+    createDate HHI=0.325 vs. forecast_date HHI=0.413 (forecast_date is MORE concentrated here,
+    not less).
+  - Contrast (other two focus items, SAME Feb-Jul 2026 window): both also show the opposite
+    direction (`HS-F-99-02110`: createDate 0.300 vs. forecast_date 0.405; `HS-F-99-0213`: 0.356
+    vs. 0.459) -- forecast_date is MORE concentrated for these items in the identical window.
+  - **The smoothing pattern is real and specific to this item AND this window** (confirmed on
+    both the all-orders and large-orders lenses), consistent with Task 1's brief. Also noted:
+    total order-row volume for this item is far higher in the 2026 window (116 rows) than the
+    2025 contrast window (11 rows) -- the 2026 window is this item's Phase-A-documented demand
+    recovery period, so there is simply more order-level granularity available to smooth,
+    itself a plausible contributing structural reason this pattern shows up only here.
+  - **Overall Task 1 conclusion, stated plainly per instruction: the origin-7 window is NOT
+    explained.** The item shows a genuine, specific order-timing signature in exactly this
+    window (part 2) -- real evidence it contributes something -- but removing it from every
+    aggregate level tested does not make the aggregate-level reversal disappear, and it actually
+    strengthens at Type level (part 1). The two findings do not contradict each other (an
+    item can have a real micro-level pattern without being the dominant driver of an aggregate
+    statistic averaged over ~113-128 other series), but together they rule OUT this item as the
+    explanation for the anomaly without providing a replacement one. High confidence in both
+    individual computations; the anomaly itself remains UNRESOLVED, consistent with -- not a
+    reversal of -- B4's own "what the data could not resolve" note above.
+- **Task 2 -- leakage guard: built, wired in, and verified working; the pre-existing backtest
+  numbers are unchanged, high confidence.** `config/config.yaml` gained a new documented
+  `leakage_guard.min_margin_days: 30` section (reasoning: this project's own order-notice
+  evidence below -- median 6-day notice, only 5.9% of orders give >=30 days -- means the
+  overwhelming majority of orders due in a given month are already entered well within 30 days of
+  that month's end, so 30 days is the smallest margin that safely clears this project's monthly
+  granularity while staying evidence-grounded, not arbitrary; the real data's actual gap is 33
+  days, so the real default passes by a deliberately narrow margin, not a generous one). New
+  module `src/leakage_guard.py` (`check_window_closed`, `LeakageGuardError`,
+  `load_min_margin_days`) wired into `src/backtest_rekeyed.py`'s `run_rolling_origin` and
+  `run_train_val_test` (both now REQUIRE `pull_date`/`min_margin_days`, raising loudly -- never
+  skipping/warning -- if `pull_date - window_end < min_margin_days`, stating the window end date,
+  pull date, required margin and actual gap in the exception message) and into the only other
+  caller of those two functions, `src/leakage_check_forecastdate.py`.
+  - **Normal run unchanged, confirmed by direct diff**: re-ran `src/backtest_rekeyed.py` with the
+    real config (30) and real data (pull_date=2026-09-02 15:52:39, real gap=33 days, passes) --
+    the regenerated `b1_rolling_origin_results_{key}.csv`, `b1_test_results_{key}.csv`, and
+    `b1_val_results_{key}.csv` are BYTE-FOR-BYTE IDENTICAL to the pre-guard versions (diffed
+    directly): only a refusal path was added, no scoring numbers changed.
+  - **Guard tested without touching config.yaml** (`src/task2_leakage_guard_test.py`, output
+    captured verbatim): a direct override `min_margin_days=1000` and a boundary override of 34
+    (exactly 1 day more than the real 33-day gap) both raised `LeakageGuardError` with the
+    required message -- e.g. "Window end (last month of the test window): 2026-07-31 (month
+    2026-07). Data snapshot pull date: 2026-09-02. Required margin ...: 1000 day(s). Actual
+    margin: 33 day(s)." An override of exactly 33 (the real gap) PASSED with no exception,
+    confirming the boundary (`actual_gap_days < min_margin_days`) is exact, not off-by-one. An
+    end-to-end call through `backtest_rekeyed.run_train_val_test` itself (not just the standalone
+    unit function) with the same override=1000 also raised correctly, proving the guard is wired
+    into the real backtest function, not only tested in isolation. `config/config.yaml` was
+    verified unchanged (re-read after the test) throughout -- every violating scenario passed its
+    override as a function argument, never by editing the file.
+- **Task 3 -- Conditional (share-of-Type-dependent) item-level policy: does NOT earn its added
+  complexity, high confidence for the more aggressive thresholds, moderate for the Direct-vs-
+  Top-down question itself.** `src/task3_conditional_item_policy.py`, forecast_date-keyed (B3's
+  own choice, reused here for direct comparability -- **explicitly NOT an endorsement of
+  forecast_date's absolute performance level**: Task 1 above and the existing B4 finding show
+  forecast_date's rolling-origin advantage is concentrated in origin 7 alone and reverses across
+  the other 6 origins, which is exactly why this task treats all-7-origin rolling-origin as
+  PRIMARY and the single train/val/test split -- the SAME origin-7 window -- as SECONDARY ONLY,
+  per instruction, rather than picking a policy off the one window already flagged as
+  unrepresentative). Not re-tested against createDate here (a stated scope choice, same
+  convention B3 itself used).
+  - **Thresholds tested: 5/10/20/30/50%** of an item's share of its Type's qty, recomputed FRESH
+    at every origin's own training window (never a fixed global share) -- chosen to spread across
+    the observed share distribution (median 0.5%, 90th pct 22.2%, 95th pct 32.9%) so each
+    threshold classifies a genuinely different number of items Top-down-eligible: 24, 17, 13, 7,
+    4 of 113 items respectively (`output/summary/task3_per_item_classification.csv`, all 128
+    scope codes covered -- 113 scored, 15 with zero sales history anywhere marked excluded, same
+    convention as `src/load_data.py`). **Correction to this task's own brief**: direct
+    recomputation of B3's exact share_of_type methodology finds 7 of 113 items >=30% share at the
+    train+val window, not "only 1" as the brief stated -- flagged explicitly; does not change the
+    instruction to test multiple thresholds.
+  - **PRIMARY evaluation (rolling-origin, pooled across all 7 origins x 113 items,
+    `output/summary/task3_rolling_origin_summary_overall.csv`)**: pure Top-down has the lowest
+    point-estimate MAE (424.20) vs. Direct (428.40) and EVERY Conditional threshold (427.5-429.9)
+    -- every Conditional variant is worse, not better, than applying Top-down uniformly to all 113
+    items.
+  - **Significance testing** (`output/summary/task3_paired_significance_primary_per_item.csv`):
+    PRIMARY aggregation = mean-per-item-across-origins (n=113 items) before pairing, justified
+    because the 7 origins for the same item are not independent draws (overlapping training
+    windows over the same autocorrelated series -- pairing at item x origin grain would
+    pseudo-replicate and understate the true standard error); item x origin grain (n up to 791)
+    also computed as an explicitly-flagged, likely-anti-conservative robustness check
+    (`task3_paired_significance_robustness_item_x_origin.csv`), same qualitative pattern.
+    Direct vs. Top-down: t=-1.23, NOT significant. Top-down vs. Conditional at 5/10/20%: t=2.14/
+    2.38/2.32 -- ALL clear |t|>2, Conditional is MEASURABLY WORSE than pure Top-down at these
+    thresholds. Top-down vs. Conditional at 30/50%: t=1.16/1.01, not significant (converges
+    toward pure Top-down as fewer items get reverted to Direct). Direct vs. any Conditional
+    threshold: never significant.
+  - **SECONDARY (single train/val/test split, B3's original window -- flagged as the SAME window
+    Task 1 shows is not representative)**: Top-down still best (341.6) vs. Direct (350.0) and
+    Conditional variants (343.2-350.1), consistent with B3's original result, but now explicitly
+    known to be drawn from an atypical origin, not a stand-alone confirmation.
+  - **Verdict, stated directly per instruction: no Conditional threshold earns its complexity.**
+    It never beats Direct or Top-down with statistical confidence, and at the more aggressive
+    thresholds (5/10/20%) it is measurably WORSE than simply applying Top-down uniformly. Pure
+    Top-down has the best rolling-origin point estimate, but its own edge over Direct does not
+    clear conventional significance (|t|=1.23) -- so even the simpler Direct-vs-Top-down choice
+    is directionally favourable to Top-down but NOT decisively proven by this evidence. **No
+    policy choice is written to `config.yaml`, per instruction.**
+  - **Extends, does not contradict, B3's "no approach clearly better" finding** -- with a full
+    7-origin rolling-origin re-test and a new Conditional approach added, still no approach beats
+    Direct with significance, and Conditional specifically is now shown to be significantly worse
+    than pure Top-down at several thresholds -- a new, more decisive negative finding for
+    Conditional that B3's single split could not have produced (B3 never built a Conditional
+    approach).
+- **What Tasks 1-3 could not resolve**: the true cause of the origin-7 (Feb-Jul 2026)
+  createDate-vs-forecast_date reversal (Task 1 rules out the dominant item as sole cause, a new
+  negative finding, but does not identify a replacement cause -- consistent with, not a reversal
+  of, B4's existing "what the data could not resolve" note); whether pure Top-down (applied to
+  every item, not just share-dominant ones) is genuinely better than pure Direct at item level --
+  directionally favoured by the rolling-origin point estimate but not statistically confirmed;
+  whether createDate-keyed data would show a different Task 3 ranking (not tested, stated scope
+  choice matching B3).
+
+**Phase B's three remaining parallel open items (cross-division demand, no-history/no-sale items,
+forward-test log rebuild) -- DONE (2026-09-04), three parallel agents per `AGENTS.md` (independent
+of each other's results, different capabilities: Explorer+Analyst / Explorer+Validator / Modeler),
+merged by a Synthesizer.** Full detail, every figure's citation, and confidence levels in
+`output/summary/synthesis_report.md`; source reports `output/summary/task1_crossdivision_report.md`,
+`task2_noHistoryItems_report.md`, `task3_forwardTestRebuild_report.md`. No git action taken; no new
+data gathered by the Synthesizer.
+
+- **Cross-division demand (Task 1, Explorer+Analyst) -- two valid measurements, genuinely
+  different magnitudes, both reported per `AGENTS.md` rule 9, no side taken.** Method A
+  (replicates the original 68-item pilot methodology, holds only `itemcode` fixed): **₿85.5M
+  excluded, 10.66%** of the all-division total for the 128-item scope, 47/128 items exposed.
+  Method B (isolates division only, holding `revenue_type='Omni Channel'`+`status IN
+  ('Actual','MPS')` fixed -- this project's actual channel/status scope): **₿2.96M excluded,
+  0.42%**, 36/128 items exposed. High confidence in both, direct query + pandas aggregation on one
+  shared raw pull (`output/data/task1_crossdiv_raw_128items_alldivisions.csv`). **New finding,
+  moderate-to-high confidence**: the historical ₿60.6M/14.3% figure (68-item pilot, Phase 2 audit
+  note above) was never purely cross-division -- 67.4% of Method A's ₿85.5M traces to ONE item
+  (`EEE-F-FC-1040010002`, division `PPS`, 100% `revenue_type='Tendering'`, not Omni Channel), i.e.
+  it always mixed in a cross-CHANNEL effect, not previously separated out here. Method B is small
+  and mildly declining over time (1.00% in 2024-H1 to 0.22-0.29% by 2026), not growing. **Whether
+  PEM101 physically shares stock with the other divisions is UNRESOLVED -- the database cannot
+  show this** (no warehouse field on any sales row; the inventory table's own Division field uses
+  an unrelated code space; zero contracts span more than one division; no transfer table exists) --
+  stopping rule applied, owning teams named (IT/ERP or Finance for identifying `PPS`/`PTS`/`PSS`
+  and any inter-company arrangement with `PCE101`/`PPD101`, confirmed separate legal entities from
+  PEM; Warehouse/Operations for physical stock-sharing). **Three options queued for the human, not
+  decided**: include all divisions (but which method's figure -- a 25x difference), keep PEM101
+  only plus a documented per-item uplift, or forecast other divisions as a separate series.
+- **No-history/no-sale items (Task 2, Explorer+Validator) -- true population is 16, not 31.**
+  **CORRECTION to this file's own Phase B remaining-work text above** ("the 16 items with no
+  history and 15 with no sales"): a fresh live query (`output/summary/task2_q1_std_filter_per_item.csv`,
+  `task2_q2_any_activity_per_item.csv`) finds **no second bucket of 15 items with rows present but
+  zero total qty/sale exists at this scope** -- among the 112 of 128 items with any row under the
+  standard filter, the minimum `SUM(qty)` is 1.0 and minimum `SUM(sale)` is 720.0; nothing nets to
+  zero. The true excluded population is **16 items total** (zero rows under the standard filter),
+  of which 15 have zero rows anywhere in the table under any filter at all (a SUBSET of the 16, not
+  an additional 15), and the 16th (`EEE-F-FL-5920-353-02600`) has rows but 100% tagged
+  `revenue_type='Tendering'`. **This directly contradicts the "31-item" figure previously recorded
+  in this file's Phase B remaining-work note -- stated explicitly here per `AGENTS.md` rule 4, not
+  silently corrected.** High confidence (direct live SQL query, both SUM floors strictly positive).
+  Of the 16: **6 classified "(d) Listed but never sold"** (high-to-moderate confidence); **6
+  classified "(b) Sold outside this project's filter"** (confidence varies by item, moderate to
+  high -- one, `EEE-F-FL-5920-353-02600`, high confidence, sold exclusively via Tendering, and this
+  independently CORROBORATES Task 1's own per-item finding for the same item under Method A --
+  ₿3.05M PEM101 vs. ₿3.50M other-division/PSS/53.4% -- the two tasks agree where they touch, no
+  contradiction found); **4 cannot be classified cleanly** (genuine mixed evidence: real pre-2024
+  Omni-Channel/PEM101 history predating the modelling window, or live unconverted quotes mixed with
+  ambiguous channel history). **0 items** land cleanly as "(a) new" or "(c) discontinued" -- no
+  pricelist-version or status-field evidence supports either label for any of the 16. Per-class
+  options (borrow Type profile / manual placeholder / exclude / a fourth option Task 2 itself
+  added -- build from the item's own `Cube_CES` history) presented with trade-offs, not decided.
+- **Forward-test log rebuild (Task 3, Modeler) -- built, tested, working; no decision queued, a
+  build task.** Old log (58 items, `createDate`-keyed, 6 models scored separately -- all three now
+  wrong given current scope/keying/adopted-model decisions) archived, not deleted
+  (`output/summary/archive/`). New log `output/summary/forward_test_log_v2.csv`, **828 rows** (768
+  Item-level [113 real Top-down forecasts + 15 forced-exact-zero for items with no sales history
+  anywhere -- mathematically identical to what Top-down produces for zero history, not a
+  placeholder] + 48 Type-level + 12 Category-level, all Combination/Top-down-Combination per the
+  already-adopted Phase 2/B3 choices), built on the existing frozen `forecast_date`-keyed pull
+  (2026-09-02 15:52:39, 31 months through 2026-07) rather than a fresh pull, since a fresh pull
+  would not unlock any additional fittable month given the 30-day leakage-guard margin -- reasoned,
+  not an oversight. 0 negative forecasts; `actual_qty` empty for all 828 rows, nothing fabricated.
+  **The new consistency guard (`score_forward_test_v2.py`) is confirmed working, not just built**:
+  tested with 3 deliberate mismatches (stale config, wrong date key, stale scope) against real
+  production files copied to a scratch location -- all 3 correctly refused to score
+  (`ForwardTestConsistencyError`); the real, current log passes cleanly. **First scoreable target
+  month is 2026-08, safe to score only from 2026-09-30** (per the project's own 30-day leakage-guard
+  margin, re-used here for scoring, not just backtesting -- stricter than the old script's
+  plain-calendar rule, which would have already called 2026-08 "complete" today). No model/policy
+  choice newly decided; the item-level Top-down approach it builds on remains, per the existing
+  Modeler-tasks-1-3 log entry above, directionally favoured but NOT statistically significant over
+  Direct (t=-1.23) -- flagged again here for the human's awareness since this log is the first
+  artifact that will actually get scored against it.
+- **Unresolved / queued for human decision, consolidated across all three tasks**: (1) which
+  cross-division figure/method (₿85.5M Method A vs. ₿2.96M Method B) and which of the three
+  presented options should feed Phase 4 planning; (2) whether PEM101 physically shares stock with
+  PCE101/PPD101/PPS/PTS/PSS -- needs IT/ERP, Finance, and Warehouse/Operations, not resolvable from
+  this database; (3) which per-class treatment applies to each of the 16 no-history/no-sale items,
+  and business confirmation for the 4 that cannot be classified cleanly; (4) meaning of several
+  `Cube_CES.Status`/`cube_inventory_tran.transtype`/warehouse-code values surfaced by Task 2, not
+  previously documented at this granularity -- needs CRM/ERP, sales operations, and the warehouse
+  team respectively; (5) nothing queued from Task 3 (a build task), but its dependence on a
+  not-yet-statistically-confirmed Top-down choice is flagged for awareness, not re-decided here.
+
+**Phase B closeout: decisions recorded, tests written, end-to-end pipeline built — DONE
+(2026-09-04).** Single agent, per `AGENTS.md` ("Writing tests and the pipeline uses a single
+agent, because it needs the whole codebase in view to place tests and wire a run order
+consistently, not a chunk of it in isolation"). No new investigation performed — this task
+closes Phase B by recording the decisions already evidenced above (see the four new Locked
+Decisions: cross-division scope, the 6 excluded items, the 10 placeholder items, and the final
+Top-down combination method) into `config/config.yaml`, then writes the tests `CONVENTIONS.md`
+has required since the start, and builds `src/run_pipeline.py`.
+
+- **Tests (`tests/`, pytest)**: 31 tests across three files — `test_data_invariants.py` (9,
+  `src/load_data_full.py`'s `validate_raw`/`aggregate_monthly`: negative qty/sale rejected,
+  out-of-range/anomalous dates rejected, monthly totals reconcile exactly to the daily source
+  under both date keys, item counts stay consistent before/after processing including a
+  zero-history item), `test_model_invariants.py` (10, `src/models.py`/
+  `src/item_level_reconciliation.py`: no base-model or Combination forecast is ever negative
+  including all-zero/mostly-zero edge cases, Combination equals the exact arithmetic mean of
+  the six adopted base models, Top-down item forecasts sum EXACTLY to their Type's forecast,
+  a zero-history Type does not produce NaN), `test_guards.py` (12, `src/leakage_guard.py`/
+  `src/score_forward_test_v2.verify_consistency`: the leakage guard raises on an insufficient
+  margin and on an exact-one-day-short boundary, passes on an exact-boundary and generous
+  margin, and raises loudly on a missing config section; the forward-test consistency check
+  raises on a config-hash, series-key, item-approach, or scope mismatch, and passes when
+  everything matches the current state). **All 31 pass; none required a fix to the underlying
+  code** — every invariant the tests check was already correctly enforced by the code written
+  during Phase B, so this task only added the tests, it did not find or fix a bug. Uses small
+  synthetic DataFrames/arrays, not committed output files (CONVENTIONS.md: never commit
+  generated output; a fresh clone has none) or a live database connection, so the suite is
+  deterministic and runs in under 4 seconds without credentials. `pytest==9.1.1` pinned in
+  `requirements.txt` (CONVENTIONS.md: pin library versions).
+- **Pipeline (`src/run_pipeline.py`)**: runs six stages in order, each an existing,
+  already-tested script from `src/` run as a subprocess of the same interpreter (so a stage
+  failure raises loudly with the full stdout/stderr attached, never silently continues) —
+  `load_data_full.py` (pull + validate + aggregate to monthly, both date keys) ->
+  `aggregate_levels.py` (Category/Type/Item level stats) -> `item_level_reconciliation.py`
+  (Direct/Top-down/Reconciled item-level forecasts) -> `backtest_rekeyed.py` (rolling-origin +
+  train/val/test backtest, per the evaluation policy above) -> `forward_test_v2.py` (the
+  production forward-test log, Top-down combination) -> `score_forward_test_v2.py` (scores
+  whatever target months are safe to score). Every parameter comes from `config/config.yaml`
+  via the stage scripts themselves; `run_pipeline.py` only sequences them. Every run appends
+  one row to `output/summary/pipeline_run_log.csv` (config hash, the frozen
+  `snapshot_pull_date`, row counts at every stage's key outputs, per-stage duration) and
+  overwrites `output/summary/pipeline_run_log_latest.json` with the full detail of that run,
+  plus `output/summary/pipeline_run_manifest.csv` listing every output file the run produced.
+  Two full runs on 2026-09-04 (14:42:47 and 14:51:11, ~9 minutes apart, before and after the
+  script reorganisation below) both completed in 25-35 seconds with identical
+  `config_hash=5be9f3abfc9d` and identical row counts at every stage.
+- **Reproducibility check (2026-09-04, per this task's instruction — compared against
+  STATUS.md's own recorded figures, not adjusted to force a match either way)**:
+  - **Raw pull row count matches exactly.** The pipeline's fresh pull under the standard
+    filter (division=PEM101, revenue_type=Omni Channel, status Actual/MPS, createDate>=
+    2024-01-01) returned **27,665 rows**, identical to the "27,665 modelling-scope rows"
+    figure the same-day (2026-09-04) `datecol_validator_investigation.py` pull independently
+    reported (see that dated log entry above) — an exact match between two independent pulls
+    made hours apart the same day, both against a live, still-growing table.
+  - **The 16-item no-history/no-sale classification reproduces exactly.** The pipeline's
+    `get_category_scope` (`has_any_history`, a broader "any row anywhere in the table"
+    check) marks 15 items as having zero history at all, and its narrower
+    division/channel/status filter leaves 112 of the remaining 113 with any in-scope
+    activity (`EEE-F-FL-5920-353-02600` has table-wide rows but zero under the Omni Channel
+    filter, since its only rows are Tendering) — the identical 15/112/1 split Task 2's
+    classification work found on 2026-09-04, and the same 6 excluded / 10 placeholder codes
+    now recorded in `config.yaml` reproduce exactly against `task2_per_item_classification_
+    final.csv`.
+  - **Total demand does NOT match exactly, and this is reported rather than adjusted.** The
+    pipeline's fresh pull totals **3,384,309 units / ฿697,639,463**, against the **3,348,542
+    units / ฿689,580,695** recorded in this file's "Phase 3.1 — Category/Type-level top-down
+    expansion" section for the 2026-08-31 pull — a +1.07% / +1.17% difference. **Cause: real
+    growth in the live source table over the ~4 days between pulls**, consistent with the
+    magnitude of every other pull-to-pull difference already documented in this project (e.g.
+    B1's "-2.52% in-window qty this run, vs. -2.17% in Phase A — the small difference is real
+    data growth between pulls, stated explicitly, not drift in method"). Not investigated
+    further here, per the stopping rule — this is the same, already-understood phenomenon,
+    not a new one.
+  - Item-level test-score row count (339 = 113 items x 3 approaches) and rolling-origin/
+    train-val-test row counts are structurally consistent with the scope sizes recorded
+    throughout Phase B; not cited individually since STATUS.md never recorded them as
+    standalone headline figures to check against.
+- **Script reorganisation (`src/investigations/`)**: of 71 scripts in `src/`, **13 are
+  pipeline components** (kept in `src/`: `db.py`, `pricelist_reader.py`, `models.py`,
+  `leakage_guard.py`, `load_data_full.py`, `aggregate_levels.py`,
+  `item_level_reconciliation.py`, `backtest_rekeyed.py`, `forward_test.py` [still imported
+  for `config_version()`], `forward_test_common.py`, `forward_test_v2.py`,
+  `score_forward_test_v2.py`, `run_pipeline.py`) and **58 were one-time investigations**,
+  moved to `src/investigations/` with a README mapping each to what it examined and which
+  STATUS.md entry it supports (`src/investigations/README.md`). Nothing deleted. Moving
+  changed each moved script's `PROJECT_ROOT` (now three directory levels up, not two) and
+  `sys.path.insert(...)` (now pointing at `src/`, so sibling imports like `from db import
+  run_query` still resolve) — mechanical fixes only, no logic changed. **Verified, not
+  assumed**: every moved script still imports cleanly from its new location, and a sample
+  script (`granularity_test.py`) was executed directly from `src/investigations/` after the
+  move and completed successfully, confirming the path fixes work end to end, not just at
+  import time.
+
 ## 3. Business Findings
 
 These describe how this business actually operates, established from data investigation (not
@@ -2114,6 +2759,67 @@ phase, particularly Phase 4. Full methodology, confidence levels and caveats are
   of current on-hand stock); which of the remaining warehouse codes hold genuinely SELLABLE
   Finished Goods stock could not be confirmed from data (no sales table has a warehouse field)
   and must be confirmed by the business.
+- **Cross-division demand: keep the Omni Channel scope (2026-09-04).** Under this project's
+  actual channel/status filter (`revenue_type='Omni Channel'`, `status IN ('Actual','MPS')`,
+  the same Method B measurement as the 2026-09-04 Task 1 log entry above), demand excluded by
+  the `division='PEM101'` filter is **₿2.96 million, 0.42%** of the 128-item scope total — small
+  enough to document as a known exclusion rather than model. This supersedes the earlier
+  ₿60.6 million (14.3%) figure as the basis for this decision: that larger number (Method A,
+  which holds only `itemcode` fixed, ignoring channel) was found on 2026-09-04 to be mostly
+  **Tendering-channel sales of `EEE-F-FC-1040010002` through division `PPS`** (67.4% of Method
+  A's ₿85.5M full-scope figure), which is outside this project's Omni Channel scope **by
+  design**, not an omission — mixing in a cross-channel effect the original ₿60.6M figure never
+  separated out. **Whether that Tendering demand draws from the same physical stock as this
+  project's Omni Channel items is an open question for the warehouse team, not something the
+  data can answer** (no warehouse field exists on any sales row, and no transfer table links
+  divisions) — carried forward in Open Questions below, not resolved here.
+- **Six pricelist items excluded from Max-Min: never sold (2026-09-04).** These 6 codes are
+  listed in the pricelist but have **zero rows in `cube_Sale_APD` under any filter, zero rows in
+  `Cube_CES`, `cube_inventory_tran`, `Cube_Inventory_Exact`, and `Cube_Quotation`** — classified
+  "(d) Listed but never sold" by the 2026-09-04 no-history-items investigation
+  (`output/summary/task2_per_item_classification_final.csv`). Excluded from Max-Min because
+  there is nothing to plan against — no demand history of any kind exists anywhere in the
+  database to build a policy from. Codes: `EEE-F-FL-1040030100`, `HS-F-99-0181`,
+  `HS-F-99-1181`, `HS-F-99-1211H22`, `HS-F-99-1241H03`, `HS-F-99-3031`. Recorded in
+  `config/config.yaml` (`excluded_item_codes`).
+- **Ten items given a placeholder forecast: sold only outside this project's filter, or
+  unclassifiable (2026-09-04).** These 10 codes have real transaction history somewhere (unlike
+  the 6 above), but either outside this project's division/channel scope (6 codes, classified
+  "(b) Sold outside this project's filter" — Tendering channel, a different division, or both)
+  or with genuinely mixed evidence that cannot be classified cleanly (4 codes — a real
+  pre-2024 Omni Channel/PEM101 history predating the modelling window, or live unconverted
+  quotes mixed with ambiguous channel history; see the same classification CSV for the
+  per-item evidence and confidence level). Until the business confirms their status, each
+  receives a **placeholder forecast equal to the average demand profile of its own Type**
+  (i.e. treated the same way a Top-down allocation would treat an item with a typical share of
+  its Type, rather than the zero a true no-history item gets) — not zero, and not a real
+  item-specific forecast, since real sales activity exists for all 10. Codes:
+  `FC-A-38-00203`, `EEE-F-FL-5920-353-01100`, `EEE-F-FL-5920-353-01600`,
+  `EEE-F-FL-5920-353-02600`, `EEE-F-FL-5920-353-06600`, `HS-F-99-1151`, `HS-F-99-2091N`,
+  `HS-F-99-3121`, `HS-F-99-3331`, `HS-F-99-3361`. Recorded in `config/config.yaml`
+  (`placeholder_item_codes`).
+- **Final forecasting method: Top-down combination (2026-09-04, closing Phase B).** Forecast at
+  Type level using the arithmetic mean of the six base models (Naive, MA3, MA6, MA12, Croston,
+  SBA — `src/models.py combination_forecast`), then allocate to items by each item's historical
+  qty share of its Type over the fitting window (`src/item_level_reconciliation.py`'s Top-down
+  branch). Reason: Phase B3 (2026-09-02) found no approach (Direct/Top-down/Reconciled)
+  statistically beats another with significance, but Top-down had the best point estimate at
+  every level tested, and the Modeler-tasks-1-3 re-test (2026-09-04) reconfirmed pure Top-down
+  beats every Conditional (share-threshold) variant with significance while never losing to
+  Direct — the simplest defensible choice, not a decisively proven one (recorded as such, not
+  overstated). **Evaluation policy**: rolling-origin (all 7 origins pooled) is the PRIMARY
+  measure; the single train/validation/test split is SECONDARY only, because Task 1
+  (2026-09-04) showed the final train/val/test window (origin 7, Feb-Jul 2026) behaves
+  anomalously for reasons that remain unresolved (the createDate-vs-forecast_date reversal
+  persists at every level tested and could not be explained by the dominant focus item alone —
+  see the Modeler-tasks-1-3 log entry above) — a single window already flagged as
+  unrepresentative must not be the primary basis for locking in a method. **Series key**: the
+  demand series is keyed on `forecast_date`, captured as a **frozen snapshot at time of use**
+  (the `snapshot_pull_date` column written by `src/load_data_full.py`), never a live re-query —
+  Phase A could not rule out `forecast_date` being revised after PO intake, so treating it as
+  ever-changing would make results non-reproducible across runs. All four of method, evaluation
+  policy, and series key are recorded in `config/config.yaml` (`forecast_method_final`,
+  `evaluation_policy`, `adopted_series_key`).
 
 ## 5. Open Questions
 
@@ -2181,6 +2887,18 @@ phase, particularly Phase 4. Full methodology, confidence levels and caveats are
   complete job list repeats identically across all duplicate rows, and job count doesn't match
   row count). What would settle it: visibility into the view/procedure that populates
   `jobcode` — currently unprovable from a read-only data investigation.
+
+- **Date-column Validator residual items (found 2026-09-04)** — unresolved, non-blocking; see
+  `output/summary/datecol_validator_report.md` for full detail. Whether createDate/PODate/
+  `Cube_CES.CtrDate` record the literal moment of customer order intent vs. contract-entry date
+  (undetectable from this data model — needs an external non-database record or IT/business
+  confirmation); the mechanism behind the 15 rows (0.054% of the 128-item scope) where createDate
+  lags PODate by up to 44 days (too rare to investigate further, ₿0.13M total value, non-blocking);
+  what actually explains the Feb-Jul 2026 rolling-origin-vs-train/val/test divergence first found
+  in Phase B1/B4 (this task ruled OUT the createDate/PODate back-dating mechanism specifically,
+  high confidence negative finding, but did not identify the true cause); the business reason two
+  separately-named fields (`CtrDate`/`ReceiveCtrDate` in `Cube_CES`; `createDate`/`PODate` in
+  `cube_Sale_APD`) exist for what is, on the Actual/Backlog status basis, a >99.9%-identical value.
 
 ## 6. Missing Data by Phase
 

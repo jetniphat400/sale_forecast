@@ -105,3 +105,121 @@ forecast_level:
 # have 0% zero periods monthly, so coarsening would only discard data points
 # for no benefit.
 forecast_granularity: "monthly"
+
+# --- Leakage guard (Task 2, 2026-09-04) -----------------------------------
+# Refuses to score any backtest window (train/val/test or rolling-origin, src/backtest_rekeyed.py)
+# whose test window's LAST month ends too close to the data's snapshot_pull_date. See
+# src/leakage_guard.py for the check itself.
+#
+# Why this exists: output/summary/b4_leakage_and_windowposition_report.md found ZERO
+# future-dated (forecast_date > pull_date) rows inside the existing 31-month backtest window --
+# but only because that particular pull (2026-09-02) happened to land more than a month after the
+# window's last month (2026-07) had fully elapsed. That gap was incidental, never enforced by any
+# code, so a future re-run with a tighter pull-to-window-end gap could silently score an
+# incomplete window without anyone noticing. This section makes the gap an explicit, checked
+# precondition instead of an accident of timing.
+#
+# Default reasoning for min_margin_days (a stated, evidence-grounded choice, not an arbitrary
+# number): this project's own order-notice-period evidence (STATUS.md Business Findings) shows a
+# median 6-day gap between an order being placed and its contractual delivery date, and only 5.9%
+# of orders give 30 or more days' notice. That means the overwhelming majority of orders destined
+# for a given calendar month are already entered into the source system well within 30 days of
+# that month's end. Requiring at least 30 days between a window's last month-end and the pull
+# date is therefore the smallest margin that safely clears this project's monthly granularity
+# while staying grounded in evidence already gathered, rather than picking a round number with no
+# basis. (For reference: the actual gap in the current data pull is 33 days -- this default
+# passes the real data by a deliberately narrow, evidence-based margin, not a wide arbitrary one.)
+leakage_guard:
+  min_margin_days: 30
+
+# --- Adopted item-level forecasting method (Phase B, locked 2026-09-02/03) ------------------
+# Recorded explicitly, not left to be inferred from filenames, so a consistency check
+# (src/score_forward_test_v2.py) can verify a forward-test log matches the CURRENT adopted
+# method/series key before scoring it -- refusing to silently score a log built under a
+# different key or approach (e.g. the pre-2026-09-04 58-item createDate log, archived under
+# output/summary/archive/). See STATUS.md Phase B1 (re-keying recommendation) and Phase B3
+# (Top-down aggregation choice) for the evidence behind each value below.
+adopted_series_key: "forecastDate"        # monthly series keyed on forecast_date (contractual
+                                           # delivery date), not createDate -- Phase B1's
+                                           # recommendation. Matches the "{key}" suffix on
+                                           # output/data/processed_full_category_sales_monthly_{key}.csv.
+adopted_item_level_approach: "Top-down"   # Type-level Combination forecast, allocated to each
+                                           # item by its historical qty share of the Type over the
+                                           # fitting window -- src/item_level_reconciliation.py's
+                                           # forecast_all_approaches "Top-down" branch. Phase B3
+                                           # found no approach statistically beats another overall,
+                                           # but Top-down had the best point estimate and is the
+                                           # given instruction for this log rebuild (not
+                                           # re-litigated here -- see STATUS.md Phase B3).
+adopted_scope_file: "output/summary/part1_category_scope_all_codes.csv"  # current 128-item
+                                           # Category scope (Fuse + Surge Arrester, 8 Types, 2
+                                           # Categories) -- the set of codes any current forward-
+                                           # test log must match.
+
+# --- Final forecasting method (Phase B closeout, locked 2026-09-04) -------------------------
+# What "Top-down combination" means end to end: fit the six-model combination (combination_models
+# above) at TYPE level, then allocate each Type's forecast to its member items by each item's
+# historical qty share of the Type over the fitting window. Combines forecast_level (Category/
+# Type fitting), combination_models (the six base models averaged) and adopted_item_level_approach
+# (the allocation rule) into one named value so a reader does not have to reconstruct "the final
+# method" from three separate keys. See STATUS.md Locked Decisions, "Final forecasting method:
+# Top-down combination (2026-09-04)" for the evidence (Phase B3, Modeler tasks 1-3).
+forecast_method_final: "topdown_combination"
+
+# --- Evaluation policy (Phase B closeout, locked 2026-09-04) ---------------------------------
+# Rolling-origin (all 7 origins pooled, src/backtest_rekeyed.py run_rolling_origin) is PRIMARY.
+# The single train/validation/test split (19/6/6 months) is SECONDARY only. Reason: Task 1
+# (2026-09-04, STATUS.md Modeler-tasks-1-3 log entry) found the final train/val/test window
+# (origin 7, Feb-Jul 2026) behaves anomalously -- the createDate-vs-forecast_date reversal
+# persists at every level tested and is NOT explained by the dominant focus item alone, cause
+# still unresolved -- so a single window already flagged as unrepresentative must not be the
+# primary basis for locking in a method or reporting its accuracy.
+evaluation_policy:
+  primary: "rolling_origin"
+  secondary: "train_val_test"
+
+# --- Cross-division demand scope (Phase B closeout, locked 2026-09-04) -----------------------
+# Keep the Omni Channel / division=PEM101 scope as-is (no config change to the filters above).
+# Under this project's actual channel/status filter, demand excluded by the division filter is
+# only 2.96 million THB (0.42% of the 128-item scope total) -- small enough to document as a
+# known exclusion rather than model. The much larger historical figure (60.6M / 14.3%, ignoring
+# channel) was found on 2026-09-04 to be mostly Tendering-channel sales of EEE-F-FC-1040010002
+# through division PPS -- outside this project's Omni Channel scope by design. See STATUS.md
+# Locked Decisions for the full method comparison (Method A vs Method B) and the open question
+# (queued for Warehouse/Operations) of whether that Tendering demand shares physical stock with
+# this project's items.
+cross_division_excluded_value_thb: 2960000   # Method B (channel/status held fixed) -- see STATUS.md
+cross_division_excluded_pct: 0.42
+
+# --- Excluded items: listed in the pricelist but never sold (2026-09-04) ---------------------
+# Zero rows anywhere in cube_Sale_APD, Cube_CES, cube_inventory_tran, Cube_Inventory_Exact, or
+# Cube_Quotation (output/summary/task2_per_item_classification_final.csv, classification
+# "(d) Listed but never sold"). Excluded from Max-Min: there is no demand history of any kind to
+# plan against for these 6 codes.
+excluded_item_codes:
+  - "EEE-F-FL-1040030100"
+  - "HS-F-99-0181"
+  - "HS-F-99-1181"
+  - "HS-F-99-1211H22"
+  - "HS-F-99-1241H03"
+  - "HS-F-99-3031"
+
+# --- Placeholder items: sold only outside this project's filter, or unclassifiable (2026-09-04) --
+# Real transaction history exists somewhere for each of these 10 codes, but either outside this
+# project's division/channel scope, or with genuinely mixed evidence that cannot be classified
+# cleanly (output/summary/task2_per_item_classification_final.csv, classifications "(b) Sold
+# outside this project's filter" and "Cannot classify cleanly"). Until the business confirms
+# their status, each gets a placeholder forecast equal to the average demand profile of its own
+# Type (not zero, since real sales activity exists; not a real item-specific forecast, since it
+# falls outside/ambiguous to this project's own scope).
+placeholder_item_codes:
+  - "FC-A-38-00203"
+  - "EEE-F-FL-5920-353-01100"
+  - "EEE-F-FL-5920-353-01600"
+  - "EEE-F-FL-5920-353-02600"
+  - "EEE-F-FL-5920-353-06600"
+  - "HS-F-99-1151"
+  - "HS-F-99-2091N"
+  - "HS-F-99-3121"
+  - "HS-F-99-3331"
+  - "HS-F-99-3361"
