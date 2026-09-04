@@ -49,6 +49,11 @@ errors. MPS means "PO Received" and is confirmed demand — it must never be dro
 query or model. `Cube_CES` agrees with `cube_Sale_APD` at 99.79% row level and extends usable
 history back to January 2023. All queries must filter on `division = 'PEM101'`, because 72
 category names (including Fuse and Surge Arrester) appear under more than one division.
+**Correction (2026-09-04): `division = 'PEM101'` was this pilot's condition, not the project's
+scope — this sentence was later wrongly generalized into a project-wide rule; see Locked
+Decisions, "Project scope correction," for the fix. The underlying point (queries need the
+`division` column, not just category/type name, because names collide across divisions) still
+stands project-wide; only the single fixed value `'PEM101'` was wrong as a universal rule.**
 
 **Phase 2 — Model Selection: DONE.** The selected approach is Combination forecasting — the
 arithmetic mean of the six candidate models (Naive, MA3, MA6, MA12, Croston, SBA) — applied at
@@ -174,7 +179,17 @@ items, and the final Top-down combination method with its evaluation policy). Ph
 begin.
 
 **Phase C — Expand to all 445 item codes**, covering PEM102, PEM103, PEM104, PEM107 and CI101.
-Data quality for these divisions has never been checked and may differ from PEM101.
+**Step 1 (data quality) DONE 2026-09-04** — five parallel Validators plus a Synthesizer, per
+`AGENTS.md`; full detail in the dated log entry below and `output/summary/phaseC_synthesis_report.md`.
+**Every one of the five divisions differs from PEM101 in some material way — none is ready to
+forecast unchanged.** Four (PEM102, PEM103, PEM107, CI101) need an explicit scope/filter decision
+first; PEM104 is blocked on data volume. **Step 2 (Modeler backtest) is NOT yet started.**
+**Scope corrected 2026-09-04 (Locked Decisions, "Project scope correction")**: PEM102's and
+PEM107's `-OLD` scope/filter question is now decided (exclude, do not combine — see Locked
+Decisions); CI101's cross-division scope question is now decided (include, count the
+PEM101-tagged 37.2%); PEM104 is confirmed excluded from forecasting specifically (placeholder for
+Phase 4), not merely "blocked" pending more evidence; PEM103's Tendering-channel scope question
+remains open, unchanged by this correction.
 
 **Phase D — Phase 4 groundwork.** Search across tables at once, not one at a time, for finished
 goods movement history, assembly time, and which warehouse stages hold sellable stock. **Runs
@@ -2638,6 +2653,103 @@ has required since the start, and builds `src/run_pipeline.py`.
   move and completed successfully, confirming the path fixes work end to end, not just at
   import time.
 
+**Phase C step 1 — data quality for PEM102, PEM103, PEM104, PEM107, CI101 — DONE (2026-09-04).**
+Five parallel Validators (one per division) plus a Synthesizer, per `AGENTS.md`'s Phase C
+pattern (data-quality checks are independent of each other and identical in kind). Each Validator
+re-ran, on its own division, every check PEM101 went through before forecasting began: filter
+definition, usable date range, name/code collisions, duplicates/split lots, pricelist agreement,
+items without history, Cube_CES cross-check, and demand profile — no PEM101 finding was assumed
+to carry over. Reports: `output/summary/phaseC_PEM102_report.md`, `phaseC_PEM103_report.md`,
+`phaseC_PEM104_report.md`, `phaseC_PEM107_report.md`, `phaseC_CI101_report.md` (each with its own
+supporting CSVs and script under `src/investigations/phaseC_validator_*.py`), merged in
+`output/summary/phaseC_synthesis_report.md`. **No config or pipeline code was changed by this
+step** — every filter/scope recommendation below is a Validator/Synthesizer recommendation, not
+an applied decision.
+
+- **Headline: none of the five divisions is ready to forecast unchanged.** Readiness verdicts:
+  PEM102 "ready after specific fixes", PEM103 "ready after specific fixes", PEM107 "ready after
+  specific fixes", CI101 "ready after specific fixes", **PEM104 "not ready" (blocked)**.
+- **PEM104 — BLOCKED, high confidence.** Only 5 of its 12 pricelist items have any sales history
+  at all: **12 transactions total across 17 calendar months**, every nonzero month exactly 1 unit
+  per item. Too little to fit MA12 (needs 12 non-zero months; no item has that) or run this
+  project's train/val/test or 7-origin rolling-origin evaluation at any aggregation level.
+  Blocking question for the business, not resolvable from this data: is 12 transactions genuinely
+  the whole picture, or does PEM104 volume flow through an uncaptured division/channel?
+- **The single biggest cross-division finding: a PEM102 ↔ PEM107 legacy division-tag pattern,
+  found independently by the two Validators, moderate-to-high confidence in the pattern's
+  existence, cause unresolved.** PEM102's real 2024 Omni-Channel activity (137 rows, ₿42.6M) sits
+  under `division='PEM107-OLD'`, not `division='PEM102'` (nearly empty for 2024); `division=
+  'PEM102-OLD'` returns zero rows for PEM102's codes. PEM107's real 2024-through-October activity
+  sits under `division='PEM102-OLD'`; `division='PEM107-OLD'` returns zero rows for PEM107's
+  codes. Both tags cross over cleanly in Nov-Dec 2024, 90 of PEM107's 136 codes appear under both
+  tags, and a coincident `productTypeName` wording-convention change accompanies the transition.
+  **Both figures were independently re-verified against the underlying CSVs in synthesis and
+  match exactly.** This is consistent with a single company-wide division-code reorganization
+  around November-December 2024 that reassigned these two divisions' numeric tags — but this is
+  an inference from a well-evidenced pattern, not provable from read-only data (no audit/change
+  log exists, same class of limitation as the earlier `forecast_date`-revision question).
+  **Unresolved, flagged for IT/business, not guessed at.** Practical consequence, also unresolved:
+  whether to use the combined filter `division IN ('PEM102','PEM107-OLD')` for PEM102 (usable-from
+  moves from January 2025 to January 2024, a full year more history) and `division IN ('PEM107',
+  'PEM102-OLD')` for PEM107 (usable-from moves from ~8 months to 32 months, and the demand
+  classification mix changes materially — PEM107-only: Smooth 1/Erratic 0 of 103 active vs.
+  combined: Smooth 12/Erratic 4 of 112 active).
+- **CI101 ↔ PEM101 overlap — a separate, unrelated finding, high confidence.** 37.2% of the
+  combined CI101+PEM101 same-channel (Omni Channel) value for CI101's 13 item codes is recorded
+  under `division='PEM101'`, not `CI101` — an ongoing, current-period split of real demand across
+  two live division tags, not a rename artifact (no `CI101-OLD` tag exists). Contrast: PEM101's
+  own comparable cross-division exclusion (Method B, same-channel) is 0.42% (Locked Decisions
+  above) — CI101's 37.2% is nearly two orders of magnitude larger as a proportion and cannot
+  simply inherit PEM101's "small enough to document" decision without re-examining the magnitude
+  specifically for CI101.
+- **PEM103 — the Omni Channel filter captures only 33.3% of value.** Of ₿1,385.9M found across
+  PEM103's 87 item codes, 65.5% is Tendering-channel (spread across PEM103/PPS/PTS divisions) —
+  for PEM101 the same "Omni Channel only" convention excluded just 0.42% of value; for PEM103 it
+  excludes the majority of the business. A genuine scope question (utilities commonly tender for
+  transformers, unlike PEM101's hardware), not a data defect — needs an explicit business
+  decision. PEM103's data mechanics are otherwise the cleanest of the five: 0 duplicate groups
+  (vs. PEM101's 44), 0 pricelist category/type mismatches (vs. PEM101's Surge Arrester
+  disagreement), 98.71% Cube_CES row match. Its demand profile is starkly different from PEM101's
+  though: 0% Smooth or Erratic among 50 active items (mean ADI 12.5, vs. PEM101's pilot mix of
+  12.1%/17.2% Smooth/Erratic) — flagged as a "may not transfer without re-validation" candidate
+  for the Top-down combination method, moderate confidence, not yet backtested.
+- **PEM102 and CI101 — thinner-history caution, no evidenced structural blocker.** Both are small
+  (13-16 and 12-13 active items), 0% Smooth demand profile, but Combination forecasting was
+  explicitly designed to be robust on sparse data and PEM101's own method-selection evidence
+  wasn't specific to PEM101's mix — reported as an untested caution (low-to-moderate confidence),
+  not a verdict; no Modeler has backtested any of the five divisions yet.
+- **Cube_CES agreement rates across the table are NOT apples-to-apples, high confidence this is
+  a methodology inconsistency, not a data-quality ranking.** PEM101's 99.79%/99.95% and PEM103's
+  98.71% were computed by fully tracing every mismatch; CI101's 97.27% (330 keys) explicitly did
+  not individually trace its mismatches; PEM104's "100%" is n=12, explicitly flagged by its own
+  Validator as far weaker evidence than PEM101's ~9,000-row figure; PEM107's 99.48%/99.38% was
+  computed only under the `PEM107`-only scope, not the recommended combined scope. All five sit in
+  the same 95-100% band PEM101 established, but the table should not be read as a precise
+  cross-division ranking.
+- **No genuine factual contradiction found between any two of the five division reports** — each
+  covers a disjoint item-code population. The PEM102/PEM107 pattern above is a structural echo
+  (mirror-image legacy-tag evidence), not two Validators disagreeing about the same rows.
+- **Pricelist data-quality notes, not investigated further per the stopping rule**: a within-sheet
+  pricelist duplicate (`DS-F-99-0308`, CI101 sheet, same code/category/type but a different
+  Description — same/PEA-spec vs. private-spec variant — this also explains the project's
+  existing 446-rows-vs-445-codes note in Section 1); PEM107 carries 4 likely placeholder ("xxx")
+  pricelist codes and 2 trailing-period near-duplicates; PEM103 has one near-duplicate code
+  (`TF-F-99-2107221B1` / `TF-F-99-2107221B1.`); PEM102 has 3 items carrying an unrelated
+  "Instrument Transformer" category on some rows.
+- **Full cross-division comparison table, every cell cited to its source report/CSV, in
+  `output/summary/phaseC_synthesis_report.md` §1** — filter to use, usable-from date, collision
+  count/value, duplicate value, pricelist mismatch count, items without history, Cube_CES
+  agreement, demand-profile summary, and readiness verdict, for all five divisions plus a PEM101
+  reference column.
+- **What Phase C step 1 could not resolve** (carried to Open Questions below): the PEM102/PEM107
+  tag-rename mechanism; whether to combine the legacy tags into PEM102's and PEM107's filters;
+  CI101's cross-division scope decision; PEM103's Tendering-channel scope decision; PEM104's
+  volume question; per-division no-history-item classification (exclude vs. placeholder, PEM101's
+  Phase B precedent not yet applied to any of the five); the pricelist near-duplicate/placeholder
+  codes noted above; and — the biggest remaining step — no Modeler has yet backtested any of the
+  five divisions, so every transferability judgment above is based on data-quality/demand-shape
+  evidence only, not measured model performance.
+
 ## 3. Business Findings
 
 These describe how this business actually operates, established from data investigation (not
@@ -2703,14 +2815,84 @@ phase, particularly Phase 4. Full methodology, confidence levels and caveats are
   Surge Arrester) would also pull in Fuse link, HRC fuse, Low Tension Fuse Switch and Fuse
   Holder — different products with different demand behaviour — and mixing them into one
   model would fit none of them well.
-- **All queries filter on `division = 'PEM101'` and `revenue_type = 'Omni Channel'`
-  (2026-08-31, written into `config/config.yaml`)**. `division` is required because 72
-  `productCateName` values, including Fuse and Surge Arrester, appear under more than one
-  division, so category/type name alone is not a safe key — confirmed to matter in practice:
-  omitting it overstated the pilot group's total sales by ₿60.6M (14.3%), see the audit note
-  above. `revenue_type` is fixed to Omni Channel because this project's forecasting scope is
-  the Omni Channel business unit; other channels (Tendering, Total Customer Solution, etc.)
-  are out of scope. Status basis is Actual plus MPS, matching the Phase 1 convention.
+- **SUPERSEDED IN PART, corrected 2026-09-04 — see "Project scope correction" below.**
+  ~~All queries filter on `division = 'PEM101'` and `revenue_type = 'Omni Channel'`
+  (2026-08-31, written into `config/config.yaml`)~~. **The `division = 'PEM101'` part of this
+  entry was wrong and is superseded**: `division = 'PEM101'` was the *pilot's* condition (Phase 2
+  used PEM101 because Fuse and Surge Arrester products exist only in that sheet), and this entry
+  wrongly wrote it down as if it were the whole project's scope. That error was not caught until
+  it caused confusion in Phase C, when PEM102/PEM103/PEM104/PEM107/CI101 needed their own
+  division values and this entry read as if only PEM101 was ever in scope. Left here, struck
+  through rather than deleted, so the mistake and how it happened are traceable — see
+  `CONVENTIONS.md`'s new rule (2026-09-04) requiring every decision to state whether it is
+  project-wide or pilot/task-scoped, added because of this exact error. **The
+  `revenue_type = 'Omni Channel'` and Actual+MPS status-basis parts of this entry were, and
+  remain, correctly project-wide** — see the corrected scope decision immediately below, which
+  restates them alongside the fixed division scope. `division` (as a column, not the single
+  value `'PEM101'`) is still required in every query: 72 `productCateName` values, including
+  Fuse and Surge Arrester, appear under more than one division, so category/type name alone is
+  not a safe key — confirmed to matter in practice: omitting it overstated the pilot group's
+  total sales by ₿60.6M (14.3%), see the audit note above.
+- **Project scope correction (2026-09-04): the project's scope is Omni Channel across every
+  division in the pricelist's visible sheets, not `division = 'PEM101'` alone.** Corrected by
+  the user after the error above caused confusion in Phase C. The scope is:
+  - **Revenue type**: `revenue_type = 'Omni Channel'` (unchanged from above, project-wide,
+    correctly recorded originally).
+  - **Divisions in scope**: every division that appears in the pricelist's visible sheets —
+    `PEM101`, `PEM102`, `PEM103`, `PEM104`, `PEM107`, `CI101`. **`division` is a grouping key
+    for products, not a scope filter** — it identifies which sheet/business-unit a product
+    belongs to, it does not narrow which products are in scope. `PEM101` was used alone in the
+    pilot only because Fuse and Surge Arrester products — the pilot's chosen Type-level scope —
+    happen to exist exclusively in that one sheet; nothing about that pilot choice restricts the
+    project as a whole.
+  - **Exclusion — `-OLD` suffix**: any `division` value carrying the suffix `-OLD` (e.g.
+    `PEM102-OLD`, `PEM107-OLD`) is excluded from the project scope, confirmed by the user. Reason:
+    Phase C step 1 found these rows carry swapped or legacy tags whose meaning could not be
+    established from data — `PEM102`'s real 2024 activity sits under `division='PEM107-OLD'` and
+    `PEM107`'s real 2024 activity sits under `division='PEM102-OLD'` (see the Phase C step 1 log
+    entry above and `output/summary/phaseC_synthesis_report.md` §5), and no audit trail exists to
+    confirm which tag is authoritative for which period. **This decision explicitly overrides**
+    the Phase C step 1 Validators' recommendation to *combine* `PEM102`+`PEM107-OLD` and
+    `PEM107`+`PEM102-OLD` (open question 2, Section 5 below) — the combine option is not adopted.
+    **Consequence, stated plainly**: PEM102's usable history stays at ~January 2025 rather than
+    extending back to January 2024, and PEM107's stays at ~January 2025 rather than extending back
+    to January 2024, since each division's pre-2025 activity sits under the excluded `-OLD` tag of
+    the *other* division. This is a real loss of usable history, accepted in exchange for not
+    guessing which of two contradictory tag conventions is correct.
+  - **Exclusion — PEM104**: `PEM104` is in scope for product identification (its codes are part
+    of the 445) but **excluded from forecasting**, confirmed by the user. Reason: Phase C step 1
+    found only 12 transactions across 17 calendar months for PEM104's codes — too few to fit any
+    model at any aggregation level (see the Phase C step 1 log entry above). PEM104 receives a
+    **placeholder for Phase 4** (following the same principle as the existing 10-item
+    `placeholder_item_codes` precedent — real activity exists, just not enough to forecast) rather
+    than being dropped outright, and its codes are recorded in `config/config.yaml`
+    (`divisions_excluded_from_forecasting`).
+  - **Inclusion — CI101**: `CI101` is in scope, confirmed by the user, correcting an earlier
+    framing (Section 5 below, "Phase C step 1 residual items" item 3) that treated it as a
+    candidate for exclusion pending a scope decision, and an even earlier framing in
+    `output/summary/phaseC_CI101_report.md`/`phaseC_synthesis_report.md` that had described CI101
+    as if it might be a separate company to drop. **CI101 is in the pricelist, so it is in
+    scope** — there was never a data-driven reason to treat it as external to the project, only an
+    unexamined assumption. The 37.2% of CI101-sheet product value that is recorded under
+    `division = 'PEM101'` (Phase C step 1 finding, `output/summary/phaseC_synthesis_report.md`
+    §5) is genuine Omni Channel demand for CI101's own item codes and **must be counted, not
+    discarded** — it does not become out-of-scope merely because it is tagged under a different
+    division than the sheet it's listed on, per the "division is a grouping key, not a scope
+    filter" principle above.
+  - This resolves Section 5's "Phase C step 1 residual items" open question 3 (CI101's
+    cross-division scope decision) as **include, count the PEM101-tagged share** — see Section 5
+    below for the corresponding strike-through. It does not resolve open questions 1/2 (the
+    PEM102/PEM107 tag mechanism) — those remain unresolved on the *mechanism*, but are now
+    resolved on the *filter decision* (exclude `-OLD`, do not combine), as stated above. It does
+    not resolve open question 4 (PEM103's Tendering-channel scope) — PEM103 stays
+    `revenue_type = 'Omni Channel'`-only under this correction, unchanged.
+  - **Written into `config/config.yaml`**: `division` changed from a single value to a list
+    (`divisions_in_scope`), with the `-OLD`-suffix exclusion and the PEM104 forecasting exclusion
+    recorded as explicit, commented fields — see `config/config.yaml`. **Not yet done**: no
+    pipeline script (`load_data.py`, `load_data_full.py`, etc.) has been updated to read the new
+    list-shaped config instead of the old scalar `division` value — those scripts still filter on
+    `PEM101` alone until updated. This entry documents the corrected scope decision; wiring it
+    into the data-loading code is separate, not-yet-done work.
 - **GATE LIFTED (2026-08-31).** Originally: data quality must be fully resolved before any
   modelling or backtest work begins. Resolution, by decision where evidence ran out: (1) of
   the original 55 duplicate-vs-split-lot sets, 35 (64%) are confirmed genuine (26
@@ -2899,6 +3081,40 @@ phase, particularly Phase 4. Full methodology, confidence levels and caveats are
   high confidence negative finding, but did not identify the true cause); the business reason two
   separately-named fields (`CtrDate`/`ReceiveCtrDate` in `Cube_CES`; `createDate`/`PODate` in
   `cube_Sale_APD`) exist for what is, on the Actual/Backlog status basis, a >99.9%-identical value.
+
+- **Phase C step 1 residual items (found 2026-09-04)** — unresolved, BLOCKING for the specific
+  division noted, non-blocking for the others; full detail, confidence levels and per-division
+  evidence in `output/summary/phaseC_synthesis_report.md`:
+  1. **The PEM102 ↔ PEM107 legacy division-tag mechanism** — is this one company-wide
+     division-code reorganization around Nov-Dec 2024, two unrelated relabelings, or something
+     else? Unprovable from read-only data (no audit/change-log table exists) — needs IT/business
+     confirmation. Blocks a firm filter decision for both PEM102 and PEM107.
+  2. ~~Whether to combine `division IN ('PEM102','PEM107-OLD')` and `division IN ('PEM107',
+     'PEM102-OLD')`~~ — **DECIDED 2026-09-04, see Locked Decisions, "Project scope correction":
+     do not combine. Both `-OLD`-suffixed values are excluded from project scope.** The
+     *mechanism* behind the tag swap (item 1 above) remains unresolved, but the filter decision
+     no longer depends on resolving it.
+  3. ~~CI101's cross-division scope decision~~ — **RESOLVED 2026-09-04, see Locked Decisions,
+     "Project scope correction": CI101 is in scope, and the 37.2% recorded under
+     `division='PEM101'` is genuine Omni Channel demand for CI101's item codes and must be
+     counted**, not excluded by default the way PEM101's own much-smaller 0.42% exclusion was.
+  4. **PEM103's Tendering-channel scope decision** — 65.5% of its item-code value is currently out
+     of the Omni-Channel-only scope; a business call on whether Distribution Transformer
+     tendering activity belongs in this project's forecasting scope.
+  5. **PEM104's volume question** — is 12 transactions genuinely the complete picture for these
+     12 item codes, or does real PEM104 volume flow through an uncaptured division/channel? This
+     is the blocking question for PEM104 specifically.
+  6. **Per-division no-history-item classification** (exclude vs. placeholder, following PEM101's
+     own Phase B precedent) has not been done for any of the five divisions — each Validator only
+     identified the candidate items and their trace status.
+  7. Minor pricelist data-quality items not investigated further, per the stopping rule: the
+     `DS-F-99-0308` within-sheet pricelist duplicate (CI101; also explains the project's existing
+     446-rows-vs-445-codes note in Section 1); PEM107's 4 likely "xxx"-placeholder codes and 2
+     trailing-period near-duplicates; PEM103's `TF-F-99-2107221B1`/`.` near-duplicate; PEM102's 3
+     items carrying an unrelated "Instrument Transformer" category on some rows.
+  8. **No Modeler has yet backtested any of the five divisions** — every readiness and
+     transferability judgment from Phase C step 1 is based on data-quality/demand-shape evidence
+     only, not measured model performance. This is Phase C's next step, not yet started.
 
 ## 6. Missing Data by Phase
 

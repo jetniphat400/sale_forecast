@@ -41,6 +41,11 @@
 - Docstrings state what a function does, what it takes and what it returns.
 - Comments explain why, not what.
 - Record decisions with their reasoning in `STATUS.md`.
+- **When recording any decision, state explicitly whether it applies to the whole project or only
+  to a pilot, task or phase.** A condition adopted for a pilot must never be written as a project
+  rule. This rule exists because a pilot filter (`division = 'PEM101'`) was recorded in `STATUS.md`
+  as project scope and propagated unquestioned into Phase C — see `STATUS.md` Locked Decisions,
+  "Project scope correction," for the full account.
 
 ---
 

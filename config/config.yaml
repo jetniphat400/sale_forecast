@@ -28,10 +28,61 @@ pilot_categories:
   fuse_cutout: "High Voltage Distribution Fuse Cutout"     # 10 items, from reference/pricelist.xlsx Product Type column
   surge_arrester: "Medium Voltage Surge Arrester"          # 58 items, from reference/pricelist.xlsx Product Type column
 
-# --- Business unit filter --------------------------------------------------
-# Required because 72 productCateName values, including Fuse and Surge Arrester,
-# appear under more than one division in cube_Sale_APD — category name alone is
-# not a safe key. See STATUS.md Phase 2 Step 1 for the evidence.
+# --- Business unit / division scope -----------------------------------------
+# CORRECTED 2026-09-04 (see STATUS.md Locked Decisions, "Project scope
+# correction"). The old scalar `division: "PEM101"` recorded a PILOT condition
+# (Phase 2 used PEM101 alone because Fuse and Surge Arrester products exist
+# only in that sheet) as if it were the whole project's scope -- wrong, and it
+# caused confusion once Phase C needed the other divisions. `division` is a
+# GROUPING KEY for products (which pricelist sheet/business-unit a product
+# belongs to), not a scope filter -- it is still required in every query
+# because 72 productCateName values, including Fuse and Surge Arrester, appear
+# under more than one division, so category/type name alone is not a safe key
+# (STATUS.md Phase 2 Step 1). The project's actual scope is every division
+# that appears in the pricelist's visible sheets, listed below.
+divisions_in_scope:
+  - "PEM101"   # pilot division -- Fuse and Surge Arrester products exist only here
+  - "PEM102"
+  - "PEM103"
+  - "PEM104"   # in scope for product identification only -- see
+               # divisions_excluded_from_forecasting below; still forecasting-excluded
+  - "PEM107"
+  - "CI101"    # previously miscategorised as a candidate to drop as "a separate
+               # company" -- corrected: it is in the pricelist, so it is in scope.
+               # 37.2% of its product value is recorded under division PEM101 and
+               # is genuine Omni Channel demand -- must be counted, not discarded.
+
+# Division VALUES excluded outright, regardless of item code: any value carrying
+# the suffix "-OLD" (e.g. PEM102-OLD, PEM107-OLD). Confirmed by the user
+# (2026-09-04). Reason: Phase C step 1 found these rows carry swapped/legacy
+# tags whose meaning could not be established from data -- PEM102's real 2024
+# activity sits under PEM107-OLD and PEM107's real 2024 activity sits under
+# PEM102-OLD, with no audit trail to say which tag is authoritative for which
+# period (output/summary/phaseC_synthesis_report.md §5). This explicitly
+# OVERRIDES the Phase C Validators' recommendation to combine PEM102+PEM107-OLD
+# and PEM107+PEM102-OLD -- that combine option was considered and rejected, not
+# merely left undone. Consequence: PEM102's and PEM107's usable history stays
+# at ~January 2025 rather than extending back to January 2024.
+excluded_division_suffix: "-OLD"
+
+# Divisions in scope for product identification but excluded from forecasting
+# specifically. Confirmed by the user (2026-09-04).
+divisions_excluded_from_forecasting:
+  PEM104: "Only 12 transactions across 17 months (STATUS.md Phase C step 1) --
+    too few to fit any model at any aggregation level. Receives a placeholder
+    forecast for Phase 4 (same principle as placeholder_item_codes below);
+    codes recorded in reference/pricelist.xlsx (PEM104 sheet) and
+    output/summary/phaseC_PEM104_item_codes.txt."
+
+# NOT YET DONE: no pipeline script (load_data.py, load_data_full.py, etc.) has
+# been updated to read divisions_in_scope / excluded_division_suffix /
+# divisions_excluded_from_forecasting instead of the old scalar `division`
+# value below. This config change documents the corrected scope decision;
+# wiring it into the data-loading code is separate, not-yet-done work.
+
+# Legacy scalar, kept only so any script not yet migrated to the fields above
+# keeps working unchanged -- this is the PILOT division, NOT the project scope.
+# Do not read this key as "the project's division filter."
 division: "PEM101"
 
 # --- Revenue type filter --------------------------------------------------
