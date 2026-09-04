@@ -20,8 +20,12 @@ Phases:
 - **B — Close Phase 2 down to item level**: item-level forecasting, cross-division demand,
   no-history items, forward-test log rebuild, missing tests, and an end-to-end pipeline.
 - **C — Expand to all 445 item codes**: PEM102, PEM103, PEM104, PEM107 and CI101.
-- **D — Phase 4 groundwork**: finished-goods movement history, assembly time, and which
-  warehouse stages hold sellable stock. Runs only after Phase C, never in parallel with it.
+- **D — Phase 4 groundwork**: **narrowed 2026-09-04 by business input (see Section 8)** — three
+  checks against `Cube_Inventory_Exact` (which warehouse stages hold sellable stock, an
+  approximate holding-cost figure, whether CI101-sheet products sold under PEM101 are held in
+  PEM101 stock), not a search across all tables. Finished-goods movement history is no longer
+  sought — business confirmed it does not exist. Assembly time stays open, still needs business/
+  production input. Runs only after Phase C, never in parallel with it.
 - **E — Phase 4 proper**: calculate Max-Min and simulate it against historical demand.
 - **F — Measure the value**: compare against the team's current method and the
   no-intervention baseline.
@@ -200,8 +204,13 @@ and normally-tagged rows, PEM102/PEM107 regain their 2024 history, CI101's total
 PEM102's 38.40%, PEM107's 90.01%. Broader per-division readiness verdicts (collisions, pricelist
 mismatches, demand classification) are **not yet re-derived** on this basis.
 
-**Phase D — Phase 4 groundwork.** Search across tables at once, not one at a time, for finished
-goods movement history, assembly time, and which warehouse stages hold sellable stock. **Runs
+**Phase D — Phase 4 groundwork. Narrowed 2026-09-04 by business input (Section 8).** No longer a
+search across all tables at once. Finished-goods movement history is removed from the data
+request list — business confirmed it does not exist. Assembly time after parts arrive stays open,
+needs business/production input, not derivable from any table. What remains is **three checks
+against `Cube_Inventory_Exact`** (the current-stock snapshot): which warehouse stages hold
+sellable stock, an approximate holding-cost figure (current stock qty × unit cost from the sales
+table), and whether CI101-sheet products sold under `PEM101` are held in `PEM101` stock. **Runs
 only after Phase C, never in parallel with it** — if Phase C changes the forecasting approach,
 this groundwork would need redoing.
 
@@ -2478,7 +2487,9 @@ config change is the one explicitly-instructed exception.
 - **What Tasks 1-3 could not resolve**: the true cause of the origin-7 (Feb-Jul 2026)
   createDate-vs-forecast_date reversal (Task 1 rules out the dominant item as sole cause, a new
   negative finding, but does not identify a replacement cause -- consistent with, not a reversal
-  of, B4's existing "what the data could not resolve" note); whether pure Top-down (applied to
+  of, B4's existing "what the data could not resolve" note). **CLOSED WITHOUT FURTHER PURSUIT,
+  2026-09-04, see STATUS.md Section 8** -- recorded as a known limitation, not investigated
+  further; whether pure Top-down (applied to
   every item, not just share-dominant ones) is genuinely better than pure Direct at item level --
   directionally favoured by the rolling-origin point estimate but not statistically confirmed;
   whether createDate-keyed data would show a different Task 3 ranking (not tested, stated scope
@@ -3072,7 +3083,9 @@ phase, particularly Phase 4. Full methodology, confidence levels and caveats are
   (not observable in any data source — a hard gap). **Phase 4 must use a total lead time built
   from all three segments, not the 45-60 day procurement figure alone**, and the assembly
   segment must come from the business since no data links raw-material consumption to a
-  resulting Finished Good becoming stock.
+  resulting Finished Good becoming stock. **REAFFIRMED BY THE BUSINESS, 2026-09-04 (Section 8):
+  the 45-60 day procurement figure stands as previously stated, and is configurable per item.
+  Assembly time after parts arrive remains open** — not resolved by this reaffirmation.
 - **Warehouses are STAGES of one process, not separate locations or business units (business
   correction, 2026-09-02).** Confirmed by data: goods transfer between warehouse codes (1,572
   exact-quantity-matched transfers), predominantly forward (inspection -> storage -> downstream
@@ -3084,9 +3097,10 @@ phase, particularly Phase 4. Full methodology, confidence levels and caveats are
   on-hand stock (exact for 2 of 6 tested items, within 1.5% for the rest) — the signature of
   sequential movement, not duplication. Within the item-level total, **only `QA` (inspection)
   and `FMTS`/`FMTO` (production work-in-progress) are confirmed NOT yet available for use** (0.91%
-  of current on-hand stock); which of the remaining warehouse codes hold genuinely SELLABLE
+  of current on-hand stock); ~~which of the remaining warehouse codes hold genuinely SELLABLE
   Finished Goods stock could not be confirmed from data (no sales table has a warehouse field)
-  and must be confirmed by the business.
+  and must be confirmed by the business~~. **CHANGED 2026-09-04 (Section 8): no longer a question
+  for the business — to be DERIVED by reading `Cube_Inventory_Exact` directly.**
 - **Cross-division demand: keep the Omni Channel scope (2026-09-04).** Under this project's
   actual channel/status filter (`revenue_type='Omni Channel'`, `status IN ('Actual','MPS')`,
   the same Method B measurement as the 2026-09-04 Task 1 log entry above), demand excluded by
@@ -3097,10 +3111,12 @@ phase, particularly Phase 4. Full methodology, confidence levels and caveats are
   **Tendering-channel sales of `EEE-F-FC-1040010002` through division `PPS`** (67.4% of Method
   A's ₿85.5M full-scope figure), which is outside this project's Omni Channel scope **by
   design**, not an omission — mixing in a cross-channel effect the original ₿60.6M figure never
-  separated out. **Whether that Tendering demand draws from the same physical stock as this
+  separated out. ~~Whether that Tendering demand draws from the same physical stock as this
   project's Omni Channel items is an open question for the warehouse team, not something the
-  data can answer** (no warehouse field exists on any sales row, and no transfer table links
-  divisions) — carried forward in Open Questions below, not resolved here.
+  data can answer~~ (no warehouse field exists on any sales row, and no transfer table links
+  divisions) — carried forward in Open Questions below, not resolved here. **REMOVED FROM THE
+  DATA REQUEST LIST, 2026-09-04 — moved to Section 8: business confirmed this data does not
+  exist. Phase 4 must be designed without it.**
 - **Six pricelist items excluded from Max-Min: never sold (2026-09-04).** These 6 codes are
   listed in the pricelist but have **zero rows in `cube_Sale_APD` under any filter, zero rows in
   `Cube_CES`, `cube_inventory_tran`, `Cube_Inventory_Exact`, and `Cube_Quotation`** — classified
@@ -3156,8 +3172,10 @@ phase, particularly Phase 4. Full methodology, confidence levels and caveats are
   `output/summary/phaseA_synthesis.md` §5): whether `forecast_date` is ever revised in place
   after PO intake (undetectable in this schema — needs a genuine audit/snapshot table or IT/
   business confirmation); the cause of the 2.3-3.2% `forecast_date`/`PlanDelDate` disagreement;
-  root cause of `EEE-F-FC-1040010002`'s H1-2025 buyer-base pause (needs stock/supply/contract
-  data the business holds, not this database); whether the 101 zero-post-2024-activity "dropped"
+  ~~root cause of `EEE-F-FC-1040010002`'s H1-2025 buyer-base pause~~ (needs stock/supply/contract
+  data the business holds, not this database) — **CLOSED WITHOUT FURTHER PURSUIT, 2026-09-04,
+  moved to Section 8: cannot be answered from internal data; deferred to Phase 3.2, where
+  external factors will be examined**; whether the 101 zero-post-2024-activity "dropped"
   customers are genuinely lost (needs account-status confirmation from the sales team); the
   mechanism behind `CS07977`'s and `CS00477`'s Omni Channel→Tendering relabelling (needs the
   sales team who classifies `revenue_type`); **how much of the measured Phase 2/3.1 forecasting
@@ -3222,27 +3240,37 @@ phase, particularly Phase 4. Full methodology, confidence levels and caveats are
   (undetectable from this data model — needs an external non-database record or IT/business
   confirmation); the mechanism behind the 15 rows (0.054% of the 128-item scope) where createDate
   lags PODate by up to 44 days (too rare to investigate further, ₿0.13M total value, non-blocking);
-  what actually explains the Feb-Jul 2026 rolling-origin-vs-train/val/test divergence first found
-  in Phase B1/B4 (this task ruled OUT the createDate/PODate back-dating mechanism specifically,
-  high confidence negative finding, but did not identify the true cause); the business reason two
-  separately-named fields (`CtrDate`/`ReceiveCtrDate` in `Cube_CES`; `createDate`/`PODate` in
-  `cube_Sale_APD`) exist for what is, on the Actual/Backlog status basis, a >99.9%-identical value.
+  ~~what actually explains the Feb-Jul 2026 rolling-origin-vs-train/val/test divergence first
+  found in Phase B1/B4~~ (this task ruled OUT the createDate/PODate back-dating mechanism
+  specifically, high confidence negative finding, but did not identify the true cause); the
+  business reason two separately-named fields (`CtrDate`/`ReceiveCtrDate` in `Cube_CES`;
+  `createDate`/`PODate` in `cube_Sale_APD`) exist for what is, on the Actual/Backlog status basis,
+  a >99.9%-identical value. **CLOSED WITHOUT FURTHER PURSUIT, 2026-09-04 — moved to Section 8:
+  three candidate causes were ruled out (createDate/PODate back-dating, the
+  `EEE-F-FC-1040010002` item, and — insufficient by itself — an item/window-specific
+  order-timing pattern); no further investigation will be made. Recorded as a known limitation;
+  this is the reason rolling-origin evaluation is PRIMARY and the single train/val/test split is
+  SECONDARY (see the "Final forecasting method" and "Evaluation policy" Locked Decisions above).**
 
 - **Phase C step 1 residual items (found 2026-09-04)** — unresolved, BLOCKING for the specific
   division noted, non-blocking for the others; full detail, confidence levels and per-division
   evidence in `output/summary/phaseC_synthesis_report.md`:
-  1. **The PEM102 ↔ PEM107 legacy division-tag mechanism** — is this one company-wide
+  1. ~~The PEM102 ↔ PEM107 legacy division-tag mechanism~~ — is this one company-wide
      division-code reorganization around Nov-Dec 2024, two unrelated relabelings, or something
      else? Unprovable from read-only data (no audit/change-log table exists) — needs IT/business
-     confirmation. Blocks a firm filter decision for both PEM102 and PEM107.
+     confirmation. Blocks a firm filter decision for both PEM102 and PEM107. **RESOLVED BY THE
+     BUSINESS, 2026-09-04 — moved to Section 8 ("Resolved by the business"): the two divisions
+     were reorganised; `PEM102-OLD`-tagged rows are `PEM107` products, `PEM107-OLD`-tagged rows
+     are `PEM102` products. Confirms the pricelist-as-source-of-truth decision and explains the
+     mirror pattern directly.**
   2. ~~Whether to combine `division IN ('PEM102','PEM107-OLD')` and `division IN ('PEM107',
      'PEM102-OLD')`~~ — **SUPERSEDED again, same day, see Locked Decisions, "Division
      source-of-truth correction": the question itself no longer applies.** The intermediate
      answer ("do not combine, exclude both `-OLD` values") is itself superseded — the corrected
      rule filters on `division` not at all, so there is nothing to combine or exclude; `-OLD` rows
-     are counted like any other row once the item's pricelist division matches. The *mechanism*
-     behind the tag swap (item 1 above) remains unresolved, but no filter decision depends on it
-     any more.
+     are counted like any other row once the item's pricelist division matches. **The mechanism
+     behind the tag swap (item 1 above) is now resolved by the business (Section 8)** — no filter
+     decision depends on it either way.
   3. ~~CI101's cross-division scope decision~~ — **RESOLVED 2026-09-04, see Locked Decisions,
      "Project scope correction": CI101 is in scope, and the 37.2% recorded under
      `division='PEM101'` is genuine Omni Channel demand for CI101's item codes and must be
@@ -3280,27 +3308,47 @@ phase, particularly Phase 4. Full methodology, confidence levels and caveats are
   authoritative, item-level figure (updated 2026-09-02 after the warehouse-flow follow-up
   investigation, which corrected two earlier assumptions — see Locked Decisions above — and
   RESOLVED the planning-unit question below):
-  - **Confirmed procurement lead time per item, from purchasing.** The stated 45-60 days is the
+  - ~~Confirmed procurement lead time per item, from purchasing.~~ The stated 45-60 days is the
     business's own figure for ordering parts, not something this project can derive or verify
     end-to-end from data. Still needed as the authoritative starting segment of total lead time.
+    **RESOLVED BY THE BUSINESS, 2026-09-04 — moved to Section 8: 45-60 days confirmed as
+    previously stated, and configurable per item.** Assembly time after parts arrive stays open
+    (see next item).
   - **Assembly/production time, from raw-material issue to the resulting Finished Good becoming
     stock.** Confirmed a HARD gap (2026-09-02): no field in any table links a raw-material
     consumption event to the resulting assembled item later becoming stock. Cannot be derived
-    from data under any query design — must come from production/the business.
-  - **Minimum order quantities and lot sizes.** No field states these directly. 68 of 82
+    from data under any query design — must come from production/the business. **STILL OPEN as of
+    2026-09-04 (Section 8) — the business reconfirmed lead time (above) but left this
+    unanswered.**
+  - ~~Minimum order quantities and lot sizes.~~ No field states these directly. 68 of 82
     testable items show quantity-clustering evidence consistent with a lot size (2026-09-02
-    prep investigation) — suggestive, not sufficient to set a value.
+    prep investigation) — suggestive, not sufficient to set a value. **REMOVED FROM THE DATA
+    REQUEST LIST, 2026-09-04 — moved to Section 8: business confirmed this data does not exist.
+    Phase 4 must be designed without it.**
   - **Make-versus-buy classification per item.** FG/RM split is known with high confidence
     (122/128 FG, 6/128 RM, earlier Phase 4 groundwork survey); whether any FG item is genuinely
     dual-sourced (made in-house AND sometimes bought complete) remains unanswerable from data.
-  - **Target service level.** No data source addresses this at all.
+  - **Target service level.** No data source addresses this at all. **STILL OPEN as of
+    2026-09-04 (Section 8) — the business has not set one; Phase 4 will present several levels
+    for the business to choose from.**
   - ~~Whether stock is planned per warehouse, per business unit, or company-wide~~ —
     **RESOLVED 2026-09-02 by business correction, confirmed by data.** Warehouses are process
     stages, not business units or independent planning locations. Phase 4 plans at ITEM LEVEL
     across all warehouses combined; confirmed transfers between warehouses mean a per-warehouse
-    model would double-count. Which specific stage(s) hold sellable Finished Goods stock (as
+    model would double-count. ~~Which specific stage(s) hold sellable Finished Goods stock (as
     opposed to `QA`/`FMTS`/`FMTO`, confirmed not-yet-available) still needs business
-    confirmation — no sales table has a warehouse field to verify this from data.
+    confirmation — no sales table has a warehouse field to verify this from data.~~ **CHANGED
+    2026-09-04 — moved to Section 8: no longer requested from the business as a question; to be
+    DERIVED directly by reading `Cube_Inventory_Exact` (the current-stock snapshot) for these
+    items.**
+  - **Finished-goods movement history** (Phase D groundwork item, Section 1/Current Status
+    Summary). **REMOVED FROM THE DATA REQUEST LIST, 2026-09-04 — moved to Section 8: business
+    confirmed this data does not exist. Phase 4 must be designed without it.**
+  - **Whether stock for `EEE-F-FC-1040010002`'s Tendering-channel sales (division `PPS`, see the
+    Cross-division-demand Locked Decision above) is the same physical stock as this project's
+    Omni Channel items** — previously an open question for the warehouse team.
+    **REMOVED FROM THE DATA REQUEST LIST, 2026-09-04 — moved to Section 8: business confirmed
+    this data does not exist. Phase 4 must be designed without it.**
 
 ## 7. Red Team Review Findings (2026-09-02)
 
@@ -3327,6 +3375,13 @@ last two points.
   table surveyed so far. Without them, a target service level cannot be chosen on an economic
   basis (the trade-off between holding more stock and risking a stockout has no cost basis to
   optimise against) — it can only be picked as a policy choice, not derived from data.
+  **UPDATED 2026-09-04 (Section 8): holding cost now has an approximation method from the
+  business (current stock qty × unit cost from the sales table, `Cube_Inventory_Exact` +
+  `cube_Sale_APD`) — capital tied up, not an annual carrying cost, so an annual carrying rate is
+  still needed as a Phase 4 configurable assumption. Stockout cost still has no source; the
+  business suggested a lost-margin-from-`saleGM` proxy, to be used as a stated assumption, not
+  measured. Target service level is still not set — Phase 4 will present several levels for the
+  business to choose from, per Section 8.**
 - **The project has never been compared against the team's current working method.** Every
   result so far (model accuracy, bias, on-time delivery) is reported in isolation; none of it has
   been measured against what the team already does without this project. Its value is therefore
@@ -3335,6 +3390,111 @@ last two points.
   On-time delivery rose from 57.8% to 73.2% (2023 to 2026, partial year) with no forecasting or
   inventory system in place. Phase F must estimate what a no-intervention baseline looks like
   going forward, since some or all of the apparent opportunity may already be closing on its own.
+
+## 8. Resolved and Closed Questions (Business Input, 2026-09-04)
+
+The user answered several previously-open questions and closed others on 2026-09-04. Recorded
+here as a dedicated resolved section, per instruction — the original open-question and
+Locked-Decision entries above are **not deleted**, only annotated in place with a pointer to this
+section, so the history of what was asked and when is not lost. **Every item below is a
+business-confirmed answer, not independently verified against data by this project (this was a
+documentation task only, per instruction — no analysis or code changes were made to check these
+claims) — each may be revised if new information arrives.**
+
+### 8.1 Resolved by the business
+
+- **PEM102 ↔ PEM107 `-OLD` division-tag mechanism (open since 2026-09-04, resolved 2026-09-04).**
+  The two divisions were reorganised: rows tagged `PEM102-OLD` are `PEM107` products; rows tagged
+  `PEM107-OLD` are `PEM102` products. This directly confirms the pricelist-as-source-of-truth
+  decision (`CONVENTIONS.md`; STATUS.md Locked Decisions, "Division source-of-truth correction")
+  and explains the mirror pattern Phase C step 1 found (each division's real activity sitting
+  under the *other* division's `-OLD` tag) — it is exactly what a division-code reorganisation
+  would produce. Originally recorded as Phase C step 1 residual item 1 (Section 5) and referenced
+  in the Phase C step 1 dated log entry and the "Division source-of-truth correction" Locked
+  Decision (Section 4) — both left in place, annotated, not deleted.
+- **Lead time: 45-60 days from ordering parts to assembly, as previously stated (reaffirmed
+  2026-09-04).** Configurable per item — not a single fixed value across all items. **Assembly
+  time after parts arrive remains open** — the business reaffirmed the procurement segment but
+  did not answer the assembly segment; see §8.5 below. Originally recorded in the "45-60 day lead
+  time" Locked Decision (Section 4) and Section 6's Phase 4 missing-data list — both annotated,
+  not deleted.
+
+### 8.2 Closed without pursuit
+
+- **The February-July 2026 (origin-7) rolling-origin-vs-train/val/test window anomaly (found
+  Phase B1/B4, closed 2026-09-04).** Three candidate causes were tested and ruled out: the
+  createDate/PODate back-dating mechanism (Date-column Validator, high-confidence negative
+  finding); the dominant focus item `EEE-F-FC-1040010002` as sole cause (Modeler Task 1, the
+  reversal persists — and actually strengthens at Type level — once the item is excluded); and an
+  item-and-window-specific order-timing/large-order concentration pattern (Modeler Task 1 part 2 —
+  real and specific to this item and window, but explicitly found insufficient to explain the
+  aggregate-level reversal by itself). **No further investigation will be made.** Recorded as a
+  **known limitation** of this project's data/modelling — and it is the direct reason this
+  project's evaluation policy treats rolling-origin (all 7 origins pooled) as PRIMARY and the
+  single train/val/test split (which happens to land on this exact anomalous window) as SECONDARY
+  ONLY (Section 4, "Final forecasting method" and "Evaluation policy" Locked Decisions). Originally
+  recorded in the "Date-column Validator residual items" open question and the "What Tasks 1-3
+  could not resolve" log entry (both Section 5 / the dated log above) — both annotated, not
+  deleted.
+- **Why `EEE-F-FC-1040010002` fell in 2025 (found Phase A, closed 2026-09-04).** Cannot be
+  answered from internal data — the business has confirmed this, not merely this project's own
+  read-only-data limitation. **Deferred to Phase 3.2**, where external factors (utility budgets,
+  EGP bid announcements, sales team insight — see Section 6, Phase 3.2 missing-data note) will be
+  examined. Originally recorded as part of the "Phase A residual items" open question (Section 5)
+  — annotated, not deleted.
+
+### 8.3 Removed from the data request list
+
+Business has confirmed the following data does not exist. **Phase 4 must be designed without
+them** — they are not merely unanswered, they are no longer being requested:
+
+- **Finished-goods movement history.** Was part of Phase D's original three-item groundwork scope
+  (Section 1, Current Status Summary) — both updated to reflect Phase D's narrower scope (§8.4
+  below).
+- **Minimum order quantities and lot sizes.** Was part of Phase 4's missing-data list (Section 6)
+  — annotated, not deleted. The 2026-09-02 quantity-clustering evidence (68 of 82 testable items)
+  remains recorded as suggestive-but-unused evidence; no value will be set from it since the
+  authoritative figure will never be provided.
+- **Which stock serves the Tendering channel for `EEE-F-FC-1040010002`.** Was recorded as an open
+  question for the warehouse team in the "Cross-division demand" Locked Decision (Section 4) —
+  annotated, not deleted.
+
+### 8.4 To be derived from `Cube_Inventory_Exact` instead of requested
+
+Rather than asking the business, these three are to be read directly from `Cube_Inventory_Exact`
+(the current-stock snapshot table, Section 2 database inventory). **This is a data-source
+decision, not yet an executed analysis** — reading the table and deriving the actual values is
+separate, not-yet-done work (this task made no code changes or queries, per instruction):
+
+- **Which warehouse stages hold sellable stock.** Previously an open item needing business
+  confirmation (Section 4, "Warehouses are STAGES of one process" Locked Decision; Section 6) —
+  both annotated, not deleted. To be read from the inventory snapshot rather than asked.
+- **Holding cost.** Approximate as current stock quantity × unit cost from the sales table —
+  giving the capital value tied up in inventory. **This is capital tied up, not an annual
+  carrying cost** — an annual carrying rate will still need to be set as a configurable
+  assumption in Phase 4, since it is not available from any source. Previously recorded as part
+  of "No cost data exists" (Section 7, Red Team Review Findings) — annotated, not deleted.
+- **Whether CI101-sheet products sold under `PEM101` are held in `PEM101` stock.** Relevant to
+  the CI101↔PEM101 cross-division finding (Phase C step 1; STATUS.md Locked Decisions, "Project
+  scope correction"). To be checked directly against the inventory snapshot for those items, not
+  asked of the business.
+
+### 8.5 Still open (reaffirmed, not resolved)
+
+- **Stockout cost.** No source identified. A proxy using lost margin from `saleGM` may be used,
+  noted explicitly as an assumption if adopted, not a measured figure.
+- **Target service level.** Not yet set. Phase 4 will present several levels for the business to
+  choose from, rather than this project picking one.
+- **Assembly time after parts arrive.** Still unknown — see §8.1 above (lead time was reaffirmed,
+  assembly specifically was not answered).
+
+### Consequence for Phase D
+
+The data search for Phase 4 groundwork is now **narrower**: three checks against
+`Cube_Inventory_Exact` (§8.4 above) rather than a search across all tables. Phase D's description
+is updated accordingly in Section 1 and the Current Status Summary (Phase D entries) — both
+directly rewritten to reflect this narrower scope, per instruction, rather than only annotated
+here.
 
 ---
 
