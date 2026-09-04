@@ -9,11 +9,20 @@ dissimilar products into one item-level model fits none of them well). This
 script instead feeds top-down aggregation (Category/Type/Item levels), which
 is a different use of the wider scope — see STATUS.md.
 
-Does not modify config/config.yaml. Reuses division, revenue_type,
-status_basis, date_range and source_table from it (those are not pilot-scope
-specific), but the Category-level item list itself is computed here, not
+Reuses revenue_type, status_basis, date_range and source_table from
+config.yaml, but the Category-level item list itself is computed here, not
 read from a config key, consistent with this project's practice of not
 writing scope choices into config.yaml unless explicitly instructed.
+
+DIVISION (2026-09-04 correction, STATUS.md Locked Decisions, "Division
+source-of-truth correction"): the pricelist is authoritative for an item's
+division; the database's own `division` column is reference-only and is
+NEVER used to filter which rows count as an item's sales — queries here
+select by itemcode + revenue_type only. Each row's division is attached from
+config['sheet_to_division'] (keyed by which pricelist sheet the item is on);
+the database's own value is kept as a separate `division_db_raw` column so
+discrepancies (e.g. the PEM102/PEM107 -OLD tag pattern) can still be
+inspected, never silently discarded.
 
 RE-KEYING (Phase B, task B1, 2026-09-02): Phase A found the demand series was
 keyed on createDate (PO receipt date) throughout this pipeline, when
@@ -66,27 +75,48 @@ def load_config() -> dict:
 
 
 def get_category_scope(config: dict) -> pd.DataFrame:
-    """Returns a DataFrame (code, category, type) for every visible pricelist
-    row whose category is Fuse or Surge Arrester, plus a has_sales flag."""
+    """Returns a DataFrame (code, category, type, sheet, division) for every visible pricelist
+    row whose category is Fuse or Surge Arrester, plus a has_sales flag.
+
+    `division` is attached from the pricelist sheet the code appears on (config['sheet_to_division']),
+    per the 2026-09-04 "Division source-of-truth correction" (STATUS.md Locked Decisions) — the
+    pricelist is authoritative for an item's division, the database's own `division` column is
+    reference-only and is never used as a query filter. All 128 codes in this Category scope are
+    on the PEM101 sheet (Fuse/Surge Arrester exist only there), so `division` is 'PEM101' for
+    every row here — kept as an explicit column rather than assumed, so this still works correctly
+    if the category scope is ever widened to another sheet."""
     pricelist_path = os.path.join(PROJECT_ROOT, config["pricelist_path"])
     pilot_df = load_visible_product_rows(pricelist_path)
-    scope_df = pilot_df[pilot_df["category"].isin(CATEGORIES)][["code", "category", "type"]].drop_duplicates()
+    scope_df = pilot_df[pilot_df["category"].isin(CATEGORIES)][["code", "category", "type", "sheet"]].drop_duplicates()
+    sheet_to_division = config["sheet_to_division"]
+    unmapped_sheets = set(scope_df["sheet"]) - set(sheet_to_division)
+    if unmapped_sheets:
+        raise ValueError(f"Sheet(s) {unmapped_sheets} have no entry in config['sheet_to_division'] — "
+                          f"cannot determine division for their codes. Add them to config.yaml.")
+    scope_df = scope_df.copy()
+    scope_df["division"] = scope_df["sheet"].map(sheet_to_division)
     all_codes = sorted(scope_df["code"].unique())
-    logger.info("Category-level scope from pricelist (Product Cate. in %s): %d item codes across %d types",
-                CATEGORIES, len(all_codes), scope_df["type"].nunique())
+    logger.info("Category-level scope from pricelist (Product Cate. in %s): %d item codes across %d types, "
+                "division(s) %s (from sheet_to_division, not the database)",
+                CATEGORIES, len(all_codes), scope_df["type"].nunique(), sorted(scope_df["division"].unique()))
 
     code_list = "','".join(all_codes)
     source_table = config["source_table"]
     present = run_query(f"SELECT DISTINCT itemcode FROM {source_table} WHERE itemcode IN ('{code_list}')")
     present_codes = set(present["itemcode"])
-    scope_df = scope_df.copy()
     scope_df["has_any_history"] = scope_df["code"].isin(present_codes)
     return scope_df
 
 
-def pull_raw_sales(config: dict, item_codes: list) -> pd.DataFrame:
+def pull_raw_sales(config: dict, item_codes: list, division_by_code: dict) -> pd.DataFrame:
+    """Pull raw sales rows for `item_codes`, filtered on itemcode + revenue_type + status + date
+    only — NOT division (2026-09-04 correction: the database's `division` column is unreliable,
+    e.g. PEM102/PEM107 rows carrying each other's -OLD tags, and is reference-only, never a
+    filter — STATUS.md Locked Decisions, "Division source-of-truth correction"). Each row's
+    division is attached from the pricelist (`division_by_code`, keyed by itemcode) as the column
+    `division`; the database's own value is kept unmodified as `division_db_raw` so discrepancies
+    between the two can still be inspected, never silently discarded."""
     source_table = config["source_table"]
-    division = config["division"]
     revenue_type = config["revenue_type"]
     statuses = config["status_basis"]
     start_date = config["date_range"]["start"]
@@ -94,18 +124,31 @@ def pull_raw_sales(config: dict, item_codes: list) -> pd.DataFrame:
     code_list = "','".join(item_codes)
     status_list = "','".join(statuses)
     sql = f"""
-        SELECT itemcode, createDate, forecast_date, qty, sale, status, division, revenue_type
+        SELECT itemcode, createDate, forecast_date, qty, sale, status, division AS division_db_raw, revenue_type
         FROM {source_table}
         WHERE itemcode IN ('{code_list}')
-          AND division = '{division}'
           AND revenue_type = '{revenue_type}'
           AND status IN ('{status_list}')
           AND createDate >= '{start_date}'
     """
     df = run_query(sql)
     logger.info(
-        "Pulled %d raw rows: %d items, division=%s, revenue_type=%s, status in %s, createDate >= %s",
-        len(df), len(item_codes), division, revenue_type, statuses, start_date,
+        "Pulled %d raw rows: %d items, revenue_type=%s, status in %s, createDate >= %s "
+        "(no division filter — division is attached from the pricelist below, not queried)",
+        len(df), len(item_codes), revenue_type, statuses, start_date,
+    )
+    df["division"] = df["itemcode"].map(division_by_code)
+    unmapped = df[df["division"].isna()]
+    if len(unmapped) > 0:
+        raise ValueError(f"{len(unmapped)} rows have an itemcode with no pricelist division mapping — "
+                          f"every item_code passed in must be in division_by_code. "
+                          f"Sample itemcodes: {sorted(unmapped['itemcode'].unique())[:5]}")
+    n_reference_mismatch = (df["division"] != df["division_db_raw"]).sum()
+    logger.info(
+        "%d of %d rows (%.2f%%) have a database division_db_raw that differs from the item's pricelist "
+        "division — expected given the known PEM102/PEM107 -OLD tag pattern and similar cross-division "
+        "activity; these rows are still counted (division filter removed), division_db_raw kept for "
+        "inspection.", n_reference_mismatch, len(df), 100 * n_reference_mismatch / len(df) if len(df) else 0,
     )
     n_mps = (df["status"] == "MPS").sum()
     logger.info("Of these, %d rows are MPS (confirmed demand — kept, never dropped)", n_mps)
@@ -252,7 +295,8 @@ if __name__ == "__main__":
     logger.info("%d of %d category-scope codes have at least one row in source table; %d excluded (no sales history at all)",
                 len(forecastable_codes), len(scope_df), len(excluded_codes))
 
-    raw = pull_raw_sales(config, forecastable_codes)
+    division_by_code = dict(zip(scope_df["code"], scope_df["division"]))
+    raw = pull_raw_sales(config, forecastable_codes, division_by_code)
     raw = validate_raw(raw, forecastable_codes, config["date_range"]["start"])
     raw.to_csv(os.path.join(DATA_DIR, "raw_full_category_sales.csv"), index=False)
 
@@ -339,7 +383,8 @@ if __name__ == "__main__":
           f"{scope_df['category'].nunique()} Categories")
     print(f"Codes with at least one row anywhere in source table: {len(forecastable_codes)}")
     print(f"Codes excluded (zero rows anywhere): {len(excluded_codes)} -> {excluded_codes}")
-    print(f"\nRaw pull under filters (division=PEM101, revenue_type=Omni Channel, status Actual/MPS, >=2024-01-01): {len(raw)} rows")
+    print(f"\nRaw pull under filters (itemcode in scope, revenue_type=Omni Channel, status Actual/MPS, "
+          f">=2024-01-01, NO division filter — division attached from pricelist): {len(raw)} rows")
     print(f"Codes among the {len(forecastable_codes)} forecastable that have ZERO rows under these specific filters: "
           f"{len(forecastable_codes) - len(codes_with_sales_in_scope)}")
     print("\nPer-Type breakdown:")

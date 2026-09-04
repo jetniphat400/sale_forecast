@@ -124,9 +124,13 @@ def pull_actuals_forecastDate(config: dict, scope: pd.DataFrame, target_months: 
     target_months, then rolls the item-level actuals up to Type and Category level too, so all
     three levels present in forward_test_log_v2.csv can be scored consistently.
     Returns columns: itemcode, level, target_month, realised_actual_qty.
+
+    DIVISION (2026-09-04 correction, STATUS.md Locked Decisions, "Division source-of-truth
+    correction"): no longer filtered on `division` -- the database's `division` column is
+    reference-only, never a query filter. This function does not carry a division column
+    downstream (it scores qty only), so nothing further is attached here.
     """
     source_table = config["source_table"]
-    division = config["division"]
     revenue_type = config["revenue_type"]
     statuses = config["status_basis"]
     item_codes = sorted(scope["code"].unique())
@@ -136,7 +140,7 @@ def pull_actuals_forecastDate(config: dict, scope: pd.DataFrame, target_months: 
     sql = f"""
         SELECT itemcode, forecast_date, qty
         FROM {source_table}
-        WHERE itemcode IN ('{code_list}') AND division = '{division}' AND revenue_type = '{revenue_type}'
+        WHERE itemcode IN ('{code_list}') AND revenue_type = '{revenue_type}'
           AND status IN ('{status_list}')
           AND forecast_date >= '{min_month}-01' AND forecast_date < DATEADD(MONTH, 1, '{max_month}-01')
     """

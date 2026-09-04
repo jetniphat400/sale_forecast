@@ -8,6 +8,19 @@ MPS rows represent confirmed demand ("PO Received") and must never be
 dropped or filtered out anywhere in this pipeline (locked decision,
 2026-08-31).
 
+DIVISION (2026-09-04 correction, STATUS.md Locked Decisions, "Division
+source-of-truth correction"): this project originally called this file
+`src/load_data.py`; it was relocated to `src/investigations/` in the
+2026-09-04 reorg (git history: "Reorganize src/") and is no longer called by
+`src/run_pipeline.py` (superseded by `load_data_full.py`'s 128-item Category
+scope), but is fixed here too since STATUS.md and this project's prose still
+refer to it by its original name. The pricelist is authoritative for an
+item's division; the database's own `division` column is reference-only and
+is NEVER used to filter which rows count as an item's sales — the query below
+selects by itemcode + revenue_type only. Each row's division is attached from
+config['sheet_to_division']; the database's own value is kept as a separate
+`division_db_raw` column so discrepancies can still be inspected.
+
 RE-KEYING (Phase B, task B1, 2026-09-02): Phase A found this pipeline was
 keyed on createDate (PO receipt date), when inventory planning needs
 forecast_date (contractual delivery date). This script now pulls both date
@@ -48,12 +61,16 @@ def load_config() -> dict:
         return yaml.safe_load(f)
 
 
-def get_pilot_scope(config: dict) -> tuple[list, list]:
-    """Return (forecastable_codes, excluded_codes) for the pilot scope.
+def get_pilot_scope(config: dict) -> tuple[list, list, dict]:
+    """Return (forecastable_codes, excluded_codes, division_by_code) for the pilot scope.
 
     The pricelist's Product Type column (config: pilot_categories) identifies
     the 68 pilot items. Codes with zero rows anywhere in the source table are
     excluded from forecasting and returned separately for Phase 4 record-keeping.
+    `division_by_code` maps each code to its division via config['sheet_to_division']
+    (pricelist sheet -> division), per the 2026-09-04 source-of-truth correction — every
+    code in this Type-level pilot scope is on the PEM101 sheet, so this maps every code to
+    'PEM101', but is derived explicitly rather than hardcoded.
     """
     pricelist_path = os.path.join(PROJECT_ROOT, config["pricelist_path"])
     pilot_df = load_visible_product_rows(pricelist_path)
@@ -61,6 +78,12 @@ def get_pilot_scope(config: dict) -> tuple[list, list]:
     scope_df = pilot_df[pilot_df["type"].isin(type_values)]
     all_codes = sorted(scope_df["code"].unique())
     logger.info("Pilot scope from pricelist (Type-level filter, not DB productTypeName): %d item codes", len(all_codes))
+
+    sheet_to_division = config["sheet_to_division"]
+    unmapped_sheets = set(scope_df["sheet"]) - set(sheet_to_division)
+    if unmapped_sheets:
+        raise ValueError(f"Sheet(s) {unmapped_sheets} have no entry in config['sheet_to_division'].")
+    division_by_code = dict(zip(scope_df["code"], scope_df["sheet"].map(sheet_to_division)))
 
     code_list = "','".join(all_codes)
     source_table = config["source_table"]
@@ -70,14 +93,16 @@ def get_pilot_scope(config: dict) -> tuple[list, list]:
     excluded = sorted(set(all_codes) - present_codes)
     logger.info("%d of %d pilot codes have at least one row in %s; %d excluded (no sales history at all)",
                 len(forecastable), len(all_codes), source_table, len(excluded))
-    return forecastable, excluded
+    return forecastable, excluded, division_by_code
 
 
-def pull_raw_sales(config: dict, item_codes: list) -> pd.DataFrame:
-    """Pull raw daily sales rows for the given item codes, unaggregated and unfiltered
-    beyond the config-specified division / revenue_type / status / date scope."""
+def pull_raw_sales(config: dict, item_codes: list, division_by_code: dict) -> pd.DataFrame:
+    """Pull raw daily sales rows for the given item codes, filtered on itemcode + revenue_type +
+    status + date only — NOT division (2026-09-04 correction: the database's `division` column
+    is reference-only, never a filter — STATUS.md Locked Decisions, "Division source-of-truth
+    correction"). Each row's division is attached from the pricelist (`division_by_code`); the
+    database's own value is kept as a separate `division_db_raw` reference column."""
     source_table = config["source_table"]
-    division = config["division"]
     revenue_type = config["revenue_type"]
     statuses = config["status_basis"]
     start_date = config["date_range"]["start"]
@@ -85,18 +110,29 @@ def pull_raw_sales(config: dict, item_codes: list) -> pd.DataFrame:
     code_list = "','".join(item_codes)
     status_list = "','".join(statuses)
     sql = f"""
-        SELECT itemcode, createDate, forecast_date, qty, sale, status, division, revenue_type
+        SELECT itemcode, createDate, forecast_date, qty, sale, status, division AS division_db_raw, revenue_type
         FROM {source_table}
         WHERE itemcode IN ('{code_list}')
-          AND division = '{division}'
           AND revenue_type = '{revenue_type}'
           AND status IN ('{status_list}')
           AND createDate >= '{start_date}'
     """
     df = run_query(sql)
     logger.info(
-        "Pulled %d raw rows: %d items, division=%s, revenue_type=%s, status in %s, createDate >= %s",
-        len(df), len(item_codes), division, revenue_type, statuses, start_date,
+        "Pulled %d raw rows: %d items, revenue_type=%s, status in %s, createDate >= %s "
+        "(no division filter — division attached from the pricelist below)",
+        len(df), len(item_codes), revenue_type, statuses, start_date,
+    )
+    df["division"] = df["itemcode"].map(division_by_code)
+    unmapped = df[df["division"].isna()]
+    if len(unmapped) > 0:
+        raise ValueError(f"{len(unmapped)} rows have an itemcode with no pricelist division mapping. "
+                          f"Sample itemcodes: {sorted(unmapped['itemcode'].unique())[:5]}")
+    n_reference_mismatch = (df["division"] != df["division_db_raw"]).sum()
+    logger.info(
+        "%d of %d rows (%.2f%%) have a database division_db_raw that differs from the item's pricelist "
+        "division — these rows are still counted (division filter removed), division_db_raw kept for "
+        "inspection.", n_reference_mismatch, len(df), 100 * n_reference_mismatch / len(df) if len(df) else 0,
     )
     n_mps = (df["status"] == "MPS").sum()
     logger.info("Of these, %d rows are MPS (confirmed demand — kept, never dropped)", n_mps)
@@ -250,7 +286,7 @@ def aggregate_monthly(df: pd.DataFrame, item_codes: list, date_col: str, common_
 if __name__ == "__main__":
     config = load_config()
 
-    forecastable_codes, excluded_codes = get_pilot_scope(config)
+    forecastable_codes, excluded_codes, division_by_code = get_pilot_scope(config)
     pd.DataFrame({"itemcode": excluded_codes}).to_csv(
         os.path.join(SUMMARY_DIR, "excluded_items_no_history.csv"), index=False
     )
@@ -260,7 +296,7 @@ if __name__ == "__main__":
         len(excluded_codes),
     )
 
-    raw = pull_raw_sales(config, forecastable_codes)
+    raw = pull_raw_sales(config, forecastable_codes, division_by_code)
     raw = validate_raw(raw, forecastable_codes, config["date_range"]["start"])
 
     raw.to_csv(os.path.join(DATA_DIR, "raw_pilot_sales_58items.csv"), index=False)
