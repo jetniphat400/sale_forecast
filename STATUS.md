@@ -229,7 +229,7 @@ the dated log entry below and `output/summary/phaseC_step2_report.md`):
    comparison is mixed (2 of 5 divisions better under value, 3 of 5 worse) — no evidence found to
    switch from quantity. Quantity basis is kept, by absence of a reason to switch, not a decisive
    win.**
-2. **For the 89 items with no Omni Channel history** (found by the 2026-09-04 full-scope
+2. ~~For the 89 items with no Omni Channel history~~ (found by the 2026-09-04 full-scope
    re-validation, `output/summary/phaseC_revalidation_report.md` §5), **the placeholder method is
    still not chosen.** The Validator will report, for each item: its Type, the number of sibling
    items in that Type with history, and how concentrated the Type is — so the placeholder logic
@@ -237,10 +237,37 @@ the dated log entry below and `output/summary/phaseC_step2_report.md`):
    Type mean; Type median (preferred where one item dominates the Type, as with the Fuse Cutout
    Type's focus item at roughly 60% of its Type's total sales value — see Locked Decisions,
    "Focus item codes"); mean of similarly-priced siblings; or flag-only for items with no usable
-   siblings. **The choice remains deferred — 2026-09-07 resolved 7 of these 89 (the PEM104
-   overlap, now excluded at division level, not part of this placeholder question at all — see
-   the dated log entry below); 82 remain, unaffected by Step 2's forecasting run, which only
-   covers the 335 items that already have history.**
+   siblings. **DONE 2026-09-07** — 7 of these 89 resolved earlier (the PEM104 overlap, excluded at
+   division level, never part of this question). For the remaining 82, a fixed rule set was
+   applied and written into `config/config.yaml` (`placeholder_rule_set`,
+   `placeholder_item_assignments_82`): **Rule A (Type mean, top sibling <40%) — 50 items; Rule B
+   (Type median, top sibling ≥40%) — 29 items; Rule C (flag only, value 0, no siblings with
+   history) — 3 items**, listed explicitly in the dated log entry below. See
+   `output/summary/phaseC_closure_report.md` Part 2 for the full evidence and the 40% threshold's
+   status as a stated assumption, not a derived value.
+
+**PHASE C — CLOSED (2026-09-07).** All Phase C work is done: step 1 (data quality, all six divisions), the division source-of-truth
+correction and its full-scope re-validation, step 1 revised (PEM102/PEM107/CI101 readiness
+re-derived), step 2 (forecast all 335 in-scope items, value-vs-quantity test, transferability),
+and this closure (final transferability table, placeholder rule set for the 82 no-history items,
+forward-test scoring readiness, config lock-in). Full detail in the dated log entry below and
+`output/summary/phaseC_closure_report.md`.
+
+**Consolidated item status, all 445 codes** (updated 2026-09-07, see the dated log entry below for
+the full breakdown): **forecast 335; placeholder Rule A (Type mean) 50; placeholder Rule B (Type
+median) 29; placeholder Rule C / flag-only 3 (no number invented); placeholder — method already
+assigned 10 (pre-existing, PEM101-pilot-scope decision, unaffected by the new rule set); excluded
+18** (12 PEM104 division-level + 6 listed-but-never-sold). **335 + 50 + 29 + 3 + 10 + 18 = 445**,
+reconciling exactly against the full pricelist item-code universe (Rule A/B/C together are the 82
+no-history codes; Rule C's 3 are a subset of that 82, listed separately only because the task
+asked for the flag-only count named explicitly, not because it is a further, separate bucket).
+
+**Remaining work before Phase D**: the item-specific model check for the three focus codes
+(`EEE-F-FC-1040010002`, `HS-F-99-02110`, `HS-F-99-0213`) — Phase C's transferability work was
+division-level (Top-down vs. Direct vs. Naive, per division); it has not yet specifically
+re-examined whether Top-down remains the right choice for these three codes individually, given
+they are this project's designated focus items for every phase. Not done in this task, flagged for
+the next one.
 
 **Phase D — Phase 4 groundwork. Narrowed 2026-09-04 by business input (Section 8).** No longer a
 search across all tables at once. Finished-goods movement history is removed from the data
@@ -3072,6 +3099,76 @@ which STATUS.md still records as "Proven, method locked" for its own scope.
   re-checked as more history accumulates; the PEM102/PEM107 legacy-tag mechanism remains an
   inference; `cube_Sale_APD` is a live, growing table, so a re-run will not reproduce these exact
   figures though the qualitative conclusions are expected to be stable.
+
+**PHASE C CLOSED — final transferability table, placeholder rule set, scoring readiness, config
+lock-in — DONE (2026-09-07).** Synthesizer then Modeler, same context, one agent (per `AGENTS.md`:
+not split). Full detail: `output/summary/phaseC_closure_report.md`.
+
+- **Final transferability table, all six divisions**:
+
+  | Division | Method | Evidence | Confidence |
+  |---|---|---|---|
+  | PEM101 | Top-down combination | Rolling-origin MAE: Top-down 343.82 < Direct 344.63 < Naive 449.18 — clean advantage over both | High |
+  | PEM102 | Top-down combination | Beats Naive (1.16 vs 1.34); thin, non-significant edge over Direct (t=0.238, n=16) | Moderate |
+  | PEM103 | Top-down combination | Beats Naive (2.49 vs 2.70); thin, non-significant edge over Direct (t=0.545, n=48); demand entirely Intermittent/Lumpy | Moderate |
+  | PEM107 | Top-down combination | Beats Naive (11.57 vs 13.61); thin, non-significant edge over Direct (t=0.118, n=112) | Moderate |
+  | CI101 | Top-down combination | **Falls 1.6% behind Naive** (10.27 vs 10.11, not significant, t=0.117, n=13); significantly beats Direct (t=-2.124, borderline, small n) | Moderate-low |
+  | PEM104 | Excluded (not forecast) | 12 transactions/17 months, insufficient for any model | High |
+
+  **The honest position, stated plainly**: Top-down combination beats Naive in **4 of 5
+  forecastable divisions** and holds a **thin, non-significant edge over Direct in 3 of 5**
+  (PEM102/PEM103/PEM107, all `|t|<0.6`). **Adopted across all five for structural reasons — Type-
+  level rolling-origin stability (mean winner-stability only 34.3% across 40 Types) and a single
+  consistent method project-wide — not because accuracy differences are decisive.** Only PEM101's
+  advantage is clean and unambiguous. **CI101 falls behind Naive by 1.6% (not significant, n=13)
+  and stays on Top-down for consistency**, with an explicit `recheck_instruction` recorded in
+  `config.yaml` to revisit once its history lengthens.
+- **Value-vs-quantity, restated with the Category-level caveat added**: identical zero-inflation
+  reduction by mathematical necessity; mixed overfitting-gap results; quantity retained by absence
+  of a reason to change. **Caveat recorded explicitly**: summing units across product kinds at
+  Category level remains physically meaningless — Top-down allocation itself operates at Type
+  level, where products are of one physical kind, so Category figures are for overview only, never
+  for allocation. Written into `config.yaml` (`aggregation_value_col`,
+  `aggregation_category_level_caveat`).
+- **Placeholder rule set applied to the 82 no-history items** (`src/placeholder_assignment.py`,
+  `output/summary/phaseC_placeholder_assignment_82items.csv`, written into `config.yaml`
+  `placeholder_rule_set` + `placeholder_item_assignments_82`, editable by hand): **Rule A (Type
+  mean monthly demand per item, top sibling <40% of Type's history-bearing value) — 50 items;
+  Rule B (Type median, top sibling ≥40% — resists being pulled toward the dominant item) — 29
+  items; Rule C (flag only, value 0, no number invented, zero siblings with history) — 3 items;
+  Rule D annotation (a 2023 `Cube_CES` Actual/Backlog Omni-Channel trace with no `cube_Sale_APD`
+  row in any year, layered on A/B/C, not a separate value) — 9 items.** The 40% dominance
+  threshold is a **stated assumption carried from instruction, not derived from this data** —
+  recorded as such, to be revisited if it produces poor placeholder values in practice.
+  **Flag-only items (Rule C), listed explicitly**: `SR-F-99-3381603` and `SR-F-99-3381603-01`
+  (PEM102-Version 2, Type "33kV Recloser"), `02-05-R-0001` (PEM102-Version 2, Type "FRTU" — this
+  one also carries the Rule D 2023-trace annotation despite having zero siblings, an edge case the
+  instruction's wording did not explicitly cover; reported honestly, Rule C's zero/flag stands).
+- **Forward-test scoring for the 335-item log**: `src/score_forward_test_all_divisions.py`
+  extends `score_forward_test_v2.py`'s consistency check with one added field, `divisions`.
+  **Confirmed by direct test**: refuses the archived 128-item log (raises
+  `ForwardTestConsistencyError` citing `config_version`, `scope_hash` 128-item-vs-335-item,
+  `scope_n_items`, and `divisions` None-vs-5-divisions — no scored output written); accepts the
+  current 335-item log cleanly. **First target month: 2026-08** (month-end 2026-08-31).
+  **Leakage-guard margin (30 days) clears 2026-09-30** — as of this task's run date (2026-09-07),
+  **0 of 6 target months are safe to score yet**, confirmed by direct run, not assumed. Re-running
+  after 2026-09-30 will score 2026-08 for the first time.
+- **Test added**: `tests/test_score_forward_test_all_divisions.py` (6 tests: passing-metadata
+  case; config/scope/approach/division-mismatch refusals; a direct regression test reproducing
+  the archived 128-item log's own recorded metadata against the current 335-item scope). **Full
+  suite: 46 passed** (was 40 before this task).
+- **Config lock-in** (`config/config.yaml`, every entry commented with its reason): per-division
+  `division_forecast_method` (method + reason + CI101's `recheck_instruction`);
+  `aggregation_value_col`/`aggregation_category_level_caveat`; `placeholder_rule_set`
+  (thresholds, rule text, counts); `placeholder_item_assignments_82` (per-item rule/value/flag/
+  note). **No pipeline code was modified to read these new keys** — recording the decisions in
+  config was this task's scope; wiring them into the loader/forecast scripts is separate,
+  not-yet-done work.
+- **What remains unresolved**: the item-specific model check for the three focus codes (not yet
+  done, see Current Status Summary above); wiring the new config keys into pipeline code;
+  CI101's small-n transferability result awaiting more history; the PEM102/PEM107 legacy-tag
+  mechanism remains an inference; `cube_Sale_APD` is a live, growing table, so a re-run will not
+  reproduce these exact figures though the qualitative conclusions are expected to be stable.
 
 ## 3. Business Findings
 
