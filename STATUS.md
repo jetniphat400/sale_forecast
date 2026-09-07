@@ -204,6 +204,27 @@ and normally-tagged rows, PEM102/PEM107 regain their 2024 history, CI101's total
 PEM102's 38.40%, PEM107's 90.01%. Broader per-division readiness verdicts (collisions, pricelist
 mismatches, demand classification) are **not yet re-derived** on this basis.
 
+**Phase C Step 2 task list — added 2026-09-07 by a best-practice review**, to be carried out when
+Step 2 (Modeler backtest) starts:
+1. **Test Category and Type aggregation using value as well as quantity.** Summing units across
+   different products within a category — e.g. fuse cutouts and fuse links — produces a figure
+   without physical meaning (already flagged in Section 7, Red Team Review Findings,
+   "Aggregating quantities across different products within a category has no physical meaning").
+   Value aggregation is dimensionally consistent (currency sums regardless of product mix) and
+   should be compared against the existing quantity-based aggregation, since part of the apparent
+   benefit measured for quantity aggregation (the zero-inflation and overfitting-gap reduction
+   reported in Phase 2) may be an artifact of that specific choice, not evidence that aggregation
+   itself is meaningful for planning.
+2. **For the 89 items with no Omni Channel history** (found by the 2026-09-04 full-scope
+   re-validation, `output/summary/phaseC_revalidation_report.md` §5), **the placeholder method is
+   not yet decided.** The Validator will report, for each item: its Type, the number of sibling
+   items in that Type with history, and how concentrated the Type is — so the placeholder logic
+   can be chosen on evidence, not assumed. Candidate methods to record, not yet chosen between:
+   Type mean; Type median (preferred where one item dominates the Type, as with the Fuse Cutout
+   Type's focus item at roughly 60% of its Type's total sales value — see Locked Decisions,
+   "Focus item codes"); mean of similarly-priced siblings; or flag-only for items with no usable
+   siblings. **The choice is deferred until the Type characteristics above are known.**
+
 **Phase D — Phase 4 groundwork. Narrowed 2026-09-04 by business input (Section 8).** No longer a
 search across all tables at once. Finished-goods movement history is removed from the data
 request list — business confirmed it does not exist. Assembly time after parts arrive stays open,
@@ -2875,6 +2896,19 @@ phase, particularly Phase 4. Full methodology, confidence levels and caveats are
   stated as a range, not a point estimate, because this is inferred from correlational
   evidence (order size, spike timing, item-mix effects), not measured directly: no historical
   stock-level time series exists in the database.
+- **Data-source strength (found by a 2026-09-07 best-practice review): the demand series is built
+  from PO receipts, not shipments.** `createDate` records when a purchase order is received, and
+  `status` (`Actual` + `MPS`, "PO Received" — see Locked Decisions, "MPS means confirmed demand")
+  is populated at that point regardless of whether stock is available to fulfil it immediately —
+  consistent with this project's own finding above that late deliveries are primarily a stock-
+  availability problem, not an order-timing one: the order is still recorded even when the
+  business cannot fill it on time. This means demand is **not censored by stockouts** — published
+  forecasting guidance warns that models trained on stockout-suppressed zero-demand periods
+  under-forecast systematically, because a stockout month reads as "no demand" instead of
+  "unmet demand." This project is not exposed to that problem, since demand is captured at PO
+  receipt, not at the point of shipment or fulfilment. Recorded as a strength of the data source,
+  not something this project did — the demand-capture design (whichever system feeds
+  `cube_Sale_APD`) already avoids it.
 
 ## 4. Locked Decisions (with reasons)
 
@@ -3495,6 +3529,81 @@ The data search for Phase 4 groundwork is now **narrower**: three checks against
 is updated accordingly in Section 1 and the Current Status Summary (Phase D entries) — both
 directly rewritten to reflect this narrower scope, per instruction, rather than only annotated
 here.
+
+## 9. Framework Alignment (Best-Practice Review, 2026-09-07)
+
+A best-practice review compared this project against established forecasting frameworks, so the
+project's position is visible before Phase C continues. Recorded factually — deviations are
+stated plainly, not softened.
+
+### CRISP-DM lifecycle
+
+The project followed the standard sequence — data understanding, data preparation, modelling,
+evaluation — and has deployment infrastructure in place (the GitHub Pages dashboard, Phase 1;
+`src/run_pipeline.py`, Phase B closeout).
+
+**One deviation: business understanding came late.** Facts about how the business actually
+operates were discovered during Phases B and C, not established at the start:
+- 6-day median customer order notice (Section 3, Business Findings — found investigating Phase 2
+  bias, not at project start).
+- 73.2% on-time delivery, up from 57.8% (Section 3, Business Findings — same origin).
+- The existing min/max inventory settings are unusable as an input (Locked Decisions, "The
+  existing min/max values in the inventory system cannot be used as inputs to any calculation" —
+  found 2026-09-02, well into the project).
+- The actual planning purpose (item-level Max-Min inventory policy, not a monthly sales accuracy
+  target) only became fully clear once these facts were known.
+
+Several rounds of this project's early work (the Phase 2/3.1 model-selection backtests, the
+rule-based-selection investigation) were spent searching for the most accurate monthly forecast.
+Knowing these facts earlier would likely have redirected that effort sooner — toward the
+item-level, stock-availability-driven planning problem this project now understands itself to be
+solving, rather than monthly forecast accuracy as an end in itself. **Recorded as a lesson, not a
+blocker**: none of the Phase 2/3.1 work is discarded (Combination forecasting and the six-model
+comparison remain the adopted method — Locked Decisions, "Final forecasting method"), but the
+sequencing cost real effort that a more CRISP-DM-faithful business-understanding-first start would
+likely have avoided.
+
+### Hierarchical forecasting
+
+The project tested three of the four standard reconciliation approaches: **Direct**, **Top-down**,
+and **Reconciled** (Phase B3, Locked Decisions "Final forecasting method: Top-down combination").
+**Minimum-trace (MinT) optimal reconciliation was not tested.**
+
+**Decision: not pursued, deliberately, not by oversight.** MinT requires estimating an error
+covariance matrix across the reconciled series, which would be unstable on this project's series
+lengths (31 to 43 months, depending on which backtest window) — too few observations relative to
+the matrix's parameters to estimate it reliably. Recorded as a deliberate scope choice with its
+reason, not a gap left unexplained.
+
+### Forecast Value Added (FVA)
+
+The project has consistently used a naive benchmark throughout — Phase 3.1's original backtest,
+every subsequent re-test (B1, B3, Modeler Tasks 1-3), all included Naive — in line with FVA
+practice (the benchmark a "value-adding" model must beat is a naive forecast, not a null model).
+
+**The finding that Naive won outright on 35 of 58 pilot items (Phase 3.1 backtest) is consistent
+with published FVA evidence that roughly half of real-world forecasts fail to beat a random walk,
+and is not, by itself, a failure of this project's method** — it is the expected shape of the
+result for demand this intermittent/lumpy (74% Intermittent or Lumpy at the Phase 1 classification
+stage), not evidence the modelling work was done wrong.
+
+**The FVA step this project has not yet done: comparison against the team's current working
+method** — not against a naive statistical benchmark, but against what the planning team actually
+does today without this project. **This is Phase F** ("Measure the value" — Section 1; also
+Section 7, Red Team Review Findings, "The project has never been compared against the team's
+current working method").
+
+### Intermittent-demand practice
+
+Standard intermittent-demand practice is in place: ADI/CV² classification (Phase 1 onward), the
+Croston and SBA models (Phase 2/3.1 onward), and combination forecasting as the adopted method
+(Locked Decisions, "Final forecasting method").
+
+**The missing step: evaluation on inventory metrics, not forecast accuracy alone.** This project's
+evaluation to date is entirely in forecast-accuracy terms (MAE, RMSE, Bias) — it has not yet
+measured what those forecasts do to an actual inventory policy (service level achieved, stockouts
+prevented, capital tied up in safety stock). **This is Phase E** ("Phase 4 proper: calculate
+Max-Min and simulate it against historical demand" — Section 1).
 
 ---
 

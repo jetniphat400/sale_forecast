@@ -56,6 +56,17 @@
   rule. This rule exists because a pilot filter (`division = 'PEM101'`) was recorded in `STATUS.md`
   as project scope and propagated unquestioned into Phase C — see `STATUS.md` Locked Decisions,
   "Project scope correction," for the full account.
+- **Any specific figure, threshold or attribution stated without a cited source must be treated
+  as unverified until checked.** This applies to a remembered number as much as a guessed one —
+  confident recall is not a citation. Two examples from this project: the original SBC (2005)
+  model assignment ("Croston for Erratic demand") was stated incorrectly from memory and only
+  corrected once the primary paper (Kostenko & Hyndman 2006, reproducing SBC's own Figure 1) was
+  actually consulted — see `STATUS.md`, the rule-based selection entry, "Correction made before
+  implementation," for the full account. An annual holding cost rate of 15-25% was described as
+  an industry standard without a cited source; it must be treated as a configurable assumption
+  for Phase 4, not a fact, until a source is checked — see `STATUS.md` §8.4 ("To be derived from
+  `Cube_Inventory_Exact` instead of requested," holding cost) for the related Phase 4 holding-cost
+  approximation this rate would feed into.
 
 ---
 
