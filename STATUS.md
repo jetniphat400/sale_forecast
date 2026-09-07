@@ -201,12 +201,22 @@ correction (it concerns `revenue_type`, not `division`). A full-scope re-validat
 corrected basis (445 codes) is DONE — see the dated log entry below and
 `output/summary/phaseC_revalidation_report.md`: no double-counting found between `-OLD`-tagged
 and normally-tagged rows, PEM102/PEM107 regain their 2024 history, CI101's totals rise 59.94%,
-PEM102's 38.40%, PEM107's 90.01%. Broader per-division readiness verdicts (collisions, pricelist
-mismatches, demand classification) are **not yet re-derived** on this basis.
+PEM102's 38.40%, PEM107's 90.01%. **Broader per-division readiness verdicts (collisions, pricelist
+mismatches, demand classification) are RE-DERIVED for PEM102, PEM107 and CI101 (DONE 2026-09-07,
+see the dated log entry below and `output/summary/phaseC_step1revised_synthesis_report.md`) — the
+three divisions whose value changed materially (38-90%). PEM101, PEM103 and PEM104 were NOT
+re-run (their value changed under 3%); their step 1 verdicts stand as originally recorded.**
+Headline: **CI101 upgraded to "ready as-is"** (its only real blocker was the cross-division scope
+question, now resolved automatically); **PEM102 and PEM107 keep the same verdict wording ("ready
+after specific fixes") but each division's single biggest original blocker — the `-OLD`-tag
+combination question — is now moot**, narrowing what "specific fixes" actually means for both. A
+445-code consolidated item-status list and an 89-item no-history characterization are also DONE —
+see the dated log entry below; the placeholder MECHANISM for those 89 items (Step 2 task list
+item 2, below) is still not chosen.
 
-**Phase C Step 2 task list — added 2026-09-07 by a best-practice review**, to be carried out when
-Step 2 (Modeler backtest) starts:
-1. **Test Category and Type aggregation using value as well as quantity.** Summing units across
+**Phase C Step 2 — DONE (2026-09-07)** for the forecast-scope items (335 across 5 divisions; see
+the dated log entry below and `output/summary/phaseC_step2_report.md`):
+1. ~~Test Category and Type aggregation using value as well as quantity.~~ Summing units across
    different products within a category — e.g. fuse cutouts and fuse links — produces a figure
    without physical meaning (already flagged in Section 7, Red Team Review Findings,
    "Aggregating quantities across different products within a category has no physical meaning").
@@ -214,16 +224,23 @@ Step 2 (Modeler backtest) starts:
    should be compared against the existing quantity-based aggregation, since part of the apparent
    benefit measured for quantity aggregation (the zero-inflation and overfitting-gap reduction
    reported in Phase 2) may be an artifact of that specific choice, not evidence that aggregation
-   itself is meaningful for planning.
+   itself is meaningful for planning. **DONE 2026-09-07: zero-inflation reduction is IDENTICAL
+   under both bases (a mathematical necessity, not an artifact of units); the overfitting-gap
+   comparison is mixed (2 of 5 divisions better under value, 3 of 5 worse) — no evidence found to
+   switch from quantity. Quantity basis is kept, by absence of a reason to switch, not a decisive
+   win.**
 2. **For the 89 items with no Omni Channel history** (found by the 2026-09-04 full-scope
    re-validation, `output/summary/phaseC_revalidation_report.md` §5), **the placeholder method is
-   not yet decided.** The Validator will report, for each item: its Type, the number of sibling
+   still not chosen.** The Validator will report, for each item: its Type, the number of sibling
    items in that Type with history, and how concentrated the Type is — so the placeholder logic
    can be chosen on evidence, not assumed. Candidate methods to record, not yet chosen between:
    Type mean; Type median (preferred where one item dominates the Type, as with the Fuse Cutout
    Type's focus item at roughly 60% of its Type's total sales value — see Locked Decisions,
    "Focus item codes"); mean of similarly-priced siblings; or flag-only for items with no usable
-   siblings. **The choice is deferred until the Type characteristics above are known.**
+   siblings. **The choice remains deferred — 2026-09-07 resolved 7 of these 89 (the PEM104
+   overlap, now excluded at division level, not part of this placeholder question at all — see
+   the dated log entry below); 82 remain, unaffected by Step 2's forecasting run, which only
+   covers the 335 items that already have history.**
 
 **Phase D — Phase 4 groundwork. Narrowed 2026-09-04 by business input (Section 8).** No longer a
 search across all tables at once. Finished-goods movement history is removed from the data
@@ -2866,6 +2883,196 @@ CSV: `output/summary/phaseC_revalidation_report.md`.
   this task specified. Re-deriving full readiness per division against the new basis is separate,
   not-yet-done work.
 
+**Phase C step 1 REVISED — full readiness re-derivation for PEM102, PEM107, CI101 — DONE
+(2026-09-07).** Three parallel Validators (per `AGENTS.md`) re-ran every Phase C step 1 check for
+the three divisions whose value changed materially (38-90%) once the division filter was removed;
+PEM101/PEM103/PEM104 were not re-run (changed <3%). A Synthesizer then merged the three reports
+with the unchanged PEM101/PEM103/PEM104 findings and the 445-code aggregate re-validation. Full
+detail in `output/summary/phaseC_step1revised_PEM102_report.md`, `..._PEM107_report.md`,
+`..._CI101_report.md`, `phaseC_89items_characterization_report.md`, and the merged
+`phaseC_step1revised_synthesis_report.md` (+ `phaseC_step1revised_item_status_445.csv`); scripts
+under `src/investigations/phaseC_step1revised_validator_*.py` and
+`phaseC_89items_characterization.py`.
+
+- **Consolidated readiness table, all six divisions, same basis — replaces the step 1 table.**
+  PEM101 (Proven/locked), PEM103 ("ready after specific fixes"), PEM104 ("not ready," blocked)
+  carry forward UNCHANGED, not re-examined this round. PEM102, PEM107, CI101 re-derived:
+  - **CI101: UPGRADED, "ready after specific fixes" → "ready as-is."** High confidence — the
+    Validator's own stated reasoning: the original's one consequential blocker (the cross-division
+    scope decision) is resolved automatically by the project-wide correction, not by new
+    data-cleaning work. Usable-from date unchanged (2024-01-01, no filtered-vs-unfiltered gap
+    existed for CI101); duplicates 2 split-lot groups, 0 unexplained (up from 1 group, the extra
+    one only visible once `PEM101`-tagged rows are included); Cube_CES 98.71% (690/699, up from
+    97.27%, and this round individually traced all 9 mismatches, closing the original's stated
+    "not traced" gap); all 13 items now active (`DS-F-99-0320` resolves from NoSale to
+    Intermittent); demand classification materially unchanged (0% Smooth, still no evidenced
+    structural blocker to Top-down transfer). **New finding, flagged not resolved**: a minority
+    share of CI101 codes' `PEM101`-tagged rows carry a category/type label matching neither the
+    pricelist nor that code's own `CI101`-tagged rows (e.g. `DS-F-99-0107`) — for IT/business, not
+    investigated further here.
+  - **PEM102 and PEM107: verdict WORDING unchanged ("ready after specific fixes" both), but the
+    REASONS narrowed materially — high confidence, checked per-Validator, not assumed.** For both,
+    the single biggest original open item (whether to combine the `-OLD` tag) is now moot, since
+    the corrected query pattern includes both tags by construction. PEM102 gains January 2024
+    (usable-from 2024-01-24, was ~Jan 2025 filtered); PEM107 gains January 2024 (usable-from
+    2024-01-03, was ~Jan 2025 filtered/~8 months). Cube_CES: PEM102 98.72% (exact match to the
+    445-code aggregate revalidation's independent figure — a strong cross-check), PEM107 99.36%
+    (consistent with the 98.5-100% band this project has established throughout). Demand
+    classification for both now matches what each original report's own "combined-filter"
+    supplementary view had already found (PEM102: 0/4/8/4 of 16 active; PEM107: 12/6/69/25 of 112
+    active) — **confirming those original combined-filter figures, not stale ones, were already
+    the right answer**, and the previously-flagged "conservative PEM107-only fallback"
+    classification (1/0/71/31) is now conclusively the wrong scope to have used. Both divisions'
+    remaining open items are unchanged from step 1 and were never about the division filter:
+    PEM102's voltage-tier naming disagreement (24kV/36kV pricelist vs. 22kV/33kV DB); PEM107's 4
+    "xxx"-placeholder and 2 near-duplicate pricelist codes, and its 36 unexplained-duplicate groups
+    (₿3,006,792, 0.72% of scope — identical count/value to the original's own combined-filter
+    finding, kept in full per established precedent, not newly discovered).
+  - **Correction surfaced, not a new finding**: PEM102's original report (`phaseC_PEM102_report.md`)
+    characterised contract `CTR-2024-03290` as "very likely 1 real transaction, 3 duplicate rows."
+    This round's direct re-query found 3 DIFFERENT `forecast_date` values across those rows — under
+    this project's own established split-lot test, a genuine 3-tranche split lot, not a duplicate.
+    **The original characterisation is superseded** (per `AGENTS.md` Rule 4, reported explicitly,
+    not silently overwritten).
+  - **A pull-to-pull discrepancy, not resolved**: CI101's original report stated all 9 of its
+    category names were shared with another division ("9/9"); this round's fresh query (3 days
+    later) found only 6 of 9. Most likely explanation stated by the Validator: ordinary growth on a
+    live table — not confirmed, since no snapshot of the original pull date was kept.
+- **Consolidated item status, all 445 codes** (`phaseC_step1revised_item_status_445.csv`): **335
+  forecast**, **82 placeholder — pending method**, **12 excluded — PEM104 division-level
+  (data-volume) exclusion**, **10 placeholder — method already assigned** (existing
+  `placeholder_item_codes`), **6 excluded — listed but never sold** (existing
+  `excluded_item_codes`). The existing 16 config-list codes reconcile with 0 genuine conflicts.
+  **PEM104 overlap flagged as an UNRESOLVED, genuinely two-sided question, not resolved by this
+  report, per instruction**: 7 of the 89 no-history codes sit on the PEM104 sheet, which is already
+  excluded from forecasting entirely for an unrelated data-volume reason. Whether that
+  division-level exclusion already covers these 7 items' placeholder question, or whether they
+  still separately need the same exclude/placeholder-mechanism decision as the other 82 (in case
+  PEM104's volume question is ever revisited), is left to a human — both readings are stated in
+  full in the synthesis report.
+- **89-item no-history characterization** (`phaseC_89items_characterization_report.md`/`.csv`,
+  done by the CI101 Validator, confirmed population = 89): grouped by sibling/concentration
+  pattern — **balanced Type 57**, **dominated Type 22** (≥60% share or a single sibling, the same
+  shape as the Fuse Cutout Type's focus item), **no siblings with history 6**, **Type-undefined 4**
+  (blank pricelist field, all PEM104). Grouped by trace evidence — **Cube_CES Actual/Backlog trace
+  29**, **quotation-only trace 23**, **weak pipeline/inventory-only trace 12**, **no trace anywhere
+  25**. Also found: 4 items are literal "xxx" placeholder pricelist codes (matching PEM107's
+  already-known placeholder-code note); **9 items have a `Cube_CES` Omni-Channel Actual/Backlog row
+  with NO `cube_Sale_APD` counterpart** — an unresolved cross-table gap, not folded into any
+  classification; PEM104's 7 no-history codes cannot be checked against a hidden pricelist version
+  (no hidden PEM104 sheet exists). **No placeholder mechanism was chosen** — that decision is
+  Phase C Step 2 task list item 2 (Current Status Summary above), deferred until now-available
+  evidence lets it be made on evidence rather than assumed.
+- **Which divisions may not transfer Top-down combination — restated on the new basis, still
+  entirely untested by any Modeler backtest.** PEM104 still does not transfer (high confidence,
+  volume problem, unaffected by the division correction). PEM103 still "may not transfer without
+  re-validation" (moderate confidence, unaffected — its issue is a Tendering-channel scope
+  question, not a division-tag one). **PEM107's caution changes in KIND, not degree**: the original
+  risk was specifically that an uncorrected filter would misclassify PEM107's demand mix (Smooth
+  1→12, Erratic 0→4 under the old PEM107-only-vs-combined comparison) — that risk no longer exists
+  by construction, but PEM107's mix still differs materially from PEM101's pilot mix (far more
+  Intermittent-skewed, materially fewer Erratic), so the caution persists on demand-mix grounds
+  alone, not a filter-correctness risk. PEM102 and CI101 remain "thinner-history caution, no
+  evidenced structural blocker" (low-to-moderate confidence, unchanged in substance) — CI101's
+  sharply improved data-quality readiness verdict this round is explicitly a SEPARATE axis from
+  its (unchanged) demand-profile transferability caution; the two must not be conflated.
+- **Confidence and what remains unresolved**: every figure above is cited to its Validator/
+  Synthesizer report and CSV. Explicitly unresolved, carried to Open Questions below: the PEM104
+  overlap; the exclude/placeholder-mechanism decision for the 82 non-PEM104 no-history codes; the
+  9-item Cube_CES cross-table gap; whether PEM101's own production pipeline (`src/load_data_full.py`
+  etc.) has actually been updated to drop its `division='PEM101'` filter (not checked by this
+  round — the aggregate revalidation shows PEM101's own value already shifts +1.22% under the
+  corrected basis, so this is not purely a PEM102/PEM107/CI101 concern); PEM103's and PEM104's
+  specific readiness items were not re-examined and their step 1 conclusions are not re-confirmed
+  by this entry; the PEM102/PEM107 legacy-tag mechanism itself remains an inference, not a
+  confirmed fact; no Modeler has backtested any of the six divisions under either basis. **This
+  task made no changes to `config/config.yaml` or any pipeline code, and nothing from this task was
+  committed or pushed**, per instruction.
+
+**Phase C step 2 — forecast all in-scope items, value-vs-quantity test, transferability — DONE
+(2026-09-07).** Single Modeler (per `AGENTS.md`: forecasting all divisions is one continuous run
+needing identical settings throughout, not split). Full detail, every figure cited:
+`output/summary/phaseC_step2_report.md`. New scripts: `src/load_data_all_divisions.py`,
+`src/backtest_all_divisions.py`, `src/transferability_all_divisions.py`,
+`src/forward_test_all_divisions.py`, `src/charts_all_divisions.py` — additive, alongside (not
+replacing) the existing 128-item PEM101-sheet Fuse+Surge pipeline (`load_data_full.py` etc.),
+which STATUS.md still records as "Proven, method locked" for its own scope.
+
+- **Part 0 preconditions — confirmed clean, no fix needed, high confidence.** Grepped every
+  active pipeline script (not the archived `src/investigations/*.py` one-off scripts) for a
+  `division = '...'` filter: none found. `load_data_full.py`, `src/investigations/load_data.py`
+  (the file this project calls `src/load_data.py`), and `score_forward_test_v2.py` all confirmed
+  filter-free (the 2026-09-04 fix is intact); `aggregate_levels.py`, `item_level_reconciliation.py`,
+  `backtest_rekeyed.py`, `forward_test_v2.py`, `forward_test_common.py`, `leakage_guard.py`,
+  `models.py`, `run_pipeline.py` don't reference `division` at all. 40/40 tests pass, before and
+  after. **PEM101's previously-flagged 1.22% aggregate shift is explained, not a missed filter**:
+  that figure covers all 171 PEM101-sheet codes; `load_data_full.py`'s own 128-item Fuse+Surge
+  Category scope, freshly re-run, shows a consistent, smaller 0.29% (81 of 27,746 rows) — same
+  direction, smaller/different scope, not a contradiction.
+  - **The 7-item PEM104 overlap is now decided, not just flagged**: treated as excluded under
+    PEM104's whole-division exclusion (data volume, unrelated to division tagging) — a
+    division-level exclusion subsumes the item-level placeholder question for these 7. This
+    ratifies "Reading A" from the 2026-09-07 Synthesizer's own two-sided framing (§8 below is
+    updated accordingly); the 89-item placeholder-pending population's actionable count is now
+    **82**, not 89.
+  - **The 9-item `Cube_CES`-trace-only codes — explained, high confidence, single check per
+    instruction.** All 19 matching `Cube_CES` rows across the 9 codes are `Status='Actual'`
+    (delivered, NOT Backlog/pending), dated entirely in 2023 (`CtrDate` 2023-03-04 to 2023-10-25;
+    `ActualDelDate` 2023-03-20 to 2023-11-15) — before `cube_Sale_APD`'s 2024-01-01 modelling
+    window and before several divisions' own structurally-absent-before-2024 boundary. **A
+    table-coverage-window gap, not a data-integrity problem.**
+- **Part 1 — 335 forecast-status items, 5 of 6 divisions (PEM104 contributes zero — all 12
+  excluded), forecast on the corrected basis.** Top-down combination (division-qualified Type-level
+  Combination, allocated by historical qty share), rolling-origin primary, forecast_date-keyed,
+  frozen snapshot, leakage guard enforced (excluded 2026-08 from the common window at LOAD time,
+  not just at scoring time — 7-day margin, needed 30). Common window: 31 months, 2024-01 to
+  2026-07 — the same window every other Phase B/C backtest uses. Per-division Type-level
+  Combination rolling-origin MAE/MASE: **CI101 13.01/0.74, PEM101 2895.82/1.29, PEM102 1.98/1.17,
+  PEM103 36.96/2.16, PEM107 69.18/0.72.** All Bias small/negative (under-forecasting, the
+  established structural reason). **No stable rolling-origin winner across 40 division-qualified
+  Types (mean winner-stability 34.3%, Combination itself the outright winner in only 3 of 40)** —
+  reproduces Phase 3.1's original finding at 4x the scope, reinforcing Combination as the robust
+  choice. **Focus codes (Top-down, adopted method)**: `EEE-F-FC-1040010002` MAE 1016.37/MASE 2.08;
+  `HS-F-99-02110` MAE 497.28/MASE 8.52 (small-scale outlier, already-documented Lumpy
+  classification); `HS-F-99-0213` MAE 228.50/MASE 2.62 — all three under-forecast.
+  - **Forward-test log extended to all 335 items**: `output/summary/
+    forward_test_log_all_divisions.csv` (2,340 rows), schema extended with one `division` column
+    (necessary — Type/Category names collide across divisions). **128-item version archived, not
+    deleted**: `output/summary/archive/forward_test_log_v2_128items_superseded_2026-09-07.csv` (+
+    scored/metadata copies) with a README — **a scope-only supersession, date key and method
+    unchanged**, unlike the earlier 58-item log's three-way supersession. Confirmed before
+    archiving: 0 of 828 rows had a filled `actual_qty`. **No scoring script exists yet for the new
+    log** — flagged, not attempted.
+- **Part 2 — value-based vs. quantity-based aggregation: no evidence to switch, moderate
+  confidence.** Zero-inflation reduction (Category 25.59%, Type 37.18%, down from Item-level
+  58.1%) is **identical under both bases by mathematical necessity** (zero qty ⟺ zero sale value
+  for the same rows) — this part of the original concern was never really about which unit is
+  summed. The validation-to-test gap comparison is **mixed**: 2 of 5 divisions show a smaller gap
+  under value aggregation (PEM101, CI101), 3 show a larger one (PEM102, PEM103, PEM107); MASE is
+  very similar between bases for every division. **Quantity basis is kept for Top-down
+  allocation** — not because value was tested and lost decisively, but because it was tested and
+  found no consistent advantage. Note also: the original 128-item PEM101-only finding of
+  zero-inflation cut "to 0%" does NOT reproduce exactly at this 335-item, 5-division scope (25.59%/
+  37.18%, not 0%) — a genuinely weaker result at the broader scope, reported honestly, not
+  papered over.
+- **Part 3 — transferability, per division, moderate confidence throughout.** Top-down vs. Direct
+  vs. Naive, rolling-origin, all 335 items: **PEM101 holds its Top-down advantage cleanly** (beats
+  both). **PEM102, PEM103, PEM107: Top-down beats Naive but its edge over Direct is thin and not
+  statistically significant** (\|t\|<0.6 for all three) — the step 1 demand-mix flags for these
+  three do not show up here as a measured Top-down failure; evidence suggests Top-down can stay
+  the default, though Direct would be an equally defensible, simpler fallback given the thin
+  margin. **CI101 is the one division where Top-down falls behind Naive** (+1.6%, small, not
+  significant, t=0.12) while still significantly beating Direct (t=-2.12, borderline given n=13
+  items) — consistent with Phase C step 1's own "thin-history caution" flag for CI101; evidence
+  suggests Direct or Naive may be worth considering ahead of Top-down for CI101 specifically if
+  this margin persists, **not implemented, per instruction.**
+- **What remains unresolved**: no scoring script for the new forward-test log; the 82 (of 89)
+  non-PEM104 no-history items' placeholder mechanism is still not chosen (Phase C Step 2 task
+  list item 2, Current Status Summary above); CI101's small-n transferability result should be
+  re-checked as more history accumulates; the PEM102/PEM107 legacy-tag mechanism remains an
+  inference; `cube_Sale_APD` is a live, growing table, so a re-run will not reproduce these exact
+  figures though the qualitative conclusions are expected to be stable.
+
 ## 3. Business Findings
 
 These describe how this business actually operates, established from data investigation (not
@@ -3318,19 +3525,48 @@ phase, particularly Phase 4. Full methodology, confidence levels and caveats are
   6. **Per-division no-history-item classification** (exclude vs. placeholder, following PEM101's
      own Phase B precedent) has not been done for any of the five divisions — each Validator only
      identified the candidate items and their trace status. **Quantified precisely for the full
-     445-code scope by the 2026-09-04 full-scope re-validation** (see the dated log entry above):
-     105 of 445 codes have no Omni-Channel history anywhere, 16 already covered by the existing
-     128-item-scope config lists (consistent, no conflicts), **89 not yet classified by any list**
-     (PEM103 37, PEM107 24, PEM101-non-Fuse/Surge 11, PEM102 10, PEM104 7, CI101 0) — the
-     classification itself remains undone, this only narrows and counts the gap.
+     445-code scope by the 2026-09-04 full-scope re-validation**: 105 of 445 codes have no
+     Omni-Channel history anywhere, 16 already covered by the existing 128-item-scope config lists
+     (consistent, no conflicts), 89 not yet classified by any list. **CHARACTERIZED (not yet
+     classified) 2026-09-07** — see the Phase C step 1 REVISED dated log entry above and
+     `output/summary/phaseC_89items_characterization_report.md`: sibling/concentration groups
+     (balanced 57, dominated-by-one-item 22, no siblings with history 6, Type-undefined 4) and
+     trace-evidence groups (Cube_CES trace 29, quotation-only 23, weak trace 12, no trace 25) are
+     now known, but the exclude/placeholder/other MECHANISM decision itself is still not made —
+     this is Phase C Step 2 task list item 2 (Current Status Summary above).
   7. Minor pricelist data-quality items not investigated further, per the stopping rule: the
      `DS-F-99-0308` within-sheet pricelist duplicate (CI101; also explains the project's existing
      446-rows-vs-445-codes note in Section 1); PEM107's 4 likely "xxx"-placeholder codes and 2
      trailing-period near-duplicates; PEM103's `TF-F-99-2107221B1`/`.` near-duplicate; PEM102's 3
      items carrying an unrelated "Instrument Transformer" category on some rows.
   8. **No Modeler has yet backtested any of the five divisions** — every readiness and
-     transferability judgment from Phase C step 1 is based on data-quality/demand-shape evidence
-     only, not measured model performance. This is Phase C's next step, not yet started.
+     transferability judgment from Phase C step 1 (and its 2026-09-07 revision for PEM102/PEM107/
+     CI101) is based on data-quality/demand-shape evidence only, not measured model performance.
+     This is Phase C's next step, not yet started.
+  9. ~~The PEM104 overlap (found 2026-09-07)~~ — 7 of the 89 no-history codes (item 6 above) sit on
+     the PEM104 sheet, which is already excluded from forecasting entirely for an unrelated
+     data-volume reason (item 5 above). Whether that division-level exclusion already covers these
+     7 items' placeholder question, or whether they still separately need the same
+     exclude/placeholder-mechanism decision as the other 82, was left as a genuinely two-sided
+     question (both readings stated in full in `phaseC_step1revised_synthesis_report.md`
+     Deliverable 2). **DECIDED 2026-09-07 (Phase C step 2, Part 0b): treated as excluded under
+     PEM104 — the division-level exclusion subsumes the item-level placeholder question for these
+     7.** The 89-item placeholder-pending population's actionable count is now 82.
+  10. ~~A 9-item `Cube_CES`/`cube_Sale_APD` cross-table gap (found 2026-09-07)~~ — 9 of the 89
+      no-history codes have a real `Cube_CES` Omni-Channel Actual/Backlog row with NO counterpart
+      anywhere in the full-history `cube_Sale_APD` pull. **EXPLAINED 2026-09-07 (Phase C step 2,
+      Part 0c), high confidence, single direct check**: all 19 matching rows are `Status='Actual'`
+      (delivered, not Backlog), dated entirely in 2023 (`CtrDate` 2023-03-04 to 2023-10-25;
+      `ActualDelDate` 2023-03-20 to 2023-11-15) — before `cube_Sale_APD`'s 2024-01-01 window and
+      several divisions' own structurally-absent-before-2024 boundary. A table-coverage-window
+      gap, not a data-integrity problem. Full list: `phaseC_9item_cubeces_check.csv`.
+  11. **Whether PEM101's own production pipeline query has been updated** to drop
+      `division='PEM101'` as a filter, consistent with the 2026-09-04 correction. **RESOLVED
+      2026-09-07 (Phase C step 2, Part 0a): confirmed clean by direct grep of every active
+      pipeline script — no fix was needed, the 2026-09-04 fix was never reverted.** PEM101's
+      +1.22% aggregate shift (all 171 sheet codes) and `load_data_full.py`'s own +0.29% (its
+      128-item Fuse+Surge Category subset) are consistent, different-scope figures, not a
+      contradiction.
 
 ## 6. Missing Data by Phase
 
