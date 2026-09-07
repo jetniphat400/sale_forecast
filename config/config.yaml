@@ -279,3 +279,466 @@ placeholder_item_codes:
   - "HS-F-99-3121"
   - "HS-F-99-3331"
   - "HS-F-99-3361"
+
+# ============================================================
+# Phase C closeout (locked 2026-09-07) -- per-division method, CI101 re-check
+# instruction, PEM104 exclusion, and the placeholder rule set + per-item
+# assignments for the 82 no-history items (89 minus the 7 PEM104-sheet
+# codes, which are excluded at division level instead -- see
+# divisions_excluded_from_forecasting above and STATUS.md, "Phase C step 2").
+# Evidence: output/summary/phaseC_step2_report.md (transferability),
+# output/summary/phaseC_89items_characterization_report.md (characterisation),
+# output/summary/phaseC_placeholder_assignment_82items.csv (this rule set applied).
+# ============================================================
+
+# --- Per-division forecasting method (locked 2026-09-07) ---------------------
+# Top-down combination is adopted across every forecastable division for
+# STRUCTURAL reasons -- Type-level rolling-origin stability and a single
+# consistent method across the whole project -- not because accuracy
+# differences are decisive. Evidence (rolling-origin, output/summary/
+# phaseC_step2_transferability_per_division.csv / _verdict.csv / _significance.csv):
+#   Top-down beats Naive in 4 of 5 forecastable divisions (all but CI101) and
+#   holds only a thin, NOT statistically significant edge over Direct in 3 of
+#   5 (PEM102/PEM103/PEM107, all |t|<0.6); PEM101 holds a clean advantage over
+#   both. CI101 falls 1.6% behind Naive on 13 items (not significant, t=0.117)
+#   while significantly beating Direct (t=-2.124, borderline given n=13) --
+#   kept on Top-down for consistency with the project's single-method
+#   convention, with an explicit instruction to re-check once its history
+#   lengthens (below), not because the current evidence favours Top-down here.
+division_forecast_method:
+  PEM101:
+    method: topdown_combination
+    reason: "Holds a clean rolling-origin advantage over both Direct and Naive (MAE 343.82 vs 344.63 vs 449.18) -- no re-check condition."
+  PEM102:
+    method: topdown_combination
+    reason: "Beats Naive; thin, non-significant edge over Direct (t=0.238). Adopted for structural consistency (Type-level stability, one method project-wide), not decisive accuracy."
+  PEM103:
+    method: topdown_combination
+    reason: "Beats Naive; thin, non-significant edge over Direct (t=0.545). Adopted for structural consistency, not decisive accuracy. Demand is entirely Intermittent/Lumpy (0% Smooth/Erratic) -- a known caution, not contradicted or resolved by this result."
+  PEM107:
+    method: topdown_combination
+    reason: "Beats Naive; thin, non-significant edge over Direct (t=0.118). Adopted for structural consistency, not decisive accuracy."
+  CI101:
+    method: topdown_combination
+    reason: "Falls 1.6% behind Naive (not significant, t=0.117, n=13 items) while significantly beating Direct (t=-2.124, borderline given small n). Kept on Top-down for consistency with the project's single-method convention across divisions, NOT because current evidence favours it here."
+    recheck_instruction: "Re-check Top-down vs Naive for CI101 once its item-level history lengthens beyond the current 13-item, 31-month evidence base -- the current gap is small and not statistically significant, so it should not be treated as settled. See output/summary/phaseC_step2_report.md Part 3."
+  PEM104:
+    method: excluded
+    reason: "Excluded from forecasting entirely -- only 12 transactions across 17 months, too few to fit any model at any aggregation level (data-volume reason, unrelated to division tagging). Receives a placeholder for Phase 4 instead. See divisions_excluded_from_forecasting above."
+
+# --- Value-vs-quantity aggregation (locked 2026-09-07) ------------------------
+# Quantity is RETAINED for Top-down allocation. Evidence (output/summary/
+# phaseC_step2_report.md Part 2): zero-inflation reduction from aggregation is
+# IDENTICAL under quantity and value bases (a mathematical necessity -- zero
+# qty implies zero sale value for the same rows, so this is not an artifact of
+# which unit is summed). The validation-to-test overfitting-gap comparison is
+# MIXED across divisions (2 of 5 smaller under value, 3 of 5 larger) -- no
+# consistent advantage either way. Quantity is kept by absence of a reason to
+# switch, not because it was tested and won decisively.
+# CAVEAT: summing units across different product kinds within a CATEGORY
+# remains physically meaningless (e.g. fuse cutouts + fuse links summed as one
+# number corresponds to nothing a person could count) -- Category-level figures
+# are for OVERVIEW ONLY, never for allocation. Top-down allocation itself
+# operates at TYPE level, where products are of one physical kind, so this
+# caveat does not undermine the adopted allocation method -- only the
+# Category-level aggregate view above it.
+aggregation_value_col: "qty"
+aggregation_category_level_caveat: "Category-level totals mix different physical products (e.g. fuse cutouts and fuse links) and have no unit meaning -- read for overview trend only, never used for Top-down allocation, which is computed at Type level."
+
+# --- Placeholder rule set for no-history items (locked 2026-09-07) -----------
+# Applies to the 82 no-history item codes not already covered by
+# excluded_item_codes, placeholder_item_codes, or divisions_excluded_from_forecasting
+# (i.e. 89 found by the 2026-09-04 full-scope re-validation, minus the 7 on the
+# PEM104 sheet, which are excluded at division level instead).
+# Rule A: Type has >=1 sibling with history, top sibling holds < dominance_threshold_pct
+#         of the Type's history-bearing value -> placeholder = TYPE MEAN monthly
+#         demand per item (mean, across siblings, of each sibling's own mean
+#         monthly qty over the 2024-01/2026-07 fitting window).
+# Rule B: top sibling holds >= dominance_threshold_pct -> placeholder = TYPE MEDIAN
+#         monthly demand per item (median, across siblings, of each sibling's own
+#         mean monthly qty) -- resists being pulled toward the dominant item's scale,
+#         unlike a plain mean.
+# Rule C: zero siblings with history -> FLAG ONLY, placeholder_qty=null, no number
+#         invented, marked for business input.
+# Rule D: an item under Rule A/B/C ALSO has a Cube_CES trace showing a 2023
+#         Actual/Backlog Omni-Channel delivery with no cube_Sale_APD row in any
+#         year -- an ANNOTATION (see each item's own `note` below), not a
+#         different value rule; the underlying rule's value/flag still applies.
+# dominance_threshold_pct is a STATED ASSUMPTION (not derived from this data) --
+# revisit if it produces poor placeholder values in practice.
+placeholder_rule_set:
+  dominance_threshold_pct: 40.0
+  rule_A: "Type mean monthly demand per item (top sibling share < dominance_threshold_pct)"
+  rule_B: "Type median monthly demand per item (top sibling share >= dominance_threshold_pct)"
+  rule_C: "Flag only, placeholder_qty=null, no number invented (zero siblings with history)"
+  rule_D: "Annotation only (2023 Cube_CES trace, no cube_Sale_APD row) -- layered on A/B/C, does not change the value"
+  counts:
+    rule_A: 50
+    rule_B: 29
+    rule_C: 3
+    rule_D_annotated: 9
+  evidence_csv: "output/summary/phaseC_placeholder_assignment_82items.csv"
+  generated_by_script: "src/placeholder_assignment.py"
+
+# Per-item assignment -- EDITABLE BY HAND. placeholder_qty is null for
+# flag_only items (Rule C); never treat null as zero silently elsewhere --
+# check flag_only first.
+placeholder_item_assignments_82:
+  02-05-R-0001:
+    rule: C
+    placeholder_qty: null
+    flag_only: true
+    note: 'No siblings with history in this Type — flagged for business input, no number invented. ALSO:
+      Cube_CES shows a 2023 Actual/Backlog Omni Channel delivery for this item, but no cube_Sale_APD row
+      in any year — see output/summary/phaseC_9item_cubeces_check.csv. Rule D annotation. (this item has
+      no siblings, so Rule D''s own value guidance does not apply here — Rule C''s zero/flag stands.)'
+  CA-F-99-010108:
+    rule: A
+    placeholder_qty: 6.8843
+    flag_only: false
+  CA-F-99-010303:
+    rule: A
+    placeholder_qty: 6.8843
+    flag_only: false
+  CA-F-99-010304:
+    rule: A
+    placeholder_qty: 6.8843
+    flag_only: false
+  CA-F-99-020301:
+    rule: B
+    placeholder_qty: 3.2903
+    flag_only: false
+  CT-F-99-020533:
+    rule: A
+    placeholder_qty: 6.824
+    flag_only: false
+  CT-F-99-020721:
+    rule: A
+    placeholder_qty: 6.824
+    flag_only: false
+  CT-F-99-020729:
+    rule: A
+    placeholder_qty: 6.824
+    flag_only: false
+  CT-F-99-020731:
+    rule: A
+    placeholder_qty: 6.824
+    flag_only: false
+  IS-F-99-0155CE0:
+    rule: B
+    placeholder_qty: 147.2903
+    flag_only: false
+  IS-F-99-0155CE1:
+    rule: B
+    placeholder_qty: 147.2903
+    flag_only: false
+  IS-F-99-0155EE0:
+    rule: B
+    placeholder_qty: 147.2903
+    flag_only: false
+  IS-F-99-0365CE0:
+    rule: B
+    placeholder_qty: 147.2903
+    flag_only: false
+  IS-F-99-0365CE1:
+    rule: B
+    placeholder_qty: 147.2903
+    flag_only: false
+  IS-F-99-0365EE0:
+    rule: B
+    placeholder_qty: 147.2903
+    flag_only: false
+  LB-F-99-G2261207-01:
+    rule: A
+    placeholder_qty: 2.3011
+    flag_only: false
+    note: Cube_CES shows a 2023 Actual/Backlog Omni Channel delivery for this item, but no cube_Sale_APD
+      row in any year — see output/summary/phaseC_9item_cubeces_check.csv. Rule D annotation. Rule A value
+      used unchanged; this is an annotation (Rule D), not a different value rule.
+  LB-F-99-G3341004-01:
+    rule: B
+    placeholder_qty: 0.3226
+    flag_only: false
+  LB-F-99-G3341005-01:
+    rule: B
+    placeholder_qty: 0.3226
+    flag_only: false
+  LB-F-99-G3341007-01:
+    rule: B
+    placeholder_qty: 0.3226
+    flag_only: false
+  RS-F-99-010018:
+    rule: A
+    placeholder_qty: 0.5115
+    flag_only: false
+  RS-F-99-010130:
+    rule: A
+    placeholder_qty: 0.5115
+    flag_only: false
+  RS-F-99-01xxxx-3:
+    rule: A
+    placeholder_qty: 0.5115
+    flag_only: false
+  RS-F-99-01xxxx-4:
+    rule: A
+    placeholder_qty: 0.5115
+    flag_only: false
+  RS-F-99-040003:
+    rule: A
+    placeholder_qty: 3.9054
+    flag_only: false
+    note: Cube_CES shows a 2023 Actual/Backlog Omni Channel delivery for this item, but no cube_Sale_APD
+      row in any year — see output/summary/phaseC_9item_cubeces_check.csv. Rule D annotation. Rule A value
+      used unchanged; this is an annotation (Rule D), not a different value rule.
+  RS-F-99-050036:
+    rule: B
+    placeholder_qty: 0.0968
+    flag_only: false
+  RS-F-99-050050:
+    rule: B
+    placeholder_qty: 0.0968
+    flag_only: false
+    note: Cube_CES shows a 2023 Actual/Backlog Omni Channel delivery for this item, but no cube_Sale_APD
+      row in any year — see output/summary/phaseC_9item_cubeces_check.csv. Rule D annotation. Rule B value
+      used unchanged; this is an annotation (Rule D), not a different value rule.
+  RS-F-99-050074:
+    rule: B
+    placeholder_qty: 0.0968
+    flag_only: false
+  RS-F-99-050101:
+    rule: B
+    placeholder_qty: 0.0968
+    flag_only: false
+  RS-F-99-050117:
+    rule: B
+    placeholder_qty: 0.0968
+    flag_only: false
+  RS-F-99-050207:
+    rule: B
+    placeholder_qty: 0.0968
+    flag_only: false
+    note: Cube_CES shows a 2023 Actual/Backlog Omni Channel delivery for this item, but no cube_Sale_APD
+      row in any year — see output/summary/phaseC_9item_cubeces_check.csv. Rule D annotation. Rule B value
+      used unchanged; this is an annotation (Rule D), not a different value rule.
+  RS-F-99-050235:
+    rule: B
+    placeholder_qty: 0.0968
+    flag_only: false
+  RS-F-99-050276:
+    rule: B
+    placeholder_qty: 0.0968
+    flag_only: false
+  RS-F-99-050320:
+    rule: B
+    placeholder_qty: 0.0968
+    flag_only: false
+  RS-F-99-05xxxx-1:
+    rule: B
+    placeholder_qty: 0.0968
+    flag_only: false
+  RS-F-99-090xxx:
+    rule: B
+    placeholder_qty: 0.2903
+    flag_only: false
+    note: Cube_CES shows a 2023 Actual/Backlog Omni Channel delivery for this item, but no cube_Sale_APD
+      row in any year — see output/summary/phaseC_9item_cubeces_check.csv. Rule D annotation. Rule B value
+      used unchanged; this is an annotation (Rule D), not a different value rule.
+  SL-F-99-S2461604:
+    rule: B
+    placeholder_qty: 0.5161
+    flag_only: false
+  SL-F-99-S2461605-01:
+    rule: B
+    placeholder_qty: 0.5161
+    flag_only: false
+  SR-F-99-2261203-01:
+    rule: B
+    placeholder_qty: 0.8387
+    flag_only: false
+    note: Cube_CES shows a 2023 Actual/Backlog Omni Channel delivery for this item, but no cube_Sale_APD
+      row in any year — see output/summary/phaseC_9item_cubeces_check.csv. Rule D annotation. Rule B value
+      used unchanged; this is an annotation (Rule D), not a different value rule.
+  SR-F-99-3381603:
+    rule: C
+    placeholder_qty: null
+    flag_only: true
+    note: No siblings with history in this Type — flagged for business input, no number invented.
+  SR-F-99-3381603-01:
+    rule: C
+    placeholder_qty: null
+    flag_only: true
+    note: No siblings with history in this Type — flagged for business input, no number invented.
+  ST-F-12-0009:
+    rule: B
+    placeholder_qty: 5.8065
+    flag_only: false
+  TF-F-99-10074211AF1:
+    rule: A
+    placeholder_qty: 0.9839
+    flag_only: false
+  TF-F-99-19044211AB1:
+    rule: A
+    placeholder_qty: 0.9839
+    flag_only: false
+  TF-F-99-2107221B1:
+    rule: A
+    placeholder_qty: 0.9839
+    flag_only: false
+  TF-F-99-2107221B1.:
+    rule: A
+    placeholder_qty: 0.9839
+    flag_only: false
+  TF-F-99-2305433B4:
+    rule: A
+    placeholder_qty: 0.9839
+    flag_only: false
+  TF-F-99-2307221B1:
+    rule: A
+    placeholder_qty: 0.9839
+    flag_only: false
+  TF-F-99-2404221B1:
+    rule: A
+    placeholder_qty: 0.9839
+    flag_only: false
+  TF-F-99-2504221B1:
+    rule: A
+    placeholder_qty: 0.9839
+    flag_only: false
+    note: Cube_CES shows a 2023 Actual/Backlog Omni Channel delivery for this item, but no cube_Sale_APD
+      row in any year — see output/summary/phaseC_9item_cubeces_check.csv. Rule D annotation. Rule A value
+      used unchanged; this is an annotation (Rule D), not a different value rule.
+  TF-F-99-2505433B4:
+    rule: A
+    placeholder_qty: 0.9839
+    flag_only: false
+  TF-F-99-2507223B1:
+    rule: A
+    placeholder_qty: 0.9839
+    flag_only: false
+  TF-F-99-2705433B4:
+    rule: A
+    placeholder_qty: 0.9839
+    flag_only: false
+  TF-F-99-2707221B1:
+    rule: A
+    placeholder_qty: 0.9839
+    flag_only: false
+  TF-F-99-2707223B1:
+    rule: A
+    placeholder_qty: 0.9839
+    flag_only: false
+  TF-F-99-2805433B4:
+    rule: A
+    placeholder_qty: 0.9839
+    flag_only: false
+  TF-F-99-2807223B1:
+    rule: A
+    placeholder_qty: 0.9839
+    flag_only: false
+  TF-F-99-2904221B1:
+    rule: A
+    placeholder_qty: 0.9839
+    flag_only: false
+  TF-F-99-2904223B1:
+    rule: A
+    placeholder_qty: 0.9839
+    flag_only: false
+  TF-F-99-2905433B4:
+    rule: A
+    placeholder_qty: 0.9839
+    flag_only: false
+  TF-F-99-2907221B1:
+    rule: A
+    placeholder_qty: 0.9839
+    flag_only: false
+  TF-F-99-2907223B1:
+    rule: A
+    placeholder_qty: 0.9839
+    flag_only: false
+  TF-F-99-3004221B1:
+    rule: A
+    placeholder_qty: 0.9839
+    flag_only: false
+  TF-F-99-3004223B1:
+    rule: A
+    placeholder_qty: 0.9839
+    flag_only: false
+  TF-F-99-3005433B4:
+    rule: A
+    placeholder_qty: 0.9839
+    flag_only: false
+  TF-F-99-3007221B1:
+    rule: A
+    placeholder_qty: 0.9839
+    flag_only: false
+  TF-F-99-3007223B1:
+    rule: A
+    placeholder_qty: 0.9839
+    flag_only: false
+  TF-F-99-3104221B1:
+    rule: A
+    placeholder_qty: 0.9839
+    flag_only: false
+  TF-F-99-3105433B4:
+    rule: A
+    placeholder_qty: 0.9839
+    flag_only: false
+  TF-F-99-3107221B1:
+    rule: A
+    placeholder_qty: 0.9839
+    flag_only: false
+  TF-F-99-3107223B1:
+    rule: A
+    placeholder_qty: 0.9839
+    flag_only: false
+    note: Cube_CES shows a 2023 Actual/Backlog Omni Channel delivery for this item, but no cube_Sale_APD
+      row in any year — see output/summary/phaseC_9item_cubeces_check.csv. Rule D annotation. Rule A value
+      used unchanged; this is an annotation (Rule D), not a different value rule.
+  TF-F-99-3204221B1:
+    rule: A
+    placeholder_qty: 0.9839
+    flag_only: false
+  TF-F-99-3205433B4:
+    rule: A
+    placeholder_qty: 0.9839
+    flag_only: false
+  TF-F-99-3207221B1:
+    rule: A
+    placeholder_qty: 0.9839
+    flag_only: false
+  TF-F-99-3207223B1:
+    rule: A
+    placeholder_qty: 0.9839
+    flag_only: false
+  TF-F-99-3704221B1:
+    rule: A
+    placeholder_qty: 0.9839
+    flag_only: false
+  TF-F-99-3704223B1:
+    rule: A
+    placeholder_qty: 0.9839
+    flag_only: false
+  TF-F-99-3705433B4:
+    rule: A
+    placeholder_qty: 0.9839
+    flag_only: false
+  TF-F-99-3707221B1:
+    rule: A
+    placeholder_qty: 0.9839
+    flag_only: false
+  VT-F-99-010203.:
+    rule: B
+    placeholder_qty: 2.0323
+    flag_only: false
+  VT-F-99-010303.:
+    rule: B
+    placeholder_qty: 2.0323
+    flag_only: false
+  VT-F-99-010306:
+    rule: B
+    placeholder_qty: 2.0323
+    flag_only: false
+  VT-F-99-01802:
+    rule: B
+    placeholder_qty: 4.0645
+    flag_only: false
