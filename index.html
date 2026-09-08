@@ -7940,15 +7940,15 @@ function omniShowTab(n){
       return;
     }
 
-    const isWholeNumber = /^[0-9]+$/.test(raw);
-    const n = isWholeNumber ? parseInt(raw, 10) : NaN;
-    const valid = isWholeNumber && n >= 1 && n <= 999;
+    const isNumberFormat = /^[0-9]+(\.[0-9])?$/.test(raw);
+    const n = isNumberFormat ? parseFloat(raw) : NaN;
+    const valid = isNumberFormat && n >= 0 && n <= 999;
 
     if (!valid) {
       // Invalid: never touch inp.value and never touch invLeadTimes/storage --
       // the user's own text stays visible, and any previously saved value for
       // this code is left exactly as it was.
-      invLtSetError(inp, 'กรอกจำนวนเต็ม 1-999 วัน');
+      invLtSetError(inp, 'กรอกตัวเลข 0-999 ทศนิยมไม่เกิน 1 ตำแหน่ง');
       return;
     }
 
