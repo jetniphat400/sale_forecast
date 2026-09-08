@@ -177,17 +177,21 @@ tr.section[role="button"]:focus-visible{outline:2px solid var(--series-1);outlin
 #invTable td.tleft{white-space:normal}
 #invTable td.inv-desc{font-size:11.5px;color:var(--text-secondary);white-space:normal}
 #invTable td:nth-child(6), #invTable th:nth-child(6){white-space:normal}
+#invTable td:last-child{white-space:normal}
 .inv-qty-btn{background:none;border:0;padding:0;font:inherit;font-variant-numeric:tabular-nums;color:var(--series-1);cursor:pointer;text-decoration:underline;text-underline-offset:2px}
 .inv-qty-plain{font-variant-numeric:tabular-nums}
 .badge-nodata{background:rgba(137,135,129,0.16);color:var(--muted)}
 #invTable .badge-nodata{white-space:normal;text-align:center}
 
-.inv-lt-cell{display:flex;align-items:center;justify-content:flex-end;gap:4px}
+.inv-lt-cell{display:flex;flex-direction:column;align-items:flex-end;gap:2px}
+.inv-lt-row{display:flex;align-items:center;justify-content:flex-end;gap:4px}
 .inv-lt-input{width:44px;text-align:right;padding:3px 5px;border:1px solid var(--baseline);border-radius:6px;
   font-size:12px;font-variant-numeric:tabular-nums;background:var(--surface);color:var(--text-primary)}
 .inv-lt-input:focus{outline:2px solid var(--series-1);outline-offset:0}
 .inv-lt-unit{font-size:11px;color:var(--muted)}
 .inv-lt-input.inv-lt-saved{border-color:var(--good);background:rgba(12,163,12,0.10);transition:background .15s,border-color .15s}
+.inv-lt-input.inv-lt-invalid{border-color:var(--critical);background:rgba(208,59,59,0.06)}
+.inv-lt-err{font-size:10px;line-height:1.3;color:var(--critical);white-space:normal;text-align:right}
 
 .inv-wh-modal{display:none;position:fixed;inset:0;background:rgba(11,11,11,.5);z-index:1400;align-items:center;justify-content:center}
 .inv-wh-box{background:var(--surface);border-radius:12px;max-width:480px;width:92%;max-height:80vh;overflow:auto;padding:18px 20px;border:1px solid var(--border)}
@@ -7875,9 +7879,13 @@ function omniShowTab(n){
 
       const savedLt = invLeadTimes[it.code];
       const ltCell = '<div class="inv-lt-cell">'
-        + '<input type="text" inputmode="numeric" class="inv-lt-input" data-code="' + invEsc(it.code) + '"'
+        + '<div class="inv-lt-row">'
+        + '<input type="text" class="inv-lt-input" data-code="' + invEsc(it.code) + '"'
         + ' value="' + (savedLt != null ? invEsc(savedLt) : '') + '" aria-label="Lead time (วัน) สำหรับ ' + invEsc(it.code) + '">'
-        + '<span class="inv-lt-unit">วัน</span></div>';
+        + '<span class="inv-lt-unit">วัน</span>'
+        + '</div>'
+        + '<div class="inv-lt-err" style="display:none"></div>'
+        + '</div>';
 
       tr.innerHTML =
         '<td class="tleft">' + invEsc(it.business) + '</td>'
@@ -7899,29 +7907,52 @@ function omniShowTab(n){
     });
 
     tbody.querySelectorAll('.inv-lt-input').forEach(inp => {
-      inp.addEventListener('input', () => {
-        const cleaned = inp.value.replace(/[^0-9]/g, '');
-        if (cleaned !== inp.value) inp.value = cleaned;
-      });
       inp.addEventListener('change', () => invLtCommit(inp));
     });
   }
 
+  function invLtSetError(inp, msg){
+    inp.classList.remove('inv-lt-saved');
+    inp.classList.add('inv-lt-invalid');
+    const errEl = inp.closest('.inv-lt-cell').querySelector('.inv-lt-err');
+    errEl.textContent = msg;
+    errEl.style.display = 'block';
+  }
+  function invLtClearError(inp){
+    inp.classList.remove('inv-lt-invalid');
+    const errEl = inp.closest('.inv-lt-cell').querySelector('.inv-lt-err');
+    errEl.textContent = '';
+    errEl.style.display = 'none';
+  }
+
+  // Validate-on-exit: the field is never rewritten while the user types (see the
+  // 'change' listener above -- there is no 'input' listener). Only this handler,
+  // firing on blur/change, ever reads or writes the value, so the user always
+  // sees exactly what they typed until they leave the field.
   function invLtCommit(inp){
     const code = inp.dataset.code;
     const raw = inp.value.trim();
+
     if (raw === '') {
+      invLtClearError(inp);
       delete invLeadTimes[code];
       invLtSaveAll(invLeadTimes);
       return;
     }
-    const n = parseInt(raw, 10);
-    if (!/^[0-9]+$/.test(raw) || !(n > 0)) {
-      delete invLeadTimes[code];
-      inp.value = '';
-      invLtSaveAll(invLeadTimes);
+
+    const isWholeNumber = /^[0-9]+$/.test(raw);
+    const n = isWholeNumber ? parseInt(raw, 10) : NaN;
+    const valid = isWholeNumber && n >= 1 && n <= 999;
+
+    if (!valid) {
+      // Invalid: never touch inp.value and never touch invLeadTimes/storage --
+      // the user's own text stays visible, and any previously saved value for
+      // this code is left exactly as it was.
+      invLtSetError(inp, 'กรอกจำนวนเต็ม 1-999 วัน');
       return;
     }
+
+    invLtClearError(inp);
     inp.value = String(n);
     invLeadTimes[code] = n;
     if (invLtSaveAll(invLeadTimes)) {
