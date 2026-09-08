@@ -1,0 +1,6328 @@
+{
+  "snapshot": {
+    "source_table": "[salewarehouse].[dbo].[Cube_Inventory_Exact]",
+    "loaded_at": "2026-09-06 21:38:25.723000",
+    "generated_at": "2026-09-08T02:31:00Z",
+    "refresh_cadence": "unknown"
+  },
+  "warehouses": [
+    {
+      "code": "AST",
+      "role": "unknown"
+    },
+    {
+      "code": "CL",
+      "role": "unknown"
+    },
+    {
+      "code": "F-RD",
+      "role": "unknown"
+    },
+    {
+      "code": "F101",
+      "role": "unknown"
+    },
+    {
+      "code": "F103",
+      "role": "unknown"
+    },
+    {
+      "code": "F106",
+      "role": "unknown"
+    },
+    {
+      "code": "F107",
+      "role": "staging"
+    },
+    {
+      "code": "F109",
+      "role": "unknown"
+    },
+    {
+      "code": "F2-1",
+      "role": "unknown"
+    },
+    {
+      "code": "F2-2",
+      "role": "unknown"
+    },
+    {
+      "code": "FG",
+      "role": "unknown"
+    },
+    {
+      "code": "FG01",
+      "role": "unknown"
+    },
+    {
+      "code": "FG02",
+      "role": "unknown"
+    },
+    {
+      "code": "FG03",
+      "role": "unknown"
+    },
+    {
+      "code": "FG11",
+      "role": "unknown"
+    },
+    {
+      "code": "FG12",
+      "role": "unknown"
+    },
+    {
+      "code": "FG13",
+      "role": "unknown"
+    },
+    {
+      "code": "FG16",
+      "role": "unknown"
+    },
+    {
+      "code": "FG17",
+      "role": "unknown"
+    },
+    {
+      "code": "FG21",
+      "role": "unknown"
+    },
+    {
+      "code": "FG22",
+      "role": "unknown"
+    },
+    {
+      "code": "FG23",
+      "role": "unknown"
+    },
+    {
+      "code": "FG24",
+      "role": "unknown"
+    },
+    {
+      "code": "FG27",
+      "role": "unknown"
+    },
+    {
+      "code": "FMTO",
+      "role": "holding"
+    },
+    {
+      "code": "FMTS",
+      "role": "unknown"
+    },
+    {
+      "code": "INTR",
+      "role": "staging"
+    },
+    {
+      "code": "NCRM",
+      "role": "unknown"
+    },
+    {
+      "code": "P104",
+      "role": "unknown"
+    },
+    {
+      "code": "QA",
+      "role": "unknown"
+    },
+    {
+      "code": "W101",
+      "role": "unknown"
+    },
+    {
+      "code": "W121",
+      "role": "holding"
+    },
+    {
+      "code": "W122",
+      "role": "holding"
+    },
+    {
+      "code": "W124",
+      "role": "unknown"
+    },
+    {
+      "code": "W4-1",
+      "role": "unknown"
+    },
+    {
+      "code": "WH01",
+      "role": "unknown"
+    },
+    {
+      "code": "WH04",
+      "role": "holding"
+    },
+    {
+      "code": "WH05",
+      "role": "unknown"
+    },
+    {
+      "code": "WH06",
+      "role": "unknown"
+    },
+    {
+      "code": "WH07",
+      "role": "unknown"
+    },
+    {
+      "code": "WH21",
+      "role": "unknown"
+    },
+    {
+      "code": "WH22",
+      "role": "unknown"
+    },
+    {
+      "code": "WH23",
+      "role": "unknown"
+    },
+    {
+      "code": "WH24",
+      "role": "unknown"
+    }
+  ],
+  "totals": {
+    "codes": 445,
+    "has_stock": 159,
+    "zero_stock": 229,
+    "no_db_record": 57
+  },
+  "items": [
+    {
+      "code": "CA-F-99-010101",
+      "business": "PEM101",
+      "category": "Power Capacitor",
+      "type": "Low Voltage Capacitor",
+      "description": "Cap-1E 5kVAR 230V",
+      "state": "has_stock",
+      "qty": 3.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG01",
+          "qty": 3.0
+        }
+      ]
+    },
+    {
+      "code": "CA-F-99-010102",
+      "business": "PEM101",
+      "category": "Power Capacitor",
+      "type": "Low Voltage Capacitor",
+      "description": "Cap-1E 10kVAR 230V",
+      "state": "has_stock",
+      "qty": 26.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG01",
+          "qty": 11.0
+        },
+        {
+          "code": "FG21",
+          "qty": 15.0
+        }
+      ]
+    },
+    {
+      "code": "CA-F-99-010104",
+      "business": "PEM101",
+      "category": "Power Capacitor",
+      "type": "Low Voltage Capacitor",
+      "description": "Cap-1E 15kVAR 230V",
+      "state": "has_stock",
+      "qty": 16.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG01",
+          "qty": 1.0
+        },
+        {
+          "code": "FG21",
+          "qty": 15.0
+        }
+      ]
+    },
+    {
+      "code": "CA-F-99-010108",
+      "business": "PEM101",
+      "category": "Power Capacitor",
+      "type": "Low Voltage Capacitor",
+      "description": "Cap-1E 25kVAR 230V",
+      "state": "no_db_record",
+      "qty": null,
+      "in_forecast_scope": false,
+      "by_warehouse": []
+    },
+    {
+      "code": "CA-F-99-010201",
+      "business": "PEM101",
+      "category": "Power Capacitor",
+      "type": "Low Voltage Capacitor",
+      "description": "Cap-3E 5kVAR 400V",
+      "state": "has_stock",
+      "qty": 318.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG01",
+          "qty": 317.0
+        },
+        {
+          "code": "FG21",
+          "qty": 1.0
+        }
+      ]
+    },
+    {
+      "code": "CA-F-99-010202",
+      "business": "PEM101",
+      "category": "Power Capacitor",
+      "type": "Low Voltage Capacitor",
+      "description": "Cap-3E 10kVAR 400V",
+      "state": "has_stock",
+      "qty": 33.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG01",
+          "qty": 15.0
+        },
+        {
+          "code": "FG21",
+          "qty": 18.0
+        }
+      ]
+    },
+    {
+      "code": "CA-F-99-010203",
+      "business": "PEM101",
+      "category": "Power Capacitor",
+      "type": "Low Voltage Capacitor",
+      "description": "Cap-3E 15kVAR 400V",
+      "state": "has_stock",
+      "qty": 45.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG01",
+          "qty": 20.0
+        },
+        {
+          "code": "FG21",
+          "qty": 25.0
+        }
+      ]
+    },
+    {
+      "code": "CA-F-99-010204",
+      "business": "PEM101",
+      "category": "Power Capacitor",
+      "type": "Low Voltage Capacitor",
+      "description": "Cap-3E 20kVAR 400V",
+      "state": "has_stock",
+      "qty": 46.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG01",
+          "qty": 19.0
+        },
+        {
+          "code": "FG21",
+          "qty": 27.0
+        }
+      ]
+    },
+    {
+      "code": "CA-F-99-010205",
+      "business": "PEM101",
+      "category": "Power Capacitor",
+      "type": "Low Voltage Capacitor",
+      "description": "Cap-3E 25kVAR 400V",
+      "state": "has_stock",
+      "qty": 44.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG01",
+          "qty": 20.0
+        },
+        {
+          "code": "FG21",
+          "qty": 24.0
+        }
+      ]
+    },
+    {
+      "code": "CA-F-99-010206",
+      "business": "PEM101",
+      "category": "Power Capacitor",
+      "type": "Low Voltage Capacitor",
+      "description": "Cap-3E 30kVAR 400V",
+      "state": "has_stock",
+      "qty": 20.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG01",
+          "qty": 18.0
+        },
+        {
+          "code": "FG21",
+          "qty": 2.0
+        }
+      ]
+    },
+    {
+      "code": "CA-F-99-010207",
+      "business": "PEM101",
+      "category": "Power Capacitor",
+      "type": "Low Voltage Capacitor",
+      "description": "Cap-3E 35kVAR 400V",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "CA-F-99-010208",
+      "business": "PEM101",
+      "category": "Power Capacitor",
+      "type": "Low Voltage Capacitor",
+      "description": "Cap-3E 45kVAR 400V",
+      "state": "has_stock",
+      "qty": 32.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG01",
+          "qty": 19.0
+        },
+        {
+          "code": "FG21",
+          "qty": 13.0
+        }
+      ]
+    },
+    {
+      "code": "CA-F-99-010209",
+      "business": "PEM101",
+      "category": "Power Capacitor",
+      "type": "Low Voltage Capacitor",
+      "description": "Cap-3E 50kVAR 400V",
+      "state": "has_stock",
+      "qty": 23.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG01",
+          "qty": 19.0
+        },
+        {
+          "code": "FG21",
+          "qty": 4.0
+        }
+      ]
+    },
+    {
+      "code": "CA-F-99-010210",
+      "business": "PEM101",
+      "category": "Power Capacitor",
+      "type": "Low Voltage Capacitor",
+      "description": "Cap-3E 60kVAR 400V",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "CA-F-99-010211",
+      "business": "PEM101",
+      "category": "Power Capacitor",
+      "type": "Low Voltage Capacitor",
+      "description": "Cap-3E 75kVAR 400V",
+      "state": "has_stock",
+      "qty": 25.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG01",
+          "qty": 18.0
+        },
+        {
+          "code": "FG21",
+          "qty": 7.0
+        }
+      ]
+    },
+    {
+      "code": "CA-F-99-010212",
+      "business": "PEM101",
+      "category": "Power Capacitor",
+      "type": "Low Voltage Capacitor",
+      "description": "Cap-3E 40kVAR 400V",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "CA-F-99-010303",
+      "business": "PEM101",
+      "category": "Power Capacitor",
+      "type": "Low Voltage Capacitor",
+      "description": "Cap-3E 15kVAR 415V (MEA)",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": false,
+      "by_warehouse": []
+    },
+    {
+      "code": "CA-F-99-010304",
+      "business": "PEM101",
+      "category": "Power Capacitor",
+      "type": "Low Voltage Capacitor",
+      "description": "Cap-3E 20kVAR 415V (MEA)",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": false,
+      "by_warehouse": []
+    },
+    {
+      "code": "CA-F-99-010306",
+      "business": "PEM101",
+      "category": "Power Capacitor",
+      "type": "Low Voltage Capacitor",
+      "description": "Cap-3E 30kVAR 415V (MEA)",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "CA-F-99-010309",
+      "business": "PEM101",
+      "category": "Power Capacitor",
+      "type": "Low Voltage Capacitor",
+      "description": "Cap-3E 50kVAR 415V (MEA)",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "CA-F-99-020101",
+      "business": "PEM101",
+      "category": "Power Capacitor",
+      "type": "Medium Voltage Capacitor",
+      "description": "MV Cap 1Ph 12.7kV 100kVAR",
+      "state": "has_stock",
+      "qty": 2.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG21",
+          "qty": 2.0
+        }
+      ]
+    },
+    {
+      "code": "CA-F-99-020102",
+      "business": "PEM101",
+      "category": "Power Capacitor",
+      "type": "Medium Voltage Capacitor",
+      "description": "MV Cap 1Ph 12.7kV 200kVAR",
+      "state": "has_stock",
+      "qty": 7.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG21",
+          "qty": 1.0
+        },
+        {
+          "code": "FMTO",
+          "qty": 6.0
+        }
+      ]
+    },
+    {
+      "code": "CA-F-99-020104",
+      "business": "PEM101",
+      "category": "Power Capacitor",
+      "type": "Medium Voltage Capacitor",
+      "description": "MV Cap 1Ph 12.7kV 50kVAR",
+      "state": "has_stock",
+      "qty": 17.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG21",
+          "qty": 17.0
+        }
+      ]
+    },
+    {
+      "code": "CA-F-99-020301",
+      "business": "PEM101",
+      "category": "Power Capacitor",
+      "type": "Medium Voltage Capacitor",
+      "description": "MV Cap 1Ph 19kV 100kVAR",
+      "state": "has_stock",
+      "qty": 5.0,
+      "in_forecast_scope": false,
+      "by_warehouse": [
+        {
+          "code": "FG21",
+          "qty": 5.0
+        }
+      ]
+    },
+    {
+      "code": "FC-A-27-00102",
+      "business": "PEM101",
+      "category": "Fuse",
+      "type": "Fuse Holder",
+      "description": "22kV 8kA 100A",
+      "state": "has_stock",
+      "qty": 1061.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG01",
+          "qty": 78.0
+        },
+        {
+          "code": "WH21",
+          "qty": 983.0
+        }
+      ]
+    },
+    {
+      "code": "FC-A-27-00202",
+      "business": "PEM101",
+      "category": "Fuse",
+      "type": "Fuse Holder",
+      "description": "22kV 12kA 100A",
+      "state": "has_stock",
+      "qty": 1585.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG01",
+          "qty": 1369.0
+        },
+        {
+          "code": "WH21",
+          "qty": 216.0
+        }
+      ]
+    },
+    {
+      "code": "FC-A-27-00203",
+      "business": "PEM101",
+      "category": "Fuse",
+      "type": "Fuse Holder",
+      "description": "22kV 12kA 200A",
+      "state": "has_stock",
+      "qty": 1428.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "WH21",
+          "qty": 1428.0
+        }
+      ]
+    },
+    {
+      "code": "FC-A-38-00102",
+      "business": "PEM101",
+      "category": "Fuse",
+      "type": "Fuse Holder",
+      "description": "38kV Old 100A",
+      "state": "has_stock",
+      "qty": 1338.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG01",
+          "qty": 16.0
+        },
+        {
+          "code": "WH21",
+          "qty": 1322.0
+        }
+      ]
+    },
+    {
+      "code": "FC-A-38-00202",
+      "business": "PEM101",
+      "category": "Fuse",
+      "type": "Fuse Holder",
+      "description": "38kV New 100A",
+      "state": "has_stock",
+      "qty": 4996.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG01",
+          "qty": 11.0
+        },
+        {
+          "code": "WH21",
+          "qty": 4985.0
+        }
+      ]
+    },
+    {
+      "code": "FC-A-38-00203",
+      "business": "PEM101",
+      "category": "Fuse",
+      "type": "Fuse Holder",
+      "description": "38kV New 200A",
+      "state": "has_stock",
+      "qty": 150.0,
+      "in_forecast_scope": false,
+      "by_warehouse": [
+        {
+          "code": "WH21",
+          "qty": 150.0
+        }
+      ]
+    },
+    {
+      "code": "EEE-F-FC-1040011000",
+      "business": "PEM101",
+      "category": "Fuse",
+      "type": "High Voltage Distribution Fuse Cutout",
+      "description": "22kV 8kA 100Amp",
+      "state": "has_stock",
+      "qty": 371.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG01",
+          "qty": 352.0
+        },
+        {
+          "code": "FG21",
+          "qty": 13.0
+        },
+        {
+          "code": "FMTO",
+          "qty": 3.0
+        },
+        {
+          "code": "W4-1",
+          "qty": 3.0
+        }
+      ]
+    },
+    {
+      "code": "EEE-F-FC-1040010002",
+      "business": "PEM101",
+      "category": "Fuse",
+      "type": "High Voltage Distribution Fuse Cutout",
+      "description": "22kV 12kA 100Amp",
+      "state": "has_stock",
+      "qty": 348.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG01",
+          "qty": 348.0
+        }
+      ]
+    },
+    {
+      "code": "EEE-F-FC-1040021002",
+      "business": "PEM101",
+      "category": "Fuse",
+      "type": "High Voltage Distribution Fuse Cutout",
+      "description": "22kV 12kA 200Amp",
+      "state": "has_stock",
+      "qty": 68.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG01",
+          "qty": 58.0
+        },
+        {
+          "code": "FG21",
+          "qty": 10.0
+        }
+      ]
+    },
+    {
+      "code": "EEE-F-FC-1040011002P",
+      "business": "PEM101",
+      "category": "Fuse",
+      "type": "High Voltage Distribution Fuse Cutout",
+      "description": "22kV 12kA 100Amp HP",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "EEE-F-FC-5920-383-1000",
+      "business": "PEM101",
+      "category": "Fuse",
+      "type": "High Voltage Distribution Fuse Cutout",
+      "description": "22kV 12kA 100Amp (MEA)",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "EEE-F-FC-1040011100",
+      "business": "PEM101",
+      "category": "Fuse",
+      "type": "High Voltage Distribution Fuse Cutout",
+      "description": "33kV 8kA 100Amp",
+      "state": "has_stock",
+      "qty": 136.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG01",
+          "qty": 118.0
+        },
+        {
+          "code": "FG21",
+          "qty": 18.0
+        }
+      ]
+    },
+    {
+      "code": "EEE-F-FC-1040011100N",
+      "business": "PEM101",
+      "category": "Fuse",
+      "type": "High Voltage Distribution Fuse Cutout",
+      "description": "33kV 8kA 100Amp New",
+      "state": "has_stock",
+      "qty": 64.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG01",
+          "qty": 34.0
+        },
+        {
+          "code": "FG21",
+          "qty": 30.0
+        }
+      ]
+    },
+    {
+      "code": "EEE-F-FC-1040011100NP",
+      "business": "PEM101",
+      "category": "Fuse",
+      "type": "High Voltage Distribution Fuse Cutout",
+      "description": "33kV 8kA 100Amp HP New",
+      "state": "has_stock",
+      "qty": 31.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG21",
+          "qty": 1.0
+        },
+        {
+          "code": "FMTO",
+          "qty": 30.0
+        }
+      ]
+    },
+    {
+      "code": "EEE-F-FC-1040021100N",
+      "business": "PEM101",
+      "category": "Fuse",
+      "type": "High Voltage Distribution Fuse Cutout",
+      "description": "33kV 8kA 200Amp New",
+      "state": "has_stock",
+      "qty": 16.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG01",
+          "qty": 12.0
+        },
+        {
+          "code": "FG21",
+          "qty": 4.0
+        }
+      ]
+    },
+    {
+      "code": "EEE-F-FC-104010116",
+      "business": "PEM101",
+      "category": "Fuse",
+      "type": "High Voltage Distribution Fuse Cutout",
+      "description": "33kV 8kA 100Amp Salt Private",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "EEE-F-FL-1040030000",
+      "business": "PEM101",
+      "category": "Fuse",
+      "type": "High Voltage Distribution Fuse link",
+      "description": "22kV 1 Amp",
+      "state": "has_stock",
+      "qty": 1186.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG01",
+          "qty": 1183.0
+        },
+        {
+          "code": "FG21",
+          "qty": 3.0
+        }
+      ]
+    },
+    {
+      "code": "EEE-F-FL-1040030001",
+      "business": "PEM101",
+      "category": "Fuse",
+      "type": "High Voltage Distribution Fuse link",
+      "description": "22kV 2 Amp",
+      "state": "has_stock",
+      "qty": 378.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG01",
+          "qty": 378.0
+        }
+      ]
+    },
+    {
+      "code": "EEE-F-FL-1040030002",
+      "business": "PEM101",
+      "category": "Fuse",
+      "type": "High Voltage Distribution Fuse link",
+      "description": "22kV 3 Amp",
+      "state": "has_stock",
+      "qty": 5939.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG01",
+          "qty": 3516.0
+        },
+        {
+          "code": "FG21",
+          "qty": 2411.0
+        },
+        {
+          "code": "FMTO",
+          "qty": 9.0
+        },
+        {
+          "code": "W4-1",
+          "qty": 3.0
+        }
+      ]
+    },
+    {
+      "code": "EEE-F-FL-1040030003",
+      "business": "PEM101",
+      "category": "Fuse",
+      "type": "High Voltage Distribution Fuse link",
+      "description": "22kV 6 Amp",
+      "state": "has_stock",
+      "qty": 3554.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG01",
+          "qty": 2823.0
+        },
+        {
+          "code": "FG21",
+          "qty": 728.0
+        },
+        {
+          "code": "FMTS",
+          "qty": 3.0
+        }
+      ]
+    },
+    {
+      "code": "EEE-F-FL-1040030004",
+      "business": "PEM101",
+      "category": "Fuse",
+      "type": "High Voltage Distribution Fuse link",
+      "description": "22kV 8 Amp",
+      "state": "has_stock",
+      "qty": 3658.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG01",
+          "qty": 2831.0
+        },
+        {
+          "code": "FG21",
+          "qty": 827.0
+        }
+      ]
+    },
+    {
+      "code": "EEE-F-FL-1040030005",
+      "business": "PEM101",
+      "category": "Fuse",
+      "type": "High Voltage Distribution Fuse link",
+      "description": "22kV 10 Amp",
+      "state": "has_stock",
+      "qty": 5022.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG01",
+          "qty": 4091.0
+        },
+        {
+          "code": "FG21",
+          "qty": 931.0
+        }
+      ]
+    },
+    {
+      "code": "EEE-F-FL-1040030006",
+      "business": "PEM101",
+      "category": "Fuse",
+      "type": "High Voltage Distribution Fuse link",
+      "description": "22kV 15 Amp",
+      "state": "has_stock",
+      "qty": 2707.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG01",
+          "qty": 2415.0
+        },
+        {
+          "code": "FG21",
+          "qty": 292.0
+        }
+      ]
+    },
+    {
+      "code": "EEE-F-FL-1040030007",
+      "business": "PEM101",
+      "category": "Fuse",
+      "type": "High Voltage Distribution Fuse link",
+      "description": "22kV 20 Amp",
+      "state": "has_stock",
+      "qty": 2680.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG01",
+          "qty": 2565.0
+        },
+        {
+          "code": "FG21",
+          "qty": 115.0
+        }
+      ]
+    },
+    {
+      "code": "EEE-F-FL-1040030008",
+      "business": "PEM101",
+      "category": "Fuse",
+      "type": "High Voltage Distribution Fuse link",
+      "description": "22kV 25 Amp",
+      "state": "has_stock",
+      "qty": 4582.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG01",
+          "qty": 2634.0
+        },
+        {
+          "code": "FG21",
+          "qty": 1948.0
+        }
+      ]
+    },
+    {
+      "code": "EEE-F-FL-1040030009",
+      "business": "PEM101",
+      "category": "Fuse",
+      "type": "High Voltage Distribution Fuse link",
+      "description": "22kV 30 Amp",
+      "state": "has_stock",
+      "qty": 5264.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG01",
+          "qty": 4620.0
+        },
+        {
+          "code": "FG21",
+          "qty": 641.0
+        },
+        {
+          "code": "FMTS",
+          "qty": 3.0
+        }
+      ]
+    },
+    {
+      "code": "EEE-F-FL-1040030010",
+      "business": "PEM101",
+      "category": "Fuse",
+      "type": "High Voltage Distribution Fuse link",
+      "description": "22kV 40 Amp",
+      "state": "has_stock",
+      "qty": 3562.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG01",
+          "qty": 3537.0
+        },
+        {
+          "code": "FG21",
+          "qty": 25.0
+        }
+      ]
+    },
+    {
+      "code": "EEE-F-FL-1040030011",
+      "business": "PEM101",
+      "category": "Fuse",
+      "type": "High Voltage Distribution Fuse link",
+      "description": "22kV 50 Amp",
+      "state": "has_stock",
+      "qty": 4315.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG01",
+          "qty": 3487.0
+        },
+        {
+          "code": "FG21",
+          "qty": 828.0
+        }
+      ]
+    },
+    {
+      "code": "EEE-F-FL-1040030012",
+      "business": "PEM101",
+      "category": "Fuse",
+      "type": "High Voltage Distribution Fuse link",
+      "description": "22kV 65 Amp",
+      "state": "has_stock",
+      "qty": 2731.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG01",
+          "qty": 2002.0
+        },
+        {
+          "code": "FG21",
+          "qty": 729.0
+        }
+      ]
+    },
+    {
+      "code": "EEE-F-FL-1040030013",
+      "business": "PEM101",
+      "category": "Fuse",
+      "type": "High Voltage Distribution Fuse link",
+      "description": "22kV 100 Amp",
+      "state": "has_stock",
+      "qty": 644.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG01",
+          "qty": 355.0
+        },
+        {
+          "code": "FG21",
+          "qty": 289.0
+        }
+      ]
+    },
+    {
+      "code": "EEE-F-FL-1040030016",
+      "business": "PEM101",
+      "category": "Fuse",
+      "type": "High Voltage Distribution Fuse link",
+      "description": "22kV 80 Amp",
+      "state": "has_stock",
+      "qty": 2734.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG01",
+          "qty": 2498.0
+        },
+        {
+          "code": "FG21",
+          "qty": 236.0
+        }
+      ]
+    },
+    {
+      "code": "EEE-F-FL-1040030020",
+      "business": "PEM101",
+      "category": "Fuse",
+      "type": "High Voltage Distribution Fuse link",
+      "description": "22kV 200 Amp",
+      "state": "has_stock",
+      "qty": 498.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG01",
+          "qty": 294.0
+        },
+        {
+          "code": "FG21",
+          "qty": 204.0
+        }
+      ]
+    },
+    {
+      "code": "EEE-F-FL-1040030023",
+      "business": "PEM101",
+      "category": "Fuse",
+      "type": "High Voltage Distribution Fuse link",
+      "description": "22kV 140 Amp",
+      "state": "has_stock",
+      "qty": 315.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG01",
+          "qty": 260.0
+        },
+        {
+          "code": "FG21",
+          "qty": 55.0
+        }
+      ]
+    },
+    {
+      "code": "EEE-F-FL-1040030100",
+      "business": "PEM101",
+      "category": "Fuse",
+      "type": "High Voltage Distribution Fuse link",
+      "description": "33kV 1 Amp",
+      "state": "no_db_record",
+      "qty": null,
+      "in_forecast_scope": false,
+      "by_warehouse": []
+    },
+    {
+      "code": "EEE-F-FL-1040030101",
+      "business": "PEM101",
+      "category": "Fuse",
+      "type": "High Voltage Distribution Fuse link",
+      "description": "33kV 2 Amp",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "EEE-F-FL-1040030102",
+      "business": "PEM101",
+      "category": "Fuse",
+      "type": "High Voltage Distribution Fuse link",
+      "description": "33kV 3 Amp",
+      "state": "has_stock",
+      "qty": 3430.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG01",
+          "qty": 2585.0
+        },
+        {
+          "code": "FG21",
+          "qty": 843.0
+        },
+        {
+          "code": "W4-1",
+          "qty": 2.0
+        }
+      ]
+    },
+    {
+      "code": "EEE-F-FL-1040030103",
+      "business": "PEM101",
+      "category": "Fuse",
+      "type": "High Voltage Distribution Fuse link",
+      "description": "33kV 6 Amp",
+      "state": "has_stock",
+      "qty": 2839.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG01",
+          "qty": 2737.0
+        },
+        {
+          "code": "FG21",
+          "qty": 102.0
+        }
+      ]
+    },
+    {
+      "code": "EEE-F-FL-1040030104",
+      "business": "PEM101",
+      "category": "Fuse",
+      "type": "High Voltage Distribution Fuse link",
+      "description": "33kV 8 Amp",
+      "state": "has_stock",
+      "qty": 3390.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG01",
+          "qty": 3150.0
+        },
+        {
+          "code": "FG21",
+          "qty": 240.0
+        }
+      ]
+    },
+    {
+      "code": "EEE-F-FL-1040030105",
+      "business": "PEM101",
+      "category": "Fuse",
+      "type": "High Voltage Distribution Fuse link",
+      "description": "33kV 10 Amp",
+      "state": "has_stock",
+      "qty": 3466.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG01",
+          "qty": 2463.0
+        },
+        {
+          "code": "FG21",
+          "qty": 1003.0
+        }
+      ]
+    },
+    {
+      "code": "EEE-F-FL-1040030106",
+      "business": "PEM101",
+      "category": "Fuse",
+      "type": "High Voltage Distribution Fuse link",
+      "description": "33kV 15 Amp",
+      "state": "has_stock",
+      "qty": 3094.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG01",
+          "qty": 2696.0
+        },
+        {
+          "code": "FG21",
+          "qty": 398.0
+        }
+      ]
+    },
+    {
+      "code": "EEE-F-FL-1040030107",
+      "business": "PEM101",
+      "category": "Fuse",
+      "type": "High Voltage Distribution Fuse link",
+      "description": "33kV 20 Amp",
+      "state": "has_stock",
+      "qty": 3469.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG01",
+          "qty": 2792.0
+        },
+        {
+          "code": "FG21",
+          "qty": 677.0
+        }
+      ]
+    },
+    {
+      "code": "EEE-F-FL-1040030108",
+      "business": "PEM101",
+      "category": "Fuse",
+      "type": "High Voltage Distribution Fuse link",
+      "description": "33kV 25 Amp",
+      "state": "has_stock",
+      "qty": 3677.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG01",
+          "qty": 2790.0
+        },
+        {
+          "code": "FG21",
+          "qty": 887.0
+        }
+      ]
+    },
+    {
+      "code": "EEE-F-FL-1040030109",
+      "business": "PEM101",
+      "category": "Fuse",
+      "type": "High Voltage Distribution Fuse link",
+      "description": "33kV 30 Amp",
+      "state": "has_stock",
+      "qty": 6482.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG01",
+          "qty": 3441.0
+        },
+        {
+          "code": "FG21",
+          "qty": 3041.0
+        }
+      ]
+    },
+    {
+      "code": "EEE-F-FL-1040030110",
+      "business": "PEM101",
+      "category": "Fuse",
+      "type": "High Voltage Distribution Fuse link",
+      "description": "33kV 40 Amp",
+      "state": "has_stock",
+      "qty": 2999.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG01",
+          "qty": 2932.0
+        },
+        {
+          "code": "FG21",
+          "qty": 67.0
+        }
+      ]
+    },
+    {
+      "code": "EEE-F-FL-1040030111",
+      "business": "PEM101",
+      "category": "Fuse",
+      "type": "High Voltage Distribution Fuse link",
+      "description": "33kV 50 Amp",
+      "state": "has_stock",
+      "qty": 3506.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG01",
+          "qty": 3006.0
+        },
+        {
+          "code": "FG21",
+          "qty": 500.0
+        }
+      ]
+    },
+    {
+      "code": "EEE-F-FL-1040030112",
+      "business": "PEM101",
+      "category": "Fuse",
+      "type": "High Voltage Distribution Fuse link",
+      "description": "33kV 65 Amp",
+      "state": "has_stock",
+      "qty": 1833.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG01",
+          "qty": 1434.0
+        },
+        {
+          "code": "FG21",
+          "qty": 399.0
+        }
+      ]
+    },
+    {
+      "code": "EEE-F-FL-1040030113",
+      "business": "PEM101",
+      "category": "Fuse",
+      "type": "High Voltage Distribution Fuse link",
+      "description": "33kV 80 Amp",
+      "state": "has_stock",
+      "qty": 1124.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG01",
+          "qty": 786.0
+        },
+        {
+          "code": "FG21",
+          "qty": 338.0
+        }
+      ]
+    },
+    {
+      "code": "EEE-F-FL-1040030114",
+      "business": "PEM101",
+      "category": "Fuse",
+      "type": "High Voltage Distribution Fuse link",
+      "description": "33kV 100 Amp",
+      "state": "has_stock",
+      "qty": 606.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG01",
+          "qty": 252.0
+        },
+        {
+          "code": "FG21",
+          "qty": 354.0
+        }
+      ]
+    },
+    {
+      "code": "EEE-F-FL-5920-353-00700",
+      "business": "PEM101",
+      "category": "Fuse",
+      "type": "High Voltage Distribution Fuse link",
+      "description": "22kV 6 Amp (MEA)",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "EEE-F-FL-5920-353-01100",
+      "business": "PEM101",
+      "category": "Fuse",
+      "type": "High Voltage Distribution Fuse link",
+      "description": "22kV 10Amp (MEA)",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": false,
+      "by_warehouse": []
+    },
+    {
+      "code": "EEE-F-FL-5920-353-01600",
+      "business": "PEM101",
+      "category": "Fuse",
+      "type": "High Voltage Distribution Fuse link",
+      "description": "22kV 15Amp (MEA)",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": false,
+      "by_warehouse": []
+    },
+    {
+      "code": "EEE-F-FL-5920-353-02600",
+      "business": "PEM101",
+      "category": "Fuse",
+      "type": "High Voltage Distribution Fuse link",
+      "description": "22kV 25Amp (MEA)",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": false,
+      "by_warehouse": []
+    },
+    {
+      "code": "EEE-F-FL-5920-353-04100",
+      "business": "PEM101",
+      "category": "Fuse",
+      "type": "High Voltage Distribution Fuse link",
+      "description": "22kV 40Amp (MEA)",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "EEE-F-FL-5920-353-06600",
+      "business": "PEM101",
+      "category": "Fuse",
+      "type": "High Voltage Distribution Fuse link",
+      "description": "22kV 65Amp (MEA)",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": false,
+      "by_warehouse": []
+    },
+    {
+      "code": "EEE-F-HC-1040020000",
+      "business": "PEM101",
+      "category": "Fuse",
+      "type": "HRC fuse",
+      "description": "HRC fuse 32A ",
+      "state": "has_stock",
+      "qty": 2022.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG01",
+          "qty": 2007.0
+        },
+        {
+          "code": "FG21",
+          "qty": 15.0
+        }
+      ]
+    },
+    {
+      "code": "EEE-F-HC-1040020001",
+      "business": "PEM101",
+      "category": "Fuse",
+      "type": "HRC fuse",
+      "description": "HRC fuse 50A ",
+      "state": "has_stock",
+      "qty": 2554.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG01",
+          "qty": 2488.0
+        },
+        {
+          "code": "FG21",
+          "qty": 66.0
+        }
+      ]
+    },
+    {
+      "code": "EEE-F-HC-1040020002",
+      "business": "PEM101",
+      "category": "Fuse",
+      "type": "HRC fuse",
+      "description": "HRC fuse 80A ",
+      "state": "has_stock",
+      "qty": 7454.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG01",
+          "qty": 7316.0
+        },
+        {
+          "code": "FG21",
+          "qty": 138.0
+        }
+      ]
+    },
+    {
+      "code": "EEE-F-HC-1040020003",
+      "business": "PEM101",
+      "category": "Fuse",
+      "type": "HRC fuse",
+      "description": "HRC fuse 100A ",
+      "state": "has_stock",
+      "qty": 5715.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG01",
+          "qty": 5668.0
+        },
+        {
+          "code": "FG21",
+          "qty": 47.0
+        }
+      ]
+    },
+    {
+      "code": "EEE-F-HC-1040020004",
+      "business": "PEM101",
+      "category": "Fuse",
+      "type": "HRC fuse",
+      "description": "HRC fuse 160A ",
+      "state": "has_stock",
+      "qty": 5159.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG01",
+          "qty": 4743.0
+        },
+        {
+          "code": "FG21",
+          "qty": 416.0
+        }
+      ]
+    },
+    {
+      "code": "EEE-F-HC-1040020005",
+      "business": "PEM101",
+      "category": "Fuse",
+      "type": "HRC fuse",
+      "description": "HRC fuse 200A ",
+      "state": "has_stock",
+      "qty": 3257.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG01",
+          "qty": 3231.0
+        },
+        {
+          "code": "FG21",
+          "qty": 18.0
+        },
+        {
+          "code": "FMTS",
+          "qty": 8.0
+        }
+      ]
+    },
+    {
+      "code": "EEE-F-HC-1040020006",
+      "business": "PEM101",
+      "category": "Fuse",
+      "type": "HRC fuse",
+      "description": "HRC fuse 250A ",
+      "state": "has_stock",
+      "qty": 2968.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG01",
+          "qty": 2827.0
+        },
+        {
+          "code": "FG21",
+          "qty": 141.0
+        }
+      ]
+    },
+    {
+      "code": "EEE-F-HC-1040020007",
+      "business": "PEM101",
+      "category": "Fuse",
+      "type": "HRC fuse",
+      "description": "HRC fuse 315A ",
+      "state": "has_stock",
+      "qty": 2463.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG01",
+          "qty": 2394.0
+        },
+        {
+          "code": "FG21",
+          "qty": 69.0
+        }
+      ]
+    },
+    {
+      "code": "EEE-F-HC-1040020008",
+      "business": "PEM101",
+      "category": "Fuse",
+      "type": "HRC fuse",
+      "description": "HRC fuse 355A ",
+      "state": "has_stock",
+      "qty": 2146.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG01",
+          "qty": 2106.0
+        },
+        {
+          "code": "FG21",
+          "qty": 40.0
+        }
+      ]
+    },
+    {
+      "code": "EEE-F-HC-1040020009",
+      "business": "PEM101",
+      "category": "Fuse",
+      "type": "HRC fuse",
+      "description": "HRC fuse 400A",
+      "state": "has_stock",
+      "qty": 2328.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG01",
+          "qty": 2213.0
+        },
+        {
+          "code": "FG21",
+          "qty": 115.0
+        }
+      ]
+    },
+    {
+      "code": "EEE-F-LT-1040020100",
+      "business": "PEM101",
+      "category": "Fuse",
+      "type": "Low Tension Fuse Switch",
+      "description": "500V 400Amp Private",
+      "state": "has_stock",
+      "qty": 734.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG01",
+          "qty": 711.0
+        },
+        {
+          "code": "FG21",
+          "qty": 23.0
+        }
+      ]
+    },
+    {
+      "code": "EEE-F-LT-1040020100P",
+      "business": "PEM101",
+      "category": "Fuse",
+      "type": "Low Tension Fuse Switch",
+      "description": "500V 400Amp PEA",
+      "state": "has_stock",
+      "qty": 1785.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG01",
+          "qty": 1600.0
+        },
+        {
+          "code": "FG21",
+          "qty": 185.0
+        }
+      ]
+    },
+    {
+      "code": "LS-F-99-1004",
+      "business": "PEM101",
+      "category": "Surge Arrester",
+      "type": "Low Voltage Surge Arrester",
+      "description": "LOZA, Silicone Housing",
+      "state": "has_stock",
+      "qty": 7729.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG01",
+          "qty": 5929.0
+        },
+        {
+          "code": "FG21",
+          "qty": 1800.0
+        }
+      ]
+    },
+    {
+      "code": "LS-F-99-2001",
+      "business": "PEM101",
+      "category": "Surge Arrester",
+      "type": "Low Voltage Surge Arrester",
+      "description": "LAS-002, ABS Housing",
+      "state": "has_stock",
+      "qty": 3456.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG01",
+          "qty": 2453.0
+        },
+        {
+          "code": "FG21",
+          "qty": 1003.0
+        }
+      ]
+    },
+    {
+      "code": "HS-F-99-0031",
+      "business": "PEM101",
+      "category": "Surge Arrester",
+      "type": "Medium Voltage Surge Arrester",
+      "description": "3kV 5kA type LAZ-P03",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "HS-F-99-0061",
+      "business": "PEM101",
+      "category": "Surge Arrester",
+      "type": "Medium Voltage Surge Arrester",
+      "description": "6kV 5kA type LAZ-P06",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "HS-F-99-0091",
+      "business": "PEM101",
+      "category": "Surge Arrester",
+      "type": "Medium Voltage Surge Arrester",
+      "description": "9kV 5kA type LAZ-P09",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "HS-F-99-0121",
+      "business": "PEM101",
+      "category": "Surge Arrester",
+      "type": "Medium Voltage Surge Arrester",
+      "description": "12kV 5kA type LAZ-P12",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "HS-F-99-0151",
+      "business": "PEM101",
+      "category": "Surge Arrester",
+      "type": "Medium Voltage Surge Arrester",
+      "description": "15kV 5kA type LAZ-P15",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "HS-F-99-0181",
+      "business": "PEM101",
+      "category": "Surge Arrester",
+      "type": "Medium Voltage Surge Arrester",
+      "description": "18kV 5kA type LAZ-P18",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": false,
+      "by_warehouse": []
+    },
+    {
+      "code": "HS-F-99-0211",
+      "business": "PEM101",
+      "category": "Surge Arrester",
+      "type": "Medium Voltage Surge Arrester",
+      "description": "21kV 5kA type LAZ-P21 Private",
+      "state": "has_stock",
+      "qty": 562.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG01",
+          "qty": 534.0
+        },
+        {
+          "code": "FG21",
+          "qty": 16.0
+        },
+        {
+          "code": "FMTO",
+          "qty": 3.0
+        },
+        {
+          "code": "FMTS",
+          "qty": 9.0
+        }
+      ]
+    },
+    {
+      "code": "HS-F-99-02110",
+      "business": "PEM101",
+      "category": "Surge Arrester",
+      "type": "Medium Voltage Surge Arrester",
+      "description": "21kV 5kA type LAZ-P21 Transformer (PEA)",
+      "state": "has_stock",
+      "qty": 145.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG01",
+          "qty": 145.0
+        }
+      ]
+    },
+    {
+      "code": "HS-F-99-0213",
+      "business": "PEM101",
+      "category": "Surge Arrester",
+      "type": "Medium Voltage Surge Arrester",
+      "description": "21kV 5kA type LAZ-P21 PEA",
+      "state": "has_stock",
+      "qty": 299.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG01",
+          "qty": 299.0
+        }
+      ]
+    },
+    {
+      "code": "HS-F-99-0215",
+      "business": "PEM101",
+      "category": "Surge Arrester",
+      "type": "Medium Voltage Surge Arrester",
+      "description": "21kV 5kA type LAZ-P21 Transformer",
+      "state": "has_stock",
+      "qty": 3.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG01",
+          "qty": 3.0
+        }
+      ]
+    },
+    {
+      "code": "HS-F-99-0241",
+      "business": "PEM101",
+      "category": "Surge Arrester",
+      "type": "Medium Voltage Surge Arrester",
+      "description": "24kV 5kA type LAZ-P24 Private",
+      "state": "has_stock",
+      "qty": 424.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG01",
+          "qty": 369.0
+        },
+        {
+          "code": "FG21",
+          "qty": 55.0
+        }
+      ]
+    },
+    {
+      "code": "HS-F-99-0244",
+      "business": "PEM101",
+      "category": "Surge Arrester",
+      "type": "Medium Voltage Surge Arrester",
+      "description": "24kV 5kA type LAZ-P24 (MEA)",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "HS-F-99-02410",
+      "business": "PEM101",
+      "category": "Surge Arrester",
+      "type": "Medium Voltage Surge Arrester",
+      "description": "24kV 5kA type LAZ-P24 Transformer (PEA)",
+      "state": "has_stock",
+      "qty": 1260.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG01",
+          "qty": 1050.0
+        },
+        {
+          "code": "FG21",
+          "qty": 210.0
+        }
+      ]
+    },
+    {
+      "code": "HS-F-99-0243",
+      "business": "PEM101",
+      "category": "Surge Arrester",
+      "type": "Medium Voltage Surge Arrester",
+      "description": "24kV 5kA type LAZ-P24 PEA",
+      "state": "has_stock",
+      "qty": 317.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG01",
+          "qty": 317.0
+        }
+      ]
+    },
+    {
+      "code": "HS-F-99-0271",
+      "business": "PEM101",
+      "category": "Surge Arrester",
+      "type": "Medium Voltage Surge Arrester",
+      "description": "27kV 5kA type LAZ-P27",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "HS-F-99-0301",
+      "business": "PEM101",
+      "category": "Surge Arrester",
+      "type": "Medium Voltage Surge Arrester",
+      "description": "30kV 5kA type LAZ-P30 Private",
+      "state": "has_stock",
+      "qty": 279.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG01",
+          "qty": 150.0
+        },
+        {
+          "code": "FG21",
+          "qty": 129.0
+        }
+      ]
+    },
+    {
+      "code": "HS-F-99-03010",
+      "business": "PEM101",
+      "category": "Surge Arrester",
+      "type": "Medium Voltage Surge Arrester",
+      "description": "30kV 5kA type LAZ-P30 Transformer (PEA)",
+      "state": "has_stock",
+      "qty": 387.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG01",
+          "qty": 347.0
+        },
+        {
+          "code": "FG21",
+          "qty": 40.0
+        }
+      ]
+    },
+    {
+      "code": "HS-F-99-0301H22",
+      "business": "PEM101",
+      "category": "Surge Arrester",
+      "type": "Medium Voltage Surge Arrester",
+      "description": "30kV 5kA type LAZ-P30 HP",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "HS-F-99-0301H33",
+      "business": "PEM101",
+      "category": "Surge Arrester",
+      "type": "Medium Voltage Surge Arrester",
+      "description": "30kV 5kA type LAZ-P30 Extra HP",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "HS-F-99-0303",
+      "business": "PEM101",
+      "category": "Surge Arrester",
+      "type": "Medium Voltage Surge Arrester",
+      "description": "30kV 5kA type LAZ-P30 PEA",
+      "state": "has_stock",
+      "qty": 564.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG01",
+          "qty": 514.0
+        },
+        {
+          "code": "FG21",
+          "qty": 50.0
+        }
+      ]
+    },
+    {
+      "code": "HS-F-99-0331",
+      "business": "PEM101",
+      "category": "Surge Arrester",
+      "type": "Medium Voltage Surge Arrester",
+      "description": "33kV 5kA type LAZ-P33",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "HS-F-99-0361",
+      "business": "PEM101",
+      "category": "Surge Arrester",
+      "type": "Medium Voltage Surge Arrester",
+      "description": "36kV 5kA type LAZ-P36",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "HS-F-99-1031",
+      "business": "PEM101",
+      "category": "Surge Arrester",
+      "type": "Medium Voltage Surge Arrester",
+      "description": "3kV 10kA Cl.1 type PAZ-P03-1",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "HS-F-99-1061",
+      "business": "PEM101",
+      "category": "Surge Arrester",
+      "type": "Medium Voltage Surge Arrester",
+      "description": "6kV 10kA Cl.1 type PAZ-P06-1",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "HS-F-99-1091",
+      "business": "PEM101",
+      "category": "Surge Arrester",
+      "type": "Medium Voltage Surge Arrester",
+      "description": "9kV 10kA Cl.1 type PAZ-P09-1",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "HS-F-99-1121",
+      "business": "PEM101",
+      "category": "Surge Arrester",
+      "type": "Medium Voltage Surge Arrester",
+      "description": "12kV 10kA Cl.1 type PAZ-P12-1",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "HS-F-99-1151",
+      "business": "PEM101",
+      "category": "Surge Arrester",
+      "type": "Medium Voltage Surge Arrester",
+      "description": "15kV 10kA Cl.1 type PAZ-P15-1",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": false,
+      "by_warehouse": []
+    },
+    {
+      "code": "HS-F-99-1181",
+      "business": "PEM101",
+      "category": "Surge Arrester",
+      "type": "Medium Voltage Surge Arrester",
+      "description": "18kV 10kA Cl.1 type PAZ-P18-1",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": false,
+      "by_warehouse": []
+    },
+    {
+      "code": "HS-F-99-1211",
+      "business": "PEM101",
+      "category": "Surge Arrester",
+      "type": "Medium Voltage Surge Arrester",
+      "description": "21kV 10kA Cl.1 type PAZ-P21-1",
+      "state": "has_stock",
+      "qty": 228.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG01",
+          "qty": 181.0
+        },
+        {
+          "code": "FG21",
+          "qty": 41.0
+        },
+        {
+          "code": "FMTO",
+          "qty": 6.0
+        }
+      ]
+    },
+    {
+      "code": "HS-F-99-1211H22",
+      "business": "PEM101",
+      "category": "Surge Arrester",
+      "type": "Medium Voltage Surge Arrester",
+      "description": "21kV 10kA Cl.1 type PAZ-P21-1 HP",
+      "state": "no_db_record",
+      "qty": null,
+      "in_forecast_scope": false,
+      "by_warehouse": []
+    },
+    {
+      "code": "HS-F-99-1241",
+      "business": "PEM101",
+      "category": "Surge Arrester",
+      "type": "Medium Voltage Surge Arrester",
+      "description": "24kV 10kA Cl.1 type PAZ-P24-1",
+      "state": "has_stock",
+      "qty": 118.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG01",
+          "qty": 88.0
+        },
+        {
+          "code": "FG21",
+          "qty": 27.0
+        },
+        {
+          "code": "FMTO",
+          "qty": 3.0
+        }
+      ]
+    },
+    {
+      "code": "HS-F-99-1242",
+      "business": "PEM101",
+      "category": "Surge Arrester",
+      "type": "Medium Voltage Surge Arrester",
+      "description": "24kV 10kA Cl.1 type PAZ-P24-1 (MEA)",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "HS-F-99-1241H03",
+      "business": "PEM101",
+      "category": "Surge Arrester",
+      "type": "Medium Voltage Surge Arrester",
+      "description": "24kV 10kA Cl.1 type PAZ-P24-1 HP",
+      "state": "no_db_record",
+      "qty": null,
+      "in_forecast_scope": false,
+      "by_warehouse": []
+    },
+    {
+      "code": "HS-F-99-1301",
+      "business": "PEM101",
+      "category": "Surge Arrester",
+      "type": "Medium Voltage Surge Arrester",
+      "description": "30kV 10kA Cl.1 type PAZ-P30-1",
+      "state": "has_stock",
+      "qty": 184.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG01",
+          "qty": 46.0
+        },
+        {
+          "code": "FG21",
+          "qty": 138.0
+        }
+      ]
+    },
+    {
+      "code": "HS-F-99-1301H22",
+      "business": "PEM101",
+      "category": "Surge Arrester",
+      "type": "Medium Voltage Surge Arrester",
+      "description": "30kV 10kA Cl.1 type PAZ-P30-1 HP",
+      "state": "has_stock",
+      "qty": 3.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG21",
+          "qty": 3.0
+        }
+      ]
+    },
+    {
+      "code": "HS-F-99-1301H33",
+      "business": "PEM101",
+      "category": "Surge Arrester",
+      "type": "Medium Voltage Surge Arrester",
+      "description": "30kV 10kA Cl.1 type PAZ-P30-1 Extra HP",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "HS-F-99-1331",
+      "business": "PEM101",
+      "category": "Surge Arrester",
+      "type": "Medium Voltage Surge Arrester",
+      "description": "33kV 10kA Cl.1 type PAZ-P33-1",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "HS-F-99-1361",
+      "business": "PEM101",
+      "category": "Surge Arrester",
+      "type": "Medium Voltage Surge Arrester",
+      "description": "36kV 10kA Cl.1 type PAZ-P36-1",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "HS-F-99-2031N",
+      "business": "PEM101",
+      "category": "Surge Arrester",
+      "type": "Medium Voltage Surge Arrester",
+      "description": "3kV 10kA Cl.2 type SA203",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "HS-F-99-2061N",
+      "business": "PEM101",
+      "category": "Surge Arrester",
+      "type": "Medium Voltage Surge Arrester",
+      "description": "6kV 10kA Cl.2 type SA206",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "HS-F-99-2091N",
+      "business": "PEM101",
+      "category": "Surge Arrester",
+      "type": "Medium Voltage Surge Arrester",
+      "description": "9kV 10kA Cl.2 type SA209",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": false,
+      "by_warehouse": []
+    },
+    {
+      "code": "HS-F-99-2121N",
+      "business": "PEM101",
+      "category": "Surge Arrester",
+      "type": "Medium Voltage Surge Arrester",
+      "description": "12kV 10kA Cl.2 type SA212",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "HS-F-99-2211N",
+      "business": "PEM101",
+      "category": "Surge Arrester",
+      "type": "Medium Voltage Surge Arrester",
+      "description": "21kV 10kA Cl.2 type SA221 Private",
+      "state": "has_stock",
+      "qty": 143.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG01",
+          "qty": 106.0
+        },
+        {
+          "code": "FG21",
+          "qty": 37.0
+        }
+      ]
+    },
+    {
+      "code": "HS-F-99-2213N",
+      "business": "PEM101",
+      "category": "Surge Arrester",
+      "type": "Medium Voltage Surge Arrester",
+      "description": "21kV 10kA Cl.2 type SA221 PEA",
+      "state": "has_stock",
+      "qty": 155.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG01",
+          "qty": 155.0
+        }
+      ]
+    },
+    {
+      "code": "HS-F-99-2241N",
+      "business": "PEM101",
+      "category": "Surge Arrester",
+      "type": "Medium Voltage Surge Arrester",
+      "description": "24kV 10kA Cl.2 type SA224 Private",
+      "state": "has_stock",
+      "qty": 64.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG01",
+          "qty": 64.0
+        }
+      ]
+    },
+    {
+      "code": "HS-F-99-2243N",
+      "business": "PEM101",
+      "category": "Surge Arrester",
+      "type": "Medium Voltage Surge Arrester",
+      "description": "24kV 10kA Cl.2 type SA224 PEA",
+      "state": "has_stock",
+      "qty": 113.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG01",
+          "qty": 113.0
+        }
+      ]
+    },
+    {
+      "code": "HS-F-99-2301N",
+      "business": "PEM101",
+      "category": "Surge Arrester",
+      "type": "Medium Voltage Surge Arrester",
+      "description": "30kV 10kA Cl.2 type SA230 Private",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "HS-F-99-2303N",
+      "business": "PEM101",
+      "category": "Surge Arrester",
+      "type": "Medium Voltage Surge Arrester",
+      "description": "30kV 10kA Cl.2 type SA230 PEA",
+      "state": "has_stock",
+      "qty": 44.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG01",
+          "qty": 44.0
+        }
+      ]
+    },
+    {
+      "code": "HS-F-99-3303",
+      "business": "PEM101",
+      "category": "Surge Arrester",
+      "type": "Medium Voltage Surge Arrester",
+      "description": "30kV 10kA Cl.2 type PAZ-P30-2 HP",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "HS-F-99-2361N",
+      "business": "PEM101",
+      "category": "Surge Arrester",
+      "type": "Medium Voltage Surge Arrester",
+      "description": "36kV 10kA Cl.2 type SA236",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "HS-F-99-3031",
+      "business": "PEM101",
+      "category": "Surge Arrester",
+      "type": "Medium Voltage Surge Arrester",
+      "description": "3kV 10kA Cl.3 type PAZ-P03-3",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": false,
+      "by_warehouse": []
+    },
+    {
+      "code": "HS-F-99-3061",
+      "business": "PEM101",
+      "category": "Surge Arrester",
+      "type": "Medium Voltage Surge Arrester",
+      "description": "6kV 10kA Cl.3 type PAZ-P06-3",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "HS-F-99-3121",
+      "business": "PEM101",
+      "category": "Surge Arrester",
+      "type": "Medium Voltage Surge Arrester",
+      "description": "12kV 10kA Cl.3 type PAZ-P12-3",
+      "state": "has_stock",
+      "qty": 12.0,
+      "in_forecast_scope": false,
+      "by_warehouse": [
+        {
+          "code": "NCRM",
+          "qty": 12.0
+        }
+      ]
+    },
+    {
+      "code": "HS-F-99-3211",
+      "business": "PEM101",
+      "category": "Surge Arrester",
+      "type": "Medium Voltage Surge Arrester",
+      "description": "21kV 10kA Cl.3 type PAZ-P21-3",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "HS-F-99-3241",
+      "business": "PEM101",
+      "category": "Surge Arrester",
+      "type": "Medium Voltage Surge Arrester",
+      "description": "24kV 10kA Cl.3 type PAZ-P24-3",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "HS-F-99-3301",
+      "business": "PEM101",
+      "category": "Surge Arrester",
+      "type": "Medium Voltage Surge Arrester",
+      "description": "30kV 10kA Cl.3 type PAZ-P30-3",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "HS-F-99-3331",
+      "business": "PEM101",
+      "category": "Surge Arrester",
+      "type": "Medium Voltage Surge Arrester",
+      "description": "33kV 10kA Cl.3 type PAZ-P33-3",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": false,
+      "by_warehouse": []
+    },
+    {
+      "code": "HS-F-99-3361",
+      "business": "PEM101",
+      "category": "Surge Arrester",
+      "type": "Medium Voltage Surge Arrester",
+      "description": "36kV 10kA Cl.3 type PAZ-P36-3",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": false,
+      "by_warehouse": []
+    },
+    {
+      "code": "IS-F-99-0155CE0",
+      "business": "PEM101",
+      "category": "Suspension Insulator",
+      "type": "Suspension Insulator",
+      "description": "15kV with 1 Clevis no Shackle type PS-R-041-CE-0",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": false,
+      "by_warehouse": []
+    },
+    {
+      "code": "IS-F-99-0155CE1",
+      "business": "PEM101",
+      "category": "Suspension Insulator",
+      "type": "Suspension Insulator",
+      "description": "15kV with 1 Clevis 1 Shackle type PS-R-041-CE-1",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": false,
+      "by_warehouse": []
+    },
+    {
+      "code": "IS-F-99-0155EE0",
+      "business": "PEM101",
+      "category": "Suspension Insulator",
+      "type": "Suspension Insulator",
+      "description": "15kV with 2 Eye fitting type PS-R-041-EE-0",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": false,
+      "by_warehouse": []
+    },
+    {
+      "code": "IS-F-99-0245CE0",
+      "business": "PEM101",
+      "category": "Suspension Insulator",
+      "type": "Suspension Insulator",
+      "description": "24kV with 1 Clevis no Shackle type PS-R-061-CE-0",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "IS-F-99-0245CE1",
+      "business": "PEM101",
+      "category": "Suspension Insulator",
+      "type": "Suspension Insulator",
+      "description": "24kV with 1 Clevis 1 Shackle type PS-R-061-CE-1",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "IS-F-99-0245EE0",
+      "business": "PEM101",
+      "category": "Suspension Insulator",
+      "type": "Suspension Insulator",
+      "description": "24kV with 2 Eye fitting type PS-R-061-EE-0",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "IS-F-99-0365CE0",
+      "business": "PEM101",
+      "category": "Suspension Insulator",
+      "type": "Suspension Insulator",
+      "description": "36kV with 1 Clevis no Shackle type PS-R-101-CE-0",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": false,
+      "by_warehouse": []
+    },
+    {
+      "code": "IS-F-99-0365CE1",
+      "business": "PEM101",
+      "category": "Suspension Insulator",
+      "type": "Suspension Insulator",
+      "description": "36kV with 1 Clevis 1 Shackle type PS-R-101-CE-1",
+      "state": "has_stock",
+      "qty": 62.0,
+      "in_forecast_scope": false,
+      "by_warehouse": [
+        {
+          "code": "FG21",
+          "qty": 62.0
+        }
+      ]
+    },
+    {
+      "code": "IS-F-99-0365EE0",
+      "business": "PEM101",
+      "category": "Suspension Insulator",
+      "type": "Suspension Insulator",
+      "description": "36kV with 2 Eye fitting type PS-R-101-EE-0",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": false,
+      "by_warehouse": []
+    },
+    {
+      "code": "ST-F-01-0005",
+      "business": "PEM101",
+      "category": "LED",
+      "type": "LED Street light",
+      "description": "20 Watt Model 435",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "ST-F-01-0027",
+      "business": "PEM101",
+      "category": "LED",
+      "type": "LED Street light",
+      "description": "35 Watt Model FFLDs",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "ST-F-11-0001",
+      "business": "PEM101",
+      "category": "LED",
+      "type": "LED Street light",
+      "description": "20 Watt Model Complete set",
+      "state": "has_stock",
+      "qty": 4.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG21",
+          "qty": 4.0
+        }
+      ]
+    },
+    {
+      "code": "ST-F-99-0001",
+      "business": "PEM101",
+      "category": "LED",
+      "type": "LED Street light",
+      "description": "2x20 Watt Model Complete set",
+      "state": "has_stock",
+      "qty": 65.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG01",
+          "qty": 65.0
+        }
+      ]
+    },
+    {
+      "code": "ST-F-12-0006",
+      "business": "PEM101",
+      "category": "LED",
+      "type": "LED Street light",
+      "description": "60 Watt 5570 Straight Stepped Pole 4 m",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "ST-F-12-0007",
+      "business": "PEM101",
+      "category": "LED",
+      "type": "LED Street light",
+      "description": "60 Watt 5570 Straight Stepped Pole 6 m",
+      "state": "has_stock",
+      "qty": 4.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG21",
+          "qty": 4.0
+        }
+      ]
+    },
+    {
+      "code": "ST-F-12-0009",
+      "business": "PEM101",
+      "category": "LED",
+      "type": "LED Street light",
+      "description": "60 Watt 5570 Straight Stepped Pole 2 m",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": false,
+      "by_warehouse": []
+    },
+    {
+      "code": "FD-F-01-0001",
+      "business": "PEM101",
+      "category": "LED",
+      "type": "LED Flood light",
+      "description": "150 Walt Model TGD18-B",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "FD-F-01-0002",
+      "business": "PEM101",
+      "category": "LED",
+      "type": "LED Flood light",
+      "description": "350 Walt Model TGD18-D",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "PH-F-99-0001",
+      "business": "PEM101",
+      "category": "LED",
+      "type": "Photo Control Switch ",
+      "description": "30A 1POLE 180-240VAC 50HZ",
+      "state": "has_stock",
+      "qty": 32.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG01",
+          "qty": 32.0
+        }
+      ]
+    },
+    {
+      "code": "FS-F-99-0002",
+      "business": "PEM101",
+      "category": "Fuse",
+      "type": "Low Voltage Fuse Switch Disconectors",
+      "description": "500V 400A Private",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "FS-F-99-0003",
+      "business": "PEM101",
+      "category": "Fuse",
+      "type": "Low Voltage Fuse Switch Disconectors",
+      "description": "500V 400A PEA",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "LB-F-99-G2261201",
+      "business": "PEM102",
+      "category": "Load Break Switch",
+      "type": "24kV SF6 Gas Load Break Switch",
+      "description": "SF6 GAS Load Break Switch 22kV 630A 12.5kA Option 1",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "LB-F-99-G2261204",
+      "business": "PEM102",
+      "category": "Load Break Switch",
+      "type": "24kV SF6 Gas Load Break Switch",
+      "description": "SF6 GAS Load Break Switch 22kV 630A 12.5kA Option 4 ",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "LB-F-99-G2261204-01",
+      "business": "PEM102",
+      "category": "Load Break Switch",
+      "type": "24kV SF6 Gas Load Break Switch",
+      "description": "SF6 GAS Load Break Switch 22kV 630A 12.5kA Option 4 (Without VT)",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "LB-F-99-G2261205",
+      "business": "PEM102",
+      "category": "Load Break Switch",
+      "type": "24kV SF6 Gas Load Break Switch",
+      "description": "SF6 GAS Load Break Switch 22kV 630A 12.5kA Option 5 ",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "LB-F-99-G2261205-01",
+      "business": "PEM102",
+      "category": "Load Break Switch",
+      "type": "24kV SF6 Gas Load Break Switch",
+      "description": "SF6 GAS Load Break Switch 22kV 630A 12.5kA Option 5 (Without VT)",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "LB-F-99-G2261207",
+      "business": "PEM102",
+      "category": "Load Break Switch",
+      "type": "24kV SF6 Gas Load Break Switch",
+      "description": "SF6 GAS Load Break Switch 22kV 630A 12.5kA Option 7",
+      "state": "has_stock",
+      "qty": 1.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG01",
+          "qty": 1.0
+        }
+      ]
+    },
+    {
+      "code": "LB-F-99-G2261207-01",
+      "business": "PEM102",
+      "category": "Load Break Switch",
+      "type": "24kV SF6 Gas Load Break Switch",
+      "description": "SF6 GAS Load Break Switch 22kV 630A 12.5kA Option 7 (Without VT)",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": false,
+      "by_warehouse": []
+    },
+    {
+      "code": "LB-F-99-G3341001",
+      "business": "PEM102",
+      "category": "Load Break Switch",
+      "type": "36kV SF6 Gas Load Break Switch",
+      "description": "SF6 GAS Load Break Switch 33kV 400A 10kA Option 1",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "LB-F-99-G3341004",
+      "business": "PEM102",
+      "category": "Load Break Switch",
+      "type": "36kV SF6 Gas Load Break Switch",
+      "description": "SF6 GAS Load Break Switch 33kV 400A 10kA Option 4 ",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "LB-F-99-G3341004-01",
+      "business": "PEM102",
+      "category": "Load Break Switch",
+      "type": "36kV SF6 Gas Load Break Switch",
+      "description": "SF6 GAS Load Break Switch 33kV 400A 10kA Option 4 (Without VT)",
+      "state": "no_db_record",
+      "qty": null,
+      "in_forecast_scope": false,
+      "by_warehouse": []
+    },
+    {
+      "code": "LB-F-99-G3341005",
+      "business": "PEM102",
+      "category": "Load Break Switch",
+      "type": "36kV SF6 Gas Load Break Switch",
+      "description": "SF6 GAS Load Break Switch 33kV 400A 10kA Option 5 ",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "LB-F-99-G3341005-01",
+      "business": "PEM102",
+      "category": "Load Break Switch",
+      "type": "36kV SF6 Gas Load Break Switch",
+      "description": "SF6 GAS Load Break Switch 33kV 400A 10kA Option 5 (Without VT)",
+      "state": "no_db_record",
+      "qty": null,
+      "in_forecast_scope": false,
+      "by_warehouse": []
+    },
+    {
+      "code": "LB-F-99-G3341007",
+      "business": "PEM102",
+      "category": "Load Break Switch",
+      "type": "36kV SF6 Gas Load Break Switch",
+      "description": "SF6 GAS Load Break Switch 33kV 400A 10kA Option 7",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "LB-F-99-G3341007-01",
+      "business": "PEM102",
+      "category": "Load Break Switch",
+      "type": "36kV SF6 Gas Load Break Switch",
+      "description": "SF6 GAS Load Break Switch 33kV 400A 10kA Option 7 (Without VT)",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": false,
+      "by_warehouse": []
+    },
+    {
+      "code": "SL-F-99-S2461601",
+      "business": "PEM102",
+      "category": "Load Break Switch",
+      "type": "24kV Solid Load Break Switch",
+      "description": "Solid Dielectric Load Break Switch 24kV 600A Electrical Type Option 1",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "SL-F-99-S2461604",
+      "business": "PEM102",
+      "category": "Load Break Switch",
+      "type": "24kV Solid Load Break Switch",
+      "description": "Solid Dielectric Load Break Switch 24kV 600A Electrical Type Option 4",
+      "state": "no_db_record",
+      "qty": null,
+      "in_forecast_scope": false,
+      "by_warehouse": []
+    },
+    {
+      "code": "SL-F-99-S2461604-01",
+      "business": "PEM102",
+      "category": "Load Break Switch",
+      "type": "24kV Solid Load Break Switch",
+      "description": "Solid Dielectric Load Break Switch 24kV 600A Electrical Type Option 4 (Without VT)",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "SL-F-99-S2461605",
+      "business": "PEM102",
+      "category": "Load Break Switch",
+      "type": "24kV Solid Load Break Switch",
+      "description": "Solid Dielectric Load Break Switch 24kV 600A Electrical Type Option 5",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "SL-F-99-S2461605-01",
+      "business": "PEM102",
+      "category": "Load Break Switch",
+      "type": "24kV Solid Load Break Switch",
+      "description": "Solid Dielectric Load Break Switch 24kV 600A Electrical Type Option 5 (Without VT)",
+      "state": "no_db_record",
+      "qty": null,
+      "in_forecast_scope": false,
+      "by_warehouse": []
+    },
+    {
+      "code": "SR-F-99-2261203",
+      "business": "PEM102",
+      "category": "Recloser",
+      "type": "22kV Recloser",
+      "description": "Solid Recloser (CVD Type) 22kV 630A 50Hz",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "SR-F-99-2261203-01",
+      "business": "PEM102",
+      "category": "Recloser",
+      "type": "22kV Recloser",
+      "description": "Solid Recloser (CVD Type) 22kV 630A 50Hz  (Without VT)",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": false,
+      "by_warehouse": []
+    },
+    {
+      "code": "SR-F-99-3381603",
+      "business": "PEM102",
+      "category": "Recloser",
+      "type": "33kV Recloser",
+      "description": "Solid Recloser (CVD Type) 33kV 630A 50Hz",
+      "state": "no_db_record",
+      "qty": null,
+      "in_forecast_scope": false,
+      "by_warehouse": []
+    },
+    {
+      "code": "SR-F-99-3381603-01",
+      "business": "PEM102",
+      "category": "Recloser",
+      "type": "33kV Recloser",
+      "description": "Solid Recloser (CVD Type) 33kV 630A 50Hz  (Without VT)",
+      "state": "no_db_record",
+      "qty": null,
+      "in_forecast_scope": false,
+      "by_warehouse": []
+    },
+    {
+      "code": "02-05-R-0001",
+      "business": "PEM102",
+      "category": "FRTU",
+      "type": "FRTU",
+      "description": "FRTU PEA Spec. for VSPP",
+      "state": "has_stock",
+      "qty": 1.0,
+      "in_forecast_scope": false,
+      "by_warehouse": [
+        {
+          "code": "W122",
+          "qty": 1.0
+        }
+      ]
+    },
+    {
+      "code": "02-05-R-0004",
+      "business": "PEM102",
+      "category": "Cellular Router",
+      "type": "Cellular Router",
+      "description": "Cellular Router ",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "SL-F-99-S2461608-1",
+      "business": "PEM102",
+      "category": "Load Break Switch",
+      "type": "24kV Solid Load Break Switch",
+      "description": "24 kV POLE-MOUNTED SLBS AND TELECONTROL DEVICE WITH VT",
+      "state": "has_stock",
+      "qty": 2.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG01",
+          "qty": 2.0
+        }
+      ]
+    },
+    {
+      "code": "TF-F-99-2104221B1",
+      "business": "PEM103",
+      "category": "Distribution Transformer",
+      "type": "3 Phase Distribution Transformer",
+      "description": "3 Phase 315kVA 22kV 400/230V Dyn11 Low Loss (Total Loss 1.2%) 008 PEA",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "TF-F-99-2304221B1",
+      "business": "PEM103",
+      "category": "Distribution Transformer",
+      "type": "3 Phase Distribution Transformer",
+      "description": "3 Phase 400kVA 22kV 400/230V Dyn11 Low Loss (Total Loss 1.2%) 008 PEA",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "TF-F-99-2404221B1",
+      "business": "PEM103",
+      "category": "Distribution Transformer",
+      "type": "3 Phase Distribution Transformer",
+      "description": "3 Phase 500kVA 22kV 400/230V Dyn11 Low Loss (Total Loss 1.2%) 008 PEA",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": false,
+      "by_warehouse": []
+    },
+    {
+      "code": "TF-F-99-2504221B1",
+      "business": "PEM103",
+      "category": "Distribution Transformer",
+      "type": "3 Phase Distribution Transformer",
+      "description": "3 Phase 630kVA 22kV 400/230V Dyn11 Low Loss (Total Loss 1.2%) 008 PEA",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": false,
+      "by_warehouse": []
+    },
+    {
+      "code": "TF-F-99-2704221B1",
+      "business": "PEM103",
+      "category": "Distribution Transformer",
+      "type": "3 Phase Distribution Transformer",
+      "description": "3 Phase 800kVA 22kV 400/230V Dyn11 Low Loss (Total Loss 1.2%) 008 PEA",
+      "state": "has_stock",
+      "qty": 1.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG23",
+          "qty": 1.0
+        }
+      ]
+    },
+    {
+      "code": "TF-F-99-2804221B1",
+      "business": "PEM103",
+      "category": "Distribution Transformer",
+      "type": "3 Phase Distribution Transformer",
+      "description": "3 Phase 1000kVA 22kV 400/230V Dyn11 Low Loss (Total Loss 1.2%) 008 PEA",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "TF-F-99-2904221B1",
+      "business": "PEM103",
+      "category": "Distribution Transformer",
+      "type": "3 Phase Distribution Transformer",
+      "description": "3 Phase 1250kVA 22kV 400/230V Dyn11 Low Loss (Total Loss 1.2%) 008 PEA",
+      "state": "no_db_record",
+      "qty": null,
+      "in_forecast_scope": false,
+      "by_warehouse": []
+    },
+    {
+      "code": "TF-F-99-3004221B1",
+      "business": "PEM103",
+      "category": "Distribution Transformer",
+      "type": "3 Phase Distribution Transformer",
+      "description": "3 Phase 1500kVA 22kV 400/230V Dyn11 Low Loss (Total Loss 1.2%) 008 PEA",
+      "state": "no_db_record",
+      "qty": null,
+      "in_forecast_scope": false,
+      "by_warehouse": []
+    },
+    {
+      "code": "TF-F-99-3204221B1",
+      "business": "PEM103",
+      "category": "Distribution Transformer",
+      "type": "3 Phase Distribution Transformer",
+      "description": "3 Phase 1600kVA 22kV 400/230V Dyn11 Low Loss (Total Loss 1.2%) 008 PEA",
+      "state": "no_db_record",
+      "qty": null,
+      "in_forecast_scope": false,
+      "by_warehouse": []
+    },
+    {
+      "code": "TF-F-99-3104221B1",
+      "business": "PEM103",
+      "category": "Distribution Transformer",
+      "type": "3 Phase Distribution Transformer",
+      "description": "3 Phase 2000kVA 22kV 400/230V Dyn11 Low Loss (Total Loss 1.2%) 008 PEA",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": false,
+      "by_warehouse": []
+    },
+    {
+      "code": "TF-F-99-3704221B1",
+      "business": "PEM103",
+      "category": "Distribution Transformer",
+      "type": "3 Phase Distribution Transformer",
+      "description": "3 Phase 2500kVA 22kV 400/230V Dyn11 Low Loss (Total Loss 1.2%) 008 PEA",
+      "state": "no_db_record",
+      "qty": null,
+      "in_forecast_scope": false,
+      "by_warehouse": []
+    },
+    {
+      "code": "TF-F-99-2107221B1",
+      "business": "PEM103",
+      "category": "Distribution Transformer",
+      "type": "3 Phase Distribution Transformer",
+      "description": "3 Phase 315kVA 33kV 400/230V Dyn11 Low Loss (Total Loss 1.2%) 008 PEA",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": false,
+      "by_warehouse": []
+    },
+    {
+      "code": "TF-F-99-2107221B1.",
+      "business": "PEM103",
+      "category": "Distribution Transformer",
+      "type": "3 Phase Distribution Transformer",
+      "description": "3 Phase 400kVA 33kV 400/230V Dyn11 Low Loss (Total Loss 1.2%) 008 PEA",
+      "state": "no_db_record",
+      "qty": null,
+      "in_forecast_scope": false,
+      "by_warehouse": []
+    },
+    {
+      "code": "TF-F-99-2307221B1",
+      "business": "PEM103",
+      "category": "Distribution Transformer",
+      "type": "3 Phase Distribution Transformer",
+      "description": "3 Phase 500kVA 33kV 400/230V Dyn11 Low Loss (Total Loss 1.2%) 008 PEA",
+      "state": "no_db_record",
+      "qty": null,
+      "in_forecast_scope": false,
+      "by_warehouse": []
+    },
+    {
+      "code": "TF-F-99-2407221B1",
+      "business": "PEM103",
+      "category": "Distribution Transformer",
+      "type": "3 Phase Distribution Transformer",
+      "description": "3 Phase 630kVA 33kV 400/230V Dyn11 Low Loss (Total Loss 1.2%) 008 PEA",
+      "state": "has_stock",
+      "qty": 2.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG23",
+          "qty": 2.0
+        }
+      ]
+    },
+    {
+      "code": "TF-F-99-2707221B1",
+      "business": "PEM103",
+      "category": "Distribution Transformer",
+      "type": "3 Phase Distribution Transformer",
+      "description": "3 Phase 800kVA 33kV 400/230V Dyn11 Low Loss (Total Loss 1.2%) 008 PEA",
+      "state": "no_db_record",
+      "qty": null,
+      "in_forecast_scope": false,
+      "by_warehouse": []
+    },
+    {
+      "code": "TF-F-99-2807221B1",
+      "business": "PEM103",
+      "category": "Distribution Transformer",
+      "type": "3 Phase Distribution Transformer",
+      "description": "3 Phase 1000kVA 33kV 400/230V Dyn11 Low Loss (Total Loss 1.2%) 008 PEA",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "TF-F-99-2907221B1",
+      "business": "PEM103",
+      "category": "Distribution Transformer",
+      "type": "3 Phase Distribution Transformer",
+      "description": "3 Phase 1250kVA 33kV 400/230V Dyn11 Low Loss (Total Loss 1.2%) 008 PEA",
+      "state": "no_db_record",
+      "qty": null,
+      "in_forecast_scope": false,
+      "by_warehouse": []
+    },
+    {
+      "code": "TF-F-99-3007221B1",
+      "business": "PEM103",
+      "category": "Distribution Transformer",
+      "type": "3 Phase Distribution Transformer",
+      "description": "3 Phase 1500kVA 33kV 400/230V Dyn11 Low Loss (Total Loss 1.2%) 008 PEA",
+      "state": "no_db_record",
+      "qty": null,
+      "in_forecast_scope": false,
+      "by_warehouse": []
+    },
+    {
+      "code": "TF-F-99-3207221B1",
+      "business": "PEM103",
+      "category": "Distribution Transformer",
+      "type": "3 Phase Distribution Transformer",
+      "description": "3 Phase 1600kVA 33kV 400/230V Dyn11 Low Loss (Total Loss 1.2%) 008 PEA",
+      "state": "no_db_record",
+      "qty": null,
+      "in_forecast_scope": false,
+      "by_warehouse": []
+    },
+    {
+      "code": "TF-F-99-3107221B1",
+      "business": "PEM103",
+      "category": "Distribution Transformer",
+      "type": "3 Phase Distribution Transformer",
+      "description": "3 Phase 2000kVA 33kV 400/230V Dyn11 Low Loss (Total Loss 1.2%) 008 PEA",
+      "state": "no_db_record",
+      "qty": null,
+      "in_forecast_scope": false,
+      "by_warehouse": []
+    },
+    {
+      "code": "TF-F-99-3707221B1",
+      "business": "PEM103",
+      "category": "Distribution Transformer",
+      "type": "3 Phase Distribution Transformer",
+      "description": "3 Phase 2500kVA 33kV 400/230V Dyn11 Low Loss (Total Loss 1.2%) 008 PEA",
+      "state": "no_db_record",
+      "qty": null,
+      "in_forecast_scope": false,
+      "by_warehouse": []
+    },
+    {
+      "code": "TF-F-99-2104223B1",
+      "business": "PEM103",
+      "category": "Distribution Transformer",
+      "type": "3 Phase Distribution Transformer",
+      "description": "3 Phase 315kVA 22kV 400/230V Dyn11 (Total Loss 1.5%) Normal loss",
+      "state": "has_stock",
+      "qty": 1.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG23",
+          "qty": 1.0
+        }
+      ]
+    },
+    {
+      "code": "TF-F-99-2304223B1",
+      "business": "PEM103",
+      "category": "Distribution Transformer",
+      "type": "3 Phase Distribution Transformer",
+      "description": "3 Phase 400kVA 22kV 400/230V Dyn11 (Total Loss 1.5%) Normal loss",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "TF-F-99-2404223B1",
+      "business": "PEM103",
+      "category": "Distribution Transformer",
+      "type": "3 Phase Distribution Transformer",
+      "description": "3 Phase 500kVA 22kV 400/230V Dyn11 (Total Loss 1.5%) Normal loss",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "TF-F-99-2504223B1",
+      "business": "PEM103",
+      "category": "Distribution Transformer",
+      "type": "3 Phase Distribution Transformer",
+      "description": "3 Phase 630kVA 22kV 400/230V Dyn11 (Total Loss 1.5%) Normal loss",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "TF-F-99-2704223B1",
+      "business": "PEM103",
+      "category": "Distribution Transformer",
+      "type": "3 Phase Distribution Transformer",
+      "description": "3 Phase 800kVA 22kV 400/230V Dyn11 (Total Loss 1.5%) Normal loss",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "TF-F-99-2804223B1",
+      "business": "PEM103",
+      "category": "Distribution Transformer",
+      "type": "3 Phase Distribution Transformer",
+      "description": "3 Phase 1000kVA 22kV 400/230V Dyn11 (Total Loss 1.5%) Normal loss",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "TF-F-99-2904223B1",
+      "business": "PEM103",
+      "category": "Distribution Transformer",
+      "type": "3 Phase Distribution Transformer",
+      "description": "3 Phase 1250kVA 22kV 400/230V Dyn11 (Total Loss 1.5%) Normal loss",
+      "state": "no_db_record",
+      "qty": null,
+      "in_forecast_scope": false,
+      "by_warehouse": []
+    },
+    {
+      "code": "TF-F-99-3004223B1",
+      "business": "PEM103",
+      "category": "Distribution Transformer",
+      "type": "3 Phase Distribution Transformer",
+      "description": "3 Phase 1500kVA 22kV 400/230V Dyn11 (Total Loss 1.5%) Normal loss",
+      "state": "no_db_record",
+      "qty": null,
+      "in_forecast_scope": false,
+      "by_warehouse": []
+    },
+    {
+      "code": "TF-F-99-3204223B1",
+      "business": "PEM103",
+      "category": "Distribution Transformer",
+      "type": "3 Phase Distribution Transformer",
+      "description": "3 Phase 1600kVA 22kV 400/230V Dyn11 (Total Loss 1.5%) Normal loss",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "TF-F-99-3104223B1",
+      "business": "PEM103",
+      "category": "Distribution Transformer",
+      "type": "3 Phase Distribution Transformer",
+      "description": "3 Phase 2000kVA 22kV 400/230V Dyn11 (Total Loss 1.5%) Normal loss",
+      "state": "no_db_record",
+      "qty": null,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "TF-F-99-3704223B1",
+      "business": "PEM103",
+      "category": "Distribution Transformer",
+      "type": "3 Phase Distribution Transformer",
+      "description": "3 Phase 2500kVA 22kV 400/230V Dyn11 (Total Loss 1.5%) Normal loss",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": false,
+      "by_warehouse": []
+    },
+    {
+      "code": "TF-F-99-2107223B1",
+      "business": "PEM103",
+      "category": "Distribution Transformer",
+      "type": "3 Phase Distribution Transformer",
+      "description": "3 Phase 315kVA 33kV 400/230V Dyn11 (Total Loss 1.5%) Normal loss",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "TF-F-99-2307223B1",
+      "business": "PEM103",
+      "category": "Distribution Transformer",
+      "type": "3 Phase Distribution Transformer",
+      "description": "3 Phase 400kVA 33kV 400/230V Dyn11 (Total Loss 1.5%) Normal loss",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "TF-F-99-2407223B1",
+      "business": "PEM103",
+      "category": "Distribution Transformer",
+      "type": "3 Phase Distribution Transformer",
+      "description": "3 Phase 500kVA 33kV 400/230V Dyn11 (Total Loss 1.5%) Normal loss",
+      "state": "has_stock",
+      "qty": 2.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG23",
+          "qty": 2.0
+        }
+      ]
+    },
+    {
+      "code": "TF-F-99-2507223B1",
+      "business": "PEM103",
+      "category": "Distribution Transformer",
+      "type": "3 Phase Distribution Transformer",
+      "description": "3 Phase 630kVA 33kV 400/230V Dyn11 (Total Loss 1.5%) Normal loss",
+      "state": "no_db_record",
+      "qty": null,
+      "in_forecast_scope": false,
+      "by_warehouse": []
+    },
+    {
+      "code": "TF-F-99-2707223B1",
+      "business": "PEM103",
+      "category": "Distribution Transformer",
+      "type": "3 Phase Distribution Transformer",
+      "description": "3 Phase 800kVA 33kV 400/230V Dyn11 (Total Loss 1.5%) Normal loss",
+      "state": "no_db_record",
+      "qty": null,
+      "in_forecast_scope": false,
+      "by_warehouse": []
+    },
+    {
+      "code": "TF-F-99-2807223B1",
+      "business": "PEM103",
+      "category": "Distribution Transformer",
+      "type": "3 Phase Distribution Transformer",
+      "description": "3 Phase 1000kVA 33kV 400/230V Dyn11 (Total Loss 1.5%) Normal loss",
+      "state": "no_db_record",
+      "qty": null,
+      "in_forecast_scope": false,
+      "by_warehouse": []
+    },
+    {
+      "code": "TF-F-99-2907223B1",
+      "business": "PEM103",
+      "category": "Distribution Transformer",
+      "type": "3 Phase Distribution Transformer",
+      "description": "3 Phase 1250kVA 33kV 400/230V Dyn11 (Total Loss 1.5%) Normal loss",
+      "state": "no_db_record",
+      "qty": null,
+      "in_forecast_scope": false,
+      "by_warehouse": []
+    },
+    {
+      "code": "TF-F-99-3007223B1",
+      "business": "PEM103",
+      "category": "Distribution Transformer",
+      "type": "3 Phase Distribution Transformer",
+      "description": "3 Phase 1500kVA 33kV 400/230V Dyn11 (Total Loss 1.5%) Normal loss",
+      "state": "no_db_record",
+      "qty": null,
+      "in_forecast_scope": false,
+      "by_warehouse": []
+    },
+    {
+      "code": "TF-F-99-3207223B1",
+      "business": "PEM103",
+      "category": "Distribution Transformer",
+      "type": "3 Phase Distribution Transformer",
+      "description": "3 Phase 1600kVA 33kV 400/230V Dyn11 (Total Loss 1.5%) Normal loss",
+      "state": "no_db_record",
+      "qty": null,
+      "in_forecast_scope": false,
+      "by_warehouse": []
+    },
+    {
+      "code": "TF-F-99-3107223B1",
+      "business": "PEM103",
+      "category": "Distribution Transformer",
+      "type": "3 Phase Distribution Transformer",
+      "description": "3 Phase 2000kVA 33kV 400/230V Dyn11 (Total Loss 1.5%) Normal loss",
+      "state": "has_stock",
+      "qty": 1.0,
+      "in_forecast_scope": false,
+      "by_warehouse": [
+        {
+          "code": "FG23",
+          "qty": 1.0
+        }
+      ]
+    },
+    {
+      "code": "TF-F-99-3707223B1",
+      "business": "PEM103",
+      "category": "Distribution Transformer",
+      "type": "3 Phase Distribution Transformer",
+      "description": "3 Phase 2500kVA 33kV 400/230V Dyn11 (Total Loss 1.5%) Normal loss",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "TF-F-99-2105433B4",
+      "business": "PEM103",
+      "category": "Distribution Transformer",
+      "type": "3 Phase Distribution Transformer",
+      "description": "3 Phase 315kVA 24kV 416/240V Dyn1 Normal loss",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "TF-F-99-2305433B4",
+      "business": "PEM103",
+      "category": "Distribution Transformer",
+      "type": "3 Phase Distribution Transformer",
+      "description": "3 Phase 400kVA 24kV 416/240V Dyn1 Normal loss",
+      "state": "no_db_record",
+      "qty": null,
+      "in_forecast_scope": false,
+      "by_warehouse": []
+    },
+    {
+      "code": "TF-F-99-2405433B4",
+      "business": "PEM103",
+      "category": "Distribution Transformer",
+      "type": "3 Phase Distribution Transformer",
+      "description": "3 Phase 500kVA 24kV 416/240V Dyn1 Normal loss",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "TF-F-99-2505433B4",
+      "business": "PEM103",
+      "category": "Distribution Transformer",
+      "type": "3 Phase Distribution Transformer",
+      "description": "3 Phase 630kVA 24kV 416/240V Dyn1 Normal loss",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": false,
+      "by_warehouse": []
+    },
+    {
+      "code": "TF-F-99-2705433B4",
+      "business": "PEM103",
+      "category": "Distribution Transformer",
+      "type": "3 Phase Distribution Transformer",
+      "description": "3 Phase 800kVA 24kV 416/240V Dyn1 Normal loss",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": false,
+      "by_warehouse": []
+    },
+    {
+      "code": "TF-F-99-2805433B4",
+      "business": "PEM103",
+      "category": "Distribution Transformer",
+      "type": "3 Phase Distribution Transformer",
+      "description": "3 Phase 1000kVA 24kV 416/240V Dyn1 Normal loss",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": false,
+      "by_warehouse": []
+    },
+    {
+      "code": "TF-F-99-2905433B4",
+      "business": "PEM103",
+      "category": "Distribution Transformer",
+      "type": "3 Phase Distribution Transformer",
+      "description": "3 Phase 1250kVA 24kV 416/240V Dyn1 Normal loss",
+      "state": "no_db_record",
+      "qty": null,
+      "in_forecast_scope": false,
+      "by_warehouse": []
+    },
+    {
+      "code": "TF-F-99-3005433B4",
+      "business": "PEM103",
+      "category": "Distribution Transformer",
+      "type": "3 Phase Distribution Transformer",
+      "description": "3 Phase 1500kVA 24kV 416/240V Dyn1 Normal loss",
+      "state": "no_db_record",
+      "qty": null,
+      "in_forecast_scope": false,
+      "by_warehouse": []
+    },
+    {
+      "code": "TF-F-99-3205433B4",
+      "business": "PEM103",
+      "category": "Distribution Transformer",
+      "type": "3 Phase Distribution Transformer",
+      "description": "3 Phase 1600kVA 24kV 416/240V Dyn1 Normal loss",
+      "state": "no_db_record",
+      "qty": null,
+      "in_forecast_scope": false,
+      "by_warehouse": []
+    },
+    {
+      "code": "TF-F-99-3105433B4",
+      "business": "PEM103",
+      "category": "Distribution Transformer",
+      "type": "3 Phase Distribution Transformer",
+      "description": "3 Phase 2000kVA 24kV 416/240V Dyn1 Normal loss",
+      "state": "no_db_record",
+      "qty": null,
+      "in_forecast_scope": false,
+      "by_warehouse": []
+    },
+    {
+      "code": "TF-F-99-3705433B4",
+      "business": "PEM103",
+      "category": "Distribution Transformer",
+      "type": "3 Phase Distribution Transformer",
+      "description": "3 Phase 2500kVA 24kV 416/240V Dyn1 Normal loss",
+      "state": "no_db_record",
+      "qty": null,
+      "in_forecast_scope": false,
+      "by_warehouse": []
+    },
+    {
+      "code": "TF-F-99-0703811G1",
+      "business": "PEM103",
+      "category": "Distribution Transformer",
+      "type": "1 Phase Distribution Transformer",
+      "description": "1 Phase 30kVA 19kV 480/240V Low Loss Short Circuit (035 PEA)",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "TF-F-99-0704811G1",
+      "business": "PEM103",
+      "category": "Distribution Transformer",
+      "type": "1 Phase Distribution Transformer",
+      "description": "1 Phase 30kVA 22kV 480/240V Low Loss Short Circuit (035 PEA)",
+      "state": "has_stock",
+      "qty": 1.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG23",
+          "qty": 1.0
+        }
+      ]
+    },
+    {
+      "code": "TF-F-99-10044211Q1",
+      "business": "PEM103",
+      "category": "Distribution Transformer",
+      "type": "3 Phase Distribution Transformer",
+      "description": "3 Phase 50kVA 22kV 416/240V Dyn11 Very Low Loss Short Circuit (035 PEA)",
+      "state": "has_stock",
+      "qty": 12.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG23",
+          "qty": 12.0
+        }
+      ]
+    },
+    {
+      "code": "TF-F-99-12044211Q1",
+      "business": "PEM103",
+      "category": "Distribution Transformer",
+      "type": "3 Phase Distribution Transformer",
+      "description": "3 Phase 100kVA 22kV 416/240V Dyn11 Very Low Loss Short Circuit (035 PEA)",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "TF-F-99-15044211Q1",
+      "business": "PEM103",
+      "category": "Distribution Transformer",
+      "type": "3 Phase Distribution Transformer",
+      "description": "3 Phase 160kVA 22kV 416/240V Dyn11 Very Low Loss Short Circuit (035 PEA)",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "TF-F-99-19044211Q1",
+      "business": "PEM103",
+      "category": "Distribution Transformer",
+      "type": "3 Phase Distribution Transformer",
+      "description": "3 Phase 250kVA 22kV 416/240V Dyn11 Very Low Loss Short Circuit (035 PEA)",
+      "state": "has_stock",
+      "qty": 5.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG23",
+          "qty": 5.0
+        }
+      ]
+    },
+    {
+      "code": "TF-F-99-10074211Q1",
+      "business": "PEM103",
+      "category": "Distribution Transformer",
+      "type": "3 Phase Distribution Transformer",
+      "description": "3 Phase 50kVA 33kV 416/240V Dyn11 Very Low Loss Short Circuit (035 PEA)",
+      "state": "has_stock",
+      "qty": 11.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG23",
+          "qty": 11.0
+        }
+      ]
+    },
+    {
+      "code": "TF-F-99-12074211Q1",
+      "business": "PEM103",
+      "category": "Distribution Transformer",
+      "type": "3 Phase Distribution Transformer",
+      "description": "3 Phase 100kVA 33kV 416/240V Dyn11 Very Low Loss Short Circuit (035 PEA)",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "TF-F-99-15074211Q1",
+      "business": "PEM103",
+      "category": "Distribution Transformer",
+      "type": "3 Phase Distribution Transformer",
+      "description": "3 Phase 160kVA 33kV 416/240V Dyn11 Very Low Loss Short Circuit (035 PEA)",
+      "state": "has_stock",
+      "qty": 6.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG23",
+          "qty": 6.0
+        }
+      ]
+    },
+    {
+      "code": "TF-F-99-19074211Q1",
+      "business": "PEM103",
+      "category": "Distribution Transformer",
+      "type": "3 Phase Distribution Transformer",
+      "description": "3 Phase 250kVA 33kV 416/240V Dyn11 Very Low Loss Short Circuit (035 PEA)",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "TF-F-99-10044211AB1",
+      "business": "PEM103",
+      "category": "Distribution Transformer",
+      "type": "3 Phase Distribution Transformer",
+      "description": "3 Phase 50kVA 22kV 416/240V Dyn11 Very Low Loss (052 PEA)",
+      "state": "no_db_record",
+      "qty": null,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "TF-F-99-12044211AB1",
+      "business": "PEM103",
+      "category": "Distribution Transformer",
+      "type": "3 Phase Distribution Transformer",
+      "description": "3 Phase 100kVA 22kV 416/240V Dyn11 Very Low Loss (052 PEA)",
+      "state": "no_db_record",
+      "qty": null,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "TF-F-99-15044211AB1",
+      "business": "PEM103",
+      "category": "Distribution Transformer",
+      "type": "3 Phase Distribution Transformer",
+      "description": "3 Phase 160kVA 22kV 416/240V Dyn11 Very Low Loss (052 PEA)",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "TF-F-99-19044211AB1",
+      "business": "PEM103",
+      "category": "Distribution Transformer",
+      "type": "3 Phase Distribution Transformer",
+      "description": "3 Phase 250kVA 22kV 416/240V Dyn11 Very Low Loss (052 PEA)",
+      "state": "no_db_record",
+      "qty": null,
+      "in_forecast_scope": false,
+      "by_warehouse": []
+    },
+    {
+      "code": "TF-F-99-10074211AB1",
+      "business": "PEM103",
+      "category": "Distribution Transformer",
+      "type": "3 Phase Distribution Transformer",
+      "description": "3 Phase 50kVA 33kV 416/240V Dyn11 Very Low Loss (052 PEA)",
+      "state": "no_db_record",
+      "qty": null,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "TF-F-99-12074211AB1",
+      "business": "PEM103",
+      "category": "Distribution Transformer",
+      "type": "3 Phase Distribution Transformer",
+      "description": "3 Phase 100kVA 33kV 416/240V Dyn11 Very Low Loss (052 PEA)",
+      "state": "no_db_record",
+      "qty": null,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "TF-F-99-15074211AB1",
+      "business": "PEM103",
+      "category": "Distribution Transformer",
+      "type": "3 Phase Distribution Transformer",
+      "description": "3 Phase 160kVA 33kV 416/240V Dyn11 Very Low Loss (052 PEA)",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "TF-F-99-19074211AB1",
+      "business": "PEM103",
+      "category": "Distribution Transformer",
+      "type": "3 Phase Distribution Transformer",
+      "description": "3 Phase 250kVA 33kV 416/240V Dyn11 Very Low Loss (052 PEA)",
+      "state": "no_db_record",
+      "qty": null,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "TF-F-99-21044211H1",
+      "business": "PEM103",
+      "category": "Distribution Transformer",
+      "type": "3 Phase Distribution Transformer",
+      "description": "3 Phase 315kVA 22kV 416/240V Dyn11 Low Loss Short Circuit (035 PEA)",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "TF-F-99-23044211H1",
+      "business": "PEM103",
+      "category": "Distribution Transformer",
+      "type": "3 Phase Distribution Transformer",
+      "description": "3 Phase 400kVA 22kV 416/240V Dyn11 Low Loss Short Circuit (035 PEA)",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "TF-F-99-24044211H1",
+      "business": "PEM103",
+      "category": "Distribution Transformer",
+      "type": "3 Phase Distribution Transformer",
+      "description": "3 Phase 500kVA 22kV 416/240V Dyn11 Low Loss Short Circuit (035 PEA)",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "TF-F-99-21074211H1",
+      "business": "PEM103",
+      "category": "Distribution Transformer",
+      "type": "3 Phase Distribution Transformer",
+      "description": "3 Phase 315kVA 33kV 416/240V Dyn11 Low Loss Short Circuit (035 PEA)",
+      "state": "has_stock",
+      "qty": 2.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG23",
+          "qty": 2.0
+        }
+      ]
+    },
+    {
+      "code": "TF-F-99-0703811AG1",
+      "business": "PEM103",
+      "category": "Distribution Transformer",
+      "type": "1 Phase Distribution Transformer",
+      "description": "1 Phase 30kVA 19kV 480/240V Low Loss SC New Spec 047/2568",
+      "state": "has_stock",
+      "qty": 13.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FMTS",
+          "qty": 13.0
+        }
+      ]
+    },
+    {
+      "code": "TF-F-99-0704811AG1",
+      "business": "PEM103",
+      "category": "Distribution Transformer",
+      "type": "1 Phase Distribution Transformer",
+      "description": "1 Phase 30kVA 22kV 480/240V Low Loss SC New Spec 047/2568",
+      "state": "has_stock",
+      "qty": 19.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FMTS",
+          "qty": 19.0
+        }
+      ]
+    },
+    {
+      "code": "TF-F-99-10044211AF1",
+      "business": "PEM103",
+      "category": "Distribution Transformer",
+      "type": "3 Phase Distribution Transformer",
+      "description": "3 Phase 50kVA 22kV 416/240V Dyn11 Very Low Loss SC New Spec 035/2568",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "TF-F-99-12044211AF1",
+      "business": "PEM103",
+      "category": "Distribution Transformer",
+      "type": "3 Phase Distribution Transformer",
+      "description": "3 Phase 100kVA 22kV 416/240V Dyn11 Very Low Loss SC New Spec 035/2568",
+      "state": "has_stock",
+      "qty": 12.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FMTS",
+          "qty": 12.0
+        }
+      ]
+    },
+    {
+      "code": "TF-F-99-15044211AF1",
+      "business": "PEM103",
+      "category": "Distribution Transformer",
+      "type": "3 Phase Distribution Transformer",
+      "description": "3 Phase 160kVA 22kV 416/240V Dyn11 Very Low Loss SC New Spec 035/2568",
+      "state": "has_stock",
+      "qty": 2.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FMTS",
+          "qty": 2.0
+        }
+      ]
+    },
+    {
+      "code": "TF-F-99-19044211AF1",
+      "business": "PEM103",
+      "category": "Distribution Transformer",
+      "type": "3 Phase Distribution Transformer",
+      "description": "3 Phase 250kVA 22kV 416/240V Dyn11 Very Low Loss SC New Spec 035/2568",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "TF-F-99-10074211AF1",
+      "business": "PEM103",
+      "category": "Distribution Transformer",
+      "type": "3 Phase Distribution Transformer",
+      "description": "3 Phase 50kVA 33kV 416/240V Dyn11 Very Low Loss SC New Spec 035/2568",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": false,
+      "by_warehouse": []
+    },
+    {
+      "code": "TF-F-99-12074211AF1",
+      "business": "PEM103",
+      "category": "Distribution Transformer",
+      "type": "3 Phase Distribution Transformer",
+      "description": "3 Phase 100kVA 33kV 416/240V Dyn11 Very Low Loss SC New Spec 035/2568",
+      "state": "has_stock",
+      "qty": 5.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FMTS",
+          "qty": 5.0
+        }
+      ]
+    },
+    {
+      "code": "TF-F-99-15074211AF1",
+      "business": "PEM103",
+      "category": "Distribution Transformer",
+      "type": "3 Phase Distribution Transformer",
+      "description": "3 Phase 160kVA 33kV 416/240V Dyn11 Very Low Loss SC New Spec 035/2568",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "TF-F-99-19074211AF1",
+      "business": "PEM103",
+      "category": "Distribution Transformer",
+      "type": "3 Phase Distribution Transformer",
+      "description": "3 Phase 250kVA 33kV 416/240V Dyn11 Very Low Loss SC New Spec 035/2568",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "CM-F-99-447000",
+      "business": "PEM104",
+      "category": "Protection Relay",
+      "type": "PQM",
+      "description": "PQM panel (Outdoor) UMG512 PRO **Supply by Customer**",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": false,
+      "by_warehouse": []
+    },
+    {
+      "code": "CM-F-99-447003",
+      "business": "PEM104",
+      "category": "Protection Relay",
+      "type": null,
+      "description": "PQM panel (Outdoor) UMG512 PRO",
+      "state": "has_stock",
+      "qty": 2.0,
+      "in_forecast_scope": false,
+      "by_warehouse": [
+        {
+          "code": "FG24",
+          "qty": 2.0
+        }
+      ]
+    },
+    {
+      "code": "CM-F-99-447005",
+      "business": "PEM104",
+      "category": "Protection Relay",
+      "type": null,
+      "description": "PQM panel (Outdoor) UMG512 PRO & UMG96RM",
+      "state": "no_db_record",
+      "qty": null,
+      "in_forecast_scope": false,
+      "by_warehouse": []
+    },
+    {
+      "code": "CM-F-99-447007",
+      "business": "PEM104",
+      "category": "Protection Relay",
+      "type": "Zero Export Panel",
+      "description": "Zero Export Panel (Outdoor) UMG96RM",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": false,
+      "by_warehouse": []
+    },
+    {
+      "code": "RL-F-99-440000",
+      "business": "PEM104",
+      "category": "Protection Relay",
+      "type": "PQM & RELAY",
+      "description": "PQM & RELAY panel (Outdoor) UMG512 PRO & Schneider P3U",
+      "state": "no_db_record",
+      "qty": null,
+      "in_forecast_scope": false,
+      "by_warehouse": []
+    },
+    {
+      "code": "RL-F-99-440002",
+      "business": "PEM104",
+      "category": "Protection Relay",
+      "type": null,
+      "description": "PQM & RELAY panel (Outdoor) UMG512 PRO & SIEMENS 7SJ80",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": false,
+      "by_warehouse": []
+    },
+    {
+      "code": "RL-F-99-440004",
+      "business": "PEM104",
+      "category": "Protection Relay",
+      "type": null,
+      "description": "PQM & RELAY panel (Outdoor) UMG512 PRO & SEL751 (FOR PEA)",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": false,
+      "by_warehouse": []
+    },
+    {
+      "code": "RL-F-99-440005",
+      "business": "PEM104",
+      "category": "Protection Relay",
+      "type": null,
+      "description": "PQM & RELAY panel (Outdoor) UMG512 PRO & SEL751 (FOR MEA)",
+      "state": "no_db_record",
+      "qty": null,
+      "in_forecast_scope": false,
+      "by_warehouse": []
+    },
+    {
+      "code": "RL-F-99-440013",
+      "business": "PEM104",
+      "category": "Protection Relay",
+      "type": "RELAY",
+      "description": "RELAY panel (Outdoor) Schneider P3U",
+      "state": "no_db_record",
+      "qty": null,
+      "in_forecast_scope": false,
+      "by_warehouse": []
+    },
+    {
+      "code": "RL-F-99-440015",
+      "business": "PEM104",
+      "category": "Protection Relay",
+      "type": null,
+      "description": "RELAY panel (Outdoor) SIEMENS 7SJ80",
+      "state": "no_db_record",
+      "qty": null,
+      "in_forecast_scope": false,
+      "by_warehouse": []
+    },
+    {
+      "code": "RL-F-99-440017",
+      "business": "PEM104",
+      "category": "Protection Relay",
+      "type": null,
+      "description": "RELAY panel (Outdoor) SEL751 (FOR PEA)",
+      "state": "no_db_record",
+      "qty": null,
+      "in_forecast_scope": false,
+      "by_warehouse": []
+    },
+    {
+      "code": "RL-F-99-440018",
+      "business": "PEM104",
+      "category": "Protection Relay",
+      "type": null,
+      "description": "RELAY panel (Outdoor) SEL751 (FOR MEA)",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": false,
+      "by_warehouse": []
+    },
+    {
+      "code": "RS-F-99-070007",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Dry Type)",
+      "type": "Current Transformer Type LDB",
+      "description": "LDB-35 : 100/5A, 5VA, Cl.0.5",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "RS-F-99-070002",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Dry Type)",
+      "type": "Current Transformer Type LDB",
+      "description": "LDB-35 : 150/5A, 5VA, Cl.0.5",
+      "state": "has_stock",
+      "qty": 208.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG01",
+          "qty": 208.0
+        }
+      ]
+    },
+    {
+      "code": "RS-F-99-070003",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Dry Type)",
+      "type": "Current Transformer Type LDB",
+      "description": "LDB-35 : 200/5A, 5VA, Cl.0.5",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "RS-F-99-070004",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Dry Type)",
+      "type": "Current Transformer Type LDB",
+      "description": "LDB-35 : 250/5A, 5VA, Cl.0.5",
+      "state": "has_stock",
+      "qty": 35.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG01",
+          "qty": 26.0
+        },
+        {
+          "code": "FG27",
+          "qty": 9.0
+        }
+      ]
+    },
+    {
+      "code": "RS-F-99-070006",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Dry Type)",
+      "type": "Current Transformer Type LDB",
+      "description": "LDB-35 : 300/5A, 5VA, Cl.0.5",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "RS-F-99-070005",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Dry Type)",
+      "type": "Current Transformer Type LDB",
+      "description": "LDB-35 : 400/5A, 5VA, Cl.0.5",
+      "state": "has_stock",
+      "qty": 107.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG01",
+          "qty": 101.0
+        },
+        {
+          "code": "WH24",
+          "qty": 6.0
+        }
+      ]
+    },
+    {
+      "code": "RS-F-99-070019",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Dry Type)",
+      "type": "Current Transformer Type LDB",
+      "description": "LDB-35 : 500/5A, 5VA, Cl.0.5",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "RS-F-99-070021",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Dry Type)",
+      "type": "Current Transformer Type LDB",
+      "description": "LDB-35 : 600/5A, 5VA, Cl.0.5",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "RS-F-99-070024",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Dry Type)",
+      "type": "Current Transformer Type LDB",
+      "description": "LDB-35 : 800/5A, 5VA, Cl.0.5",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "RS-F-99-050320",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Dry Type)",
+      "type": "Current Transformer Type CDB",
+      "description": "CDB 100/5A 10VA CL0.5Fs10",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": false,
+      "by_warehouse": []
+    },
+    {
+      "code": "RS-F-99-05xxxx-1",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Dry Type)",
+      "type": "Current Transformer Type CDB",
+      "description": "CDB 200/5A 10VA CL0.5Fs10",
+      "state": "no_db_record",
+      "qty": null,
+      "in_forecast_scope": false,
+      "by_warehouse": []
+    },
+    {
+      "code": "RS-F-99-050036",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Dry Type)",
+      "type": "Current Transformer Type CDB",
+      "description": "CDB 300/5A 10VA CL0.5Fs10",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": false,
+      "by_warehouse": []
+    },
+    {
+      "code": "RS-F-99-050235",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Dry Type)",
+      "type": "Current Transformer Type CDB",
+      "description": "CDB 500/5A 10VA CL0.5Fs10",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": false,
+      "by_warehouse": []
+    },
+    {
+      "code": "RS-F-99-050128",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Dry Type)",
+      "type": "Current Transformer Type CDB",
+      "description": "CDB 800/5A 10VA CL0.5Fs10",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "RS-F-99-050074",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Dry Type)",
+      "type": "Current Transformer Type CDB",
+      "description": "CDB 1000/5A 10VA CL0.5Fs10",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": false,
+      "by_warehouse": []
+    },
+    {
+      "code": "RS-F-99-050050",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Dry Type)",
+      "type": "Current Transformer Type CDB",
+      "description": "CDB 1200/5A 10VA CL0.5Fs10",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": false,
+      "by_warehouse": []
+    },
+    {
+      "code": "RS-F-99-050207",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Dry Type)",
+      "type": "Current Transformer Type CDB",
+      "description": "CDB 1600/5A 10VA CL0.5Fs10",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": false,
+      "by_warehouse": []
+    },
+    {
+      "code": "RS-F-99-050276",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Dry Type)",
+      "type": "Current Transformer Type CDB",
+      "description": "CDB 2000/5A 10VA CL0.5Fs10",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": false,
+      "by_warehouse": []
+    },
+    {
+      "code": "RS-F-99-050101",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Dry Type)",
+      "type": "Current Transformer Type CDB",
+      "description": "CDB 2500/5A 10VA CL0.5Fs10",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": false,
+      "by_warehouse": []
+    },
+    {
+      "code": "RS-F-99-050117",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Dry Type)",
+      "type": "Current Transformer Type CDB",
+      "description": "CDB 3000/5A 10VA CL0.5Fs10",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": false,
+      "by_warehouse": []
+    },
+    {
+      "code": "RS-F-99-050023",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Dry Type)",
+      "type": "Current Transformer Type CDB",
+      "description": "CDB 4000/5A 10VA CL0.5Fs10",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "RS-F-99-090002",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Dry Type)",
+      "type": "Current Transformer Type LExM",
+      "description": "LExM-35 : 200/5A (0.6 B 0.1-0.2&0.5)",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "RS-F-99-090003",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Dry Type)",
+      "type": "Current Transformer Type LExM",
+      "description": "LExM-55 : 400/5A (0.6 B 0.1-0.2&0.5)",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "RS-F-99-090010",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Dry Type)",
+      "type": "Current Transformer Type LExM",
+      "description": "LExM-35 : 200/5A 5 VA Class 0.5",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "RS-F-99-090011",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Dry Type)",
+      "type": "Current Transformer Type LExM",
+      "description": "LExM-55 : 400/5A 5 VA Class 0.5",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "RS-F-99-090030",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Dry Type)",
+      "type": "Current Transformer Type LExM-IOT",
+      "description": "\tLExM-130 150/5A 5 VA CL.0.5 Fs<5",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "RS-F-99-090028",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Dry Type)",
+      "type": "Current Transformer Type LExM-IOT",
+      "description": "LExM-130 250/5 A 5 VA CL.0.5 Fs<5",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "RS-F-99-090026",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Dry Type)",
+      "type": "Current Transformer Type LExM-IOT",
+      "description": "\tLExM-130 400/5A 5VA CL.0.5Fs<5",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "RS-F-99-090041",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Dry Type)",
+      "type": "Current Transformer Type LExM-IOT",
+      "description": "LExM-130 500/5A 5VA CL.0.5 Fs<5",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "RS-F-99-090038",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Dry Type)",
+      "type": "Current Transformer Type LExM-IOT",
+      "description": "LExM-130 600/5A 5VA CL.0.5 Fs<5",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "RS-F-99-090033",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Dry Type)",
+      "type": "Current Transformer Type LExM-IOT",
+      "description": "LExM-155 800/5A 5 VA CL.0.5 Fs<5",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "RS-F-99-090027",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Dry Type)",
+      "type": "Current Transformer Type LExM-IOT",
+      "description": "LExM-155 1000/5 A 5 VA CL.0.5 Fs<5",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "RS-F-99-090xxx",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Dry Type)",
+      "type": "Current Transformer Type LExM-IOT",
+      "description": "\tLExM-175 1200/5A 5VA CL.0.5Fs<5",
+      "state": "no_db_record",
+      "qty": null,
+      "in_forecast_scope": false,
+      "by_warehouse": []
+    },
+    {
+      "code": "RS-F-99-090039",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Dry Type)",
+      "type": "Current Transformer Type LExM-IOT",
+      "description": "LExM-175 1500/5A 5VA CL.0.5 Fs<5",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "RS-F-99-100001",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Dry Type)",
+      "type": "Voltage Transformer Type VEG",
+      "description": "VEG-24 : 22000/√3/110/√3/110/√3V, 50VA, Cl.0.5&3P",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "RS-F-99-100013",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Dry Type)",
+      "type": "Voltage Transformer Type VEG",
+      "description": "VEG-24 : 22000/√3/110/√3V, 50VA, Cl.0.5",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "RS-F-99-130011",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Dry Type)",
+      "type": "Voltage Transformer Type VEL",
+      "description": "VEL-24 : 24000/120-240V, 25VA, Cl.0.5",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "RS-F-99-120002",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Dry Type)",
+      "type": "Voltage Transformer Type VExL",
+      "description": "VExL-24 : 24000/120V, 0.6WXY&1.2Z",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "RS-F-99-120006",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Dry Type)",
+      "type": "Voltage Transformer Type VExL",
+      "description": "VExL-24 : 22000/110V, 50VA, Cl.0.5",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "RS-F-99-040004",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Dry Type)",
+      "type": "Current Transformer Type CExL",
+      "description": "CExL-24 : 50:5A, [0.6B0.1,0.2&0.5]",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "RS-F-99-040006",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Dry Type)",
+      "type": "Current Transformer Type CExL",
+      "description": "CExL-24 : 200:5A, [0.6B0.1,0.2&0.5]",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "RS-F-99-040003",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Dry Type)",
+      "type": "Current Transformer Type CExL",
+      "description": "CExL-24 : 25:5A, [0.6B0.1,0.2&0.5]",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": false,
+      "by_warehouse": []
+    },
+    {
+      "code": "RS-F-99-041001",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Dry Type)",
+      "type": "Current Transformer Type CExL",
+      "description": "CExL-24 : 10/5A, 30VA, Cl.0.5Fs10",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "RS-F-99-041002",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Dry Type)",
+      "type": "Current Transformer Type CExL",
+      "description": "CExL-24 : 15/5A, 30VA, Cl.0.5Fs10",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "RS-F-99-041033",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Dry Type)",
+      "type": "Current Transformer Type CExL",
+      "description": "CExL-24 : 20/5A, 30VA, Cl.0.5Fs10",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "RS-F-99-041003",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Dry Type)",
+      "type": "Current Transformer Type CExL",
+      "description": "CExL-24 : 25/5A, 30VA, Cl.0.5Fs10",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "RS-F-99-041034",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Dry Type)",
+      "type": "Current Transformer Type CExL",
+      "description": "CExL-24 : 30/5A, 30VA, Cl.0.5Fs10",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "RS-F-99-041004",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Dry Type)",
+      "type": "Current Transformer Type CExL",
+      "description": "CExL-24 : 50/5A, 30VA, Cl.0.5Fs10",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "RS-F-99-041015",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Dry Type)",
+      "type": "Current Transformer Type CExL",
+      "description": "CExL-24 : 75/5A, 30VA, Cl.0.5Fs10",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "RS-F-99-041005",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Dry Type)",
+      "type": "Current Transformer Type CExL",
+      "description": "CExL-24 : 100/5A, 30VA, Cl.0.5Fs10",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "RS-F-99-041010",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Dry Type)",
+      "type": "Current Transformer Type CExL",
+      "description": "CExL-24 : 150/5A, 30VA, Cl.0.5Fs10",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "RS-F-99-041006",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Dry Type)",
+      "type": "Current Transformer Type CExL",
+      "description": "CExL-24 : 200/5A, 30VA, Cl.0.5Fs10",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "RS-F-99-041035",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Dry Type)",
+      "type": "Current Transformer Type CExL",
+      "description": "CExL-24 : 250/5A, 30VA, Cl.0.5Fs10",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "RS-F-99-041007",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Dry Type)",
+      "type": "Current Transformer Type CExL",
+      "description": "CExL-24 : 300/5A, 30VA, Cl.0.5Fs10",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "RS-F-99-041008",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Dry Type)",
+      "type": "Current Transformer Type CExL",
+      "description": "CExL-24 : 400/5A, 30VA, Cl.0.5Fs10",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "RS-F-99-010127",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Dry Type)",
+      "type": "Current Transformer Type CEL",
+      "description": "CEL-24 10/5A 30VA CL0.5Fs10",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "RS-F-99-010128",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Dry Type)",
+      "type": "Current Transformer Type CEL",
+      "description": "CEL-24 15/5A 30VA CL0.5Fs10",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "RS-F-99-010122",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Dry Type)",
+      "type": "Current Transformer Type CEL",
+      "description": "CEL-24 25/5A 30VA CL0.5Fs10",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "RS-F-99-010129",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Dry Type)",
+      "type": "Current Transformer Type CEL",
+      "description": "CEL-24 50/5A 30VA CL0.5Fs10",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "RS-F-99-010123",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Dry Type)",
+      "type": "Current Transformer Type CEL",
+      "description": "CEL-24 100/5A 30VA CL0.5Fs10",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "RS-F-99-010124",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Dry Type)",
+      "type": "Current Transformer Type CEL",
+      "description": "CEL-24 200/5A 30VA CL0.5Fs10",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "RS-F-99-010114",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Dry Type)",
+      "type": "Current Transformer Type CEL",
+      "description": "CEL-24 300/5A 30VA CL0.5Fs10",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "RS-F-99-010130",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Dry Type)",
+      "type": "Current Transformer Type CEL",
+      "description": "CEL-24 400/5A 30VA CL0.5Fs10",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": false,
+      "by_warehouse": []
+    },
+    {
+      "code": "RS-F-99-010018",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Dry Type)",
+      "type": "Current Transformer Type CEL",
+      "description": "CEL-24 600/5A 30VA CL0.5Fs10",
+      "state": "no_db_record",
+      "qty": null,
+      "in_forecast_scope": false,
+      "by_warehouse": []
+    },
+    {
+      "code": "RS-F-99-01xxxx-3",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Dry Type)",
+      "type": "Current Transformer Type CEL",
+      "description": "CEL-24 1000/5A 30VA CL0.5Fs10",
+      "state": "no_db_record",
+      "qty": null,
+      "in_forecast_scope": false,
+      "by_warehouse": []
+    },
+    {
+      "code": "RS-F-99-01xxxx-4",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Dry Type)",
+      "type": "Current Transformer Type CEL",
+      "description": "CEL-24 2000/5A 30VA CL0.5Fs10",
+      "state": "no_db_record",
+      "qty": null,
+      "in_forecast_scope": false,
+      "by_warehouse": []
+    },
+    {
+      "code": "VT-F-99-010105",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Oil Type)",
+      "type": "Voltage Transformer Type VOL",
+      "description": "VOL-12 : 11000/110V, 50VA, Cl.0.5",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "VT-F-99-010203",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Oil Type)",
+      "type": "Voltage Transformer Type VOL",
+      "description": "VOL-24 : 22000/110V, 50VA, Cl.0.5 (Private)",
+      "state": "has_stock",
+      "qty": 89.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG01",
+          "qty": 4.0
+        },
+        {
+          "code": "FG27",
+          "qty": 81.0
+        },
+        {
+          "code": "FMTS",
+          "qty": 2.0
+        },
+        {
+          "code": "WH24",
+          "qty": 2.0
+        }
+      ]
+    },
+    {
+      "code": "VT-F-99-010203.",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Oil Type)",
+      "type": "Voltage Transformer Type VOL",
+      "description": "VOL-24 : 22000/110V, 50VA, Cl.0.5 (PEA Regional)",
+      "state": "no_db_record",
+      "qty": null,
+      "in_forecast_scope": false,
+      "by_warehouse": []
+    },
+    {
+      "code": "VT-F-99-010209",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Oil Type)",
+      "type": "Voltage Transformer Type VOL",
+      "description": "VOL-24 : 24000/120V, 50VA, Cl.0.5",
+      "state": "has_stock",
+      "qty": 4.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG27",
+          "qty": 4.0
+        }
+      ]
+    },
+    {
+      "code": "VT-F-99-010205",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Oil Type)",
+      "type": "Voltage Transformer Type VOL",
+      "description": "VOL-24 : 22000/110V, 500VA, Cl.3 For LBS Op.4",
+      "state": "has_stock",
+      "qty": 12.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG27",
+          "qty": 11.0
+        },
+        {
+          "code": "WH22",
+          "qty": 1.0
+        }
+      ]
+    },
+    {
+      "code": "VT-F-99-010202",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Oil Type)",
+      "type": "Voltage Transformer Type VOL",
+      "description": "VOL-24 : 22000/230V, 500VA, Cl.3",
+      "state": "has_stock",
+      "qty": 30.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG01",
+          "qty": 20.0
+        },
+        {
+          "code": "FG27",
+          "qty": 6.0
+        },
+        {
+          "code": "WH22",
+          "qty": 4.0
+        }
+      ]
+    },
+    {
+      "code": "VT-F-99-010303",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Oil Type)",
+      "type": "Voltage Transformer Type VOL",
+      "description": "VOL-36 : 33000/110V, 50VA, Cl.0.5 (PEA Regional)",
+      "state": "has_stock",
+      "qty": 5.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG27",
+          "qty": 5.0
+        }
+      ]
+    },
+    {
+      "code": "VT-F-99-010303.",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Oil Type)",
+      "type": "Voltage Transformer Type VOL",
+      "description": "VOL-36 : 33000/110V, 50VA, Cl.0.5 (Private)",
+      "state": "no_db_record",
+      "qty": null,
+      "in_forecast_scope": false,
+      "by_warehouse": []
+    },
+    {
+      "code": "VT-F-99-010306",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Oil Type)",
+      "type": "Voltage Transformer Type VOL",
+      "description": "VOL-36 : 33000/110V, 500VA, Cl.3 For LBS Op.4",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": false,
+      "by_warehouse": []
+    },
+    {
+      "code": "VT-F-99-010302",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Oil Type)",
+      "type": "Voltage Transformer Type VOL",
+      "description": "VOL-36 : 33000/230V, 500VA, Cl.3 ",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "VT-F-99-010615",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Oil Type)",
+      "type": "Voltage Transformer Type VOG",
+      "description": "VOG-24 : 22000/√3:110/√3&110/√3V 50VA, Cl.0.2 (EGAT)",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "VT-F-99-010616",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Oil Type)",
+      "type": "Voltage Transformer Type VOG",
+      "description": "VOG-24 : 22000/√3:110/√3V 50VA, Cl.0.5 1 Bushing",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "VT-F-99-010721",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Oil Type)",
+      "type": "Voltage Transformer Type VOG",
+      "description": "VOG-242 : 22000/√3:110/√3&110/√3V 50VA, Cl.0.5&3P (yn0&yn0)",
+      "state": "has_stock",
+      "qty": 17.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG01",
+          "qty": 6.0
+        },
+        {
+          "code": "FG27",
+          "qty": 8.0
+        },
+        {
+          "code": "FMTO",
+          "qty": 2.0
+        },
+        {
+          "code": "WH24",
+          "qty": 1.0
+        }
+      ]
+    },
+    {
+      "code": "VT-F-99-010715",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Oil Type)",
+      "type": "Voltage Transformer Type VOG",
+      "description": "VOG-242 : 22000/√3:110/√3V 50VA, Cl.0.5",
+      "state": "has_stock",
+      "qty": 2.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG01",
+          "qty": 2.0
+        }
+      ]
+    },
+    {
+      "code": "VT-F-99-010701",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Oil Type)",
+      "type": "Voltage Transformer Type VOG",
+      "description": "VOG-242 : 22000/√3:110/√3V 500VA, Cl.3 For LBS Op.5 & 6",
+      "state": "has_stock",
+      "qty": 14.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG27",
+          "qty": 1.0
+        },
+        {
+          "code": "WH22",
+          "qty": 13.0
+        }
+      ]
+    },
+    {
+      "code": "VT-F-99-010722",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Oil Type)",
+      "type": "Voltage Transformer Type VOG",
+      "description": "VOG-242-P : For LBS Op.7",
+      "state": "has_stock",
+      "qty": 27.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "W122",
+          "qty": 11.0
+        },
+        {
+          "code": "WH22",
+          "qty": 16.0
+        }
+      ]
+    },
+    {
+      "code": "VT-F-99-010819",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Oil Type)",
+      "type": "Voltage Transformer Type VOG",
+      "description": "VOG-362 : 33000/√3:110/√3&110/√3V 50VA, Cl.0.5&3P (yn0&yn0)",
+      "state": "has_stock",
+      "qty": 2.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG27",
+          "qty": 2.0
+        }
+      ]
+    },
+    {
+      "code": "VT-F-99-010818",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Oil Type)",
+      "type": "Voltage Transformer Type VOG",
+      "description": "VOG-362 : 33000/√3:110/√3V 50VA, Cl.0.5",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "VT-F-99-01802",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Oil Type)",
+      "type": "Voltage Transformer Type VOG",
+      "description": "VOG-362 : 33000/√3:110/√3V 500VA, Cl.3 For LBS Op.5 & 6",
+      "state": "no_db_record",
+      "qty": null,
+      "in_forecast_scope": false,
+      "by_warehouse": []
+    },
+    {
+      "code": "VT-F-99-010820",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Oil Type)",
+      "type": "Voltage Transformer Type VOG",
+      "description": "VOG-362-P : For LBS Op.7",
+      "state": "has_stock",
+      "qty": 7.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG27",
+          "qty": 7.0
+        }
+      ]
+    },
+    {
+      "code": "CT-F-99-020501",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Oil Type)",
+      "type": "Current Transformer Type COL",
+      "description": "COL-24 : 10/5A, 30VA, Cl.0.5",
+      "state": "has_stock",
+      "qty": 19.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG27",
+          "qty": 19.0
+        }
+      ]
+    },
+    {
+      "code": "CT-F-99-020514",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Oil Type)",
+      "type": "Current Transformer Type COL",
+      "description": "COL-24 : 15/5A, 30VA, Cl.0.5",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "CT-F-99-020502",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Oil Type)",
+      "type": "Current Transformer Type COL",
+      "description": "COL-24 : 20/5A, 30VA, Cl.0.5",
+      "state": "has_stock",
+      "qty": 6.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG27",
+          "qty": 6.0
+        }
+      ]
+    },
+    {
+      "code": "CT-F-99-020503",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Oil Type)",
+      "type": "Current Transformer Type COL",
+      "description": "COL-24 : 30/5A, 30VA, Cl.0.5",
+      "state": "has_stock",
+      "qty": 8.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG27",
+          "qty": 3.0
+        },
+        {
+          "code": "FMTO",
+          "qty": 3.0
+        },
+        {
+          "code": "FMTS",
+          "qty": 2.0
+        }
+      ]
+    },
+    {
+      "code": "CT-F-99-020504",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Oil Type)",
+      "type": "Current Transformer Type COL",
+      "description": "COL-24 : 50/5A, 30VA, Cl.0.5",
+      "state": "has_stock",
+      "qty": 22.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG27",
+          "qty": 19.0
+        },
+        {
+          "code": "FMTS",
+          "qty": 3.0
+        }
+      ]
+    },
+    {
+      "code": "CT-F-99-020505",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Oil Type)",
+      "type": "Current Transformer Type COL",
+      "description": "COL-24 : 75/5A, 30VA, Cl.0.5",
+      "state": "has_stock",
+      "qty": 35.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG01",
+          "qty": 13.0
+        },
+        {
+          "code": "FG27",
+          "qty": 19.0
+        },
+        {
+          "code": "FMTO",
+          "qty": 3.0
+        }
+      ]
+    },
+    {
+      "code": "CT-F-99-020506",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Oil Type)",
+      "type": "Current Transformer Type COL",
+      "description": "COL-24 : 100/5A, 30VA, Cl.0.5",
+      "state": "has_stock",
+      "qty": 11.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG01",
+          "qty": 3.0
+        },
+        {
+          "code": "FG27",
+          "qty": 6.0
+        },
+        {
+          "code": "WH24",
+          "qty": 2.0
+        }
+      ]
+    },
+    {
+      "code": "CT-F-99-020507",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Oil Type)",
+      "type": "Current Transformer Type COL",
+      "description": "COL-24 : 150/5A, 30VA, Cl.0.5",
+      "state": "has_stock",
+      "qty": 7.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG27",
+          "qty": 7.0
+        }
+      ]
+    },
+    {
+      "code": "CT-F-99-020508",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Oil Type)",
+      "type": "Current Transformer Type COL",
+      "description": "COL-24 : 200/5A, 30VA, Cl.0.5",
+      "state": "has_stock",
+      "qty": 23.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG27",
+          "qty": 23.0
+        }
+      ]
+    },
+    {
+      "code": "CT-F-99-020509",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Oil Type)",
+      "type": "Current Transformer Type COL",
+      "description": "COL-24 : 250/5A, 30VA, Cl.0.5",
+      "state": "has_stock",
+      "qty": 3.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG01",
+          "qty": 3.0
+        }
+      ]
+    },
+    {
+      "code": "CT-F-99-020510",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Oil Type)",
+      "type": "Current Transformer Type COL",
+      "description": "COL-24 : 300/5A, 30VA, Cl.0.5",
+      "state": "has_stock",
+      "qty": 23.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG01",
+          "qty": 6.0
+        },
+        {
+          "code": "FG27",
+          "qty": 17.0
+        }
+      ]
+    },
+    {
+      "code": "CT-F-99-020511",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Oil Type)",
+      "type": "Current Transformer Type COL",
+      "description": "COL-24 : 400/5A, 30VA, Cl.0.5",
+      "state": "has_stock",
+      "qty": 20.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG27",
+          "qty": 20.0
+        }
+      ]
+    },
+    {
+      "code": "CT-F-99-020512",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Oil Type)",
+      "type": "Current Transformer Type COL",
+      "description": "COL-24 : 500/5A, 30VA, Cl.0.5",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "CT-F-99-020513",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Oil Type)",
+      "type": "Current Transformer Type COL",
+      "description": "COL-24 : 600/5A, 30VA, Cl.0.5",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "CT-F-99-020533",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Oil Type)",
+      "type": "Current Transformer Type COL",
+      "description": "COL-24 : 10:5/5A, 30VA, Cl.0.5&5P20 (2 Core)",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": false,
+      "by_warehouse": []
+    },
+    {
+      "code": "CT-F-99-020522",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Oil Type)",
+      "type": "Current Transformer Type COL",
+      "description": "COL-24 : 20:5/5A, 30VA, Cl.0.5&5P20 (2 Core)",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "CT-F-99-020534",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Oil Type)",
+      "type": "Current Transformer Type COL",
+      "description": "COL-24 : 25:5/5A, 30VA, Cl.0.5&5P20 (2 Core)",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "CT-F-99-020523",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Oil Type)",
+      "type": "Current Transformer Type COL",
+      "description": "COL-24 : 30:5/5A, 30VA, Cl.0.5&5P20 (2 Core)",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "CT-F-99-020525",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Oil Type)",
+      "type": "Current Transformer Type COL",
+      "description": "COL-24 : 50:5/5A, 30VA, Cl.0.5&5P20 (2 Core)",
+      "state": "has_stock",
+      "qty": 8.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG27",
+          "qty": 8.0
+        }
+      ]
+    },
+    {
+      "code": "CT-F-99-020531",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Oil Type)",
+      "type": "Current Transformer Type COL",
+      "description": "COL-24 : 75:5/5A, 30VA, Cl.0.5&5P20 (2 Core)",
+      "state": "has_stock",
+      "qty": 3.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG01",
+          "qty": 3.0
+        }
+      ]
+    },
+    {
+      "code": "CT-F-99-020527",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Oil Type)",
+      "type": "Current Transformer Type COL",
+      "description": "COL-24 : 100:5/5A, 30VA, Cl.0.5&5P20 (2 Core)",
+      "state": "has_stock",
+      "qty": 8.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG01",
+          "qty": 6.0
+        },
+        {
+          "code": "FG27",
+          "qty": 2.0
+        }
+      ]
+    },
+    {
+      "code": "CT-F-99-020524",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Oil Type)",
+      "type": "Current Transformer Type COL",
+      "description": "COL-24 : 150:5/5A, 30VA, Cl.0.5&5P20 (2 Core)",
+      "state": "has_stock",
+      "qty": 9.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG27",
+          "qty": 6.0
+        },
+        {
+          "code": "FMTO",
+          "qty": 3.0
+        }
+      ]
+    },
+    {
+      "code": "CT-F-99-020528",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Oil Type)",
+      "type": "Current Transformer Type COL",
+      "description": "COL-24 : 200:5/5A, 30VA, Cl.0.5&5P20 (2 Core)",
+      "state": "has_stock",
+      "qty": 6.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG27",
+          "qty": 6.0
+        }
+      ]
+    },
+    {
+      "code": "CT-F-99-020529",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Oil Type)",
+      "type": "Current Transformer Type COL",
+      "description": "COL-24 : 250:5/5A, 30VA, Cl.0.5&5P20 (2 Core)",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "CT-F-99-020530",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Oil Type)",
+      "type": "Current Transformer Type COL",
+      "description": "COL-24 : 300:5/5A, 30VA, Cl.0.5&5P20 (2 Core)",
+      "state": "has_stock",
+      "qty": 10.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG27",
+          "qty": 10.0
+        }
+      ]
+    },
+    {
+      "code": "CT-F-99-020526",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Oil Type)",
+      "type": "Current Transformer Type COL",
+      "description": "COL-24 : 400:5/5A, 30VA, Cl.0.5&5P20 (2 Core)",
+      "state": "has_stock",
+      "qty": 4.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG27",
+          "qty": 4.0
+        }
+      ]
+    },
+    {
+      "code": "CT-F-99-020535",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Oil Type)",
+      "type": "Current Transformer Type COL",
+      "description": "COL-24 : 500:5/5A, 30VA, Cl.0.5&5P20 (2 Core)",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "CT-F-99-020532",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Oil Type)",
+      "type": "Current Transformer Type COL",
+      "description": "COL-24 : 600:5/5A, 30VA, Cl.0.5&5P20 (2 Core)",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "CT-F-99-020701",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Oil Type)",
+      "type": "Current Transformer Type COL",
+      "description": "COL-36 : 10/5A, 30VA, Cl.0.5",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "CT-F-99-020702",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Oil Type)",
+      "type": "Current Transformer Type COL",
+      "description": "COL-36 : 20/5A, 30VA, Cl.0.5",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "CT-F-99-020703",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Oil Type)",
+      "type": "Current Transformer Type COL",
+      "description": "COL-36 : 30/5A, 30VA, Cl.0.5",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "CT-F-99-020704",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Oil Type)",
+      "type": "Current Transformer Type COL",
+      "description": "COL-36 : 50/5A, 30VA, Cl.0.5",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "CT-F-99-020705",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Oil Type)",
+      "type": "Current Transformer Type COL",
+      "description": "COL-36 : 75/5A, 30VA, Cl.0.5",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "CT-F-99-020706",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Oil Type)",
+      "type": "Current Transformer Type COL",
+      "description": "COL-36 : 100/5A, 30VA, Cl.0.5",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "CT-F-99-020707",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Oil Type)",
+      "type": "Current Transformer Type COL",
+      "description": "COL-36 : 150/5A, 30VA, Cl.0.5",
+      "state": "has_stock",
+      "qty": 3.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FMTO",
+          "qty": 3.0
+        }
+      ]
+    },
+    {
+      "code": "CT-F-99-020708",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Oil Type)",
+      "type": "Current Transformer Type COL",
+      "description": "COL-36 : 200/5A, 30VA, Cl.0.5",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "CT-F-99-020718",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Oil Type)",
+      "type": "Current Transformer Type COL",
+      "description": "COL-36 : 250/5A, 30VA, Cl.0.5",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "CT-F-99-020710",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Oil Type)",
+      "type": "Current Transformer Type COL",
+      "description": "COL-36 : 300/5A, 30VA, Cl.0.5",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "CT-F-99-020709",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Oil Type)",
+      "type": "Current Transformer Type COL",
+      "description": "COL-36 : 400/5A, 30VA, Cl.0.5",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "CT-F-99-020721",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Oil Type)",
+      "type": "Current Transformer Type COL",
+      "description": "COL-36 : 10:5/5A, 30VA, Cl.0.5&5P20 (2 Core)",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": false,
+      "by_warehouse": []
+    },
+    {
+      "code": "CT-F-99-020722",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Oil Type)",
+      "type": "Current Transformer Type COL",
+      "description": "COL-36 : 20:5/5A, 30VA, Cl.0.5&5P20 (2 Core)",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "CT-F-99-020723",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Oil Type)",
+      "type": "Current Transformer Type COL",
+      "description": "COL-36 : 30:5/5A, 30VA, Cl.0.5&5P20 (2 Core)",
+      "state": "has_stock",
+      "qty": 3.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG27",
+          "qty": 3.0
+        }
+      ]
+    },
+    {
+      "code": "CT-F-99-020714",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Oil Type)",
+      "type": "Current Transformer Type COL",
+      "description": "COL-36 : 50:5/5A, 30VA, Cl.0.5&5P20 (2 Core)",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "CT-F-99-020725",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Oil Type)",
+      "type": "Current Transformer Type COL",
+      "description": "COL-36 : 75:5/5A, 30VA, Cl.0.5&5P20 (2 Core)",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "CT-F-99-020726",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Oil Type)",
+      "type": "Current Transformer Type COL",
+      "description": "COL-36 : 100:5/5A, 30VA, Cl.0.5&5P20 (2 Core)",
+      "state": "has_stock",
+      "qty": 6.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG27",
+          "qty": 6.0
+        }
+      ]
+    },
+    {
+      "code": "CT-F-99-020717",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Oil Type)",
+      "type": "Current Transformer Type COL",
+      "description": "COL-36 : 150:5/5A, 30VA, Cl.0.5&5P20 (2 Core)",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "CT-F-99-020728",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Oil Type)",
+      "type": "Current Transformer Type COL",
+      "description": "COL-36 : 200:5/5A, 30VA, Cl.0.5&5P20 (2 Core)",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "CT-F-99-020729",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Oil Type)",
+      "type": "Current Transformer Type COL",
+      "description": "COL-36 : 250:5/5A, 30VA, Cl.0.5&5P20 (2 Core)",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": false,
+      "by_warehouse": []
+    },
+    {
+      "code": "CT-F-99-020730",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Oil Type)",
+      "type": "Current Transformer Type COL",
+      "description": "COL-36 : 300:5/5A, 30VA, Cl.0.5&5P20 (2 Core)",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "CT-F-99-020731",
+      "business": "PEM107",
+      "category": "Instrument Transformer (Oil Type)",
+      "type": "Current Transformer Type COL",
+      "description": "COL-36 : 400:5/5A, 30VA, Cl.0.5&5P20 (2 Core)",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": false,
+      "by_warehouse": []
+    },
+    {
+      "code": "DS-F-99-0301",
+      "business": "CI101",
+      "category": "1-Pole Disconnecting Switch (Vertical Break)",
+      "type": "SLOC/D",
+      "description": "22 kV DS 630A type: SLOC/D 125-630  PEA 1040050000",
+      "state": "has_stock",
+      "qty": 1.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FMTS",
+          "qty": 1.0
+        }
+      ]
+    },
+    {
+      "code": "DS-F-99-0308",
+      "business": "CI101",
+      "category": "1-Pole Disconnecting Switch (Vertical Break)",
+      "type": "SLOC/D",
+      "description": "22 kV DS 630A type: SLOC/D 27-630 (PEA) 1040050001",
+      "state": "has_stock",
+      "qty": 14.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG01",
+          "qty": 13.0
+        },
+        {
+          "code": "FMTO",
+          "qty": 1.0
+        }
+      ]
+    },
+    {
+      "code": "DS-F-99-0309",
+      "business": "CI101",
+      "category": "1-Pole Disconnecting Switch (Vertical Break)",
+      "type": "SLOC/D",
+      "description": "22 kV DS 1250A type: SLOC/D 27-1250",
+      "state": "has_stock",
+      "qty": 15.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG01",
+          "qty": 15.0
+        }
+      ]
+    },
+    {
+      "code": "DS-F-99-0310",
+      "business": "CI101",
+      "category": "1-Pole Disconnecting Switch (Vertical Break)",
+      "type": "SLOC/D",
+      "description": "22 kV DS 2000A type: SLOC/D 27-2000",
+      "state": "has_stock",
+      "qty": 9.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG01",
+          "qty": 9.0
+        }
+      ]
+    },
+    {
+      "code": "DS-F-99-0320",
+      "business": "CI101",
+      "category": "1-Pole Disconnecting Switch (Vertical Break)",
+      "type": "SLOC/D",
+      "description": "38 kV DS 630A type: SLOC/D 38-630 (Distribution)",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "DS-F-99-0311",
+      "business": "CI101",
+      "category": "1-Pole Disconnecting Switch (Vertical Break)",
+      "type": "SLOC/D",
+      "description": "38 kV DS 630A type: SLOC/D 38-630 (Substation)",
+      "state": "has_stock",
+      "qty": 14.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FG01",
+          "qty": 14.0
+        }
+      ]
+    },
+    {
+      "code": "DS-F-99-0312",
+      "business": "CI101",
+      "category": "1-Pole Disconnecting Switch (Vertical Break)",
+      "type": "SLOC/D",
+      "description": "38 kV DS 1250A type: SLOC/D 38-1250",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "DS-F-99-0101",
+      "business": "CI101",
+      "category": "3-Pole Disconnecting Switch (Double-side Break)",
+      "type": "STC 123-2000",
+      "description": "115 kV DS without ES type STC 123-2000",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "DS-F-99-0103",
+      "business": "CI101",
+      "category": "3-Pole Disconnecting Switch (Double-side Break)",
+      "type": "STC 123-2000 (W/B)",
+      "description": "115 kV DS without ES type STC 123-2000 have bus transfer switching",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "DS-F-99-0105",
+      "business": "CI101",
+      "category": "3-Pole Disconnecting Switch (Double-side Break)",
+      "type": "STC-E 123-2000",
+      "description": "115 kV DS with ES type STC-E 123-2000",
+      "state": "has_stock",
+      "qty": 1.0,
+      "in_forecast_scope": true,
+      "by_warehouse": [
+        {
+          "code": "FMTO",
+          "qty": 1.0
+        }
+      ]
+    },
+    {
+      "code": "DS-F-99-0107",
+      "business": "CI101",
+      "category": "3-Pole Disconnecting Switch (Double-side Break)",
+      "type": "STC-E 123-2000 (on take off)",
+      "description": "115 kV DS with ES type STC-E 123-2000 on take-off",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "DS-F-99-0109",
+      "business": "CI101",
+      "category": "3-Pole Earthing Switch (Vertical Break)",
+      "type": "ES 123-40",
+      "description": "115 kV ES type ES 123-40",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    },
+    {
+      "code": "DS-F-99-0221",
+      "business": "CI101",
+      "category": "3-Pole Air Break Switch (Center Break)",
+      "type": "CBD 123-2000",
+      "description": "115 kV ABS type CBD 123-2000 CL100 (Complete)",
+      "state": "zero_stock",
+      "qty": 0.0,
+      "in_forecast_scope": true,
+      "by_warehouse": []
+    }
+  ]
+}
