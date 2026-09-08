@@ -272,15 +272,21 @@ Top-down combination for all three** — no candidate (of 11 evaluated: Naive, M
 Croston, SBA, TSB, Combination, Top-down) beats it with statistical significance on any item.
 Phase D may now proceed.
 
-**Phase D — Phase 4 groundwork. Narrowed 2026-09-04 by business input (Section 8).** No longer a
-search across all tables at once. Finished-goods movement history is removed from the data
-request list — business confirmed it does not exist. Assembly time after parts arrive stays open,
-needs business/production input, not derivable from any table. What remains is **three checks
-against `Cube_Inventory_Exact`** (the current-stock snapshot): which warehouse stages hold
-sellable stock, an approximate holding-cost figure (current stock qty × unit cost from the sales
-table), and whether CI101-sheet products sold under `PEM101` are held in `PEM101` stock. **Runs
-only after Phase C, never in parallel with it** — if Phase C changes the forecasting approach,
-this groundwork would need redoing.
+**Phase D — Phase 4 groundwork — DONE (2026-09-08).** Narrowed 2026-09-04 by business input
+(Section 8) to three checks against `Cube_Inventory_Exact`, run as three parallel Explorers plus a
+Synthesizer (per `AGENTS.md`). Full detail: `output/summary/phaseD_synthesis_report.md` and the
+three Explorer reports (`phaseD_check1_report.md`, `phaseD_check2_report.md`,
+`phaseD_check3_report.md`). Headline, stated as plainly as the checks themselves state it:
+**confirmed-sellable stock is 0.00% of the in-scope snapshot; 99.90% is undetermined** (the
+schema has no sellability field — this is a genuine data limit, not a data-pull failure). Total
+priced stock value: **THB 37,399,005.48** (capital tied up, not an annual cost — Check 2 also
+caught that `cube_Sale_APD.cost` is a line total, not a unit cost, before computing anything, a
+correction that matters by 1-2 orders of magnitude). CI101/PEM101 stock: 6 of 12 relevant CI101
+items co-locate with PEM101's own warehouse codes, downgraded to `SAME_BUT_UNDETERMINED` since
+those codes are shared across 3-4 divisions table-wide, not distinctively PEM101's. **10
+assumptions Phase E must record in config, since the data could not answer them** — see the dated
+log entry below for the full list. Phase E may now proceed, with those assumptions stated
+explicitly rather than buried in code.
 
 **Phase E — Phase 4 proper**: calculate Max-Min and simulate it against historical demand.
 
@@ -3237,6 +3243,88 @@ small-multiples, actual vs. each candidate's rolling-origin forecasts).
   figures though the qualitative conclusions (no significant override for any item) are expected
   to be stable. **No config was written in this task, per instruction. Nothing was committed or
   pushed.**
+
+**Phase D — Phase 4 groundwork, three checks against `Cube_Inventory_Exact` — DONE (2026-09-08).**
+Three parallel Explorers (per `AGENTS.md`'s Phase D pattern) plus a Synthesizer. Scope deliberately
+narrow, per instruction: `Cube_Inventory_Exact` and the tables it joins to only — no wider database
+search, since earlier exhaustive searches already established finished-goods movement history, MOQ
+and assembly time do not exist, business-confirmed. Full detail:
+`output/summary/phaseD_synthesis_report.md`, `phaseD_check1_report.md`, `phaseD_check2_report.md`,
+`phaseD_check3_report.md`; scripts `src/investigations/phaseD_check1_sellable_stock.py`,
+`phaseD_check2_stock_value.py`, `phaseD_check3_ci101_stock_location.py`.
+
+- **Check 1 — which warehouse stages hold sellable stock, high confidence, stated plainly.**
+  Snapshot: a single frozen batch, **2026-09-06** (96,574 rows table-wide, a ~72-second timestamp
+  window). Schema confirmed to have **no sellability/status/stage field at all** (17 columns,
+  `INFORMATION_SCHEMA.COLUMNS`) — `available` is a quantity (stock minus reservations), not a
+  status. In-scope: 158,130 units across 388 of 445 items (57 absent from the snapshot). Applying
+  the prior 2026-09-02 movement-ledger finding (not re-derived here, that ledger has no coverage
+  for this scope): `QA`/`FMTS`/`FMTO` = **confirmed NOT sellable, 158 units, 0.10%**. **Confirmed
+  sellable: 0 units, 0.00%.** **Undetermined: 157,972 units, 99.90%** — including `FG01` (124,192
+  units, 288 items) and `FG21` (24,255 units, 109 items), plausible by topology alone, which is
+  explicitly not sufficient evidence per this project's ground rules. Per-division undetermined
+  share: 94-100% for PEM101/PEM102/PEM104/CI101/PEM107; **PEM103 is a material, unexplained
+  outlier at 46.32%** (driven by a comparatively large share of its small 95-unit total sitting in
+  QA/FMTS/FMTO) — reported as an observed pattern, not interpreted, per the Explorer role boundary.
+- **Check 2 — value tied up in stock, high confidence on the headline figures.** **Self-caught
+  methodology correction before computing anything**: the task's own premise that `cube_Sale_APD.
+  cost` is a unit cost is **wrong** — directly disproved (`cost/qty` is exactly constant, 1,547.18,
+  across 6 rows of varying qty for one test item; median within-item CV of `cost/qty` is 0.061 at
+  project scope, consistent with a per-unit price that drifts, not a stored line total held
+  constant). **`cost` is a line total (qty × unit price).** Using it raw as a unit price would have
+  overstated stock value by roughly one to two orders of magnitude. Corrected method: unit cost =
+  `cost/qty` per row, then the **median over the trailing 12 months** (moderate confidence this is
+  more robust than most-recent-transaction — reasoned from this project's documented history of
+  outlier rows, not statistically proven for this item set; most-recent gives 5.6% more, THB
+  39.50M vs. 37.40M, with the top-10 list stable except one marginal swap). **Total priced stock
+  value: THB 37,399,005.48** (all 445 items, all warehouses, no sellability filter — deliberately
+  the total-capital-tied-up figure). Top-10 dominated by PEM103 transformers and PEM101 items; two
+  items (`FC-A-38-00202`, `HS-F-99-02410`) carry very large months-of-cover (1,630 and 39,060
+  months by a plain 31-month historical-mean demand rate, moderate confidence since it is not a
+  forecast-model output) against near-zero recent demand. **No-forecast-scope value: THB 226,449.90
+  priced + 226 units value-undetermined (0.61% of total)** — stock in placeholder/excluded items
+  with no demand basis. **5 items have stock but no cost record at all** (`FC-A-38-00203`,
+  `IS-F-99-0365CE1`, `HS-F-99-3121`, `02-05-R-0001`, `TF-F-99-3107223B1`; 226 units) — carried as
+  value-undetermined, never assigned 0 or dropped. **Restated explicitly, per instruction: this is
+  capital tied up at one point in time, not an annual carrying cost** — no annual rate exists in
+  this data; the 15-25% figure elsewhere in this file remains an unverified assumption, not used
+  here.
+- **Check 3 — CI101/PEM101 stock location, high confidence on the facts, moderate on the reading.**
+  **12 of CI101's 13 pricelist codes** have PEM101-tagged Omni-Channel sales (`DS-F-99-0109` is the
+  exception, entirely CI101-tagged). Aggregate reproduces the known 37.24% figure closely (37.22%
+  here, a 0.02pp drift attributed to ordinary live-data movement, not row-traced). Of the 12: **6
+  have zero stock anywhere** (4 fully explained by 100% already-delivered `Actual` history; **2 —
+  `DS-F-99-0101`, `DS-F-99-0221` — carry pending `MPS`/backlog demand, ฿360,000 and ฿3,230,000 due
+  2026-10-20/2026-12-25, with nothing on hand — a genuine open point, make-to-order timing vs. a
+  real supply gap cannot be distinguished from a single-snapshot table**). **6 have nonzero stock,
+  all of it sitting exclusively within PEM101's own 6-code warehouse set** (`FG01`, `FG21`, `FMTO`,
+  `FMTS`, `W4-1`, `WH21`) — specifically only in `FG01`/`FMTO`/`FMTS`. **But those three codes are
+  not distinctively PEM101's**: table-wide they hold stock for 3-4 of the 6 pricelist divisions
+  each — so Check 3's own raw "SAME" verdict is downgraded to **`SAME_BUT_UNDETERMINED`**, not left
+  as a clean match. Practical conclusion, stated by Check 3 directly: co-location supports
+  including these 6 items in Phase E's shared PEM101 planning pool as a defensible reading; it does
+  **not** prove a PEM101-exclusive pool, since none exists company-wide on this evidence.
+- **Cross-checks between the three checks, directly re-verified by the Synthesizer**: Check 1 and
+  Check 3 agree **exactly**, unit-for-unit, on all 6 stocked CI101 items' warehouse/sellability
+  determination. Check 1 and Check 2 agree **exactly** on total (158,130 units) and per-division
+  stock quantities. **One genuine, unresolved conflict found**: Check 1 describes the snapshot as a
+  single frozen 2026-09-06 batch; Check 2 describes the same table as live/continuously updated,
+  with timestamps spanning 2026-09-06 and 09-07. **Both positions are reported; neither is
+  resolved** — most likely explanation offered (not confirmed) is the table refreshed between the
+  two Explorers' queries, but this is not verified.
+- **10 assumptions Phase E must record in `config.yaml`, because the data could not answer them**
+  (full detail and citations in `phaseD_synthesis_report.md` §5): (1) which warehouse codes count
+  as sellable — currently 0.00% confirmed, 99.90% undetermined, Phase E cannot proceed without
+  either a business-confirmed mapping or an explicit, named modelling assumption; (2) the annual
+  holding-cost carrying rate — no source exists; (3) which unit-cost basis to use going forward
+  (median-12mo vs. most-recent, a 5.6% portfolio swing) and what `cost` economically represents
+  (landed/standard/material cost — never checked, out of this task's two-table scope); (4) how to
+  handle the 5 no-cost-record items; (5) how to treat the 2 CI101 items with pending backlog demand
+  and zero stock; (6) whether to pool CI101/PEM101 shared-warehouse stock or keep it separate; (7)
+  PEM103's unexplained low-undetermined-share pattern (46.3% vs. 94-100% elsewhere); (8) the
+  Check-1-vs-Check-2 snapshot frozen-vs-live conflict; (9) target service level and the stockout-
+  cost proxy (already open, Section 8.5, reaffirmed load-bearing for Phase E here); (10) assembly
+  time after parts arrive (already open, Section 8.1/8.5, reaffirmed).
 
 ## 3. Business Findings
 
