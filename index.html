@@ -169,10 +169,6 @@ tr.section[role="button"]:focus-visible{outline:2px solid var(--series-1);outlin
   font-size:13px;cursor:pointer}
 #invBackBtn:hover{background:#f0efec}
 
-#invRoleStrip .kpi-card.role-holding .value{color:var(--series-1)}
-#invRoleStrip .kpi-card.role-staging .value{color:var(--series-2)}
-#invRoleStrip .kpi-card.role-unknown .value{color:var(--muted)}
-
 #invTable th[data-k]{cursor:pointer;user-select:none}
 #invTable th.sort-asc:after{content:' \25B2'}
 #invTable th.sort-desc:after{content:' \25BC'}
@@ -7368,14 +7364,12 @@ tr.section[role="button"]:focus-visible{outline:2px solid var(--series-1);outlin
   <header class="top">
    <h1>รายละเอียดสต็อคสินค้า (Inventory Detail)</h1>
    <p id="invSnapshotLabel">กำลังโหลดข้อมูล…</p>
+   <p class="desc" style="margin:2px 0 0">หมายเหตุ: ยอดรวมสต็อคที่แสดงคือผลรวมจากทุกคลังรวมกัน</p>
   </header>
 
   <div id="invErrorBox" class="inv-error" style="display:none"></div>
 
   <div id="invContent" style="display:none">
-   <div class="kpi-row" id="invRoleStrip"></div>
-   <p class="desc">หมายเหตุ: ยอดรวมทั้งหมดคือผลรวมสต็อคจากทุกคลังรวมกัน จึงยังไม่ใช่ตัวเลข "สต็อคที่พร้อมขาย" โดยตรง — ต้องพิจารณาบทบาทคลังประกอบด้วย</p>
-
    <div class="kpi-row" id="invCountStrip"></div>
 
    <section>
@@ -7411,7 +7405,7 @@ tr.section[role="button"]:focus-visible{outline:2px solid var(--series-1);outlin
  <div class="inv-wh-box">
   <button type="button" class="inv-wh-close" id="invWhClose">ปิด</button>
   <h3 id="invWhTitle"></h3>
-  <table><thead><tr><th class="tleft">คลัง</th><th>จำนวน</th><th class="tleft">บทบาท</th></tr></thead><tbody id="invWhTableBody"></tbody></table>
+  <table><thead><tr><th class="tleft">คลัง</th><th>จำนวน</th></tr></thead><tbody id="invWhTableBody"></tbody></table>
  </div>
 </div>
 
@@ -7702,16 +7696,10 @@ function omniShowTab(n){
 
 <script id="invPanelJs">
 (function(){
-  const ROLE_LABEL = {holding:'คลังจัดเก็บ (Holding)', staging:'คลังพัก/ตรวจสอบ (Staging)', unknown:'ไม่ทราบบทบาท (Unknown)'};
-  const ROLE_DESC = {
-    holding: 'หลักฐานการเคลื่อนไหวพบว่าคลังนี้มีแต่การรับเข้า (evidence: inbound-only)',
-    staging: 'หลักฐานการเคลื่อนไหวพบว่าคลังนี้มีแต่การส่งออก (evidence: outbound-only)',
-    unknown: 'ยังไม่มีหลักฐานทิศทางเดียวที่ชัดเจน — ไม่ได้แปลว่าสต็อคมีปัญหา เพียงแต่ยังไม่พิสูจน์ได้ว่าเป็นสต็อคขายได้หรือไม่'
-  };
-
   let invItems = [];
   let invLoaded = false;
   let invSort = {key:'qty', dir:-1};
+  let invSavedScrollY = 0;
 
   function invEsc(s){
     return String(s==null?'':s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -7724,6 +7712,7 @@ function omniShowTab(n){
   }
 
   function invOpenPanel(){
+    invSavedScrollY = window.scrollY;
     document.getElementById('origTab').style.display = 'none';
     document.getElementById('invPanel').style.display = 'block';
     window.scrollTo(0,0);
@@ -7732,7 +7721,7 @@ function omniShowTab(n){
   function invClosePanel(){
     document.getElementById('invPanel').style.display = 'none';
     document.getElementById('origTab').style.display = '';
-    window.scrollTo(0,0);
+    window.scrollTo(0, invSavedScrollY);
   }
 
   async function invLoadData(){
@@ -7757,32 +7746,6 @@ function omniShowTab(n){
     document.getElementById('invSnapshotLabel').textContent =
       'ข้อมูลสต็อค ณ วันที่ ' + loadedDate + ' (รอบการอัปเดตของฐานข้อมูลต้นทาง: ไม่ทราบแน่ชัด / unknown)';
 
-    const roleByWh = {};
-    data.warehouses.forEach(w => { roleByWh[w.code] = w.role; });
-
-    const roleTotals = {holding: 0, staging: 0, unknown: 0};
-    data.items.forEach(it => {
-      (it.by_warehouse || []).forEach(w => {
-        const role = roleByWh[w.code] || 'unknown';
-        roleTotals[role] = (roleTotals[role] || 0) + w.qty;
-      });
-    });
-    const grandTotal = roleTotals.holding + roleTotals.staging + roleTotals.unknown;
-
-    const roleStrip = document.getElementById('invRoleStrip');
-    roleStrip.innerHTML = ['holding', 'staging', 'unknown'].map(r => {
-      const v = roleTotals[r] || 0;
-      const pct = grandTotal > 0 ? (100 * v / grandTotal).toFixed(1) : '0.0';
-      return '<div class="kpi-card role-' + r + '">'
-        + '<div class="label">' + ROLE_LABEL[r] + '</div>'
-        + '<div class="value">' + invFmtQty(v) + '</div>'
-        + '<div class="sub">' + pct + '% ของยอดรวมทุกคลัง · ' + ROLE_DESC[r] + '</div>'
-        + '</div>';
-    }).join('') +
-      '<div class="kpi-card"><div class="label">ยอดรวมทุกคลัง (Grand Total)</div>'
-      + '<div class="value">' + invFmtQty(grandTotal) + '</div>'
-      + '<div class="sub">ผลรวมทุกบทบาท — ไม่ใช่ตัวเลขสต็อคขายได้โดยตรง</div></div>';
-
     const t = data.totals;
     document.getElementById('invCountStrip').innerHTML =
       '<div class="kpi-card"><div class="label">รหัสสินค้าทั้งหมด</div><div class="value">' + t.codes + '</div></div>'
@@ -7801,7 +7764,6 @@ function omniShowTab(n){
 
     invItems = data.items.map(it => ({
       ...it,
-      _roleByWh: roleByWh,
       _search: (it.code + ' ' + (it.description || '')).toLowerCase(),
     }));
 
@@ -7890,8 +7852,7 @@ function omniShowTab(n){
     document.getElementById('invWhTitle').textContent = it.code + ' — ' + (it.description || '');
     const tbody = document.getElementById('invWhTableBody');
     tbody.innerHTML = (it.by_warehouse || []).slice().sort((a, b) => b.qty - a.qty).map(w => {
-      const role = it._roleByWh[w.code] || 'unknown';
-      return '<tr><td class="tleft mono">' + invEsc(w.code) + '</td><td>' + invFmtQty(w.qty) + '</td><td class="tleft">' + ROLE_LABEL[role] + '</td></tr>';
+      return '<tr><td class="tleft mono">' + invEsc(w.code) + '</td><td>' + invFmtQty(w.qty) + '</td></tr>';
     }).join('');
     document.getElementById('invWhModal').style.display = 'flex';
   }
