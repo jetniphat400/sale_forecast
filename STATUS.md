@@ -262,12 +262,15 @@ reconciling exactly against the full pricelist item-code universe (Rule A/B/C to
 no-history codes; Rule C's 3 are a subset of that 82, listed separately only because the task
 asked for the flag-only count named explicitly, not because it is a further, separate bucket).
 
-**Remaining work before Phase D**: the item-specific model check for the three focus codes
+~~Remaining work before Phase D: the item-specific model check for the three focus codes~~
 (`EEE-F-FC-1040010002`, `HS-F-99-02110`, `HS-F-99-0213`) — Phase C's transferability work was
-division-level (Top-down vs. Direct vs. Naive, per division); it has not yet specifically
+division-level (Top-down vs. Direct vs. Naive, per division); it had not yet specifically
 re-examined whether Top-down remains the right choice for these three codes individually, given
-they are this project's designated focus items for every phase. Not done in this task, flagged for
-the next one.
+they are this project's designated focus items for every phase. **DONE (2026-09-08)** — see the
+dated log entry below and `output/summary/focus_item_model_selection_report.md`. **Verdict: keep
+Top-down combination for all three** — no candidate (of 11 evaluated: Naive, MA3/6/12, SES, Holt,
+Croston, SBA, TSB, Combination, Top-down) beats it with statistical significance on any item.
+Phase D may now proceed.
 
 **Phase D — Phase 4 groundwork. Narrowed 2026-09-04 by business input (Section 8).** No longer a
 search across all tables at once. Finished-goods movement history is removed from the data
@@ -3164,11 +3167,76 @@ not split). Full detail: `output/summary/phaseC_closure_report.md`.
   note). **No pipeline code was modified to read these new keys** — recording the decisions in
   config was this task's scope; wiring them into the loader/forecast scripts is separate,
   not-yet-done work.
-- **What remains unresolved**: the item-specific model check for the three focus codes (not yet
-  done, see Current Status Summary above); wiring the new config keys into pipeline code;
-  CI101's small-n transferability result awaiting more history; the PEM102/PEM107 legacy-tag
-  mechanism remains an inference; `cube_Sale_APD` is a live, growing table, so a re-run will not
-  reproduce these exact figures though the qualitative conclusions are expected to be stable.
+- **What remains unresolved**: ~~the item-specific model check for the three focus codes (not yet
+  done, see Current Status Summary above)~~ — **DONE 2026-09-08, see the dated log entry below**;
+  wiring the new config keys into pipeline code; CI101's small-n transferability result awaiting
+  more history; the PEM102/PEM107 legacy-tag mechanism remains an inference; `cube_Sale_APD` is a
+  live, growing table, so a re-run will not reproduce these exact figures though the qualitative
+  conclusions are expected to be stable.
+
+**Focus-item model selection (EEE-F-FC-1040010002, HS-F-99-02110, HS-F-99-0213) — DONE
+(2026-09-08).** Single Modeler (per `AGENTS.md`: three items, same candidate set/evaluation, one
+context). Full detail, every figure cited: `output/summary/focus_item_model_selection_report.md`.
+New script `src/focus_item_model_selection.py`; `src/models.py` gains `tsb_forecast` (TSB has no
+auto-optimized variant in `statsforecast`, so `alpha_d`/`alpha_p` are grid-searched over
+`{0.05,0.1,0.2,0.3,0.4}` minimizing in-sample fitted error — a stated assumption, not derived);
+charts `src/charts_focus_items.py` → `output/charts/focus_<item>_all_candidates.png` (11-panel
+small-multiples, actual vs. each candidate's rolling-origin forecasts).
+
+- **Candidate set — all 11 fit successfully on all three items, at all 7 origins, zero fitting
+  failures** (Naive, MA3/6/12, SES, Holt, Croston, SBA, TSB, the adopted six-model Combination
+  unchanged, Top-down). Confidence: high, directly confirmed (`focus_items_rolling_origin_all.csv`
+  `error` column null throughout).
+- **Demand classification, directly confirmed**: `EEE-F-FC-1040010002` = **Erratic** (ADI=1.107,
+  CV²=0.718, 9.7% zero months — matches this project's existing classification, NOT Lumpy).
+  `HS-F-99-02110` = **Lumpy** (ADI=2.583, CV²=2.510, **61.3% zero months**). `HS-F-99-0213` =
+  **Lumpy** (ADI=1.632, CV²=1.410, **38.7% zero months**).
+- **Verdict, all three items: keep Top-down combination. No candidate beats it with statistical
+  significance on any item** (paired t-test across the 7 origins, same methodology as
+  `transferability_all_divisions.py`; best candidate per item has \|t\|<1.3 in every case; the one
+  significant result is MA12 being WORSE than Top-down for `EEE-F-FC-1040010002`, t=3.649).
+  - **EEE-F-FC-1040010002** (confidence: moderate): TSB has the lowest full-series MAE (580.57 vs.
+    Top-down's 605.86, not significant) but Top-down's mean Bias (18.90) is far smaller than
+    every other candidate's (60-525) — a genuine advantage on the user's explicit bias criterion
+    that a pure-MAE ranking misses. **No candidate is sign-consistent across origins, including
+    Top-down** (3 positive/4 negative) — this item has no steadily-biased candidate at all, and
+    the rolling-origin winner is a DIFFERENT model at every one of the 7 origins.
+  - **HS-F-99-02110** (confidence: moderate): Naive has the best MAE (121.21) and is
+    sign-consistent (always under-forecasting, one of only 3 sign-consistent candidates), but the
+    margin over Top-down is not significant (t=-1.203) and the whole 11-candidate set is
+    clustered within a 10% MAE band.
+  - **HS-F-99-0213** (confidence: high — the clearest case): **Top-down is already the outright
+    rolling-origin MAE winner** (112.26) with a smaller val-test gap than Combination's own
+    (104.5% vs. 116.8%). No candidate offers a better fit on either criterion.
+- **EEE-F-FC-1040010002 pre-recovery supplementary split (confidence: high for what it directly
+  shows, n=1 split not 7 origins)**: standard rolling-origin cannot isolate the pre-recovery
+  period at all (every origin's test window already reaches into the 2025-04-onward recovery, by
+  construction — `MIN_TRAIN_MONTHS=13`). A separate single split (train 2024-01/09, test
+  2024-10/2025-03, ending at the confirmed zero-qty trough) **inverts the full-series ranking
+  entirely**: Naive (MAE 197.67) and SES (209.61) win by a wide margin; TSB — the full-series
+  winner — is **7.9x worse** (1531.70) here, and Top-down is **8.9x worse** (1767.02), the
+  second-worst of all 11. **The full-series ranking for TSB/MA-family/Combination/Top-down is
+  materially inflated by the easy-to-track recovery ramp, not genuine collapse-period skill.**
+- **HS-F-99-02110 and HS-F-99-0213 side by side (same Type, "Medium Voltage Surge Arrester")**:
+  **Croston/SBA rank 2nd-3rd of 11 for BOTH items — competitive, not the worst**, contradicting
+  the aggregate pooled-Intermittent-class finding that Croston/SBA were worst-of-six there
+  (confidence: high, directly computed; the two findings are at different scales, a magnitude
+  comparison is not directly transferable, but the RELATIVE ranking difference is real and
+  evidenced). **"A fitting model for one fits the other" does NOT hold**: Top-down ranks 7th of
+  11 for `HS-F-99-02110` but 1st of 11 for `HS-F-99-0213`, despite same Type/division/
+  classification — plausibly explained by `02110`'s much higher zero-rate (61.3% vs. 38.7%,
+  confidence: moderate, not independently verified further per the stopping rule).
+- **What would need recording in config for an item-level override (not created, no item's
+  evidence supported one)**: a new per-item key analogous to `placeholder_item_assignments_82`'s
+  shape (e.g. `item_forecast_method_override: {ITEMCODE: {method, reason}}`), since
+  `division_forecast_method` (Phase C closure) only records method at division level today.
+- **What remains unresolved**: why `HS-F-99-02110`/`HS-F-99-0213` diverge so much on best-fitting
+  model beyond the plausible zero-rate explanation; the TSB alpha grid is a stated assumption, not
+  exhaustively searched; the pre-recovery split's n=1 evidence base is smaller than the primary
+  7-origin results; `cube_Sale_APD` is live and growing, so a re-run will not reproduce these exact
+  figures though the qualitative conclusions (no significant override for any item) are expected
+  to be stable. **No config was written in this task, per instruction. Nothing was committed or
+  pushed.**
 
 ## 3. Business Findings
 

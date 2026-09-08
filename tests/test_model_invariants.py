@@ -8,7 +8,7 @@ import numpy as np
 import pytest
 
 from item_level_reconciliation import MA_WINDOWS, forecast_all_approaches
-from models import combination_forecast, get_models
+from models import combination_forecast, get_models, tsb_forecast
 
 TRAIN = np.array([5, 0, 3, 8, 0, 0, 12, 4, 6, 0, 2, 9, 5, 0, 0, 7, 3, 6, 1], dtype=float)
 HORIZON = 6
@@ -88,6 +88,42 @@ def test_topdown_forecasts_are_never_negative():
     approaches = forecast_all_approaches(item_series, type_series, fit_end, horizon)
     for item, fc in approaches["Top-down"].items():
         assert (fc >= 0).all(), f"Top-down forecast for {item} went negative: {fc}"
+
+
+# ---------------------------------------------------------------------------
+# TSB (added for the focus-item model-selection task, 2026-09-08). statsforecast has no
+# auto-optimized TSB variant (unlike Croston/SES), so src/models.py.tsb_forecast grid-searches
+# alpha_d/alpha_p itself (see its own docstring for the grid and the stated-assumption caveat) --
+# these tests lock in that the resulting forecast still respects this project's basic invariants.
+# ---------------------------------------------------------------------------
+
+def test_tsb_forecast_returns_correct_length():
+    fc = tsb_forecast(TRAIN, HORIZON)
+    assert len(fc) == HORIZON
+
+
+def test_tsb_forecast_is_never_negative():
+    fc = np.clip(tsb_forecast(TRAIN, HORIZON), 0, None)
+    assert (fc >= 0).all()
+
+
+def test_tsb_forecast_is_deterministic():
+    # Grid search must not depend on random state or dict/set iteration order -- the same
+    # training array must produce the exact same forecast every call.
+    fc1 = tsb_forecast(TRAIN, HORIZON)
+    fc2 = tsb_forecast(TRAIN, HORIZON)
+    np.testing.assert_array_equal(fc1, fc2)
+
+
+@pytest.mark.parametrize("train", [
+    TRAIN,
+    np.zeros(19, dtype=float),
+    np.array([0.0] * 15 + [3, 0, 5, 1]),
+])
+def test_tsb_forecast_handles_edge_cases_without_raising(train):
+    fc = tsb_forecast(train, HORIZON)
+    assert len(fc) == HORIZON
+    assert not np.isnan(fc).any()
 
 
 def test_topdown_handles_a_zero_history_type_without_negative_or_nan():
