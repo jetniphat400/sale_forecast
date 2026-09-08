@@ -169,13 +169,18 @@ tr.section[role="button"]:focus-visible{outline:2px solid var(--series-1);outlin
   font-size:13px;cursor:pointer}
 #invBackBtn:hover{background:#f0efec}
 
+#invTable{table-layout:fixed}
 #invTable th[data-k]{cursor:pointer;user-select:none}
 #invTable th.sort-asc:after{content:' \25B2'}
 #invTable th.sort-desc:after{content:' \25BC'}
+#invTable th.tleft{text-align:left}
+#invTable td.tleft{white-space:normal}
+#invTable td.inv-desc{font-size:11.5px;color:var(--text-secondary);white-space:normal}
+#invTable td:last-child, #invTable th:last-child{white-space:normal}
 .inv-qty-btn{background:none;border:0;padding:0;font:inherit;font-variant-numeric:tabular-nums;color:var(--series-1);cursor:pointer;text-decoration:underline;text-underline-offset:2px}
 .inv-qty-plain{font-variant-numeric:tabular-nums}
 .badge-nodata{background:rgba(137,135,129,0.16);color:var(--muted)}
-.badge-outscope{background:rgba(208,59,59,0.10);color:#8f2b2b;margin-left:6px;cursor:help}
+#invTable .badge-nodata{white-space:normal;text-align:center}
 
 .inv-wh-modal{display:none;position:fixed;inset:0;background:rgba(11,11,11,.5);z-index:1400;align-items:center;justify-content:center}
 .inv-wh-box{background:var(--surface);border-radius:12px;max-width:480px;width:92%;max-height:80vh;overflow:auto;padding:18px 20px;border:1px solid var(--border)}
@@ -7383,6 +7388,10 @@ tr.section[role="button"]:focus-visible{outline:2px solid var(--series-1);outlin
     </div>
     <div class="table-scroll">
      <table id="invTable">
+      <colgroup>
+       <col style="width:9%"><col style="width:12%"><col style="width:14%">
+       <col style="width:37%"><col style="width:15%"><col style="width:13%">
+      </colgroup>
       <thead>
        <tr>
         <th class="tleft" data-k="business">Business</th>
@@ -7824,15 +7833,12 @@ function omniShowTab(n){
         qtyCell = '<span class="inv-qty-plain">' + invFmtQty(it.qty) + '</span>';
       }
 
-      const scopeBadge = it.in_forecast_scope ? '' :
-        ' <span class="badge badge-outscope" title="รหัสนี้อยู่นอกขอบเขตการพยากรณ์ที่ใช้ในแท็บ Trend (Tab 2)">นอกขอบเขตพยากรณ์</span>';
-
       tr.innerHTML =
         '<td class="tleft">' + invEsc(it.business) + '</td>'
         + '<td class="tleft">' + invEsc(it.category) + '</td>'
         + '<td class="tleft">' + invEsc(it.type || '—') + '</td>'
-        + '<td class="tleft small">' + invEsc(it.description) + '</td>'
-        + '<td class="mono">' + invEsc(it.code) + scopeBadge + '</td>'
+        + '<td class="tleft inv-desc">' + invEsc(it.description) + '</td>'
+        + '<td class="mono">' + invEsc(it.code) + '</td>'
         + '<td>' + qtyCell + '</td>';
       frag.appendChild(tr);
     });
