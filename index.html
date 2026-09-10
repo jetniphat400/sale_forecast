@@ -176,10 +176,13 @@ tr.section[role="button"]:focus-visible{outline:2px solid var(--series-1);outlin
 #invTable th.tleft{text-align:left}
 #invTable td.tleft{white-space:normal}
 #invTable td.inv-desc{font-size:11.5px;color:var(--text-secondary);white-space:normal}
-#invTable td:nth-child(6), #invTable th:nth-child(6){white-space:normal}
+#invTable td:nth-child(6), #invTable th:nth-child(6),
+#invTable td:nth-child(8), #invTable th:nth-child(8){white-space:normal}
 #invTable td:last-child{white-space:normal}
 .inv-qty-btn{background:none;border:0;padding:0;font:inherit;font-variant-numeric:tabular-nums;color:var(--series-1);cursor:pointer;text-decoration:underline;text-underline-offset:2px}
 .inv-qty-plain{font-variant-numeric:tabular-nums}
+.inv-num{font-variant-numeric:tabular-nums}
+.inv-num.inv-neg{color:var(--critical);font-weight:600}
 .badge-nodata{background:rgba(137,135,129,0.16);color:var(--muted)}
 #invTable .badge-nodata{white-space:normal;text-align:center}
 
@@ -7380,6 +7383,7 @@ tr.section[role="button"]:focus-visible{outline:2px solid var(--series-1);outlin
   <header class="top">
    <h1>รายละเอียดสต็อคสินค้า (Inventory Detail)</h1>
    <p id="invSnapshotLabel">กำลังโหลดข้อมูล…</p>
+   <p id="invBacklogLabel" class="desc" style="margin:2px 0 0"></p>
    <p class="desc" style="margin:2px 0 0">หมายเหตุ: ยอดรวมสต็อคที่แสดงคือผลรวมจากทุกคลังรวมกัน</p>
   </header>
 
@@ -7403,8 +7407,9 @@ tr.section[role="button"]:focus-visible{outline:2px solid var(--series-1);outlin
     <div class="table-scroll">
      <table id="invTable">
       <colgroup>
-       <col style="width:8%"><col style="width:10%"><col style="width:12%">
-       <col style="width:32%"><col style="width:14%"><col style="width:12%"><col style="width:12%">
+       <col style="width:7%"><col style="width:9%"><col style="width:11%">
+       <col style="width:23%"><col style="width:13%"><col style="width:10%">
+       <col style="width:8%"><col style="width:8%"><col style="width:11%">
       </colgroup>
       <thead>
        <tr>
@@ -7414,6 +7419,8 @@ tr.section[role="button"]:focus-visible{outline:2px solid var(--series-1);outlin
         <th class="tleft" data-k="description">Product Description</th>
         <th class="tleft" data-k="code">Product Code</th>
         <th data-k="qty">Inventory (qty)</th>
+        <th data-k="backlog">Reserved</th>
+        <th data-k="available">Available</th>
         <th>Lead time (วัน)</th>
        </tr>
       </thead>
@@ -7757,6 +7764,8 @@ function omniShowTab(n){
   function invEsc(s){
     return String(s==null?'':s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   }
+  const INV_NUM_KEYS = ['qty', 'backlog', 'available'];
+
   function invFmtQty(v){
     if(v==null) return '—';
     const r = Math.round(v*100)/100;
@@ -7799,6 +7808,16 @@ function omniShowTab(n){
     document.getElementById('invSnapshotLabel').textContent =
       'ข้อมูลสต็อค ณ วันที่ ' + loadedDate + ' (รอบการอัปเดตของฐานข้อมูลต้นทาง: ไม่ทราบแน่ชัด / unknown)';
 
+    const bl = data.backlog || {};
+    const blDate = (bl.loaded_at || '').slice(0, 10);
+    const blScope = (bl.sale_company_filter || []).join(' และ ');
+    document.getElementById('invBacklogLabel').innerHTML =
+      'Reserved (Backlog) จาก ' + invEsc(bl.source_table || '—') + ' ณ วันที่ ' + invEsc(blDate)
+      + ' — คนละรอบการโหลดกับข้อมูลสต็อคด้านบน<br>'
+      + 'ขอบเขตบริษัทของทั้งสองตัวเลข: ' + invEsc(blScope) + '<br>'
+      + 'Reserved นับรวมทุกสถานะ ไม่มีการกรองสถานะใดๆ — <b>ตัวเลขอยู่ระหว่างรอการตรวจสอบยืนยัน</b><br>'
+      + 'Available = สต็อคคงเหลือ − Reserved (ยังไม่รวมสินค้าที่กำลังจะเข้า)';
+
     const t = data.totals;
     document.getElementById('invCountStrip').innerHTML =
       '<div class="kpi-card"><div class="label">รหัสสินค้าทั้งหมด</div><div class="value">' + t.codes + '</div></div>'
@@ -7826,7 +7845,7 @@ function omniShowTab(n){
     document.querySelectorAll('#invTable th[data-k]').forEach(th => {
       th.addEventListener('click', () => {
         const k = th.dataset.k;
-        if (invSort.key === k) { invSort.dir *= -1; } else { invSort.key = k; invSort.dir = (k === 'qty') ? -1 : 1; }
+        if (invSort.key === k) { invSort.dir *= -1; } else { invSort.key = k; invSort.dir = INV_NUM_KEYS.includes(k) ? -1 : 1; }
         invRenderTable();
       });
     });
@@ -7849,7 +7868,12 @@ function omniShowTab(n){
     const key = invSort.key, dir = invSort.dir;
     rows = rows.slice().sort((a, b) => {
       let av, bv;
-      if (key === 'qty') { av = a.qty == null ? -1 : a.qty; bv = b.qty == null ? -1 : b.qty; }
+      if (INV_NUM_KEYS.includes(key)) {
+        // Unknown (null qty/available) sorts below every real number, including negative
+        // ones -- -1 would land it in the middle of the negative Available values.
+        av = a[key] == null ? -Infinity : a[key];
+        bv = b[key] == null ? -Infinity : b[key];
+      }
       else { av = (a[key] || '').toString().toLowerCase(); bv = (b[key] || '').toString().toLowerCase(); }
       if (av < bv) return -1 * dir;
       if (av > bv) return 1 * dir;
@@ -7877,6 +7901,18 @@ function omniShowTab(n){
         qtyCell = '<span class="inv-qty-plain">' + invFmtQty(it.qty) + '</span>';
       }
 
+      // Reserved is plain text, not a drill-down button: data/inventory.json carries only a
+      // per-code total, no per-row backlog detail to open a popup on.
+      const reservedCell = '<span class="inv-num">' + invFmtQty(it.backlog) + '</span>';
+
+      let availCell;
+      if (it.available == null) {
+        availCell = '<span class="badge badge-nodata">ไม่มีข้อมูลในระบบ</span>';
+      } else {
+        availCell = '<span class="inv-num' + (it.available < 0 ? ' inv-neg' : '') + '">'
+          + invFmtQty(it.available) + '</span>';
+      }
+
       const savedLt = invLeadTimes[it.code];
       const ltCell = '<div class="inv-lt-cell">'
         + '<div class="inv-lt-row">'
@@ -7894,6 +7930,8 @@ function omniShowTab(n){
         + '<td class="tleft inv-desc">' + invEsc(it.description) + '</td>'
         + '<td class="mono">' + invEsc(it.code) + '</td>'
         + '<td>' + qtyCell + '</td>'
+        + '<td>' + reservedCell + '</td>'
+        + '<td>' + availCell + '</td>'
         + '<td>' + ltCell + '</td>';
       frag.appendChild(tr);
     });
