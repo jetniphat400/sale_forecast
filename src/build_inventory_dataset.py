@@ -22,6 +22,9 @@ Cube_Backlog is already outstanding (`viewType = 'CTR/PO to be delivered'` table
 table carries no delivered/cancelled status value at all -- see
 output/summary/reserved_available_investigation_report.md Part 2b). `available` is then
 on-hand minus backlog, never clamped: a negative means outstanding orders exceed stock on hand.
+Each item also carries `backlog_rows`: the individual Cube_Backlog rows behind its total, as-is and
+never de-duplicated, so a reviewer can judge each row for themselves. Every item's rows are asserted
+to sum exactly to that item's backlog total.
 
 Step 3: classifies each warehouse's role (staging vs holding vs unknown) from
 cube_inventory_tran transfer-pair evidence only -- never from the warehouse code's name.
@@ -235,8 +238,8 @@ def query_backlog(item_codes: list) -> pd.DataFrame:
     """
     code_list = "','".join(sorted(item_codes))
     sql = f"""
-        SELECT id, docID, itemcode, quantity, status, viewType, sale_company, sale_division,
-               deliverydate, plan_deliverydate, receivedate, timestamp
+        SELECT id, docID, job, customer, itemcode, quantity, status, viewType, sale_company,
+               sale_division, deliverydate, plan_deliverydate, receivedate, backlog_from, timestamp
         FROM {BACKLOG_TABLE}
         WHERE itemcode IN ('{code_list}')
     """
@@ -270,6 +273,70 @@ def aggregate_backlog(backlog: pd.DataFrame) -> pd.DataFrame:
     """
     return backlog.groupby("itemcode", as_index=False)["quantity"].sum().rename(
         columns={"itemcode": "code", "quantity": "backlog"})
+
+
+def _clean_str(v) -> str:
+    """Source columns are fixed-width padded varchars; nulls must stay null, not become 'None'."""
+    if v is None or (isinstance(v, float) and pd.isna(v)) or pd.isna(v):
+        return None
+    s = str(v).strip()
+    return s if s else None
+
+
+def _clean_date(v) -> str:
+    """Dates as plain ISO strings (date-only for `deliverydate`, which is a DATE column;
+    plan_deliverydate is a DATETIME whose time part is carried through as-is)."""
+    if v is None or pd.isna(v):
+        return None
+    ts = pd.to_datetime(v)
+    if ts.hour == 0 and ts.minute == 0 and ts.second == 0:
+        return ts.strftime("%Y-%m-%d")
+    return ts.strftime("%Y-%m-%d %H:%M:%S")
+
+
+def build_backlog_rows(backlog: pd.DataFrame) -> dict:
+    """code -> [the individual Cube_Backlog rows behind that code's total], NOT de-duplicated.
+
+    Every row is carried through exactly as the source holds it, including rows that duplicate
+    another row's (quantity, status, deliverydate) under a different docID -- surfacing those to a
+    human reviewer is the entire point of this per-row view, so collapsing them here would destroy
+    the thing it exists to show.
+    """
+    out = {}
+    for itemcode, grp in backlog.groupby("itemcode"):
+        rows = []
+        for _, r in grp.iterrows():
+            rows.append({
+                "doc_id": _clean_str(r["docID"]),
+                "job": _clean_str(r["job"]),
+                "customer": _clean_str(r["customer"]),
+                "quantity": float(r["quantity"]),
+                "status": _clean_str(r["status"]),
+                "delivery_date": _clean_date(r["deliverydate"]),
+                "plan_delivery_date": _clean_date(r["plan_deliverydate"]),
+                "backlog_from": _clean_str(r["backlog_from"]),
+            })
+        out[itemcode] = rows
+    return out
+
+
+def assert_backlog_rows_sum(classified: pd.DataFrame, backlog_rows: dict) -> list:
+    """Every item's per-row detail must sum exactly to the `backlog` total written for that item.
+
+    Checks in both directions: no item carries rows that overshoot or undershoot its total, and no
+    item with a non-zero total is missing its rows.
+    """
+    mismatches = []
+    for _, row in classified.iterrows():
+        code, total = row["code"], float(row["backlog"])
+        rows = backlog_rows.get(code, [])
+        row_sum = sum(r["quantity"] for r in rows)
+        if abs(row_sum - total) > 1e-6:
+            mismatches.append({"code": code, "total": total, "row_sum": row_sum,
+                               "n_rows": len(rows)})
+        if total > 0 and not rows:
+            mismatches.append({"code": code, "total": total, "row_sum": 0.0, "n_rows": 0})
+    return mismatches
 
 
 def add_backlog_and_available(classified: pd.DataFrame, backlog_per_code: pd.DataFrame) -> pd.DataFrame:
@@ -460,7 +527,8 @@ def classify_warehouse_roles(tran: pd.DataFrame, all_warehouses: list) -> pd.Dat
 # --------------------------------------------------------------------------------------------
 
 def build_json(classified: pd.DataFrame, by_warehouse: dict, warehouse_roles: pd.DataFrame,
-               snapshot_meta: dict, source_table: str, backlog_meta: dict) -> dict:
+               snapshot_meta: dict, source_table: str, backlog_meta: dict,
+               backlog_rows: dict) -> dict:
     warehouses = [{"code": r["code"], "role": r["role"]} for _, r in warehouse_roles.iterrows()]
 
     known = classified[classified["available"].notna()]
@@ -494,6 +562,7 @@ def build_json(classified: pd.DataFrame, by_warehouse: dict, warehouse_roles: pd
             "available": None if pd.isna(available) else float(available),
             "in_forecast_scope": bool(row["in_forecast_scope"]),
             "by_warehouse": by_warehouse.get(row["code"], []),
+            "backlog_rows": backlog_rows.get(row["code"], []),
         })
 
     return {
@@ -570,6 +639,26 @@ def verify(path: str, expected_registry_count: int, expected_totals: dict,
     results.append((f"every item has a non-null backlog, 0 rather than null when it has no backlog "
                     f"row ({len(bad_backlog_null)} violations)", ok))
 
+    bad_rows_sum = [(it["code"], sum(r["quantity"] for r in it["backlog_rows"]), it["backlog"])
+                    for it in items
+                    if abs(sum(r["quantity"] for r in it["backlog_rows"]) - it["backlog"]) > 1e-6]
+    ok = len(bad_rows_sum) == 0
+    results.append((f"every item's backlog_rows sum exactly to its backlog total "
+                    f"({len(bad_rows_sum)} mismatches)", ok))
+
+    bad_rows_missing = [it["code"] for it in items if it["backlog"] > 0 and not it["backlog_rows"]]
+    ok = len(bad_rows_missing) == 0
+    results.append((f"every item with backlog > 0 carries its per-row detail "
+                    f"({len(bad_rows_missing)} items missing rows)", ok))
+
+    row_fields = {"doc_id", "job", "customer", "quantity", "status", "delivery_date",
+                  "plan_delivery_date", "backlog_from"}
+    bad_fields = [it["code"] for it in items
+                  for r in it["backlog_rows"] if set(r.keys()) != row_fields]
+    ok = len(bad_fields) == 0
+    results.append((f"every backlog row carries all {len(row_fields)} verification fields "
+                    f"({len(bad_fields)} rows with a different field set)", ok))
+
     recomputed_neg = sum(1 for it in items if it["available"] is not None and it["available"] < 0)
     ok = recomputed_neg == expected_negative
     results.append((f"negative-available count in file ({recomputed_neg}) matches step 2b "
@@ -580,8 +669,60 @@ def verify(path: str, expected_registry_count: int, expected_totals: dict,
     return results
 
 
+def load_previous_run(path: str) -> dict:
+    """Reads the JSON already on disk (the previous run) so this run can report how the headline
+    figures moved. Returns None when there is no previous file to compare against."""
+    if not os.path.exists(path):
+        return None
+    with open(path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+    items = data["items"]
+    return {
+        "totals": data["totals"],
+        "on_hand_total": sum(it["qty"] for it in items if it["qty"] is not None),
+        "snapshot_loaded_at": data["snapshot"]["loaded_at"],
+        "snapshot_generated_at": data["snapshot"].get("generated_at"),
+        "backlog_loaded_at": data.get("backlog", {}).get("loaded_at"),
+        "file_size": os.path.getsize(path),
+    }
+
+
+def _delta(new: float, old: float) -> str:
+    d = new - old
+    if abs(d) < 1e-9:
+        return "unchanged"
+    return f"{d:+,.0f}"
+
+
+def report_movement(previous: dict, new_totals: dict, new_on_hand: float,
+                    new_snapshot: dict, new_backlog_meta: dict, new_generated_at: str) -> None:
+    print(f"    this run's stock snapshot   : {new_snapshot['min_timestamp']} "
+          f"(source-table timestamp, min across rows)")
+    print(f"    this run's backlog snapshot : {new_backlog_meta['loaded_at']}")
+    print(f"    this run generated at       : {new_generated_at}")
+    if previous is None:
+        print("    no previous data/inventory.json on disk -- nothing to compare against.")
+        return
+    print(f"    previous stock snapshot     : {previous['snapshot_loaded_at']}")
+    print(f"    previous backlog snapshot   : {previous['backlog_loaded_at']}")
+    print(f"    previous run generated at   : {previous['snapshot_generated_at']}")
+    p = previous["totals"]
+    print()
+    print(f"    {'figure':<34}{'previous':>14}{'this run':>14}{'change':>14}")
+    for label, key in [("has_stock", "has_stock"), ("zero_stock", "zero_stock"),
+                       ("no_db_record", "no_db_record"),
+                       ("codes with backlog", "codes_with_backlog"),
+                       ("backlog total (units)", "backlog_total"),
+                       ("codes with negative available", "available_negative")]:
+        print(f"    {label:<34}{p[key]:>14,.0f}{new_totals[key]:>14,.0f}"
+              f"{_delta(new_totals[key], p[key]):>14}")
+    print(f"    {'on-hand total (units)':<34}{previous['on_hand_total']:>14,.0f}"
+          f"{new_on_hand:>14,.0f}{_delta(new_on_hand, previous['on_hand_total']):>14}")
+
+
 if __name__ == "__main__":
     config = load_config()
+    previous_run = load_previous_run(OUTPUT_PATH)
 
     print("\n" + "=" * 78)
     print("STEP 1 — FULL PRICELIST CODE REGISTRY")
@@ -624,6 +765,7 @@ if __name__ == "__main__":
     backlog_rows = query_backlog(item_codes)
     backlog_per_code = aggregate_backlog(backlog_rows)
     classified = add_backlog_and_available(classified, backlog_per_code)
+    backlog_detail = build_backlog_rows(backlog_rows)
 
     n_backlog_codes = int((classified["backlog"] > 0).sum())
     backlog_total = float(classified["backlog"].sum())
@@ -631,6 +773,21 @@ if __name__ == "__main__":
           f"{backlog_total:,.0f} units")
     print(f"    vs unfiltered (previous investigation): 155 codes / 99,132 units  ->  "
           f"{n_backlog_codes - 155:+d} codes, {backlog_total - 99132:+,.0f} units")
+
+    n_detail_rows = sum(len(v) for v in backlog_detail.values())
+    mismatches = assert_backlog_rows_sum(classified, backlog_detail)
+    print(f"1a2 per-item backlog row detail: {n_detail_rows} rows carried across "
+          f"{len(backlog_detail)} codes (not de-duplicated).")
+    print(f"    sum check — every item's rows must total exactly its backlog figure: "
+          f"{len(classified) - len(mismatches)}/{len(classified)} items PASS, "
+          f"{len(mismatches)} FAIL")
+    if mismatches:
+        for m in mismatches[:20]:
+            print(f"      MISMATCH {m['code']}: {m['n_rows']} rows summing {m['row_sum']:,.4f} "
+                  f"vs total {m['total']:,.4f}")
+        raise SystemExit("Per-item backlog rows do not sum to the per-item totals — stopping.")
+    print(f"    rows carried ({n_detail_rows}) vs rows used for the totals ({len(backlog_rows)}): "
+          f"{'MATCH' if n_detail_rows == len(backlog_rows) else 'MISMATCH'}")
 
     all_rows = query_backlog_unfiltered(item_codes)
     dropped_rows = len(all_rows) - len(backlog_rows)
@@ -761,13 +918,29 @@ if __name__ == "__main__":
         "rows_used": int(len(backlog_rows)),
         "cross_contract_duplicate_rows_included": int(len(dup_inside)),
     }
+    backlog_meta["detail_rows_written"] = int(n_detail_rows)
+    backlog_meta["detail_note"] = (
+        "Every item's backlog_rows are the individual Cube_Backlog rows behind its backlog total, "
+        "carried through as-is with NO de-duplication, so a reviewer can judge row by row whether "
+        "each one belongs. Rows sharing a quantity, status and delivery date under different "
+        "docIDs are the known cross-contract duplicate-recording pattern; they are included."
+    )
     payload = build_json(classified, by_warehouse, warehouse_roles, snapshot_meta, SOURCE_TABLE,
-                         backlog_meta)
+                         backlog_meta, backlog_detail)
     os.makedirs(os.path.dirname(OUTPUT_PATH), exist_ok=True)
     with open(OUTPUT_PATH, "w", encoding="utf-8") as f:
         json.dump(payload, f, ensure_ascii=False, indent=2)
     file_size = os.path.getsize(OUTPUT_PATH)
-    print(f"Wrote {OUTPUT_PATH} ({file_size:,} bytes)")
+    prev_size = previous_run["file_size"] if previous_run else None
+    print(f"Wrote {OUTPUT_PATH} ({file_size:,} bytes"
+          + (f", previously {prev_size:,} bytes, {file_size - prev_size:+,})" if prev_size else ")"))
+
+    print("\n" + "=" * 78)
+    print("STEP 4B — MOVEMENT AGAINST THE PREVIOUS RUN")
+    print("=" * 78)
+    on_hand_total = float(classified["qty"].sum())
+    report_movement(previous_run, payload["totals"], on_hand_total, snapshot_meta, backlog_meta,
+                    payload["snapshot"]["generated_at"])
 
     print("\n" + "=" * 78)
     print("STEP 5 — VERIFY")

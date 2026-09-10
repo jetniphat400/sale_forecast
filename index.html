@@ -201,6 +201,24 @@ tr.section[role="button"]:focus-visible{outline:2px solid var(--series-1);outlin
 .inv-wh-box h3{margin:0 0 10px;font-size:15px}
 .inv-wh-close{float:right;border:0;background:#eef2f7;border-radius:6px;padding:4px 12px;cursor:pointer;font-size:13px}
 
+/* Reserved (backlog) drill-down: same modal convention as the warehouse breakdown above, but a
+   wider box -- it carries eight columns of per-row detail rather than two. */
+.inv-bl-box{max-width:1040px}
+.inv-bl-box .inv-bl-sub{font-size:11.5px;color:var(--text-secondary);margin:0 0 10px;white-space:normal}
+.inv-bl-box table{width:100%;border-collapse:collapse;font-size:12px}
+.inv-bl-box th{background:#eef4fa;border-bottom:2px solid #c9d8e6;padding:6px 8px;text-align:right;white-space:nowrap}
+.inv-bl-box td{border-bottom:1px solid #edf2f7;padding:5px 8px;text-align:right;white-space:nowrap}
+.inv-bl-box th.tleft,.inv-bl-box td.tleft{text-align:left}
+.inv-bl-box td.inv-bl-cust{white-space:normal;min-width:170px}
+.inv-bl-box tr.inv-bl-dup td{background:rgba(227,154,18,0.13)}
+.inv-bl-box tr.inv-bl-total td{border-top:2px solid #c9d8e6;font-weight:700;background:var(--surface)}
+.inv-bl-dupbadge{display:inline-block;margin-left:6px;padding:1px 7px;border-radius:10px;font-size:10.5px;
+  font-weight:600;background:#fff0d4;color:#8a5a00;white-space:nowrap}
+.inv-bl-dupnote{background:#fff8e6;border:1px solid #e8cf87;border-radius:8px;padding:9px 12px;
+  font-size:11.5px;line-height:1.5;margin:0 0 10px;white-space:normal}
+.inv-bl-btn{background:none;border:0;padding:0;font:inherit;font-variant-numeric:tabular-nums;
+  color:var(--series-1);cursor:pointer;text-decoration:underline;text-underline-offset:2px}
+
 .inv-error{background:rgba(208,59,59,0.08);border:1px solid rgba(208,59,59,0.3);color:#8f2b2b;
   padding:14px 16px;border-radius:8px;font-size:13px}
 </style>
@@ -7440,6 +7458,30 @@ tr.section[role="button"]:focus-visible{outline:2px solid var(--series-1);outlin
  </div>
 </div>
 
+<div class="inv-wh-modal" id="invBlModal">
+ <div class="inv-wh-box inv-bl-box">
+  <button type="button" class="inv-wh-close" id="invBlClose">ปิด</button>
+  <h3 id="invBlTitle"></h3>
+  <p class="inv-bl-sub" id="invBlSub"></p>
+  <div id="invBlDupNote" class="inv-bl-dupnote" style="display:none"></div>
+  <table>
+   <thead>
+    <tr>
+     <th class="tleft">เลขที่เอกสาร</th>
+     <th class="tleft">Job</th>
+     <th class="tleft">ลูกค้า</th>
+     <th>จำนวน</th>
+     <th class="tleft">สถานะ</th>
+     <th class="tleft">วันที่ส่งมอบ</th>
+     <th class="tleft">วันที่ส่งมอบ (แผน)</th>
+     <th class="tleft">ที่มาของ Backlog</th>
+    </tr>
+   </thead>
+   <tbody id="invBlTableBody"></tbody>
+  </table>
+ </div>
+</div>
+
 <div id="omniTab">
  <h2>Trend ยอดขาย Omni Channel — สินค้าตาม Price List 01.06.69 (448 รหัส)</h2>
  <div class="sub">แหล่งข้อมูล: cube_Sale_APD · revenue_type = 'Omni Channel' · status = Actual + MPS · ปีปฏิทิน 2024–2026 (ข้อมูลถึง 25 ส.ค. 2026)</div>
@@ -7816,7 +7858,8 @@ function omniShowTab(n){
       + ' — คนละรอบการโหลดกับข้อมูลสต็อคด้านบน<br>'
       + 'ขอบเขตบริษัทของทั้งสองตัวเลข: ' + invEsc(blScope) + '<br>'
       + 'Reserved นับรวมทุกสถานะ ไม่มีการกรองสถานะใดๆ — <b>ตัวเลขอยู่ระหว่างรอการตรวจสอบยืนยัน</b><br>'
-      + 'Available = สต็อคคงเหลือ − Reserved (ยังไม่รวมสินค้าที่กำลังจะเข้า)';
+      + 'Available = สต็อคคงเหลือ − Reserved (ยังไม่รวมสินค้าที่กำลังจะเข้า)<br>'
+      + 'คลิกตัวเลข Reserved เพื่อดูรายการ Backlog แต่ละรายการที่รวมกันเป็นยอดนั้น';
 
     const t = data.totals;
     document.getElementById('invCountStrip').innerHTML =
@@ -7868,9 +7911,20 @@ function omniShowTab(n){
     const key = invSort.key, dir = invSort.dir;
     rows = rows.slice().sort((a, b) => {
       let av, bv;
-      if (INV_NUM_KEYS.includes(key)) {
-        // Unknown (null qty/available) sorts below every real number, including negative
-        // ones -- -1 would land it in the middle of the negative Available values.
+      if (key === 'available') {
+        // Unknown Available (no_db_record) sinks to the bottom in BOTH directions, so sorting
+        // ascending surfaces the most negative real values at the top instead of burying them
+        // under 57 rows that have no Available at all. Returned before the `dir` multiplication
+        // below precisely so flipping the direction does not flip the unknowns back to the top.
+        const an = a.available == null, bn = b.available == null;
+        if (an && bn) return 0;
+        if (an) return 1;
+        if (bn) return -1;
+        av = a.available; bv = b.available;
+      }
+      else if (INV_NUM_KEYS.includes(key)) {
+        // Inventory (qty) keeps its existing behaviour: unknown sorts below every real number,
+        // so it leads ascending and trails descending.
         av = a[key] == null ? -Infinity : a[key];
         bv = b[key] == null ? -Infinity : b[key];
       }
@@ -7901,9 +7955,16 @@ function omniShowTab(n){
         qtyCell = '<span class="inv-qty-plain">' + invFmtQty(it.qty) + '</span>';
       }
 
-      // Reserved is plain text, not a drill-down button: data/inventory.json carries only a
-      // per-code total, no per-row backlog detail to open a popup on.
-      const reservedCell = '<span class="inv-num">' + invFmtQty(it.backlog) + '</span>';
+      // A zero Reserved presents no clickable affordance at all -- there are no backlog rows
+      // behind it to show, so a button would promise a popup that has nothing in it.
+      let reservedCell;
+      if (it.backlog > 0 && it.backlog_rows && it.backlog_rows.length) {
+        reservedCell = '<button type="button" class="inv-bl-btn" data-code="' + invEsc(it.code)
+          + '" aria-label="ดูรายการ Backlog ของ ' + invEsc(it.code) + '">'
+          + invFmtQty(it.backlog) + '</button>';
+      } else {
+        reservedCell = '<span class="inv-num">' + invFmtQty(it.backlog) + '</span>';
+      }
 
       let availCell;
       if (it.available == null) {
@@ -7942,6 +8003,10 @@ function omniShowTab(n){
 
     tbody.querySelectorAll('.inv-qty-btn').forEach(btn => {
       btn.addEventListener('click', () => invOpenWhBreakdown(btn.dataset.code));
+    });
+
+    tbody.querySelectorAll('.inv-bl-btn').forEach(btn => {
+      btn.addEventListener('click', () => invOpenBacklogDetail(btn.dataset.code));
     });
 
     tbody.querySelectorAll('.inv-lt-input').forEach(inp => {
@@ -8010,6 +8075,68 @@ function omniShowTab(n){
     document.getElementById('invWhModal').style.display = 'flex';
   }
 
+  // Rows sharing all three of these values are FLAGGED for a human to look at -- not judged.
+  // Two genuine orders of the same quantity for the same delivery date are perfectly possible,
+  // so the flag says "worth checking", and the note in the popup says exactly that.
+  function invDupKey(r){
+    return [r.quantity, r.status == null ? '' : r.status,
+            r.delivery_date == null ? '' : r.delivery_date].join('|');
+  }
+
+  function invOpenBacklogDetail(code){
+    const it = invItems.find(x => x.code === code);
+    if (!it || !it.backlog_rows || !it.backlog_rows.length) return;
+    const rows = it.backlog_rows;
+
+    document.getElementById('invBlTitle').textContent =
+      it.code + ' — ' + (it.description || '') + ' · Reserved ' + invFmtQty(it.backlog);
+
+    const rowSum = rows.reduce((s, r) => s + (r.quantity || 0), 0);
+    document.getElementById('invBlSub').innerHTML =
+      'รายการ Backlog ทั้งหมด ' + rows.length + ' รายการที่รวมกันเป็นยอด Reserved ของรหัสนี้ '
+      + '(แสดงตามที่บันทึกไว้ในระบบ ไม่มีการรวบหรือตัดรายการซ้ำออก)<br>'
+      + 'สต็อคคงเหลือ ' + invFmtQty(it.qty) + ' − Reserved ' + invFmtQty(it.backlog)
+      + ' = Available ' + invFmtQty(it.available);
+
+    const counts = {};
+    rows.forEach(r => { const k = invDupKey(r); counts[k] = (counts[k] || 0) + 1; });
+    const nDupRows = rows.filter(r => counts[invDupKey(r)] > 1).length;
+
+    const noteEl = document.getElementById('invBlDupNote');
+    if (nDupRows > 0) {
+      noteEl.style.display = 'block';
+      noteEl.innerHTML = '<b>⚠ พบ ' + nDupRows + ' รายการที่มี จำนวน + สถานะ + วันที่ส่งมอบ '
+        + 'ตรงกันกับรายการอื่น</b> (แถบสีเหลือง) — <b>เป็นเพียงการตั้งข้อสังเกตเพื่อให้ตรวจสอบ '
+        + 'ไม่ใช่ข้อสรุปว่าเป็นรายการซ้ำ</b> คำสั่งซื้อจริงสองรายการที่บังเอิญมีจำนวนและวันส่งมอบ'
+        + 'ตรงกันก็เป็นไปได้ กรุณาตรวจสอบเลขที่เอกสารและลูกค้าประกอบก่อนตัดสิน';
+    } else {
+      noteEl.style.display = 'none';
+      noteEl.innerHTML = '';
+    }
+
+    const body = rows.map(r => {
+      const isDup = counts[invDupKey(r)] > 1;
+      return '<tr' + (isDup ? ' class="inv-bl-dup"' : '') + '>'
+        + '<td class="tleft mono">' + invEsc(r.doc_id || '—')
+        + (isDup ? '<span class="inv-bl-dupbadge">อาจซ้ำ — โปรดตรวจสอบ</span>' : '') + '</td>'
+        + '<td class="tleft mono">' + invEsc(r.job || '—') + '</td>'
+        + '<td class="tleft inv-bl-cust">' + invEsc(r.customer || '—') + '</td>'
+        + '<td class="inv-num">' + invFmtQty(r.quantity) + '</td>'
+        + '<td class="tleft">' + invEsc(r.status || '—') + '</td>'
+        + '<td class="tleft">' + invEsc(r.delivery_date || '—') + '</td>'
+        + '<td class="tleft">' + invEsc(r.plan_delivery_date || '—') + '</td>'
+        + '<td class="tleft">' + invEsc(r.backlog_from || '—') + '</td>'
+        + '</tr>';
+    }).join('');
+
+    document.getElementById('invBlTableBody').innerHTML = body
+      + '<tr class="inv-bl-total"><td class="tleft" colspan="3">รวม ' + rows.length + ' รายการ</td>'
+      + '<td class="inv-num">' + invFmtQty(rowSum) + '</td>'
+      + '<td class="tleft" colspan="4">= ยอด Reserved ของรหัสนี้</td></tr>';
+
+    document.getElementById('invBlModal').style.display = 'flex';
+  }
+
   document.getElementById('invMenuRow').addEventListener('click', invOpenPanel);
   document.getElementById('invMenuRow').addEventListener('keydown', e => {
     if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); invOpenPanel(); }
@@ -8020,6 +8147,12 @@ function omniShowTab(n){
   });
   document.getElementById('invWhModal').addEventListener('click', e => {
     if (e.target.id === 'invWhModal') e.currentTarget.style.display = 'none';
+  });
+  document.getElementById('invBlClose').addEventListener('click', () => {
+    document.getElementById('invBlModal').style.display = 'none';
+  });
+  document.getElementById('invBlModal').addEventListener('click', e => {
+    if (e.target.id === 'invBlModal') e.currentTarget.style.display = 'none';
   });
 
   // Chosen behaviour: switching tabs while the panel is open closes the panel first, rather than
