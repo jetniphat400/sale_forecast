@@ -26,6 +26,20 @@
   the pricelist already determines an item's division, so the database's `division` column should
   never have been used as a filter at all. See `STATUS.md` Locked Decisions, "Division
   source-of-truth correction," for the full account.
+- **Agreement between two cubes/tables that share an upstream source demonstrates consistency,
+  not correctness.** High agreement between two derived views of the same underlying transaction
+  system (e.g. `cube_Sale_APD` vs. `Cube_CES`, cross-checked repeatedly in this project at
+  99.79%+ row-level match) only shows the two views are consistent with each other — it does not
+  independently verify that the underlying transactions are accurate or complete. Two cubes fed by
+  the same PO-receipt process would agree with each other just as well whether or not demand that
+  never became a recorded order is captured anywhere, because neither cube would ever see it (see
+  `STATUS.md` §3, Business Findings, the PO-based-history scope-limitation entry). Any future
+  cube-agreement finding in this project should be read and written up as "consistent," never as
+  "validated" or "correct," unless a genuinely independent, differently-sourced check (a physical
+  stock count, a customer-side record) is also performed. This rule was added during the Phase E0
+  pre-check gate (2026-09-18, `output/summary/phaseE0_synthesis_report.md` §3(b)) after review
+  found the project's own prior write-ups of Cube_CES/cube_Sale_APD agreement had been read as
+  validating correctness rather than merely consistency.
 
 ## Reproducibility
 

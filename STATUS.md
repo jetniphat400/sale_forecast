@@ -288,7 +288,40 @@ assumptions Phase E must record in config, since the data could not answer them*
 log entry below for the full list. Phase E may now proceed, with those assumptions stated
 explicitly rather than buried in code.
 
+**Follow-up, DONE (2026-09-09)**: tested the business's warehouse-trailing-digit hypothesis
+(`FG01`/`FG21`→PEM101, `FG02`→PEM102, `FG07`→PEM107, etc.) against a full division×warehouse
+cross-tab. **Holds on the 3 codes it can actually be tested on (FG01/FG21/WH21→PEM101), but that's
+narrow — most of its other predicted codes hold zero current stock, so it's untested (not
+confirmed) for 4 of 6 divisions. Moderate confidence, not clean; does not resolve sellability.**
+`FG21` and `FG02` are confirmed **distinct** (moderate-to-high confidence), not the same code
+recorded two ways. See the dated log entry below ("Warehouse/division trailing-digit mapping
+hypothesis test") and `output/summary/whmap_report.md` for the full six-part evidence.
+
+**Inventory panel — DONE (2026-09-08), extended with Reserved/Available (2026-09-10).** Not a
+phase deliverable — a live detail view built on top of Phase D's own source table
+(`Cube_Inventory_Exact`), opened from the "Inventory — แผนสต็อค" row on Tab 1 (Tab 2/`#omniTab` is
+untouched by any of this work). One script, `src/build_inventory_dataset.py`, reproduces
+`data/inventory.json` in a single run: the full 445-code pricelist registry (every visible sheet,
+not just the 335-item forecast scope), on-hand quantity summed across warehouses per code, and —
+added 2026-09-10 — outstanding backlog and Available. See the two dated log entries below
+("Inventory detail view added to Tab 1" and "Reserved/Available added to the Inventory panel, plus
+the Reserved-source investigation chain") for full detail, and "Business Findings" and "Open
+Questions" for what the investigation behind Reserved actually settled and what it left open.
+**The panel's own current numbers** (this repository's committed `data/inventory.json`): 166
+has_stock / 222 zero_stock / 57 no_db_record of 445 codes; 92 codes show negative Available.
+
 **Phase E — Phase 4 proper**: calculate Max-Min and simulate it against historical demand.
+**Phase E0 (pre-check gate) — three parallel Validators + a Synthesizer, then a single-Validator
+E0.2 re-run — CLOSED (2026-09-18).** See the dated log entries near the end of Section 2 and
+`output/summary/phaseE0_synthesis_report.md` for full detail. Headline: no point-in-time leakage
+found in allocation shares or model settings (E0.1); the DB login was reset and E0.2's cancellation
+re-run found **zero** cancelled `Cube_CES` contracts resurfacing as `Actual`/`MPS` demand anywhere
+in `cube_Sale_APD` (0 of 548 pricelist-scope pairs, 0 of 2,150 table-wide, positive-control-verified
+join), so no change to the demand series is needed; the placeholder-vs-Type-total question (E0.3)
+is resolved by a third option — placeholders excluded from Top-down hierarchy reconciliation
+entirely (see Locked Decisions). **Phase E1 may now begin in full** — no remaining blocking gap;
+the two non-blocking documented assumptions (`forecast_date` revision timing, absent pricelist
+version history) carry forward unchanged from Phase A/E0.1.
 
 **Phase F — Measure the value**: compare against the team's current method, and estimate what
 would happen with no intervention at all, since on-time delivery has already improved from 57.8%
@@ -3326,6 +3359,258 @@ and assembly time do not exist, business-confirmed. Full detail:
   cost proxy (already open, Section 8.5, reaffirmed load-bearing for Phase E here); (10) assembly
   time after parts arrive (already open, Section 8.1/8.5, reaffirmed).
 
+**Warehouse/division trailing-digit mapping hypothesis test — DONE (2026-09-09).** Follow-up to
+Phase D assumption (1) above (which warehouse codes are sellable/whose are they), run as a single
+Explorer, one cross-tabulation examined from six angles in one context (`AGENTS.md` "Single
+Explorer" pattern — no agent split). Script: `src/investigations/warehouse_division_mapping_hypothesis.py`.
+Full write-up: `output/summary/whmap_report.md`; data: `output/summary/whmap_part1..part6_*`.
+User's hypothesis: warehouse codes are separated by division via trailing digits (`FG01`/`FG21`→
+PEM101, `FG02`→PEM102, `FG07`→PEM107, generalised to `03`→PEM103, `04`→PEM104). Scope: all 445
+pricelist items, all 6 divisions, division sourced from the pricelist (`sheet_to_division`), never
+`cube_Sale_APD`'s own `division` column — an earlier pre-2026-09-04-correction file,
+`part3_warehouse_division_test.csv`, used the raw DB column and shows up to 17 "divisions" per
+warehouse including `-OLD` variants and a non-existent `PEM106`; that file is superseded and was
+not reused here. **Scope note**: this pull found **44** distinct warehouse codes in the 445-item
+snapshot (matching Phase D Check 1's own count), not the 34 the user's brief referenced (34 is
+from the earlier, narrower 128-item pilot-scope investigation) — used 44 throughout, stated
+explicitly rather than silently reconciled. Value reuses Check 2's already-corrected unit-cost
+methodology (`phaseD_check2_item_stock_value.csv`), not re-derived.
+- **Part 1 (cross-tab)**: mean per-division concentration in its single largest warehouse code is
+  75.4% of qty / 68.0% of value — but **the table is NOT diagonal**: `FG01` is the single largest
+  code for 3 of 6 divisions at once (CI101, PEM101, PEM107), `FMTO`/`FMTS` each hold stock for 4
+  divisions. High concentration ≠ exclusivity. Only PEM102/PEM103/PEM104's clean top-1 codes are a
+  thin-sample artifact (14/70/2 total units respectively, not a structural signal).
+- **Part 2 (per-code dominant division vs. hypothesis)**: of 44 codes, only **3 are literally
+  testable** (have both a hypothesis prediction AND current nonzero stock) — **all 3 match**
+  (`FG01`, `FG21`, `WH21` → PEM101, dominance ≥60%, a stated judgment threshold). The other 3
+  literal predictions (`FG02`→PEM102, `FG03`→PEM103, `WH04`/`P104`→PEM104, `F107`/`WH07`→PEM107)
+  are **untestable**, not confirmed or refuted — every one of those codes holds zero current
+  stock. **Secondary finding (inferred, LOW-MODERATE confidence, small samples 2-226 units)**: a
+  `2X`-family pattern (`FG22/23/24/27`, `WH22/24`) tracks division better than the empty `0X`
+  series — one exception found (`FG22`→PEM107, not PEM102).
+- **Part 3 (item warehouse spread)**: 73/167 stocked items sit in exactly one code; 64/167 sit in
+  several codes within one division's hypothesis-defined set (all 64 are PEM101); **0/167 items
+  literally span two divisions' sets** — but this is **not strong confirmation**: PEM102/103/104/
+  107's own predicted codes are almost all empty, so the check had almost no chance to find a
+  spanning item either way. The cross-check against `phaseC_sheetmap_flagged_multi_division.csv`
+  (175 sales-multi-division-tagged items) is therefore inconclusive — nothing to compare.
+- **Part 4 (FG21 vs FG02)**: **DISTINCT, MODERATE-TO-HIGH confidence, not a recording variant.**
+  FG21 holds 78 items/17,496 units now with almost no ledger history (13 `cube_inventory_tran`
+  rows, 2025-09-26 to 2026-08-21); FG02 holds **zero** current items/stock despite 2,307 ledger
+  rows spanning 2017-10-19 to **2026-09-08** (through the present day) — a high-throughput
+  pass-through signature like `QA`'s confirmed role, not a storage one. Zero item-set overlap; zero
+  of 7,650 checked 150/151 transfer pairs (for the 131 itemcodes touching either code) directly
+  link FG21↔FG02. **Inferred, not proven**: consistent with FG02 being an older/superseded
+  pass-through code with FG21 now serving a related role — no data links them to one migration
+  event.
+- **Part 5 (pattern across all 44 codes, proposed mapping)**: prefixes do NOT behave uniformly
+  (`FG` alone spans 4 dominant divisions depending on trailing digits) — trailing digits are the
+  stronger signal. **14 of 44 codes placed** (table in `whmap_part5_proposed_mapping.csv` /
+  `whmap_report.md` Part 5), each with an explicit confidence level and whether its division came
+  from the hypothesis or from this cross-tab's own empirical dominant-division reading (the two
+  are recorded as different `division_source` values, never conflated). No code beyond the
+  already-confirmed `QA`=inspection/`FMTS`,`FMTO`=production WIP (2026-09-02 finding) could be
+  given a process stage — this snapshot has no arrival/departure event data to distinguish further
+  stages. **30 of 44 codes are UNRESOLVED** (zero current stock in this scope — not a hypothesis
+  failure, nothing to test), including the literal-hypothesis codes `WH01`, `F101`, `W101`, `W121`,
+  `QA`.
+- **Snapshot-drift reconfirmed, not newly discovered**: this pull (2026-09-09) totals 154,893
+  units/฿36,095,868, vs. Check 1's 158,130 units (2026-09-06) and Check 2's ฿37,399,005 — a ~2-3.5%
+  drift over 3 days, consistent with the table being live (already an open, unresolved conflict in
+  Phase D, not newly raised here).
+- **Overall verdict, stated plainly**: the trailing-digit hypothesis **holds on every code it can
+  actually be tested on (3/3), but that is a narrow test** — most of its predicted codes hold no
+  current stock, so the hypothesis is **untested for 4 of 6 divisions, not confirmed for them**.
+  **MODERATE confidence overall, not clean.** Does not decide which codes are sellable (Phase D
+  assumption 1 remains open) — presents the mapping for the business/Orchestrator to act on.
+  **Unresolved, listed separately**: 30/44 codes' division; process stage beyond QA/FMTS/FMTO;
+  whether the FG21/FG02 succession is a real historical event; CI101's own digit convention (none
+  exists — its sheet name carries no numeric suffix).
+
+**Inventory detail view added to Tab 1 — DONE (2026-09-08).** Commits `88622c4` (dataset),
+`a9cc60f` (view), `e98db48`/`0521d71`/`73c1283`/`a961568`/`3300400` (follow-up fixes and the lead
+time column). `src/build_inventory_dataset.py` builds the **full 445-code pricelist registry**
+(every visible sheet, per the same visibility convention `pricelist_reader.py` already used —
+`sheet_state == 'visible'` — not the 335-item forecast scope), and reconciles it against that
+335-item scope: every one of the 110 codes outside it carries a recorded `exclusion_reason`
+(PEM104 division exclusion, `excluded_item_codes`, `placeholder_item_codes`, or
+`placeholder_item_assignments_82` — no code is unexplained). On-hand quantity is
+`Cube_Inventory_Exact.stock` summed across every warehouse per code, keeping `has_stock`/
+`zero_stock`/`no_db_record` as distinct states throughout (a `no_db_record` code has no row in the
+table at all — its quantity is written `null`, never `0`, so it cannot be silently read as "in
+stock at zero"). A warehouse-breakdown popup shows the per-warehouse split behind any non-zero
+total. Warehouse role (staging/holding/unknown) is derived only from `cube_inventory_tran`
+paired-transfer evidence, per Phase D's own method — never from the warehouse code's name — and,
+after `e98db48`, is kept in the JSON but **no longer rendered in the panel** (removed as
+information the panel could not act on, not as a data change). The panel fetches the JSON at
+runtime (never inlined into `index.html`, unlike the pre-existing `#omniTab` `OMNI`/`MATCH`
+blobs), renders all 445 rows without virtualization (measured ~10-20ms per re-render), and is
+sortable/filterable by Business/Category/Type/Description/Code. **Lead time (วัน)**: one editable
+input per code, validated on blur (0-999, at most one decimal place — widened from an initial
+whole-number-only rule in `3300400` after same-day/sub-day lead times were found to be valid
+cases), persisted to a single namespaced `localStorage` key
+(`saleForecast.inventoryPanel.leadTimeDays.v1`) — **deliberately browser-only, not written to
+`data/inventory.json` or read by any pipeline script; see Locked Decisions for why.**
+
+**Reserved/Available added to the Inventory panel, plus the Reserved-source investigation chain
+— DONE (2026-09-10).** Commits `f4f55a4` (dataset), `fb00b87` (panel columns), `31b650f`
+(per-row backlog drill-down + Available sort fix). Three read-only investigations preceded the
+implementation, run as single Explorers (per `AGENTS.md`), each read-only and each confirming
+nothing was written to `index.html`/`data/inventory.json`/the build script by the investigation
+itself:
+
+- `output/summary/reserved_available_investigation_report.md` (first in the chain) searched the
+  whole schema for a dedicated reserved/allocated-quantity field and found
+  `Cube_Inventory_Exact.reserve_bywa` — sitting in the exact same row as on-hand `stock`, same
+  table, same snapshot batch. **Headline recommendation: prefer `reserve_bywa` over any
+  backlog/order table for a column literally labelled "Reserved."**
+- `output/summary/reserve_backlog_relationship_report.md` (second) tested that recommendation
+  against a fuller comparison (445-registry cross-tab, correlation analysis, per-division
+  breakdown) and **confirmed it, but on narrower grounds, with a new caveat**: `reserve_bywa`
+  itself regularly exceeds on-hand stock, sometimes against zero stock entirely, on the staging
+  warehouses (`QA`/`FMTS`/`FMTO`) Phase D already flagged as not sellable — so it is not a clean
+  "physically set aside" figure either. **Moderate, not high, confidence either way.**
+- `output/summary/company_scope_investigation_report.md` (third) checked whether backlog's
+  company scope matches on-hand's, given the decision to use `Cube_Backlog` regardless of which
+  field ultimately ships. Confirmed `Cube_Inventory_Exact` holds exactly two company values
+  (`PEM`, `CI`) table-wide, and that `sale_company IN ('PEM','CI')` is the matching backlog scope
+  — see "Business Findings" and "Evidence established" below for what this settled.
+
+**The panel as shipped uses `Cube_Backlog`, filtered to `sale_company IN ('PEM','CI')` with no
+status filter, not `reserve_bywa`** — stated here as a fact about what was built, not a
+correction of the investigation: both reports' own fallback guidance, if backlog ships anyway, was
+to avoid describing it as "physically set aside," which the panel follows (its own text calls it
+"Reserved (Backlog)," names the source table and its separate load timestamp, and states plainly
+that the figure is still pending verification — see `index.html`'s `invBacklogLabel` text).
+**Choosing between the two fields for good is not decided by either investigation** — see "Open
+questions" below for exactly what would need a person's answer first.
+
+Per-item, `build_inventory_dataset.py` now also carries the individual `Cube_Backlog` rows behind
+each code's Reserved total (`doc_id`, `job`, `customer`, `quantity`, `status`, `delivery date`,
+`plan delivery date`, `backlog_from`), written exactly as the source holds them and never
+de-duplicated — collapsing them would remove the thing this view exists to let a person judge.
+Every item's rows are asserted, in-script, to sum exactly to that item's Reserved total (445/445
+pass on the committed file). The panel opens these on a click of any non-zero Reserved value,
+flagging rows that share quantity/status/delivery-date as **possibly** duplicate — stated in the
+popup as a flag for review, not a conclusion, since two genuine orders can coincide (confirmed in
+the committed data itself: `LS-F-99-1004`'s two flagged 100-unit/`MPS`/2026-09-11 rows,
+`CTR-2026-05118` and `CTR-2026-05335`, are recorded under two different customer names — the flag
+correctly surfaces this pair for a person to judge, it does not itself decide they are duplicates).
+Sorting Available now sinks the `no_db_record` (unknown) rows to the bottom in both directions,
+so the most negative values surface first ascending, rather than the previous behaviour where
+unknowns sorted as the lowest value and buried the real negatives beneath them.
+
+**Current committed snapshot (`data/inventory.json` at `31b650f`)**: on-hand snapshot loaded
+2026-09-09 21:39:47 (`Cube_Inventory_Exact`); backlog snapshot loaded 2026-09-09 17:02:06
+(`Cube_Backlog`) — **two different load timestamps, roughly 4.5 hours apart on the same
+calendar day**, because the two tables refresh independently (see "Evidence established" below).
+92 of 445 codes show negative Available; 147 codes have some Reserved quantity; 195 backlog rows
+inside the `sale_company IN ('PEM','CI')` filtered set still match the cross-contract-duplicate
+signature (`itemcode`, `quantity`, `status`, `deliverydate`, `plan_deliverydate` shared across
+different `docID`s) and are counted anyway, per the decision to show as-is figures rather than
+silently de-duplicate.
+
+**Phase E0 — pre-check gate before Phase E1, three parallel Validators + a Synthesizer (per
+`AGENTS.md`, 2026-09-18).** An external review identified three gaps that could make every Phase
+E result untrustworthy if left unchecked: point-in-time leakage in rolling-origin backtests
+(E0.1), unchecked cancellations in the demand series (E0.2), and placeholder items' coherence
+with Type totals under Top-down allocation (E0.3). Full detail: `output/summary/phaseE0_
+validator1_leakage_report.md`, `phaseE0_validator2_cancellations_report.md`,
+`phaseE0_validator3_placeholder_coherence_report.md`, and the merged
+`output/summary/phaseE0_synthesis_report.md`.
+
+- **E0.1 (leakage) — no leakage found in either checkable mechanism, high confidence; no backtest
+  re-run performed because none was triggered.** Historical Top-down allocation shares are
+  **verified from data** to be computed only from data through each rolling-origin's own
+  `train_size` in every script whose output feeds a cited backtest number
+  (`src/item_level_reconciliation.py`, `src/transferability_all_divisions.py`,
+  `src/focus_item_model_selection.py` — confirmed by direct code read). The specific
+  training/test-window leakage channel is **verified from data** to be structurally absent
+  (0.0000% at all 7 origins), a mechanical consequence of `load_data_full.py`'s existing
+  `forecast_date >= createDate` cleaning rule. Model settings (MA windows, Croston/SBA constants,
+  TSB grid search) are **verified from data** to carry no leakage for all six adopted models. Two
+  items remain **cannot be determined**, both non-blocking, carried forward as documented
+  assumptions rather than new discoveries: (a) whether `forecast_date` is ever revised in place
+  after intake — re-affirms Phase A's own finding, unverifiable today (see E0.2's DB blocker
+  below, which also stopped this re-check); bounded at <2.5% of rows with no consistent direction,
+  too small to overturn Phase E1's inputs; (b) no dated historical pricelist snapshots exist
+  anywhere (not in git, not on disk), so whether an item's division/Type/status classification
+  differed at a past origin cannot be measured — **prospective snapshot collection must start now
+  because this cannot be closed retroactively** (archive a dated copy of `reference/pricelist.xlsx`
+  on every update, or an append-only `(item_code, division, type, status, effective_date)` table).
+- **E0.2 (cancellations) — RESOLVED 2026-09-18, re-run after the DB password was reset. Verdict:
+  no cancellation contamination found, verified from data; no change to the demand series
+  recommended.** After the initial blocked attempt (SQL error 18487, expired password), the human
+  reset the SQL Server login and the same Validator re-ran the full task on a live connection (Part
+  0 connectivity confirmed first). Full detail: `output/summary/phaseE0_validator2_cancellations_report.md`,
+  script `src/investigations/phaseE0_cancellations_validator2.py`.
+  - **Cube_CES Cancel rows (fresh, table-wide): 2,423 rows** (matches the 2026-08-31 count, now
+    with value/date detail that pull never captured), qty 151,865,368.2, value ฿9,903,099,704.17,
+    `CtrDate` 2013-08-22 to 2026-02-25. Of these, only **553 rows (136 distinct item codes,
+    qty 49,861, value ฿68,283,214.86)** are for pricelist-scope items that could ever enter this
+    project's demand series at all — the remaining ฿9.83B is non-pricelist items that
+    `load_data_full.py` can never load.
+  - **Cancelled pairs still counted as Actual/MPS demand: ZERO** — verified from data. Joined 548
+    pricelist-scope and, as a robustness check, all 2,150 table-wide cancelled `(ContractID,
+    ItemCode)` pairs against `cube_Sale_APD` Actual/MPS rows: 0 matches in both. A positive control
+    (non-cancelled Cube_CES Actual/Backlog pairs, same itemcodes) matched at 99.52%, confirming the
+    join key works and the null result is real, not a broken join.
+  - **Share of demand and effect on the three focus items: 0.0000%, verified from data.**
+    Denominator (full pricelist scope, Omni Channel, Actual/MPS, 2024-01-01+): 3,536,958 qty /
+    ฿2,075,984,031.45. `EEE-F-FC-1040010002` (38 Cancel rows), `HS-F-99-02110` (3), `HS-F-99-0213`
+    (4) all have Cancel rows only in 2018-2023, none matching Actual/MPS. Stated negligibility
+    threshold: <0.5% of series qty/value (an order of magnitude below the smallest effect this
+    project treats as material elsewhere, e.g. the 0.42% cross-division exclusion) — the measured
+    effect is exactly zero, not merely below threshold.
+  - **Partial cancellations (`PlanQty > ActualQty+BacklogQty`): structurally empty for confirmed
+    contracts, verified from data.** 23,633 rows meet this condition table-wide, but 100% carry
+    quotation-stage prefixes (`QTN-`/`OQ-`/`ENQIN-`/`OPP-`) — 0% are confirmed (`CTR-`) contracts.
+    An exhaustive check of all 143,936 confirmed-contract rows with non-null `PlanQty` (Actual
+    138,487, Backlog 3,026, Cancel 2,423) shows `PlanQty == ActualQty+BacklogQty` exactly on every
+    one — the shortfall condition cannot fire on a confirmed contract with this data model, so the
+    cancellation/adjustment/cannot-be-determined bucketing has zero rows to classify.
+    **Cannot be determined**: whether a genuinely different, unrecorded "original plan quantity
+    before reduction" ever existed — `Cube_CES` appears to retain only current reconciled state,
+    not history.
+  - **Recommendation (configurable assumption, backed by the verified findings above): no change
+    to the demand series' cancellation handling.** Explicitly does not rule out an unrecognized
+    mechanism outside this task's two checked channels (join-key resurfacing; the literal
+    `PlanQty` shortfall signal).
+- **E0.3 (placeholder coherence) — arithmetic verified from data; RESOLVED 2026-09-18, see Locked
+  Decisions, "Placeholder items sit outside the Top-down hierarchy entirely."** Of the 22
+  (division, Type) pairs touched by the 82 no-history placeholder items, 16 have at least one real
+  (history-bearing) sibling; production Top-down is confirmed hierarchy-consistent today (Type
+  total = sum of item forecasts, before placeholders are added). Two options were computed, both
+  verified from data: **Option 1 (additive)** leaves every real item's forecast unchanged but
+  inflates the Type's total beyond what its own Type-level model forecasts, by +0.8% to **+707.3%**
+  (worst: `Suspension Insulator`, PEM101 — 6 placeholders outnumbering 3 real items at 7x their
+  combined volume); **Option 2 (carve-out)** keeps the Type total exactly fixed but shrinks every
+  real item's forecast, from 0.8% (`LED Street light`) to **83.7%** (`Current Transformer Type
+  CDB`, PEM107), with no change in that item's own history. **Neither was adopted** — a third
+  option (exclude placeholders from hierarchy reconciliation entirely) was chosen instead, see
+  Locked Decisions. **All three focus items are unaffected regardless** — neither of their Types
+  appears in the 82-item placeholder population (verified from data). Two Rule C Types with zero
+  real siblings (`33kV Recloser`, `FRTU`, 3 items total) had no Type-level forecast at all under
+  either option — resolved the same way, by exclusion from reconciliation. Separately, **66 of 82
+  items have an identifiable pricelist analogue/predecessor** (verified from data that a candidate
+  exists; a **supported hypothesis only**, not tested, that using it would forecast better than the
+  flat Type mean/median) — future Modeler work, non-blocking, recorded as the preferred future
+  basis in the Locked Decision. Full per-Type table: `output/summary/
+  phaseE0_validator3_placeholder_type_totals.csv`; per-item reasons and analogues:
+  `phaseE0_validator3_82item_reasons.csv`.
+- **Overall verdict and consequence for Phase E1, updated 2026-09-18: Phase E1 may now begin in
+  full — no remaining blocking gap.** E0.2's re-run cleared the project-wide blocking gap (zero
+  cancellation contamination found); E0.3's third-option decision cleared the item-specific
+  blocking gap (placeholders excluded from hierarchy reconciliation, rather than either distorting
+  option being adopted). Non-blocking, carried forward as documented assumptions, unchanged from
+  Phase A/E0.1: `forecast_date` revision-in-place timing (bounded <2.5% of rows) and the absent
+  pricelist version history (prospective snapshot collection should still start now). Fully
+  resolved, no impact: allocation-share leakage, model-setting leakage, and (as of this re-run)
+  cancellation contamination.
+- **Two documentation corrections requested by the review, applied 2026-09-18**: see Business
+  Findings §3 (PO-based history scope limitation) and `CONVENTIONS.md` (cube-agreement-shows-
+  consistency-not-correctness rule).
+
 ## 3. Business Findings
 
 These describe how this business actually operates, established from data investigation (not
@@ -3369,6 +3654,19 @@ phase, particularly Phase 4. Full methodology, confidence levels and caveats are
   receipt, not at the point of shipment or fulfilment. Recorded as a strength of the data source,
   not something this project did — the demand-capture design (whichever system feeds
   `cube_Sale_APD`) already avoids it.
+- **Documentation correction (Phase E0 review, 2026-09-18): the demand series is built from PO
+  receipts, not from all customer demand — this is a structural scope limitation of the whole
+  modelling approach, distinct from the stockout finding above, not something any cleaning step
+  can fix.** `createDate` records when a purchase order is received, and every downstream figure
+  (forecasts, Max-Min, simulation) is built from rows that reached that stage. The series is
+  therefore systematically blind to demand that never became a recorded order — a customer turned
+  away for lack of stock before ordering, a quote never converted, a sale lost to a competitor
+  before a PO was raised. None of this is recorded anywhere in the database, so no query against
+  this data can find it or bound its size. **This must not be conflated with the finding
+  immediately above**: that finding is about orders that *were* placed still being recorded even
+  when stock could not fulfil them on time (not censored by stockouts); this correction is about
+  demand that never reached the point of becoming an order at all. See
+  `output/summary/phaseE0_synthesis_report.md` §3(a).
 
 ## 4. Locked Decisions (with reasons)
 
@@ -3658,9 +3956,70 @@ phase, particularly Phase 4. Full methodology, confidence levels and caveats are
   ever-changing would make results non-reproducible across runs. All four of method, evaluation
   policy, and series key are recorded in `config/config.yaml` (`forecast_method_final`,
   `evaluation_policy`, `adopted_series_key`).
+- **Placeholder items sit outside the Top-down hierarchy entirely (2026-09-18, closing Phase E0.3's
+  open decision).** E0.3 found that both naive ways of folding the 82 no-history placeholder items'
+  Type-mean/median values into Top-down's Type-level totals distort the hierarchy: **adding them ON
+  TOP of a Type's existing total inflated some Types by up to +707.3%** (worst: `Suspension
+  Insulator`, PEM101 — 6 placeholders outnumbering 3 real items at 7x their combined volume; also
+  severe at `Current Transformer Type CDB`, PEM107, +513.8%); **carving them OUT of the existing
+  total (redistributing real items' shares to make room) shrank real items' own forecasts by up to
+  -83.7%** (worst: `Current Transformer Type CDB`) with no change in those items' actual sales
+  history. Neither is acceptable as a silent default — both distort a number a planner would
+  otherwise trust unchanged. **Decision: placeholder items are excluded from Top-down hierarchy
+  reconciliation.** A placeholder item's value never adds to, and is never carved out of, any Type
+  total, and never changes any real item's allocated share — it exists as a standalone reference
+  estimate only, outside the Type-level/item-level aggregation the rest of the hierarchy must sum
+  correctly through. Placeholder values must be clearly flagged wherever displayed and **must never
+  feed a purchase/reorder recommendation** (Phase E1's Max-Min for a placeholder item, if computed
+  at all, must be visibly marked as built on a reference estimate, not a real forecast). **For the
+  66 of 82 items with an identified pricelist analogue or predecessor code** (E0.3,
+  `output/summary/phaseE0_validator3_82item_reasons.csv`), that analogue is the **preferred basis**
+  once a placeholder value is actually needed for planning, in place of the flat Type mean/median —
+  recorded here as **future work, not yet implemented** (no Modeler has backtested whether an
+  analogue-based estimate actually forecasts better; this is a supported hypothesis about a better
+  basis, not a proven one). Evidence: `output/summary/phaseE0_validator3_placeholder_coherence_report.md`
+  and `phaseE0_synthesis_report.md`. Written into `config/config.yaml`
+  (`placeholder_hierarchy_treatment`).
 
 ## 5. Open Questions
 
+- **Phase E0 gap register (found 2026-09-18, full detail `output/summary/phaseE0_synthesis_report.md`
+  §2)** — the pre-check gate before Phase E1 closed with one project-wide blocking gap and one
+  item-specific blocking decision, both requiring action outside this codebase:
+  1. ~~**BLOCKING, project-wide** — SQL Server login `jetniphat.boo`'s password has expired (SQL
+     error 18487), reproduced independently 3 times across 2 agents. Owner: IT/DBA (password
+     reset, update `.env`). Until fixed, E0.2's four cancellation sub-questions (Cube_CES Cancel
+     rows still counted as Actual/MPS demand in the series; their share of total/Type demand;
+     effect on the three focus items; partial-cancellation bucketing) remain **cannot be
+     determined**, and Phase E1's demand-series inputs must be treated as provisional. The query
+     plan is fully scoped in `output/summary/phaseE0_validator2_cancellations_report.md` and needs
+     no redesign, only execution once connectivity is restored.~~ **RESOLVED 2026-09-18 — password
+     reset by IT, E0.2 re-run in full on a live connection. Verdict: zero cancellation
+     contamination found (0 of 548 pricelist-scope and 0 of 2,150 table-wide cancelled pairs
+     resurface as Actual/MPS demand, positive-control-verified; partial-cancellation signal
+     structurally empty for confirmed contracts). No change to the demand series recommended. See
+     the Phase E0 dated log entry and `output/summary/phaseE0_validator2_cancellations_report.md`.**
+  2. ~~**BLOCKING, item-specific** — Option 1 (additive) vs. Option 2 (carve-out) for how the 82
+     no-history placeholder items' Type-mean/median values interact with Top-down's Type totals,
+     across 22 (division, Type) pairs (up to +707.3% Type-total inflation under Option 1, or up to
+     83.7% real-item forecast shrink under Option 2 — see the Phase E0 dated log entry). Owner:
+     business/Orchestrator decision-maker; this is a policy choice, not resolvable by further data
+     analysis. Also blocking: the 2 Rule C Types with zero real siblings (`33kV Recloser`, `FRTU`,
+     3 items), which have no Type-level forecast at all today under either option. None of this
+     overlaps the three focus items.~~ **RESOLVED 2026-09-18 — see Locked Decisions, "Placeholder
+     items sit outside the Top-down hierarchy entirely": neither Option 1 nor Option 2 was adopted.
+     A third option was chosen instead (exclude placeholders from hierarchy reconciliation
+     entirely, reference-estimate only, never feeds a purchase recommendation), which also resolves
+     the 2 zero-real-sibling Rule C Types (they now correctly have no reconciled Type-level number
+     to produce, rather than an undefined one).**
+  3. **Non-blocking, carried forward as documented assumptions**: `forecast_date` revision-in-place
+     timing (re-affirms Phase A, bounded <2.5% of rows, could not be independently re-verified
+     today due to gap 1's same DB outage); absent pricelist version history (no dated snapshots
+     exist anywhere — prospective collection should start now, since this cannot be closed
+     retroactively); 66 of 82 placeholder items have an untested pricelist analogue that might
+     forecast better than the flat Type mean/median (future Modeler work); the MA window
+     (3/6/12) selection rationale is undocumented (no leakage risk, a rigor/documentation gap
+     only).
 - **Phase A residual items (found 2026-09-02)** — unresolved, non-blocking for the phases that
   follow, but flagged for specific owning teams (full detail with owner per item in
   `output/summary/phaseA_synthesis.md` §5): whether `forecast_date` is ever revised in place

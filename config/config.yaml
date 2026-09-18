@@ -742,3 +742,31 @@ placeholder_item_assignments_82:
     rule: B
     placeholder_qty: 4.0645
     flag_only: false
+
+# --- Placeholder hierarchy treatment (locked 2026-09-18, Phase E0.3) ---------
+# Reason: E0.3 found both naive ways of folding the 82 placeholder items above into
+# Top-down's Type-level totals distort the hierarchy -- adding them ON TOP of a Type's
+# existing total ("additive") inflated some Types by up to +707.3% (worst: Suspension
+# Insulator, PEM101); carving them OUT of the existing total ("carve-out", redistributing
+# real items' shares to make room) shrank real items' own forecasts by up to -83.7%
+# (worst: Current Transformer Type CDB, PEM107) with no change in those items' actual
+# sales history. See output/summary/phaseE0_validator3_placeholder_coherence_report.md
+# and phaseE0_synthesis_report.md for the full evidence, and STATUS.md Locked Decisions
+# ("Placeholder items sit outside the Top-down hierarchy entirely") for the reasoning.
+# DECISION: placeholder items are excluded from Top-down hierarchy reconciliation --
+# a placeholder value never adds to, and is never carved out of, any Type total, and
+# never changes any real item's allocated share. It is a standalone reference estimate,
+# must be flagged wherever shown, and must NEVER feed a purchase/reorder recommendation.
+placeholder_hierarchy_treatment:
+  excluded_from_hierarchy_reconciliation: true   # placeholder qty never adds to or is
+                                                   # carved out of any Type total or real
+                                                   # item's share -- see comment block above
+  reference_estimate_only: true
+  never_feeds_purchase_recommendation: true
+  preferred_future_basis: "For the 66 of 82 items with an identified pricelist analogue/predecessor code (see output/summary/phaseE0_validator3_82item_reasons.csv), that analogue is the preferred basis once a placeholder value is actually needed for planning, in place of the flat Type mean/median -- FUTURE WORK, not yet implemented (no Modeler has backtested whether it forecasts better; a supported hypothesis, not proven)."
+  reason: "E0.3: additive treatment inflates Type totals up to +707.3%; carve-out shrinks real items' forecasts up to -83.7%. Neither is acceptable as a silent default, so placeholders are kept outside the hierarchy entirely."
+  evidence:
+    - "output/summary/phaseE0_validator3_placeholder_coherence_report.md"
+    - "output/summary/phaseE0_synthesis_report.md"
+    - "output/summary/phaseE0_validator3_placeholder_type_totals.csv"
+  decided: "2026-09-18"
