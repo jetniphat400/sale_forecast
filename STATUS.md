@@ -323,6 +323,92 @@ entirely (see Locked Decisions). **Phase E1 may now begin in full** — no remai
 the two non-blocking documented assumptions (`forecast_date` revision timing, absent pricelist
 version history) carry forward unchanged from Phase A/E0.1.
 
+**Phase E1 — bounded scenario pilot, PEM101's 128 items, single Modeler + independent Validator
+(per `AGENTS.md`) — DONE 2026-09-18, with the Validator recomputation only PARTIALLY matching.**
+**This phase produces no actionable purchase recommendation — it is a scenario analysis for the
+business to evaluate, not a locked policy.** Full detail: `output/summary/phaseE1_modeler_report.md`,
+the five `phaseE1_{1..5}_*.md` sub-reports, and `output/summary/phaseE1_validator_report.md`
+(including its two in-place addenda from the Orchestrator's targeted re-checks).
+- **Scope, verified**: 128-item PEM101 pilot (Fuse Cutout + Surge Arrester categories), confirmed
+  independently by both the Modeler (from `config['adopted_scope_file']`) and the Validator (from
+  the pricelist directly) — exact match, 0 symmetric difference. 16 of 128 (6 `excluded_item_codes`
+  + 10 `placeholder_item_codes`) get **no supported policy, no Min, no Max, no purchase quantity
+  anywhere** — verified by direct set-intersection checks against every output file, zero overlap
+  found by both agents independently.
+- **E1.1 segmentation, hypothesis (reasoned recommendation, not certainty)**: of the 112 real
+  items, 66 (Modeler) / 68 (Validator) — **65 of these in common, 95-97% agreement** — are
+  FG-stock-policy-supported; the remainder are Component-stock/assemble-to-order candidates from
+  their own segment numbers, not a blanket default. Make-to-order was ruled out project-wide (median
+  6-day notice never exceeds the 45-60 day procurement lead time in this data). Assembly time
+  (genuinely absent from any data source, business-confirmed gap) is a stated default (3 days) +
+  alternative (7 days) + a 1/3/5/7/10-day sensitivity table.
+- **E1.2 lead-time demand, verified**: protection period = lead + assembly + review interval = 4
+  months at the default scenario. Empirical (not normal-assumption) protection-period demand
+  distributions built per item; MASE-undefined items counted and excluded from aggregates
+  explicitly, not silently dropped.
+- **E1.3/E1.4 Max-Min and simulation, verified under stated assumptions — default scenario (60d
+  lead, 3d assembly, 95% service level)**: **Min for the three focus items matches EXACTLY between
+  the Modeler and the independent Validator once both used this project's own locked frozen-snapshot
+  series** (`EEE-F-FC-1040010002` 10,788.20; `HS-F-99-02110` 917.50; `HS-F-99-0213` 763.75 — all
+  three exact matches), as does the **forecast-consumption total for those three items (3,641.0
+  units over the 4-month horizon — exact match)**. This is strong, high-confidence validation of
+  the core forecast/consumption engine. Forecast consumption implemented as `net_period_demand =
+  confirmed_known_demand + max(0, raw_forecast − confirmed_known_demand)` — confirmed orders never
+  double-added to the statistical forecast. Sellable stock = on-hand qty in `FG01`/`FG21`/`WH21`
+  only (config assumption, sellability itself never confirmed by any field).
+- **Aggregate stock value and fill rate — genuine, reported discrepancy, not fully resolved
+  (criterion 5 below).** Modeler: 66 items, mean *simulated, time-averaged* stock value THB
+  55,399,687, simulated fill rate 98.99%. Validator (after two targeted re-checks corrected an
+  initial live-vs-frozen data-window bug): 68 items, *static Max-level* stock value THB
+  93,935,502.88, fill rate 99.91%. **Root cause identified, not a calculation bug in either agent**:
+  (a) a small residual item-set disagreement (65 of 66/68 items in common — a segmentation-boundary
+  effect, not a data error); (b) **a definitional ambiguity this Orchestrator introduced across the
+  two independent briefs** — "total scenario stock value" meant *time-averaged simulated on-hand
+  stock* to the Modeler vs. *static stock valued at the scenario's Max level* to the Validator; these
+  are two different, both legitimate, statistics (an order-up-to-Max sawtooth policy's time-average
+  is naturally well below its own Max, consistent with the ~1.7x ratio observed) that were never
+  pinned to one definition before both agents computed them independently. **This must be resolved
+  by picking ONE definition before Phase E1's stock-value figure is treated as fully validated** —
+  not decided here, flagged for the next task/human decision.
+- **Acceptance criteria — Orchestrator's verdict** (self-assessed by the Modeler, informed by the
+  Validator; see the dated log entry below for full detail):
+  1. Every item has a policy or a stated reason — **PASS** (128 = 66/68 FG-stock + 46/44
+     Component-ATO + 16 excluded/placeholder, verified by both agents).
+  2. Every assumption in `config.yaml` with an owner and scenario label — **PASS**, verified
+     directly (`config['phase_e1_assumptions']`, every key comment-labelled, most with an explicit
+     `_owner` field).
+  3. No placeholder item ever receives a Min/Max/purchase quantity — **PASS**, verified by both
+     agents independently (zero overlap in both checks).
+  4. Default-scenario fill rate ≥ 73.2% AND stock value ≤ ฿37.4M — **fill rate PASSES by a wide
+     margin under either agent's number (98.99% / 99.91% ≫ 73.2%); stock value FAILS under either
+     agent's number and either comparison basis** (55.4M or 93.9M, for only 66-68 of 128 items, both
+     exceed ฿37.4M — the cited full-445-item current figure — and both exceed ฿18.07M, the honest
+     apples-to-apples current 128-item-pilot value computed directly in E1.5). **This conclusion is
+     robust to the stock-value definitional ambiguity above — under EITHER definition, the default
+     scenario ties up substantially more capital than today**, for FEWER items than today's 128.
+     Best explanation (hypothesis, not proven): a 95% cycle-service-level target over a 4-month
+     protection period requires large safety stock against genuinely Erratic/Lumpy/Intermittent
+     demand (e.g. `EEE-F-FC-1040010002`'s safety stock alone, 6,450.5, exceeds its own mean
+     protection-period demand, 4,337.7) — the 90% service-level alternative (also computed in the
+     18-scenario grid) narrows this gap, not adopted here since that choice is a business/Orchestrator
+     call, not this phase's to make.
+  5. **Validator recomputation matches — PARTIAL, not a clean pass.** Two of four figures (Min for
+     the 3 focus items; the consumption total) match EXACTLY, high confidence — strong validation of
+     the core engine. Two of four (aggregate stock value; fill rate) do NOT match under direct
+     comparison; the gap has an identified, non-bug explanation (segmentation-boundary + definitional
+     ambiguity, above), but per this task's own rule ("a mismatch stops the task"), **Phase E1 is NOT
+     declared fully validated** — the stock-value definition must be pinned down and re-checked
+     before this phase's aggregate figures (as opposed to its per-item Min/consumption figures) are
+     treated as settled.
+- **Net verdict: 3 of 5 acceptance criteria PASS cleanly (1, 2, 3); criterion 4 FAILS on stock value
+  (robustly, under either agent's number) while passing on fill rate; criterion 5 PARTIALLY passes
+  (exact match on 2 of 4 figures, an identified-but-unresolved definitional gap on the other 2).**
+  This scenario, as currently specified (95% service level, 60-day lead time), is **not
+  recommended for adoption as-is** — it costs substantially more capital than today for coverage of
+  fewer items, and its own aggregate figures are not yet independently confirmed to one definition.
+  The 90%-service-level alternative and the stock-value-definition question are the two most
+  actionable next steps, both business/Orchestrator decisions, neither made here.
+
 **Phase F — Measure the value**: compare against the team's current method, and estimate what
 would happen with no intervention at all, since on-time delivery has already improved from 57.8%
 to 73.2% with no system in place.

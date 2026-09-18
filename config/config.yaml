@@ -770,3 +770,125 @@ placeholder_hierarchy_treatment:
     - "output/summary/phaseE0_synthesis_report.md"
     - "output/summary/phaseE0_validator3_placeholder_type_totals.csv"
   decided: "2026-09-18"
+
+# ============================================================
+# Phase E1 assumptions (single Modeler, 2026-09-18) -- SCENARIO INPUTS, NOT FACTS.
+# Scope: PEM101 128-item pilot (adopted_scope_file above). This is a BOUNDED SCENARIO PILOT --
+# it produces NO actionable purchase recommendation, only a scenario analysis the business can
+# evaluate. Every key below carries an `owner` (who should confirm/own the value) and is
+# explicitly a modelling/scenario input, never a measured fact, unless the comment says the
+# figure itself is business-confirmed (lead time only). See output/summary/phaseE1_modeler_report.md
+# for the full reasoning behind each value and every acceptance-criteria self-check.
+# ============================================================
+phase_e1_assumptions:
+
+  # --- Procurement lead time (business figure, STATUS.md Section 8.1: "45-60 days ... reaffirmed
+  # 2026-09-04 ... configurable per item"). No per-item override exists in this codebase, so the
+  # SAME grid is applied to every item -- that uniform application is itself a stated
+  # simplification (owner: Modeler default), not a business-confirmed per-item schedule. 75 days
+  # extends one point beyond the confirmed 45-60 range as a sensitivity/stress point.
+  procurement_lead_time_days_grid: [45, 60, 75]
+  procurement_lead_time_days_owner: "business (45 and 60 confirmed, STATUS.md Section 8.1); 75 is a Modeler-added sensitivity point beyond the confirmed range, owner Modeler default"
+  procurement_lead_time_days_default: 60   # middle of the confirmed 45-60 day range
+
+  # --- Assembly time: STATUS.md confirms this is a genuine, UNRESOLVED business gap -- no field
+  # in any table links a raw-material consumption event to the resulting assembled item becoming
+  # stock (Section 8.5, "Still open"). Unlike lead time, NO business figure exists at all for this
+  # segment. Both values below are Modeler defaults only.
+  assembly_time_days_default: 3
+  assembly_time_days_alternative: 7
+  assembly_time_days_owner: "Modeler default -- business has not supplied this figure (STATUS.md Section 8.1/8.5). 3 days is a small, defensible placeholder for simple sub-assembly of a fuse cutout/surge arrester from purchased parts; 7 days represents a more conservative, multi-step assembly. NEITHER is derived from data -- both are stated guesses pending a real production-time figure."
+  assembly_time_sensitivity_days: [1, 3, 5, 7, 10]   # E1.1 component-stock feasibility sensitivity table only
+
+  # --- Review interval (periodic-review policy interval). No data source addresses this at all
+  # (not even asked of the business) -- a pure Modeler default, chosen to match this project's
+  # monthly forecast/data granularity (a review interval shorter than one month could not be
+  # evaluated against monthly-aggregated data without inventing sub-monthly demand).
+  review_interval_days_default: 30
+  review_interval_days_owner: "Modeler default -- matches monthly data granularity; no business figure exists"
+
+  # --- Cycle service level: STATUS.md Section 8.5, "Target service level ... not yet set. Phase 4
+  # will present several levels for the business to choose from" -- this grid is exactly that.
+  # NOTE, stated here so every downstream script/report repeats it: cycle service level (the
+  # probability of NOT stocking out during one replenishment cycle) is NOT the same statistic as
+  # unit fill rate (the % of demand UNITS delivered on time) -- see phaseE1_maxmin_scenario_report.md
+  # and phaseE1_historical_simulation_report.md, which report both separately wherever computable.
+  cycle_service_level_grid: [0.90, 0.95, 0.98]
+  cycle_service_level_owner: "business must choose -- STATUS.md Section 8.5. 95% is used only as the DEFAULT SCENARIO's reference point below, not a business decision."
+
+  # --- Default scenario: ONE specific combination from the 3x2x3=18-point grid above, needed as a
+  # single reference point for the acceptance criteria and for the Validator (task instruction).
+  # Picked as the middle/most-typical value on every dimension, not tuned to pass any criterion.
+  default_scenario:
+    procurement_lead_time_days: 60
+    assembly_time_days: 3
+    cycle_service_level: 0.95
+    reason: "Middle value of the lead-time grid (60 of 45/60/75), the Modeler DEFAULT (not the alternative) assembly-time assumption, and the middle value of the service-level grid (95% of 90/95/98) -- the single most 'typical' combination on every axis, not selected to produce a favourable acceptance-criteria result."
+
+  # --- Replenishment quantity convention (Max = Min + replenishment qty). No MOQ or lot size
+  # exists in this data -- confirmed ABSENT by the business (STATUS.md Section 8.3: "business
+  # confirmed this data does not exist. Phase 4 must be designed without it"). Using the review
+  # interval's own expected demand as the replenishment quantity is a REASONABLE CONVENTION, not a
+  # derived fact -- a different convention (e.g. a fixed round-number lot) would give a different Max.
+  replenishment_qty_convention: "review_interval_expected_demand"
+  replenishment_qty_owner: "Modeler default -- STATUS.md Section 8.3 confirms no MOQ/lot-size data exists to use instead"
+
+  # --- Safety stock convention: safety stock = (chosen percentile of the empirical protection-
+  # period demand distribution) MINUS (the mean of that same distribution) -- i.e. the ADDITIONAL
+  # buffer above the expected value, not the raw percentile value itself. Min = mean + safety
+  # stock, which is algebraically identical to Min = the percentile value directly; stated both
+  # ways here, and used consistently as such in every script, to avoid ambiguity.
+  safety_stock_convention: "percentile_value_minus_distribution_mean"
+
+  # --- Sellable warehouse codes: sellability was NEVER confirmed by any field in this database
+  # (Phase D headline: 0.00% confirmed sellable, 99.90% undetermined -- no sellability/status/stage
+  # column exists anywhere). FG01/FG21/WH21 is the best AVAILABLE PROXY: the warehouse/division
+  # trailing-digit mapping hypothesis test (output/summary/whmap_report.md) found these are the
+  # only 3 of 44 warehouse codes project-wide that are BOTH literally testable against the
+  # hypothesis AND currently hold stock, and all 3 map to PEM101 at moderate-to-high confidence.
+  # That is a DIVISION mapping, not a sellability confirmation -- treating them as "the sellable
+  # set" for Phase E1 is an explicit modelling assumption, not a fact.
+  sellable_warehouse_codes: ["FG01", "FG21", "WH21"]
+  sellable_warehouse_codes_owner: "business -- sellability itself was never confirmed by any field (Phase D). This is the Modeler's best-available proxy (STATUS.md whmap_report.md), not a fact."
+
+  # --- Unit cost basis: IDENTICAL methodology to Phase D Check 2 (cost/qty per row, median over
+  # the trailing 12 months, most-recent-transaction fallback) -- reused for cross-phase
+  # consistency, not re-derived. Which of the two computed bases is treated as PRIMARY is itself a
+  # stated choice (Phase D's own reasoning: robust to one-off/outlier rows), carried forward here.
+  unit_cost_basis: "median_last_12mo_cost_over_qty_per_row_with_most_recent_transaction_fallback"
+  unit_cost_basis_owner: "Modeler default -- Phase D Check 2 methodology (output/summary/phaseD_check2_report.md), reused for consistency across phases"
+  unit_cost_median_window_months: 12
+
+  # --- Obsolescence threshold: "no demand for N consecutive months." No business figure exists.
+  # 6 months is chosen to match this project's own existing HOLDOUT/backtest scale
+  # (src/backtest_rekeyed.py HOLDOUT=6) and because it exceeds every default-scenario protection
+  # period computed in this phase (3-4 months) -- a working definition of "sitting idle longer
+  # than one full replenishment cycle," not a derived or business-confirmed value.
+  obsolescence_threshold_months: 6
+  obsolescence_threshold_owner: "Modeler default -- no business figure exists"
+
+  # --- Historical simulation (E1.4) assumptions. No historical stock-movement/transaction-level
+  # time series exists in this database (confirmed absent, Phase D / inventory investigations) --
+  # so initial stock, receipt timing and fulfilment sequence CANNOT be read from data at all and
+  # must be stated as explicit modelling choices, never treated as fact.
+  simulation_initial_stock_assumption: "Each item's historical simulation starts 2024-01 with sellable on-hand stock equal to that SCENARIO's own computed Max (i.e. assume the business began the simulation window already stocked to the policy's own target Max level) -- a common inventory-simulation starting convention, not a historical fact (no 2024-01 stock figure exists in any table for this or any other starting assumption to be checked against)."
+  simulation_initial_stock_owner: "Modeler default"
+  simulation_receipt_timing_assumption: "A replenishment order arrives exactly ceil((procurement_lead_time_days + assembly_time_days) / 30.44) months after being placed, with NO variability (deterministic lead time). STATUS.md documents large REAL variability in internal handling time alone (item-level IQR often exceeds the median) that this simulation cannot capture without an actual stock-movement history, which does not exist."
+  simulation_receipt_timing_owner: "Modeler default"
+  simulation_fulfilment_sequence_assumption: "Within a simulated month: any replenishment receipt scheduled for that month is added to on-hand stock FIRST, then that month's demand is subtracted. Demand that exceeds available stock is BACKORDERED (carried forward and added to next month's demand) rather than treated as a lost sale -- consistent with STATUS.md's finding that demand in this data is not censored by stockouts (an order is recorded even when the business cannot fill it on time)."
+  simulation_fulfilment_sequence_owner: "Modeler default"
+
+  # --- Forecast consumption (E1.3): confirmed FUTURE-dated cube_Sale_APD MPS orders and overdue
+  # Cube_Backlog rows are treated as KNOWN demand for a period; only the REMAINING (not yet
+  # confirmed) portion of that period's statistical forecast is added on top -- never confirmed +
+  # the full forecast (that would double count the confirmed portion).
+  forecast_consumption_logic: "net_period_demand = confirmed_known_demand_for_period + max(0, statistical_forecast_for_period - confirmed_known_demand_for_period)"
+  # Cube_Backlog and cube_Sale_APD are different tables with no verified shared key (STATUS.md,
+  # Reserved/Available investigation chain) -- this project cannot confirm whether a given
+  # Cube_Backlog row and a given cube_Sale_APD MPS row represent the SAME physical order. To avoid
+  # a plausible double count, FUTURE-period confirmed demand is read from cube_Sale_APD MPS rows
+  # ONLY (the same table the whole statistical demand series is built from); Cube_Backlog is used
+  # ONLY for OVERDUE rows, added as immediate Period-1 demand per the task's own instruction --
+  # the one place the two sources are combined, and only additively for the immediate period.
+  backlog_vs_mps_double_count_note: "cannot be determined from data (no shared key between Cube_Backlog and cube_Sale_APD) -- resolved by the scope decision above, not by verification"
+
