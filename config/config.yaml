@@ -892,3 +892,89 @@ phase_e1_assumptions:
   # the one place the two sources are combined, and only additively for the immediate period.
   backlog_vs_mps_double_count_note: "cannot be determined from data (no shared key between Cube_Backlog and cube_Sale_APD) -- resolved by the scope decision above, not by verification"
 
+# ============================================================
+# Report text (locked 2026-09-19) -- src/build_report.py renders forecast/sales_report.html
+# from this block plus output/summary/*.csv. Every sentence below is a direct paraphrase of an
+# existing STATUS.md finding, carrying that finding's own stated confidence level -- nothing new
+# is claimed here. Edit this block by hand (a business-readable, non-technical audience) without
+# touching src/build_report.py; the script re-reads it on every run.
+# ============================================================
+report:
+  # Plain-language description of Top-down combination forecasting, for a non-technical reader.
+  # Source: STATUS.md Locked Decisions, "Final forecasting method: Top-down combination".
+  model_description: >-
+    Top-down Combination คือการพยากรณ์ยอดขายในระดับ "Type" (กลุ่มสินค้าที่ขายในลักษณะเดียวกัน
+    เช่น High Voltage Distribution Fuse Cutout) ก่อน โดยใช้ค่าเฉลี่ยของโมเดลพยากรณ์ 6 แบบร่วมกัน
+    (Naive, MA3, MA6, MA12, Croston, SBA) แล้วจึงกระจายยอดพยากรณ์ของ Type นั้นไปยังสินค้าแต่ละ
+    รายการ (Item) ตามสัดส่วนยอดขายจริงในอดีตของสินค้านั้นเทียบกับยอดขายรวมของ Type ทั้งหมด
+
+  # Source: STATUS.md Current Status Summary, "Phase 2 -- Model Selection" (high confidence).
+  why_not_single_model: >-
+    ไม่มีโมเดลเดี่ยวใดชนะโมเดลอื่นอย่างสม่ำเสมอในทุกระดับ (Category/Type/Item) และการเลือกโมเดล
+    ด้วยกฎเกณฑ์ทางวิชาการ (SBC, Kostenko-Hyndman, Petropoulos-Kourentzes) ก็ไม่ได้ผลดีกว่าค่าเฉลี่ย
+    รวม (Combination) อย่างมีนัยสำคัญ — จึงเลือกใช้ Combination เป็นแนวทางที่ปลอดภัยกว่าการเดิมพัน
+    กับโมเดลเดียว (ความเชื่อมั่นสูง)
+
+  # Source: STATUS.md Locked Decisions, "Model progression is Naive baseline, then Moving
+  # Average, then Croston and SBA. TensorFlow and Prophet are excluded...".
+  why_not_ml: >-
+    ไม่ใช้ Neural Network (เช่น TensorFlow) หรือ Prophet เนื่องจากมีข้อมูลย้อนหลังเพียง 31 เดือน
+    และ 74% ของรหัสสินค้ามีลักษณะการขายแบบ Intermittent หรือ Lumpy (ขายไม่สม่ำเสมอ ไม่ต่อเนื่อง)
+    ทำให้ Neural Network มีความเสี่ยงสูงที่จะ Overfit กับข้อมูลจำนวนน้อย และ Prophet มีสมมติฐาน
+    ว่าข้อมูลต่อเนื่อง (continuous) ซึ่งไม่ตรงกับลักษณะข้อมูลจริงของโครงการนี้
+
+  # Each item a short, standing (not-yet-resolved) caveat, carrying its own stated confidence
+  # level from STATUS.md -- not a resolved finding restated as fact.
+  limitations:
+    - "ยังไม่สามารถพิสูจน์ได้ว่า forecast_date (วันที่ส่งมอบตามสัญญา) ถูกแก้ไขภายหลังจากรับ PO
+      หรือไม่ เพราะไม่มีตารางบันทึกการแก้ไขในระบบ — ผลกระทบถูกจำกัดไว้ต่ำกว่า 2.5% ของแถวข้อมูล
+      โดยไม่มีทิศทางที่แน่นอน (ความเชื่อมั่นสูงในข้อสรุปเชิงลบนี้ แต่ยังไม่ใช่ข้อพิสูจน์)"
+    - "ไม่มีข้อมูลประวัติของ Price List เวอร์ชันเก่า จึงไม่สามารถตรวจสอบได้ว่าการจัดฝ่าย/ประเภท
+      สินค้าเคยเปลี่ยนแปลงไปจากอดีตหรือไม่ (cannot be determined จากข้อมูลที่มีอยู่ในปัจจุบัน)"
+    - "ข้อมูลยอดขายอ้างอิงจาก PO ที่ลูกค้าสั่งจริงเท่านั้น ไม่ครอบคลุมความต้องการที่ไม่ได้กลายเป็น
+      PO เลย (เช่น ลูกค้าที่ถูกปฏิเสธเพราะสินค้าไม่พอ หรือใบเสนอราคาที่ไม่ถูกแปลงเป็นคำสั่งซื้อ) —
+      เป็นข้อจำกัดเชิงโครงสร้างของทั้งแนวทาง ไม่ใช่จุดบกพร่องที่แก้ไขได้ด้วยการทำความสะอาดข้อมูล"
+    - "ความได้เปรียบของ Top-down เทียบกับ Direct และ Naive ไม่มีนัยสำคัญทางสถิติ (paired t-test,
+      |t| ต่ำกว่า 2 ในทุกคู่เปรียบเทียบ) — เลือกใช้ Top-down เพราะเป็นแนวทางที่ตรงไปตรงมาที่สุดใน
+      เชิงโครงสร้าง ไม่ใช่เพราะพิสูจน์แล้วว่าให้ผลแม่นยำที่สุด"
+    - "เวลาประกอบสินค้า (assembly time) หลังได้รับชิ้นส่วนไม่มีอยู่ในข้อมูลเลย เป็นช่องว่างที่ต้อง
+      ให้ธุรกิจยืนยัน — ทุกค่าที่ใช้เวลานี้ในการวิเคราะห์ Phase E เป็นค่าอนุมาน (assumption) ที่ตั้ง
+      ไว้เพื่อการวิเคราะห์ ไม่ใช่ข้อเท็จจริงที่วัดได้"
+    - "ค่า Min/Max สต็อกที่ตั้งไว้ในระบบปัจจุบัน (Cube_Inventory_Exact) ใช้เป็น input ในการคำนวณ
+      ไม่ได้ — 46 จาก 128 รายการไม่มีการตั้งค่าเลย และค่าที่มีอยู่ไม่สอดคล้องกันสูงระหว่างคลัง — ใช้
+      ได้เพียงเป็นข้อมูลเปรียบเทียบ (baseline) เท่านั้น"
+  # Standing next-step items, each pulled from an already-recorded open item in STATUS.md.
+  next_steps:
+    - "รอบให้คะแนน Forward-test ครั้งแรกจะเริ่มได้หลังวันที่ 2026-09-30 (เมื่อผ่าน leakage-guard
+      margin 30 วัน) โดยเดือนพยากรณ์แรกที่จะให้คะแนนคือ 2026-08"
+    - "ตัดสินใจว่าจะใช้รหัสสินค้าใกล้เคียง (analogue) แทนค่าเฉลี่ย Type สำหรับ 66 จาก 82 รายการ
+      Placeholder ที่มีรหัสใกล้เคียงหรือไม่ — ยังไม่ทดสอบว่าให้ผลแม่นยำกว่าจริง เป็นงานของ Modeler
+      ในอนาคต"
+    - "เลือกระดับ Service Level ที่เหมาะสม (90/95/98%) และให้คำนิยาม 'มูลค่าสต็อกตามสถานการณ์'
+      ที่ชัดเจนหนึ่งเดียว (ค่าเฉลี่ยตามการจำลอง เทียบกับค่าคงที่ที่ระดับ Max) ก่อนถือว่าผลลัพธ์
+      Phase E1 ผ่านการตรวจสอบ (validate) อย่างสมบูรณ์"
+    - "ยืนยันนโยบายรีเซ็ตรหัสผ่านฐานข้อมูลเป็นระยะกับฝ่าย IT — เพิ่งเกิดปัญหารหัสผ่านหมดอายุ
+      ระหว่าง Phase E0 ทำให้งานตรวจสอบข้อมูลหยุดชะงักไปหนึ่งรอบ"
+
+# ============================================================
+# Three-tier parameter classification (documented 2026-09-19, Phase G intent -- NOT implemented
+# by anything in this task; no code reads this block, it exists only so the classification is
+# recorded before Phase G builds an on-page scenario UI against it).
+#
+# Tier A -- SCENARIO parameters: safe to expose as on-page, adjustable-without-a-pipeline-run
+#   controls, because they only change which pre-computed scenario a viewer is looking at.
+#   lead time, assembly time, review interval, service level, holding cost rate, obsolescence
+#   threshold, sellable warehouses.
+#
+# Tier B -- STRUCTURAL parameters: editable ONLY in config.yaml, and only take effect after a
+#   full src/run_pipeline.py re-run, because changing them changes what was actually computed,
+#   not just which computed scenario is displayed.
+#   base models, combination method, scope, series key, aggregation level, placeholder rules,
+#   excluded_item_codes / placeholder_item_codes lists, per-item lead time overrides, leakage
+#   guard margin, backtest settings.
+#
+# Tier C -- MEASURED FACTS: never configurable at all, because they are direct measurements from
+#   data, not modelling choices -- exposing them as an editable control would let a viewer
+#   silently overwrite a fact with a guess.
+#   notice period, on-time rate, demand history.
+# ============================================================

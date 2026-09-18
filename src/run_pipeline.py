@@ -112,6 +112,26 @@ STAGES = [
         # the leakage-guard margin -- that is expected, not a pipeline failure.
         "allow_missing_outputs": True,
     },
+    {
+        # Recomputes the standard 7-origin (get_origins(31,6)), forecast-vs-actual-per-origin
+        # data the report's Results-section chart embeds -- must run before build_sales_report,
+        # which reads its output file and fails loudly if it's missing/stale.
+        "label": "build_report_data",
+        "script": "build_report_data.py",
+        "outputs": {
+            "forecast_vs_actual": "report_item_forecast_vs_actual_by_origin.csv",
+        },
+    },
+    {
+        # Final step: render forecast/sales_report.html from config.yaml['report'] text and
+        # every output/summary/*.csv figure this run produced or confirmed present. Runs last
+        # because it reads the outputs of every stage above it (STATUS.md, Phase G task).
+        "label": "build_sales_report",
+        "script": "build_report.py",
+        "outputs": {
+            "sales_report_html": os.path.join("..", "..", "forecast", "sales_report.html"),
+        },
+    },
 ]
 
 
@@ -149,7 +169,9 @@ def run_stage(stage: dict) -> dict:
                 f"but its expected output {abs_path} does not exist -- refusing to report this stage "
                 f"as successful without its output present."
             )
-        row_counts[name] = len(pd.read_csv(abs_path))
+        # Row-counting only means something for a CSV output; the report stage's output is an
+        # HTML file, so record its byte size instead of trying (and failing) to parse it as CSV.
+        row_counts[name] = len(pd.read_csv(abs_path)) if abs_path.endswith(".csv") else os.path.getsize(abs_path)
     return {"label": stage["label"], "script": stage["script"], "duration_s": round(duration_s, 1),
             "row_counts": row_counts, "stdout_tail": result.stdout[-2000:]}
 
