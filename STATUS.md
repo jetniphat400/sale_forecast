@@ -883,6 +883,116 @@ selector. Full detail: `output/summary/phaseE2pilot_report.md`; data
   PEM103/PEM107 should actually be adopted for any real Max-Min policy (acceptance criterion 4
   fails on stock_value for both, same as PEM101 — a business decision, not made here).
 
+**Follow-up: zero-P50 amendment, PEM107 gap root cause, posting-delay measurement —
+2026-09-22.** Resolves the first two "Unresolved" items directly above, and separately measures
+the leakage guard's 30-day margin. Single Validator throughout; one DB connection attempt per
+script, all succeeded; nothing committed/pushed, per instruction.
+
+- **Part 1 — METRICS.md §15 zero-P50 rule, added verbatim; PEM103 re-segmented, VERIFIED (exact
+  match, Modeler + independent Validator).** When a division's P50 annual_value is exactly ฿0
+  (as PEM103's is — 57% of its 87 items had zero trailing-12-month sales), the value criterion is
+  now undefined and not applied; classification falls back to `order_frequency ≥ 6/yr` alone. A
+  second, informational-only P50 is also computed over annual_value>0 items so the reader can see
+  what the value threshold would have been. **PEM103's split changes from all 87
+  `finished_goods_stock` to 14 `finished_goods_stock` / 73 `component_stock_ato`** (informational
+  P50 ฿1,470,200.00). Two items sit exactly at the ±5% frequency cutoff (`TF-F-99-2404223B1`,
+  `TF-F-99-19044211AF1`, both 6.0/yr). **stock_value at the default scenario drops from
+  ฿186.4M/฿187.5M to ฿80.44M/฿80.41M** (Modeler/Validator now agree to within 0.04%, far tighter
+  than the pre-amendment 0.58% gap, since far fewer items now carry a contribution at all).
+  PEM107 reconfirmed unaffected (nonzero P50, structural no-op). Implemented in both
+  `src/phaseE1fix_recompute.py::assign_policy_metrics15` and
+  `src/investigations/phaseE1fix_validator.py::classify_segment` (new optional
+  `zero_p50_rule_used` parameter, default False — PEM101's existing caller unaffected, its P50 is
+  never zero), reused by the E2 pilot Modeler/Validator scripts. Full detail:
+  `output/summary/phaseE1fix2r3_part1_zero_p50_report.md`.
+- **Part 2 — PEM107's 6.34% stock_value gap: traced item-by-item, root cause VERIFIED, NOT a
+  proration convention.** Min matches exactly on every one of the 17 differing items — the gap is
+  entirely in `unit_cost`. 51 of 68 items match exactly; **2 items
+  (`VT-F-99-010820`, `VT-F-99-010722`) account for 97.0% of the gap magnitude**; the remaining 15
+  are small/bidirectional and trace to the already-known `unit_cost_fallback` (<3-row) rule.
+  METRICS.md §1 is explicit ("Omni Channel scope, Actual + MPS status") and not ambiguous — the
+  Modeler's `compute_unit_cost_metrics1` applies this filter literally; the Validator's inherited
+  `phaseE1_common.compute_unit_cost`/`query_sale_cost` applies no filter at all, so
+  non-Omni-Channel rows (`'Total Customer Solution'`, `'Tendering'`, live-verified) leak into the
+  trailing-12-month median for both flagged items. **No METRICS.md wording change needed — the
+  proposed fix is a code fix**, not applied here per instruction: add
+  `WHERE revenue_type = 'Omni Channel' AND status IN ('Actual','MPS')` to
+  `src/phaseE1_common.py::query_sale_cost`'s SQL, matching what the Modeler's function already
+  does. Full detail: `output/summary/phaseE1fix2r3_part2_pem107_trace_report.md`, per-item CSV
+  `output/summary/phaseE1fix2r3_part2_pem107_item_trace.csv`.
+- **Part 3 — leakage guard's 30-day margin: measured attempt, VERDICT no reliable signal exists,
+  first-appearance cannot be reconstructed from `cube_Sale_APD`.** The 30-day margin
+  (`config.yaml`'s `leakage_guard.min_margin_days`, entry above) was set by reasoning from the
+  order-notice distribution, never from a measured posting delay — this task measured it directly.
+  `timeStamp` re-confirmed, a **fourth** independent time (2026-08-30, 2026-09-03/04, now
+  2026-09-21 at full Part-3 scope — createDate ≥ 2024-01-01, all divisions, 51,601 rows), as a
+  full-table-reload artifact: 100% of in-scope rows land in one ~15-minute window on the run date,
+  regardless of the row's own business age — it records when the table was last refreshed, not
+  when a row first appeared, and destroys any historical per-row insert-time signal on every
+  reload. A fresh `INFORMATION_SCHEMA.COLUMNS` check found no new insert/modified/audit-date
+  column (same 8 date columns as the 2026-09-04 catalogue). `createDate`/`PODate` are themselves
+  independently confirmed (cross-validated against `Cube_CES`, entry above) to be genuine
+  business/contract dates, not database-write dates, so no "gap to earliest-written date" can be
+  computed either — no earliest-written date is recorded anywhere in this table. **Proposed
+  (not implemented): a prospective daily snapshot of row counts and max(createDate)/
+  max(forecast_date), starting now, to measure the real gap going forward. The 30-day margin
+  stays unchanged** — reasoned and evidence-grounded from order-notice, but not yet an empirically
+  measured posting delay; `src/leakage_guard.py` and its config value were not touched. Full
+  detail: `output/summary/phaseE2r3_part3_posting_delay_report.md`.
+- **Full test suite: 74 passed** (unchanged — this task amended segmentation logic behind a
+  `zero_p50_rule_used` guard that PEM101's existing tests never trigger, and added one read-only
+  investigation script; no pipeline behavior used by any existing test changed).
+
+**PEM107 unit_cost fix applied; snapshot collection started — 2026-09-22.** Applies the code fix
+proposed (not applied) in the entry above, and starts the prospective posting-delay measurement
+the same entry's Part 3 proposed in place of it. Nothing left unresolved from either.
+
+- **PEM107 residual: RESOLVED, VERIFIED.** `src/phaseE1_common.py::query_sale_cost` now filters
+  `revenue_type = 'Omni Channel' AND status IN ('Actual','MPS')`, matching METRICS.md §1 and
+  `src/phaseE1fix_recompute.py::compute_unit_cost_metrics1`'s existing implementation exactly.
+  Guarded by a new test, `tests/test_phaseE1_common_unit_cost.py` (2 tests, a Tendering-row
+  fixture that must be excluded from the trailing-12-month median) — confirmed to FAIL against the
+  pre-fix code (`len(result)==4` instead of 3, `unit_cost==25.0` instead of 20.0) and PASS against
+  the fix, so the guard is a genuine regression check, not a tautology. Re-ran PEM107 Modeler +
+  independent Validator live: **Modeler ฿50,193,755.92 (unchanged, it already filtered correctly)
+  vs. Validator ฿50,163,250.39 (was ฿53,372,403.45) — residual now 0.0608% (฿30,505.53)**, below
+  the 0.1% ceiling and tighter than PEM101's own 0.09% Modeler/Validator baseline. The remaining
+  residual is the already-known, already-disclosed `unit_cost_fallback` (<3-row-window) threshold
+  difference (1 of 68 PEM107 items falls back on the Validator's side) — the same residual class
+  as PEM101/PEM103, not a new or unexplained gap; not traced further, per METRICS.md's own
+  tolerance precedent. PEM103 unaffected (its residual was already the same fallback class, now
+  0.036%). Re-ran `src/build_inventory_page.py` (full multi-division regeneration) and
+  `tests/test_inventory_parity.py`: **6 of 6 pass** (2 scenarios × 3 divisions, Python/JS parity
+  unaffected — the page draws unit_cost from the Modeler's own output files, which were already
+  correct; this re-run is a confirming regression check, not a behavior change to the page).
+- **Prospective posting-delay measurement: STARTED 2026-09-22.** New script
+  `src/snapshot_daily.py` — single DB connection attempt, project-scope-filtered (same filter as
+  `phaseE1_common.query_order_level`: `revenue_type='Omni Channel'`, `status IN ('Actual','MPS')`,
+  `createDate >= 2024-01-01`) — records run timestamp, total in-scope row count,
+  max(createDate)/max(forecast_date), and per-createDate row counts for the trailing 60 days (one
+  JSON-embedded field, so the file stays one row per run), appended to
+  `output/snapshots/posting_delay.csv` (gitignored, not committed — generated output). Idempotent
+  per calendar day (replaces, does not duplicate, a same-day re-run) — verified directly: ran
+  twice, file stayed at 1 row both times, second run's timestamp overwrote the first's. **First
+  live run succeeded 2026-09-22: 47,114 rows in scope, max createDate 2026-12-01, max forecast_date
+  2027-08-31, 41 distinct createDates observed in the trailing 60 days.** Registered as a Windows
+  Scheduled Task, daily at 06:00, current-user context (no stored password —
+  "Logon Mode: Interactive only", matching the credential-safety requirement: nothing about the
+  task registration writes or stores a password):
+  ```
+  schtasks /create /tn "SaleForecast_PostingDelaySnapshot" /tr "\"C:\Users\jetniphat.boo\AppData\Local\Programs\Python\Python312\python.exe\" \"D:\sale_forecast\src\snapshot_daily.py\"" /sc daily /st 06:00 /f
+  ```
+  **Confirmed existing and working**: `schtasks /query` shows the task registered, Enabled, Daily,
+  06:00; a forced `schtasks /run` completed with **Last Result: 0** (success) — not run against a
+  locked account, nothing removed. Analysis script `src/investigations/posting_delay_analysis.py`
+  added (not yet actionable — only 1 snapshot day exists): reports the days-to-stabilize
+  distribution (median/p90/p95/p99/max) once ≥30 snapshot days exist, and its own docstring states
+  plainly that **the leakage guard's 30-day margin (`config.yaml` `leakage_guard.min_margin_days`,
+  `src/leakage_guard.py` — untouched by this or any part of this task) must not change until ≥60
+  days of snapshots exist and this script's p99 is known from that data.**
+- **Full test suite: 76 passed** (74 + 2 new `test_phaseE1_common_unit_cost.py` tests). Sensitive-
+  content scan (customer/company names, credentials) of every new/changed file: zero matches.
+
 **Phase F — Measure the value**: compare against the team's current method, and estimate what
 would happen with no intervention at all, since on-time delivery has already improved from 57.8%
 to 73.2% with no system in place.
