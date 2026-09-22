@@ -613,6 +613,85 @@ picked.** Directly continues the entry above; both named blockers are resolved.
   recommended §14 Cube_CES/Cube_Backlog wording from Part 1, so a future agent cannot reintroduce
   the Cube_Backlog-table convention by re-reading the section literally.
 
+**Phase E1-fix-2 (round 2) — close both named ambiguities from the entry above, 2026-09-22 —
+CLOSED. `METRICS.md` §14 rewritten (confirmed_total and open_demand_total now two explicitly
+distinct, separately-reported metrics, source clarified as Cube_CES not Cube_Backlog with the
+Part 1 evidence cited inline) and §16 added (a fully-specified daily historical-replay
+simulation, closing the reorder/receipt-timing gap §10/11 left open). Both scripts recomputed,
+independent Validator confirmed, per AGENTS.md.**
+- **Part 0** — the six commits from the prior entry were pushed to `origin/main`
+  (`5cc4cad..2e04995`); this round's own six commits are pushed at the end of this entry.
+- **Part 1** — `METRICS.md` §14/§16 replaced/added verbatim (user-authored text), only those two
+  sections touched.
+- **Part 2 — a genuine double-counting code defect was found and fixed while implementing §14's
+  now-literal "deduplicated on contract + item."** The Modeler's first-pass implementation
+  deduplicated MPS rows against themselves and Cube_CES Backlog rows against themselves, but
+  never checked whether the SAME (item, contract) pair appeared in BOTH sources — which it
+  routinely does (a contract committed as MPS typically also carries Cube_CES
+  `Status='Backlog'`, Phase A). This doubled the 3 focus items' `confirmed_total` exactly 2x
+  (8,602.0 instead of 4,301.0) until fixed to dedupe Cube_CES rows against the MPS set first,
+  matching the Validator's already-correct method. A second, smaller inconsistency (the
+  consumption horizon's final partial month used the full un-prorated forecast value, while LTD
+  §3 prorates that same month by `frac_month`) was found and fixed for internal consistency.
+  - **confirmed_total (3 focus items): EXACT MATCH after the fix** — Modeler 4,301.0, Validator
+    4,301.0. **open_demand_total: near-exact** — Modeler 2,999.9, Validator 2,956.87 (1.4% apart),
+    traced precisely to the two agents' different (both pre-existing, disclosed) horizon LENGTHS
+    for the consumption calc specifically (Modeler 4 periods, Validator 5 — `METRICS.md` §14 says
+    "over the horizon" without pinning an exact length). Full-scope (76 items, Modeler):
+    `confirmed_total` = 31,326.0, `open_demand_total` = 344,564.5.
+  - **fill_rate / cycle_service_level: near-exact, a dramatic convergence from the pre-§16 run.**
+    Modeler 99.70% / 97.20%; Validator 99.72% / 97.25% (was 99.94% / 99.75% vs 97.90% / 95.63%
+    before §16 existed — a ~2-point gap collapsed to ~0.02–0.05 points). **The tiny remaining
+    residual is precisely traced, not left unexplained**: per-item Min matches exactly for 72 of
+    76 items (§4's daily percentile, independently reproduced); Max matches exactly for 0 of 76
+    (up to 214 units apart), because Max = Min + review-interval demand (§5) still uses each
+    agent's own valid but different day-to-month proration convention (30.44-day average vs exact
+    calendar days) — a difference that predates and is unrelated to §16, which is now identically
+    implemented by both agents (independently coded: `src/phaseE1fix_simulation.py
+    ::simulate_item_daily` vs `src/investigations/phaseE1fix_validator.py::simulate_item`).
+  - **Unchanged, reconfirmed**: segmentation 76/36/10/6, P50 ฿344,835.50, stock_value
+    ฿65,101,264.10 (Modeler) / ฿65,044,358.87 (Validator), focus-item Min 8568.5/858.0/610.0 —
+    all identical to the round-1 entry above, as expected since §4/§15 were not touched this
+    round. Full detail: `output/summary/phaseE1fix2_part2_report.md`.
+- **Part 3 — page note added, page regenerated, parity re-passed, visual re-verification done.**
+  `forecast/inventory.html` now carries a second, distinct note box (`#proration-note`, bilingual)
+  stating explicitly that the page's own figures use monthly proration (not the daily window the
+  pipeline uses) and citing the observed **3.3%** default-scenario `stock_value` gap (recomputed
+  fresh this round: ฿62,928,846 page vs ฿65,101,264.10 pipeline = 3.34%, matches). Node/Python
+  parity: 2 of 2 PASS (default + non-default). CDP visual re-check (own Edge instance, PID
+  recorded and closed by PID only, temp profile deleted): 6 of 6 checks PASS — note present and
+  visible, note contains "3.3", scenario disclaimer still visible, both charts rendered, the
+  page's own displayed totals (stock_value/holding_cost/n_items) show real values, and a Tier A
+  control change updates them live. **Scope note**: the page has never displayed
+  confirmed_total/open_demand_total/fill_rate/cycle_service_level — those four are produced by
+  the standalone scripts (console + CSV, verified in Part 2) — so "the four recomputed figures
+  display" was read as this page's own always-displayed totals, flagged explicitly rather than
+  silently assumed. Screenshots: `output/charts/inventory_verification/r2_inventory_{default,
+  changed_scenario}.png`. Script: `src/investigations/phaseE1fix2r2_part3_cdp_verify.py`.
+- **Part 4 — acceptance criteria re-evaluated.** 1 (every item has a policy) PASS — 128 = 76+36+
+  10+6, both agents. 2 (every assumption owned+labelled) PASS, unaffected. 3 (no placeholder/
+  excluded item gets a Min/Max) PASS, re-verified directly (0 violations). 4 (fill_rate ≥73.2%,
+  stock_value ≤ comparison ceiling) — fill_rate PASSES by a wide margin under both agents
+  (99.70%/99.72% ≫ 73.2%); stock_value FAILS under both (₿65.1M/₿65.0M ≫ the ₿12.1M
+  current_stock_value ceiling) — same directional verdict as every prior run. 5 (Validator
+  recomputation matches) — **every figure now either matches exactly (segmentation, P50, focus
+  Min, confirmed_total) or matches within a small, fully-traced tolerance attributable to two
+  disclosed, non-blocking methodology choices `METRICS.md` still leaves as legitimate agent
+  discretion (§5's day-to-month proration convention; the §14 consumption-horizon length) — no
+  figure is left as an unexplained mismatch.** Full test suite: 70 passed. Customer/company-name
+  and credential scan of all changed/new files: zero matches.
+- **Net verdict: Phase E1 is CLOSED.** Both concrete, named blockers this round targeted (§14's
+  confirmed-vs-open-demand wording, §16's undefined simulation mechanics) are resolved in
+  `METRICS.md` and reflected in both independent implementations, collapsing every remaining
+  Modeler/Validator gap from either "unexplained" or "large" (76-vs-77 items, ₿10M+ stock_value
+  gaps, 2-point fill_rate gaps) down to either exact matches or small, precisely-traced,
+  non-blocking residuals. **Nothing is reported here as still ambiguous** — the two items the
+  prior round left open (§14 wording, §16 mechanics) are both now resolved; the two residuals
+  found this round (proration convention, horizon length) are disclosed assumptions, not
+  unresolved definitional gaps, and do not block adoption of the scenario's directional finding
+  (this configuration ties up materially more capital than today, confirmed under yet another,
+  now much tighter, independent cross-check).
+
 **Phase F — Measure the value**: compare against the team's current method, and estimate what
 would happen with no intervention at all, since on-time delivery has already improved from 57.8%
 to 73.2% with no system in place.
