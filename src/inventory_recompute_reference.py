@@ -63,11 +63,11 @@ def compute_item_min_max(item, controls, days_per_month):
             "replenishment": replen}
 
 
-def compute_all(data, controls):
+def compute_all(division_data, controls, days_per_month):
     stock_value = 0.0
     per_item = []
-    for item in data["items"]:
-        r = compute_item_min_max(item, controls, data["days_per_month"])
+    for item in division_data["items"]:
+        r = compute_item_min_max(item, controls, days_per_month)
         in_fg = item["policy"] == "finished_goods_stock"
         contribution = (r["min"] * item["unit_cost"]) if (in_fg and not item["no_unit_cost_item"] and r["min"] is not None) else 0.0
         if in_fg:

@@ -1,8 +1,8 @@
 """Part 4 parity tests: forecast/inventory.html's client-side JS (run for real in Node, not
 re-implemented by hand for the test) must produce Min/Max/stock_value identical (within a tight
 float tolerance) to src/inventory_recompute_reference.py's pure-Python mirror, operating on the
-SAME embedded JSON -- at the default scenario and at one non-default control setting. This is the
-task's explicit "browser calculation in Node vs Python" parity requirement.
+SAME embedded JSON -- at the default scenario and at one non-default control setting, for EACH
+enabled division (PEM101, PEM103, PEM107 -- Phase E2 Part 3, 2026-09-22).
 
 Tolerance: 1e-6 relative (rtol) via math.isclose -- both languages do IEEE-754 double arithmetic
 on the same operations in the same order, so exact-to-many-decimal-places agreement is expected;
@@ -30,6 +30,7 @@ DEFAULT_CONTROLS = {"procurement_lead_time_days": 60, "assembly_time_days": 3,
 NON_DEFAULT_CONTROLS = {"procurement_lead_time_days": 45, "assembly_time_days": 7,
                         "review_interval_days": 14, "cycle_service_level": 0.90,
                         "holding_cost_rate_annual": 0.15}
+DIVISIONS = ["PEM101", "PEM103", "PEM107"]
 
 
 def _load_html():
@@ -51,17 +52,18 @@ def _extract_recompute_js():
     return m.group(0)
 
 
-def _run_js_compute_all(controls: dict, tmp_path) -> dict:
+def _run_js_compute_all(division: str, controls: dict, tmp_path) -> dict:
     """Writes the page's REAL extracted JS (not a hand re-implementation) to a temp file, with the
     document.getElementById(...) DOM read replaced by a literal JSON injection (Node has no DOM),
-    and calls computeAll(controls) via a tiny runner appended at the end."""
+    and calls computeAll(controls, DATA.divisions[division]) via a tiny runner appended at the end."""
     js_block = _extract_recompute_js()
     data = _extract_embedded_data()
     js_block = js_block.replace(
         "const DATA = JSON.parse(document.getElementById('inventory-data').textContent);",
         f"const DATA = {json.dumps(data)};")
-    runner = f"\nconsole.log(JSON.stringify(computeAll({json.dumps(controls)})));\n"
-    js_path = tmp_path / "inventory_recompute_extracted.js"
+    runner = (f"\nconsole.log(JSON.stringify(computeAll({json.dumps(controls)}, "
+              f"DATA.divisions[{json.dumps(division)}])));\n")
+    js_path = tmp_path / f"inventory_recompute_extracted_{division}.js"
     js_path.write_text(js_block + runner, encoding="utf-8")
     result = subprocess.run(["node", str(js_path)], capture_output=True, text=True, timeout=60)
     assert result.returncode == 0, f"Node execution failed:\nSTDOUT: {result.stdout}\nSTDERR: {result.stderr}"
@@ -91,13 +93,15 @@ def embedded_data():
     return _extract_embedded_data()
 
 
-def test_js_matches_python_at_default_scenario(tmp_path, embedded_data):
-    js_result = _run_js_compute_all(DEFAULT_CONTROLS, tmp_path)
-    py_result = python_compute_all(embedded_data, DEFAULT_CONTROLS)
-    _compare(js_result, py_result, "default scenario")
+@pytest.mark.parametrize("division", DIVISIONS)
+def test_js_matches_python_at_default_scenario(division, tmp_path, embedded_data):
+    js_result = _run_js_compute_all(division, DEFAULT_CONTROLS, tmp_path)
+    py_result = python_compute_all(embedded_data["divisions"][division], DEFAULT_CONTROLS, embedded_data["days_per_month"])
+    _compare(js_result, py_result, f"{division} default scenario")
 
 
-def test_js_matches_python_at_non_default_scenario(tmp_path, embedded_data):
-    js_result = _run_js_compute_all(NON_DEFAULT_CONTROLS, tmp_path)
-    py_result = python_compute_all(embedded_data, NON_DEFAULT_CONTROLS)
-    _compare(js_result, py_result, "non-default scenario (45d/7d/14d/90%/15%)")
+@pytest.mark.parametrize("division", DIVISIONS)
+def test_js_matches_python_at_non_default_scenario(division, tmp_path, embedded_data):
+    js_result = _run_js_compute_all(division, NON_DEFAULT_CONTROLS, tmp_path)
+    py_result = python_compute_all(embedded_data["divisions"][division], NON_DEFAULT_CONTROLS, embedded_data["days_per_month"])
+    _compare(js_result, py_result, f"{division} non-default scenario (45d/7d/14d/90%/15%)")

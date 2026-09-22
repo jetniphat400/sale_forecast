@@ -1,9 +1,12 @@
-"""Builds forecast/inventory.html: an interactive Min/Max scenario page for PEM101's 128-item
-pilot, with Tier A controls recomputed client-side in JavaScript from the same embedded raw data
-(actual history + forecast) the Python side (src/phaseE1fix_recompute.py) used -- the JS
-recompute functions mirror METRICS.md's formulas exactly (percentile-based safety stock, day/
+"""Builds forecast/inventory.html: an interactive Min/Max scenario page with a DIVISION SELECTOR
+(PEM101, PEM103, PEM107 -- Phase E2 Part 3, 2026-09-22), Tier A controls recomputed client-side
+in JavaScript from the embedded raw data (actual history + forecast) the Python side used -- the
+JS recompute functions mirror METRICS.md's formulas exactly (percentile-based safety stock, day/
 month prorating at 30.44 days/month) so tests/test_inventory_parity.py can assert Python and JS
-agree, at the default scenario and at one non-default control setting.
+agree, at the default scenario and at one non-default control setting, FOR EACH division.
+
+CI101/PEM102/PEM104 appear in the division selector as disabled options with the reason they are
+excluded (too few stocked items for a confident sellable-warehouse set) -- never silently omitted.
 
 Raises InventoryPageError (naming exactly what is missing) rather than rendering a blank page,
 same fail-loudly convention as src/build_report.py.
@@ -34,10 +37,13 @@ class InventoryPageError(Exception):
 # The client-side recompute engine. Every formula here cites its METRICS.md section, matching
 # src/phaseE1fix_recompute.py exactly -- this is the SAME logic reimplemented in JS, not a
 # separate approximation; tests/test_inventory_parity.py runs this file (via Node) against the
-# same embedded JSON and asserts equality with the Python results.
+# same embedded JSON and asserts equality with the Python results, for EACH division.
 RECOMPUTE_JS = r"""
 const DATA = JSON.parse(document.getElementById('inventory-data').textContent);
 const DAYS_PER_MONTH = DATA.days_per_month;
+let currentDivision = DATA.default_division;
+
+function getDivisionData(division) { return DATA.divisions[division]; }
 
 // METRICS.md Sec.3: LTD = forecast summed over protection_period months, prorated for the
 // partial month.
@@ -76,18 +82,13 @@ function percentile(arr, p) {
 }
 
 // METRICS.md Sec.4 (corrected 2026-09-22): safety_stock = percentile(dist, sl) - LTD, floored at
-// 0 -- NOT percentile - mean(dist) (a confirmed prior code defect; the two differ whenever the
-// forecast (LTD) and the window distribution's own historical mean disagree). Min = LTD +
-// safety_stock. rollingWindowSums only has the embedded MONTHLY actual_history to work from (no
-// daily series is embedded in the page, to keep its size reasonable), so this is METRICS.md
-// Sec.4's explicit monthly-prorated fallback (partial month weighted by frac, the fraction of
-// its days inside the window) -- not the daily-preferred path used server-side in
-// src/phaseE1fix_recompute.py/src/investigations/phaseE1fix_validator.py, which both have access
-// to the full daily raw file. Max = Min + demand over review_interval_days (Sec.5), taken from
-// the SAME forecast array immediately following the protection-period horizon (horizon-invariant
-// per this project's combination models -- Naive/MA/Croston/SBA all produce the same per-step
-// forecast value regardless of how many steps are requested, verified in
-// tests/test_inventory_parity.py).
+// 0 -- NOT percentile - mean(dist). Min = LTD + safety_stock. rollingWindowSums only has the
+// embedded MONTHLY actual_history to work from (no daily series is embedded, to keep page size
+// reasonable), so this is METRICS.md Sec.4's explicit monthly-prorated fallback -- not the
+// daily-preferred path used server-side, which has access to the full daily raw file. Max = Min
+// + demand over review_interval_days (Sec.5), taken from the SAME forecast array immediately
+// following the protection-period horizon (horizon-invariant per this project's combination
+// models, verified in tests/test_inventory_parity.py).
 function computeItemMinMax(item, controls) {
   const protectionDays = controls.procurement_lead_time_days + controls.assembly_time_days + controls.review_interval_days;
   const { ltd, full, frac } = computeLTD(item.forecast, protectionDays);
@@ -119,10 +120,12 @@ function computeItemMinMax(item, controls) {
 // METRICS.md Sec.6/9: stock_value = Sum(Min x unit_cost) over finished_goods_stock items with a
 // usable unit_cost. months_of_cover = on_hand_sellable / mean monthly forecast (protection-period
 // horizon mean, Inf when forecast=0). holding_cost = stock_value x holding_cost_rate_annual.
-function computeAll(controls) {
+// Takes divisionData explicitly (not a module-level DATA.items) so the SAME function serves
+// whichever division is currently selected.
+function computeAll(controls, divisionData) {
   let stockValue = 0;
   const perItem = [];
-  for (const item of DATA.items) {
+  for (const item of divisionData.items) {
     const r = computeItemMinMax(item, controls);
     const inFg = item.policy === 'finished_goods_stock';
     const contribution = (inFg && !item.no_unit_cost_item && r.min !== null) ? r.min * item.unit_cost : 0;
@@ -144,9 +147,13 @@ if (typeof module !== 'undefined') { module.exports = { computeLTD, rollingWindo
 
 def build_page() -> str:
     data = build_data()
-    if not data.get("items"):
-        raise InventoryPageError("build_inventory_page_data.build_data() returned zero items -- "
-                                  "refusing to render a page with no finished_goods_stock/component_stock_ato items.")
+    if not data.get("divisions"):
+        raise InventoryPageError("build_inventory_page_data.build_data() returned zero divisions -- "
+                                  "refusing to render a page with nothing to show.")
+    for div in data["division_order"]:
+        if not data["divisions"].get(div, {}).get("items"):
+            raise InventoryPageError(f"Division {div} has zero embedded items -- refusing to render "
+                                      f"a page with an empty enabled division.")
     data_json = json.dumps(data)
 
     defaults = data["tier_a_defaults"]
@@ -170,16 +177,24 @@ def build_page() -> str:
         slider("holding_cost_rate_annual", "Annual holding cost rate", 0.01),
         slider("obsolescence_threshold_months", "Obsolescence threshold (months)", 1, "mo"),
     ])
-    warehouse_checks = "".join(
-        f'<label class="item-check"><input type="checkbox" class="wh-check" value="{html.escape(w)}" '
-        f'checked onchange="onControlChange()"> {html.escape(w)}</label>'
-        for w in defaults["sellable_warehouse_codes"])
+
+    division_options = "".join(
+        f'<option value="{d}">{d} ({len(data["divisions"][d]["items"])} รายการ)</option>'
+        for d in data["division_order"]
+    ) + "".join(
+        f'<option value="{d}" disabled title="{html.escape(reason)}">{d} — excluded</option>'
+        for d, reason in data["disabled_divisions"].items()
+    )
+    disabled_notes = "".join(
+        f'<li><b>{html.escape(d)}</b> (disabled): {html.escape(reason)}</li>'
+        for d, reason in data["disabled_divisions"].items()
+    )
 
     page = f"""<!DOCTYPE html>
 <html lang="th">
 <head>
 <meta charset="utf-8">
-<title>แผนสต็อค — Inventory Scenario (PEM101)</title>
+<title>แผนสต็อค — Inventory Min/Max Scenario</title>
 <script src="{PLOTLY_CDN_URL}"></script>
 <style>
   :root {{
@@ -201,6 +216,9 @@ def build_page() -> str:
     border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px; }}
   a.back-link {{ color: var(--series-1); text-decoration: none; font-size: 13px; }}
   .plotly-chart {{ width:100%; min-height: 320px; margin: 6px 0 14px; }}
+  .division-panel {{ display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin: 10px 0; }}
+  .division-panel select {{ font-size: 14px; padding: 5px 8px; border-radius: 6px; border:1px solid var(--border); }}
+  ul.disabled-note-list {{ font-size: 12px; color: var(--muted); margin: 4px 0 0; padding-left: 18px; }}
   .ctrl-panel {{ display:grid; grid-template-columns: repeat(2, 1fr); gap: 10px 24px;
     background:#f0efec; border-radius:8px; padding:14px 16px; margin: 10px 0 18px; }}
   .ctrl-row label {{ font-size: 13px; }}
@@ -220,30 +238,36 @@ def build_page() -> str:
 <body>
 <div class="wrap">
   <a class="back-link" href="../index.html">&larr; กลับไปหน้าหลัก (Dashboard)</a>
-  <h1>แผนสต็อค — Inventory Min/Max Scenario (PEM101, {len(data['items'])} รายการ)</h1>
-  <p class="scope-note">ขอบเขตเฉพาะ PEM101 (128-item pilot) เท่านั้น — {html.escape(data['warehouse_scope_note'])}</p>
+  <h1 id="page-title">แผนสต็อค — Inventory Min/Max Scenario</h1>
+  <div class="division-panel">
+    <label for="division-select"><b>Division:</b></label>
+    <select id="division-select" onchange="onDivisionChange()">{division_options}</select>
+  </div>
+  <ul class="disabled-note-list" id="disabled-note-list">{disabled_notes}</ul>
+  <p class="scope-note" id="scope-note"></p>
   <p class="note-box"><b>หมายเหตุสำคัญ:</b> ตัวเลขในหน้านี้เป็น <b>ค่าสถานการณ์ (scenario values) ภายใต้สมมติฐานที่ระบุไว้เท่านั้น
     ไม่ใช่คำแนะนำการสั่งซื้อ (purchase recommendation)</b> — การเปลี่ยนตัวควบคุมด้านล่างเปลี่ยนเฉพาะสิ่งที่แสดงผล ไม่ใช่ตัวแบบพยากรณ์
     (Tier A). การเปลี่ยนแปลงเชิงโครงสร้าง (Tier B, เช่น segment_policy) ต้องแก้ไข <code>config.yaml</code> และรัน pipeline ใหม่.
-    รายการ placeholder/excluded จะไม่มี Min/Max และไม่มีปริมาณสั่งซื้อ (purchase quantity) ใดๆ ทั้งสิ้น.</p>
+    รายการ placeholder/excluded จะไม่มี Min/Max และไม่มีปริมาณสั่งซื้อ (purchase quantity) ใดๆ ทั้งสิ้น.
+    <b>Sellable-warehouse list ของทุก division (รวม PEM101) เป็นสมมติฐานทางธุรกิจ ไม่ใช่ข้อเท็จจริงที่ยืนยันจากข้อมูล
+    — ไม่มีฟิลด์ warehouse บนแถวยอดขายเลย จึงตรวจสอบทิศทางย้อนกลับไม่ได้ (STATUS.md, Phase E2 Part 1).</b></p>
   <p class="note-box" id="proration-note"><b>หมายเหตุวิธีคำนวณ (methodology note):</b> ตัวเลขบนหน้านี้คำนวณจากข้อมูลย้อนหลัง
     <b>รายเดือน</b> ที่ฝังไว้ในหน้านี้ (monthly proration, METRICS.md Sec.4's explicit fallback) ไม่ใช่หน้าต่างข้อมูล
-    <b>รายวัน</b> (daily window) ที่ใช้ใน pipeline ฝั่งเซิร์ฟเวอร์ (<code>src/phaseE1fix_recompute.py</code>) — ที่ scenario ค่าเริ่มต้น
-    ตัวเลข stock_value บนหน้านี้ต่างจากตัวเลขจาก pipeline ประมาณ <b>3.3%</b> (สังเกตได้จากการรันจริง, ไม่ใช่ค่าประมาณการ).
+    <b>รายวัน</b> (daily window) ที่ใช้ใน pipeline ฝั่งเซิร์ฟเวอร์ — ที่ scenario ค่าเริ่มต้น ตัวเลข stock_value บนหน้านี้ต่างจากตัวเลขจาก
+    pipeline ประมาณ <b>3.3%</b> สำหรับ PEM101 (สังเกตได้จากการรันจริง; PEM103/PEM107 ยังไม่ได้วัดค่านี้แยกต่างหาก).
     On this page, figures use <b>monthly proration</b> (METRICS.md Sec.4's documented fallback, since only monthly
     history is embedded here to keep page size reasonable) — NOT the <b>daily rolling window</b> the server-side
-    pipeline uses. At the default scenario this page's stock_value differs from the pipeline's by roughly
-    <b>3.3%</b> (an observed figure from an actual run, not an estimate).</p>
+    pipeline uses.</p>
 
-  <h2>Tier A — ตัวควบคุมสถานการณ์ (ปรับได้บนหน้านี้)</h2>
+  <h2>Tier A — ตัวควบคุมสถานการณ์ (ปรับได้บนหน้านี้, ใช้ร่วมกันทุก division)</h2>
   <!-- source: config.yaml phase_e1_assumptions (defaults), segment_policy (Tier B, not editable here) -->
   <div class="ctrl-panel">
     {controls_html}
   </div>
-  <p>คลังสินค้าที่นับเป็น sellable (default: FG01/FG21/WH21):</p>
-  <div class="item-check-list">{warehouse_checks}</div>
+  <p>คลังสินค้าที่นับเป็น sellable สำหรับ division ที่เลือก (เปลี่ยนตาม division):</p>
+  <div class="item-check-list" id="warehouse-checklist"></div>
 
-  <h2>ผลรวม (Totals) — คำนวณใหม่ทุกครั้งที่เปลี่ยนตัวควบคุม</h2>
+  <h2>ผลรวม (Totals) — คำนวณใหม่ทุกครั้งที่เปลี่ยนตัวควบคุมหรือ division</h2>
   <div class="totals-box">
     <div class="stat">Stock value (Σ Min×unit_cost)<b id="tot-stock-value">-</b></div>
     <div class="stat">Holding cost (annual)<b id="tot-holding-cost">-</b></div>
@@ -251,7 +275,7 @@ def build_page() -> str:
   </div>
 
   <h2>Trade-off: Stock value vs. Cycle Service Level</h2>
-  <p class="hint">เส้นแสดง stock_value ที่ระดับ service level ต่างๆ (ค่าควบคุมอื่นคงที่ตามที่ตั้งไว้ด้านบน)</p>
+  <p class="hint">เส้นแสดง stock_value ที่ระดับ service level ต่างๆ (ค่าควบคุมอื่นคงที่ตามที่ตั้งไว้ด้านบน) สำหรับ division ที่เลือก</p>
   <div id="chart-tradeoff" class="plotly-chart"></div>
 
   <h2>Min เทียบกับค่าปัจจุบัน (current_min_max) — รายรายการ</h2>
@@ -270,13 +294,12 @@ def build_page() -> str:
   </table>
 
   <h2>Placeholder / Excluded รายการ (ไม่มี Min/Max)</h2>
-  <p class="hint">รายการเหล่านี้ไม่ได้รับ Min, Max หรือปริมาณสั่งซื้อใดๆ (placeholder_hierarchy_treatment)</p>
+  <p class="hint">รายการเหล่านี้ไม่ได้รับ Min, Max หรือปริมาณสั่งซื้อใดๆ (placeholder_hierarchy_treatment) — ถ้าไม่มี แปลว่า division
+    นี้ไม่มีแนวคิด placeholder/excluded (PEM103/PEM107)</p>
   <table class="report-table"><thead><tr><th>Item</th><th>Type</th><th>Policy</th></tr></thead>
-  <tbody>
-    {''.join(f"<tr><td>{html.escape(it['code'])}</td><td>{html.escape(str(it['type']))}</td><td>{html.escape(it['policy'])}</td></tr>" for it in data['no_policy_items'])}
-  </tbody></table>
+  <tbody id="no-policy-table-body"></tbody></table>
 
-  <p class="scope-note">Snapshot pull date (frozen forecast series): {html.escape(str(data['snapshot_pull_date']))}</p>
+  <p class="scope-note" id="snapshot-note"></p>
 </div>
 
 <script type="application/json" id="inventory-data">{data_json}</script>
@@ -311,6 +334,27 @@ function renderTable(perItem) {{
   }}
 }}
 
+function renderNoPolicyTable(divisionData) {{
+  const tbody = document.getElementById('no-policy-table-body');
+  tbody.innerHTML = '';
+  for (const it of (divisionData.no_policy_items || [])) {{
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${{it.code}}</td><td>${{it.type}}</td><td>${{it.policy}}</td>`;
+    tbody.appendChild(tr);
+  }}
+}}
+
+function renderWarehouseChecklist(divisionData) {{
+  const el = document.getElementById('warehouse-checklist');
+  el.innerHTML = '';
+  for (const w of divisionData.sellable_warehouse_codes) {{
+    const label = document.createElement('label');
+    label.className = 'item-check';
+    label.innerHTML = `<input type="checkbox" class="wh-check" value="${{w}}" checked onchange="onControlChange()"> ${{w}}`;
+    el.appendChild(label);
+  }}
+}}
+
 let sortDir = {{}};
 function sortTable(col) {{
   const tbody = document.getElementById('item-table-body');
@@ -327,10 +371,10 @@ function sortTable(col) {{
   rows.forEach(r => tbody.appendChild(r));
 }}
 
-function renderTradeoff(controls) {{
+function renderTradeoff(controls, divisionData) {{
   const slValues = [];
   for (let s = 0.80; s <= 0.991; s += 0.02) slValues.push(Math.round(s * 100) / 100);
-  const values = slValues.map(sl => computeAll({{...controls, cycle_service_level: sl}}).stockValue);
+  const values = slValues.map(sl => computeAll({{...controls, cycle_service_level: sl}}, divisionData).stockValue);
   Plotly.newPlot('chart-tradeoff', [{{ x: slValues, y: values, mode: 'lines+markers', line: {{color: '#2a78d6'}} }}],
     {{ margin: {{t:10}}, xaxis: {{title: 'Cycle service level'}}, yaxis: {{title: 'Stock value (THB)'}} }},
     {{responsive: true}});
@@ -344,6 +388,17 @@ function renderMinVsCurrent(perItem) {{
   ], {{ margin: {{t:10}}, barmode: 'group', xaxis: {{tickangle: -60, tickfont:{{size:8}}}} }}, {{responsive: true}});
 }}
 
+function onDivisionChange() {{
+  currentDivision = document.getElementById('division-select').value;
+  const divisionData = getDivisionData(currentDivision);
+  document.getElementById('page-title').textContent = 'แผนสต็อค — Inventory Min/Max Scenario (' + currentDivision + ', ' + divisionData.n_items_label + ')';
+  document.getElementById('scope-note').textContent = divisionData.warehouse_scope_note;
+  document.getElementById('snapshot-note').textContent = 'Snapshot pull date: ' + divisionData.snapshot_pull_date;
+  renderWarehouseChecklist(divisionData);
+  renderNoPolicyTable(divisionData);
+  onControlChange();
+}}
+
 function onControlChange() {{
   const controls = readControls();
   document.getElementById('val-procurement_lead_time_days').textContent = controls.procurement_lead_time_days + 'd';
@@ -353,16 +408,18 @@ function onControlChange() {{
   document.getElementById('val-holding_cost_rate_annual').textContent = controls.holding_cost_rate_annual.toFixed(2);
   document.getElementById('val-obsolescence_threshold_months').textContent = controls.obsolescence_threshold_months + 'mo';
 
-  const result = computeAll(controls);
+  const divisionData = getDivisionData(currentDivision);
+  const result = computeAll(controls, divisionData);
   document.getElementById('tot-stock-value').textContent = fmtTHB(result.stockValue);
   document.getElementById('tot-holding-cost').textContent = fmtTHB(result.holdingCost);
   document.getElementById('tot-n-items').textContent = result.perItem.filter(r => r.policy === 'finished_goods_stock' && r.min !== null).length;
   renderTable(result.perItem);
-  renderTradeoff(controls);
+  renderTradeoff(controls, divisionData);
   renderMinVsCurrent(result.perItem);
 }}
 
-onControlChange();
+document.getElementById('division-select').value = DATA.default_division;
+onDivisionChange();
 </script>
 </body>
 </html>
