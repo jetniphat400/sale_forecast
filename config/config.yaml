@@ -834,11 +834,15 @@ phase_e1_assumptions:
   replenishment_qty_owner: "Modeler default -- STATUS.md Section 8.3 confirms no MOQ/lot-size data exists to use instead"
 
   # --- Safety stock convention: safety stock = (chosen percentile of the empirical protection-
-  # period demand distribution) MINUS (the mean of that same distribution) -- i.e. the ADDITIONAL
-  # buffer above the expected value, not the raw percentile value itself. Min = mean + safety
-  # stock, which is algebraically identical to Min = the percentile value directly; stated both
-  # ways here, and used consistently as such in every script, to avoid ambiguity.
-  safety_stock_convention: "percentile_value_minus_distribution_mean"
+  # period demand distribution) MINUS LTD (the forecast-based point estimate, METRICS.md sec.3)
+  # -- METRICS.md sec.4's literal formula. CORRECTED 2026-09-22 (Phase E1-fix-2, Part 2): this
+  # entry previously read "percentile_value_minus_distribution_mean" and claimed that was
+  # "algebraically identical" to percentile-minus-LTD -- it is NOT. The two differ whenever the
+  # forecast (LTD) and the empirical distribution's own historical mean disagree, which is a
+  # confirmed code defect this correction fixes, not a modelling choice (see STATUS.md, Phase
+  # E1-fix Part 2, and src/phaseE1fix_recompute.py's compute_safety_stock()). Min = LTD + safety
+  # stock, i.e. Min = the percentile value directly only when LTD == distribution mean.
+  safety_stock_convention: "percentile_value_minus_LTD"
 
   # --- Sellable warehouse codes: sellability was NEVER confirmed by any field in this database
   # (Phase D headline: 0.00% confirmed sellable, 99.90% undetermined -- no sellability/status/stage
@@ -866,6 +870,14 @@ phase_e1_assumptions:
   # than one full replenishment cycle," not a derived or business-confirmed value.
   obsolescence_threshold_months: 6
   obsolescence_threshold_owner: "Modeler default -- no business figure exists"
+
+  # --- Annual holding cost rate (E1-fix, forecast/inventory.html Tier A control). STATUS.md
+  # records a 15-25% industry-standard figure but flags it explicitly as an UNVERIFIED assumption,
+  # never sourced or used in a calculation (CONVENTIONS.md's unsourced-figure rule). 0.20 (the
+  # midpoint of that unverified range) is used here as the Modeler default -- it is not a business
+  # figure and not derived from this project's own data; holding_cost = stock_value x this rate.
+  holding_cost_rate_annual: 0.20
+  holding_cost_rate_annual_owner: "Modeler default -- STATUS.md's 15-25% figure is itself an unverified, unsourced industry-standard claim, not a business-confirmed rate for this company"
 
   # --- Historical simulation (E1.4) assumptions. No historical stock-movement/transaction-level
   # time series exists in this database (confirmed absent, Phase D / inventory investigations) --
@@ -978,3 +990,44 @@ report:
 #   silently overwrite a fact with a guess.
 #   notice period, on-time rate, demand history.
 # ============================================================
+# UPDATE (E1-fix, 2026-09-21): Tier A is no longer intent-only for holding_cost_rate,
+# sellable_warehouse_codes, and the scenario grid above -- forecast/inventory.html now implements
+# live on-page Tier A controls for these. segment_policy below is Tier B (a pipeline re-run is
+# required to change it), per its own comment.
+
+# ============================================================
+# Segment policy thresholds (locked 2026-09-21, E1-fix, METRICS.md Sec.15) -- TIER B: this is a
+# STRUCTURAL classification rule, not an on-page scenario control; changing it requires editing
+# this block and re-running src/phaseE1fix_recompute.py (and, eventually, the pipeline), not a
+# page slider. METRICS.md Sec.15, applied literally and inclusively (>=) on both clauses:
+#   finished_goods_stock : annual_value_thb >= p50_annual_value_thb  OR  order_freq_per_year >= 6
+#   component_stock_ato  : otherwise, AND assembly_time_days <= median_notice_days_used
+#   make_to_order         : never (notice never exceeds procurement, confirmed live -- see
+#                            phaseE1fix_1_item_policy.csv)
+#   placeholder / excluded : per each item's config['placeholder_item_codes'] /
+#                            config['excluded_item_codes'] status
+# This directly resolves the original Phase E1's 66-vs-68 item discrepancy: the two prior scripts
+# used a median split with opposite tie-break directions (Modeler: <=, Validator: <) on BOTH
+# annual value AND frequency; METRICS.md Sec.15 replaces that with a single literal rule (>= on
+# each clause, independently, OR'd together, with an ABSOLUTE 6/year frequency cutoff instead of a
+# second median split). Population used for "P50 of division": the 112 eligible_for_policy items
+# in this PEM101 128-item pilot scope -- this pilot has no other population to choose among, so
+# this reading is not left ambiguous. Recomputed live 2026-09-21 (see
+# output/summary/phaseE1fix_1_item_policy.csv, phaseE1fix_1_threshold_sensitivity.csv for every
+# item's value/frequency and how far from either threshold it sits).
+segment_policy:
+  # CORRECTED 2026-09-22 (Phase E1-fix-2, Part 3): annual_value_thb and order_freq_per_year are
+  # now computed over the trailing 12 months ending at the data cutoff (METRICS.md Sec.15,
+  # corrected text), not the full 31-month window this p50 was previously annualized over -- the
+  # p50 threshold moved from 414419.83 to 344835.50 as a direct result. Recomputed independently
+  # by both the Modeler (src/phaseE1fix_recompute.py) and the Validator
+  # (src/investigations/phaseE1fix_validator.py): EXACT match, 76/36/10/6.
+  p50_annual_value_thb: 344835.50
+  order_freq_cutoff_per_year: 6.0
+  median_notice_days_used: 6.00
+  owner: "Modeler, applying METRICS.md Sec.15 literally -- the RULE is METRICS.md's (human-authored), the computed threshold VALUES are a direct recomputation from live data, not a Modeler judgment call"
+  evidence_csv: "output/summary/phaseE1fix_1_item_policy.csv"
+  sensitivity_csv: "output/summary/phaseE1fix_1_threshold_sensitivity.csv"
+  generated_by_script: "src/phaseE1fix_recompute.py"
+  result_counts: {finished_goods_stock: 76, component_stock_ato: 36, placeholder: 10, excluded: 6}
+

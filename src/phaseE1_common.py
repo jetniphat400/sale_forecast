@@ -337,7 +337,7 @@ def query_order_level(item_codes: list, config: dict) -> pd.DataFrame:
     statuses = "','".join(config["status_basis"])
     start_date = config["date_range"]["start"]
     sql = f"""
-        SELECT itemcode, createDate, forecast_date, qty, status
+        SELECT itemcode, contractid, createDate, forecast_date, qty, status
         FROM {SALE_TABLE}
         WHERE itemcode IN ('{code_list}')
           AND revenue_type = '{config["revenue_type"]}'
