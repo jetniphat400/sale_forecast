@@ -409,6 +409,210 @@ the five `phaseE1_{1..5}_*.md` sub-reports, and `output/summary/phaseE1_validato
   The 90%-service-level alternative and the stock-value-definition question are the two most
   actionable next steps, both business/Orchestrator decisions, neither made here.
 
+**Phase E1-fix — recompute under `METRICS.md`, single Modeler + independent Validator (per
+AGENTS.md), 2026-09-21 — NOT fully validated; two root causes found, one is a genuine METRICS.md
+ambiguity, one is a confirmed code defect.** `METRICS.md` (new, 2026-09-19) was written as this
+project's single source of truth for every metric formula, specifically to close the definitional
+gaps (`stock_value`, the 66-vs-68 item segmentation) the original Phase E1 left open. This task
+applied it. Full detail: `src/phaseE1fix_recompute.py` (Modeler), `output/summary/
+phaseE1fix_validator_report.md` (Validator, independent, read none of the Modeler's files).
+- **Part 0 — `METRICS.md` §14's confirmed-demand source, resolved by both agents independently,
+  same direction, different magnitudes.** `Cube_Backlog` and `Cube_CES` (`Status='Backlog'`) are
+  **not the same population** for PEM101 items (Modeler: 94-95% item overlap, qty differs 1.5%;
+  Validator: 93.1% pair-level match, 3 items only in `Cube_Backlog`). Both agents independently
+  chose **`Cube_CES`**, since §14 names it literally — this is a genuine convergent finding, not
+  a coincidence. `METRICS.md` itself was **not edited** (per the task's own instruction) — this
+  finding is reported for the human to fix the wording by hand if `Cube_Backlog` was actually
+  intended.
+- **Part 1 — segmentation, 76 (Validator) vs. 77 (Modeler) finished_goods_stock items — a
+  near-exact, well-explained match, not a fresh instance of the original bug.** Both agents
+  independently computed the SAME P50 annual value (**฿414,419.83**, exact match — strong
+  confirmation the underlying annual-value methodology is now consistent). The single item of
+  disagreement, `EEE-F-FC-5920-383-1000`, sits 2.01% below the 6/year frequency cutoff — traced to
+  a plausible order-frequency-annualization span-end-date difference (a live "today" vs. a fixed
+  reference date), not the old tie-break bug (confirmed fixed: `METRICS.md` §15's literal `≥`
+  sidesteps the old `<=`-vs-`<` divergence entirely). Recorded in `config['segment_policy']`.
+- **Part 2 — recomputation, MISMATCH on every item-level headline figure, root-caused to two
+  distinct issues, not resolved by picking one agent's number (per the task's own rule: "a
+  mismatch stops the task").**
+  1. **A genuine, unresolved `METRICS.md` ambiguity (§3/§4): does the `ltd_distribution` rolling
+     window use the SAME prorated (fractional-month) length as `LTD`, or round up to a whole
+     number of months?** The Modeler applied the prorated length (~3.055 months, consistently, to
+     both LTD and the distribution). The Validator prorated `LTD` by exact calendar days but used
+     a **ceiling-rounded 4-month window** for `ltd_distribution` specifically (`ceil(93/30.44)=4`)
+     — a shorter LTD point estimate paired with a longer empirical-percentile window. Neither
+     agent's code is wrong relative to what `METRICS.md`'s text actually says, because the text
+     does not say which. **This clause needs a human decision before Min/Max/stock_value/
+     consumption can be called settled.**
+  2. **A confirmed code defect, not an ambiguity: the Modeler's `safety_stock` implementation
+     does not match its own cited formula.** `src/phaseE1fix_recompute.py`'s docstring states
+     `safety_stock = percentile(ltd_distribution, sl) − LTD` (METRICS.md §4's literal text,
+     correctly cited) but the actual code (line ~255) computes `percentile − cum.mean()` — the
+     empirical distribution's OWN mean, not `LTD` (the forecast-based point estimate from §3).
+     These are not the same quantity whenever the forecast and the historical average disagree.
+     The Validator's implementation (`percentile − LTD`, matching §4 literally) is the one that
+     actually follows `METRICS.md` as written — **this is not left as "ambiguous, don't pick
+     one": the Modeler's code should be corrected to match METRICS.md before re-comparison.**
+  - **Resulting figures, both reported, NEITHER treated as settled**: `stock_value` ฿72,138,975.38
+    (Modeler) vs. ฿82,026,651.31 (Validator); focus-item Min `EEE-F-FC-1040010002` 9,993.27 vs.
+    10,788.20, `HS-F-99-02110` 867.13 vs. 917.50, `HS-F-99-0213` 835.00 vs. 763.75 (mixed
+    direction — consistent with two compounding, not one directional, causes); consumption total
+    (3 focus items) 4,243.0 vs. 2,956.87; `fill_rate` 99.93% vs. 99.87%; `cycle_service_level`
+    99.75% vs. 98.98%.
+  - **What IS robust despite the mismatch**: acceptance criterion 4's verdict does not change
+    under either agent's numbers — `fill_rate` clears 73.2% by a wide margin either way;
+    `stock_value` fails the comparison ceiling by a wide margin either way (both ฿72.1M and
+    ฿82.0M exceed both the same-scope `current_stock_value` figure and the previously-cited
+    ฿37.4M full-445-item figure). The directional finding from the original Phase E1 — this
+    scenario ties up materially more capital than today — **stands confirmed under a second,
+    independent implementation**, even though the exact magnitude is not yet settled.
+  - Cross-check counts (Modeler / Validator): `unit_cost_fallback` 24/7 (eligible-112 scope
+    differs — not reconciled further, secondary to the two root causes above); `no_unit_cost_items`
+    15/0 (FG-76-set) — flagged, not resolved; `MASE_undefined` 0/16 — the Validator's 16 is exactly
+    the 6 excluded + 10 placeholder items (a scope-definition difference in what population MASE
+    was averaged over, not a calculation disagreement); `unreliable` §4 percentiles 12/0 (FG-set) —
+    also not reconciled, likely downstream of the same window-length ambiguity.
+- **Acceptance criteria re-evaluated**: 1 (every item has a policy) — **PASS**, both agree
+  (128 = FG + ATO + placeholder + excluded, counts differ only by the 1 boundary item). 2 (every
+  assumption in config with owner+label) — **PASS**. 3 (no placeholder/excluded item gets a
+  Min/Max) — **PASS**, verified by both. 4 (fill_rate ≥73.2%, stock_value ≤ comparison ceiling) —
+  **fill_rate PASSES, stock_value FAILS, both robust to the unresolved ambiguity** (see above).
+  5 (Validator recomputation matches) — **FAILS as literally asked**: item-level figures do not
+  match; per the task's own rule, this is reported, not papered over, and the root causes are
+  named precisely enough to be fixed rather than re-guessed.
+- **Part 3 (inventory page) — built.** `forecast/inventory.html` (`src/build_inventory_page.py` +
+  `_data.py`), 112 items embedded (77 FG + 35 ATO per the Modeler's own segmentation — will shift
+  by ≤1 item once Part 1's boundary case is settled), 16 no-policy items in a separate list, 6
+  Tier A controls (lead/assembly/review/service-level/holding-cost-rate/obsolescence-threshold +
+  a sellable-warehouse checklist), 3 charts (stock_value-vs-service-level trade-off, Min-vs-current,
+  sortable value-at-risk table), Thai scenario/non-recommendation disclaimer present. New
+  assumption added: `holding_cost_rate_annual: 0.20` (midpoint of the already-flagged-unverified
+  15-25% figure — Modeler default, not sourced).
+- **Part 4 (Node/Python parity) — 2 of 2 passed, but this validates internal consistency of the
+  Modeler's OWN code, not cross-agent correctness** — the page's JS and `src/phaseE1fix_recompute.py`
+  agree with each other because both implement the SAME (currently-buggy) `safety_stock` formula;
+  this test will need to be re-run once the code defect above is fixed.
+- **Part 5 (mandatory visual verification) — NOT DONE.** Chrome extension was not connected when
+  checked (both by the Modeler and independently by the Orchestrator, twice). No screenshots exist;
+  `output/charts/inventory_verification/` was never created. **This remains an open requirement**,
+  not silently waived.
+- **Part 6**: dashboard "Inventory — แผนสต็อค" row now carries an additional `oplink`-styled
+  sub-link to `forecast/inventory.html` (`stopPropagation()`-guarded so the row's existing
+  click-to-open-panel behaviour is untouched) — reported, not silently overridden. Full test
+  suite: 67 passed (65 + the 2 new parity tests, which per the note above need re-running after
+  the code fix). PII scan of `forecast/inventory.html`: zero matches.
+- **Net verdict: this task is NOT closed.** Two concrete, named follow-ups block full validation:
+  (1) a human decision on `METRICS.md` §3/§4's `ltd_distribution` window-length wording (and
+  optionally §14's Cube_CES/Cube_Backlog wording, per Part 0); (2) fixing
+  `src/phaseE1fix_recompute.py`'s `safety_stock` line to match `METRICS.md` §4 literally, then
+  re-running both the Node/Python parity tests and the Modeler-vs-Validator comparison. Separately,
+  Part 5's mandatory browser verification still needs a working Chrome connection.
+
+**Phase E1-fix-2 — close the two named follow-ups, 2026-09-22 — CLOSED for the items in scope;
+two new, smaller, precisely-named ambiguities surface and are left for a human decision, not
+picked.** Directly continues the entry above; both named blockers are resolved.
+- **Part 0 — `METRICS.md` §4 and §15 rewritten to remove the two ambiguities by hand** (user-
+  authored replacement text, applied verbatim, only those two sections touched). §4 now requires
+  the `ltd_distribution` window to be measured in exact DAYS, on the DAILY series when available,
+  never rounded to whole months (monthly-bucket proration only as an explicit, reported fallback).
+  §15 now fixes `annual_value`/`order_frequency` to the SAME trailing-12-month window ending at
+  the data cutoff (not an item's own active span, not a calendar year).
+- **Part 1 — Cube_Backlog vs Cube_CES(Status='Backlog'), PEM101 128-item scope, full pair-level
+  diff — Cube_CES confirmed as the correct source, evidence strengthened beyond the prior
+  aggregate-only check.** 273 of 273 Cube_CES(Backlog) pairs (100%) are corroborated in
+  Cube_Backlog; the 8 pairs Cube_Backlog has that Cube_CES lacks are ALL independently confirmed
+  `Status='Actual'` (already delivered) in Cube_CES's more current refresh (Cube_Backlog's
+  snapshot lagged Cube_CES's by ~13.6 hours at check time) — using Cube_Backlog would have
+  over-counted open demand by 421 units (0.9% of scope qty) at this snapshot. Full detail and
+  recommended `METRICS.md` §14 wording (not applied, per the task's own instruction):
+  `output/summary/phaseE1fix2_part1_report.md`.
+- **Part 2 — `safety_stock` code defect fixed in all THREE places it existed**, not just the one
+  named: `src/phaseE1fix_recompute.py` (Modeler), `src/investigations/phaseE1fix_validator.py`
+  (Validator — was ALSO wrong, in a different way: `ceil(protection_period_days/30.44)`,
+  explicitly forbidden by the corrected §4), and `src/inventory_recompute_reference.py` +
+  `src/build_inventory_page.py`'s embedded JS (the interactive page's own client-side recompute
+  engine carried the identical `percentile - mean` bug). A true DAILY rolling window (one day at
+  a time) is now built server-side from the existing frozen raw snapshot
+  (`output/data/raw_full_category_sales.csv`, unchanged, never a live pull) by two independently
+  written loaders — `phaseE1fix_recompute.load_daily_series` and
+  `phaseE1fix_validator.load_daily_history` — covering all 112 items with history (0 fell back to
+  monthly proration). The page's own JS still uses the monthly-prorated fallback deliberately
+  (only monthly `actual_history` is embedded, to keep page size reasonable) — flagged explicitly
+  in its own comments, not silently narrower than the server-side computation. New regression
+  test: `tests/test_phaseE1fix_safety_stock.py` (3 tests, fail under the old `percentile - mean`
+  formula, pass under the corrected `percentile - LTD` one). `config['phase_e1_assumptions']
+  .safety_stock_convention` corrected from the wrong `"percentile_value_minus_distribution_mean"`
+  (previously documented as "algebraically identical" to the correct formula — it is not) to
+  `"percentile_value_minus_LTD"`.
+- **§15's trailing-12-month fix ALSO required code changes** (found while re-running Part 3, not
+  originally scoped to Part 2): both the Modeler's `build_item_facts` and the Validator's
+  `compute_annual_value`/`compute_order_frequency` still annualized over the FULL 31-month window
+  (Modeler) or a live, ever-growing span from `date_range.start` to `today` (Validator) — neither
+  matches corrected §15's literal "trailing 12 months ending at the data cutoff" wording, and
+  this exact pair of behaviours is what the corrected §15 text's own resolution note names as the
+  76-vs-77 root cause. Both fixed to the identical trailing-12-month window (2025-08 to 2026-07,
+  derived from the frozen series' own last month, not hardcoded). `config['segment_policy']`
+  updated (`p50_annual_value_thb`: 414,419.83 → 344,835.50; `result_counts`: 76/36/10/6).
+- **Part 3 — Modeler-vs-Validator recompute: segmentation, P50, and all 3 focus-item Mins now
+  match EXACTLY** (previously 76-vs-77 items, ฿72.1M-vs-฿82.0M stock_value).
+  `stock_value` near-exact (Modeler ฿65,101,264.10 vs Validator ฿65,044,358.87, 0.09% apart,
+  plausibly explained by each agent's own independent `unit_cost` median-window implementation,
+  not re-traced item-by-item). Items within ±5% of a §15 threshold (both agents, exact match):
+  `HS-F-99-0331`, `HS-F-99-1091` (both exactly at the 6/year frequency cutoff).
+  **Two figures still differ, each traced to a specific, named, non-bug cause, not silently
+  resolved:** (a) `fill_rate`/`cycle_service_level` (Modeler 99.94%/99.75% vs Validator
+  97.90%/95.63%) — both scripts' own docstrings already say `METRICS.md` §10/11 define the
+  formulas but not the historical-replay reorder-policy mechanics feeding them, and the two
+  agents used genuinely different, both-reasonable policies (Min-triggered reorder vs periodic
+  order-up-to-Max with different stockout-month accounting); (b) "consumption total" (Modeler
+  4,371.0 units = `Σ confirmed`; Validator 2,956.87 units = `Σ open_demand`) — traced to a genuine
+  `METRICS.md` §14 wording gap: the section is titled `forecast_consumption` (suggesting `Σ
+  confirmed`, the amount "consumed") but its only formula produces `open_demand` (the
+  complementary, NOT-yet-confirmed remainder); §14 never names which one "consumption total"
+  means. Underlying per-item-month `raw_forecast` figures matched exactly between agents; a small
+  (≤70-unit) secondary drift in `confirmed` for the current month was traced to the two scripts'
+  live Cube_CES pulls using different "overdue" reference dates (frozen `snapshot_pull_date` vs a
+  near-live `TODAY` constant) against a table that itself refreshes daily (Part 1's finding).
+  Acceptance criteria: 1/2/3 PASS (unchanged); 4 fill_rate PASSES / stock_value FAILS under both
+  agents (same directional verdict as before, now on near-exact figures); 5 (Validator match) —
+  segmentation/P50/focus-Min/stock_value now match or near-match, fill_rate and consumption total
+  still differ for the two named, non-bug reasons above. Full detail:
+  `output/summary/phaseE1fix2_part3_report.md`.
+- **Part 4 — inventory.html data rebuilt, Node/Python parity 2 of 2 PASS** at the default scenario
+  and one non-default setting (45d/7d/14d/90%/15%), now validating the CORRECTED formula (both
+  `src/build_inventory_page.py`'s JS and `src/inventory_recompute_reference.py` were fixed
+  together, per Part 2). Disclosed, not silently hidden: the interactive page's OWN stock_value
+  at the default scenario (฿62,928,846, monthly-prorated-fallback method) differs from the
+  server-side Modeler headline (฿65,101,264.10, true-daily method) by ~3.3% — an expected,
+  documented consequence of the page only embedding monthly history (daily would materially grow
+  page size), not a defect; both are internally consistent with `METRICS.md` §4's own explicit
+  fallback allowance.
+- **Part 5 — mandatory visual verification DONE** (previously blocked on "Chrome extension not
+  connected"; resolved here via a from-scratch raw-CDP script, not the extension). Own Edge
+  instance launched (`--remote-debugging-port=9222`, `--user-data-dir` under the system temp
+  folder, `--headless=new`), PID recorded and confirmed closed by PID only afterward (never by
+  image name — verified live: the user's own pre-existing `msedge.exe` processes were confirmed
+  still running, untouched, before and after). 10 of 10 applicable checks PASS on
+  `forecast/inventory.html` (both Plotly charts rendered, disclaimer visible, a Tier A control
+  change moves the displayed stock_value and redraws the trade-off chart, the item table sorts on
+  header click) and `forecast/sales_report.html` (charts rendered, disclaimer visible, the Rolling
+  Origin control redraws `chart-fva`); one check (sortable-table on `sales_report.html`) correctly
+  reported N/A rather than a fabricated pass, since that page has no click-to-sort table. Dashboard
+  Inventory/Sales links both resolve. Screenshots:
+  `output/charts/inventory_verification/{inventory_default,inventory_changed_scenario,
+  sales_report_default}.png`. Script: `src/investigations/phaseE1fix2_part5_cdp_verify.py`.
+- **Part 6 — full suite 70 passed** (67 prior + 3 new `test_phaseE1fix_safety_stock.py` tests).
+  Customer/company-name scan of all three rendered pages (`index.html`, `forecast/inventory.html`,
+  `forecast/sales_report.html`): zero genuine matches (a few incidental hits on the generic words
+  "customer"/"บริษัท"/"จำกัด" in explanatory prose and one product spec field, "Supply by
+  Customer" — none is an actual customer or company identity).
+- **Still open, left for a human decision, not picked here**: (1) whether `METRICS.md` §14's
+  "consumption total" should mean `Σ confirmed` or `Σ open_demand` (Part 3); (2) whether
+  `METRICS.md` should define the historical-replay reorder-policy mechanics behind `fill_rate`/
+  `cycle_service_level`, or leave it an acknowledged Tier B modelling convention (Part 3); (3) the
+  recommended §14 Cube_CES/Cube_Backlog wording from Part 1, so a future agent cannot reintroduce
+  the Cube_Backlog-table convention by re-reading the section literally.
+
 **Phase F — Measure the value**: compare against the team's current method, and estimate what
 would happen with no intervention at all, since on-time delivery has already improved from 57.8%
 to 73.2% with no system in place.
