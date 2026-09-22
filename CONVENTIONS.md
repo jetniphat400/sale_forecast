@@ -40,6 +40,17 @@
   pre-check gate (2026-09-18, `output/summary/phaseE0_synthesis_report.md` §3(b)) after review
   found the project's own prior write-ups of Cube_CES/cube_Sale_APD agreement had been read as
   validating correctness rather than merely consistency.
+- **`METRICS.md` is the single source of truth for how every reported metric is defined and
+  computed.** An agent that needs to compute a metric not defined there must stop and report the
+  gap, not improvise a definition — and when two agents compute the same metric independently and
+  get different answers, `METRICS.md` itself (not either agent's code) is the first thing to
+  check for ambiguity, per its own header. This rule exists because Phase E1's Modeler and
+  Validator independently computed `stock_value` two different, both-defensible ways (Min-based
+  vs. a time-averaged simulated figure) and a segmentation threshold two slightly different ways
+  (66 vs. 68 items) — neither was a bug, but neither had a written definition to be checked
+  against, so the disagreement could not be resolved as a simple lookup. See `METRICS.md` itself
+  for the locked formulas, and its entries for `stock_value` and `segment_policy criteria`
+  specifically for that incident's resolution.
 
 ## Reproducibility
 
@@ -84,4 +95,4 @@
 
 ---
 
-**Rule: every task must begin by reading `STATUS.md` and `CONVENTIONS.md`.**
+**Rule: every task must begin by reading `STATUS.md`, `CONVENTIONS.md` and `METRICS.md`.**
