@@ -184,3 +184,49 @@ script for Task 1 exists to move here.)
 (2026-08-31)" (still the reason the 58-item pilot exists) and "Forward-test log rebuild (Task
 3, Modeler) — built, tested, working" (why a v2 log and scorer were built instead of extending
 these).
+
+## Phase D follow-up — Reserved/Available column investigation chain (2026-09-09/10)
+
+| Script | What it examined |
+|---|---|
+| `reserved_available_investigation.py` | Whether outstanding backlog is a defensible source for a "Reserved" column next to on-hand qty (`Cube_Inventory_Exact`), or whether a better source exists — found `Cube_Inventory_Exact.reserve_bywa` sitting in the same row/table/snapshot batch as on-hand `stock`. |
+| `reserve_backlog_relationship_investigation.py` | Follow-up: tests the `reserve_bywa` recommendation against a fuller comparison (445-registry cross-tab, correlation analysis, per-division breakdown) — confirms it, but on narrower grounds, with a new caveat (`reserve_bywa` itself regularly exceeds on-hand stock on non-sellable staging warehouses). |
+| `company_scope_investigation.py` | Whether `Cube_Backlog`'s company scope matches on-hand's, given the decision to use `Cube_Backlog` regardless of which field ultimately ships — confirmed `Cube_Inventory_Exact` holds exactly `PEM`/`CI` and `sale_company IN ('PEM','CI')` is the matching backlog scope. |
+
+**STATUS.md entry supported**: "Reserved/Available added to the Inventory panel, plus the
+Reserved-source investigation chain — DONE (2026-09-10)" (all three run in this order, as the
+entry itself describes: "first in the chain", "second", "third").
+
+## Warehouse/division trailing-digit mapping hypothesis (2026-09-09)
+
+| Script | What it examined |
+|---|---|
+| `warehouse_division_mapping_hypothesis.py` | Whether a warehouse code's trailing digits identify its division (e.g. `FG01`/`FG21`→PEM101, `FG07`→PEM107), cross-tabulating division (pricelist-sourced, never the database's own `division` column) against warehouse code from six angles. |
+
+**STATUS.md entry supported**: "Warehouse/division trailing-digit mapping hypothesis test —
+DONE (2026-09-09)".
+
+## Phase E0 — placeholder coherence with Type totals (E0.3, 2026-09-18)
+
+| Script | What it examined |
+|---|---|
+| `phaseE0_placeholder_coherence_validator3.py` | Part 1: whether folding a placeholder item's Type-mean/median value into Top-down's Type-level total (additive vs. carve-out) preserves hierarchy consistency (item sum == Type total) — reports both options without choosing (Validator role). |
+| `phaseE0_placeholder_coherence_validator3_reasons.py` | Part 2: per-item reason category and predecessor/analogue check for all 82 placeholder items — whether the pricelist contains a closer analogue than the item's own flat Type mean/median (37 resolved programmatically via `pem103_family_predecessors`, imported from the part-1 script above; 45 resolved manually, each cited). |
+
+**STATUS.md entry supported**: "Phase E0 — pre-check gate before Phase E1, three parallel
+Validators + a Synthesizer (per `AGENTS.md`, 2026-09-18)" (E0.3) for both scripts, and
+"Placeholder items sit outside the Top-down hierarchy entirely (2026-09-18, closing Phase
+E0.3's open decision)" specifically for the part-2 script's `output/summary/
+phaseE0_validator3_82item_reasons.csv`, cited there by name.
+
+## Phase E2 — readiness and posting-delay measurement (2026-09-22)
+
+| Script | What it examined |
+|---|---|
+| `phaseE2_readiness_investigation.py` | Whether PEM102/PEM103/PEM104/PEM107/CI101 genuinely hold no stock, checked item→warehouse (the reverse direction from Phase D's warehouse→division check, per CONVENTIONS.md's two-direction rule). |
+| `phaseE2_posting_delay_investigation.py` | Whether the leakage guard's 30-day margin can be measured retrospectively from `cube_Sale_APD` — re-verifies live that `timeStamp` is a full-table-reload artifact and that no insert/modified-date column exists, at full Part-3 scope. |
+
+**STATUS.md entry supported**: "Phase E2 readiness — PEM102/PEM103/PEM104/PEM107/CI101
+warehouse investigation, single Explorer, 2026-09-22 — DONE" for the first; "Follow-up:
+zero-P50 amendment, PEM107 gap root cause, posting-delay measurement — 2026-09-22" (Part 3)
+for the second.
