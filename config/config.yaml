@@ -772,6 +772,73 @@ placeholder_hierarchy_treatment:
   decided: "2026-09-18"
 
 # ============================================================
+# Warehouse roles (FACT table, not an assumption) -- completed 2026-09-22, Phase E2 audit item 4.
+# Every one of the 44 warehouse codes ever seen in the 445-item pricelist registry, classified
+# purely from the ITEM-TO-WAREHOUSE direction (which items sit in each code -- CONVENTIONS.md's
+# two-direction rule: this is the reverse of Phase D's original warehouse-named-for-a-division
+# check, which is what missed PEM103/PEM107's real stock). Evidence: TWO independent live pulls,
+# 13 days apart, both covering the full 445-item registry across all 6 divisions --
+# output/summary/whmap_part1_division_by_warehouse_crosstab.csv (2026-09-09) and
+# output/summary/phaseE2_0_full_registry_inventory_raw.csv (2026-09-21/22, timestamps
+# 2026-09-21T21:44:50-21:47:46). No new database query was run to build this table (Part 0's own
+# instruction) -- both pulls already existed on disk.
+#   EXCLUSIVE:<division> = only that division has nonzero stock in this code, both pulls.
+#   SHARED:<div,div,...> = more than one division has nonzero stock; divisions listed by qty share
+#                          (per-division qty/item-count in the comment, from the 2026-09-21/22 pull).
+#   EMPTY                = zero nonzero rows for ANY division, in BOTH pulls -- marked as such, not
+#                          guessed; genuinely idle or unused in this snapshot window.
+# Every code resolved cleanly to one of the three states above from the item-to-warehouse data
+# alone -- none required an UNRESOLVABLE bucket.
+# THIS IS A DIVISION/SHARING MAP, NOT A SELLABILITY DETERMINATION -- see
+# phase_e1_assumptions.sellable_warehouse_codes below and its caveat for that separate question.
+# ============================================================
+warehouse_roles:
+  AST: "EMPTY"   # 0 nonzero rows for any division, both pulls (whmap 2026-09-09, phaseE2 2026-09-21/22)
+  CL: "EMPTY"   # 0 nonzero rows for any division, both pulls (whmap 2026-09-09, phaseE2 2026-09-21/22)
+  F-RD: "EMPTY"   # 0 nonzero rows for any division, both pulls (whmap 2026-09-09, phaseE2 2026-09-21/22)
+  F101: "EMPTY"   # 0 nonzero rows for any division, both pulls (whmap 2026-09-09, phaseE2 2026-09-21/22)
+  F103: "EMPTY"   # 0 nonzero rows for any division, both pulls (whmap 2026-09-09, phaseE2 2026-09-21/22)
+  F106: "EMPTY"   # 0 nonzero rows for any division, both pulls (whmap 2026-09-09, phaseE2 2026-09-21/22)
+  F107: "EMPTY"   # 0 nonzero rows for any division, both pulls (whmap 2026-09-09, phaseE2 2026-09-21/22)
+  F109: "EMPTY"   # 0 nonzero rows for any division, both pulls (whmap 2026-09-09, phaseE2 2026-09-21/22)
+  F2-1: "EMPTY"   # 0 nonzero rows for any division, both pulls (whmap 2026-09-09, phaseE2 2026-09-21/22)
+  F2-2: "EMPTY"   # 0 nonzero rows for any division, both pulls (whmap 2026-09-09, phaseE2 2026-09-21/22)
+  FG: "EMPTY"   # 0 nonzero rows for any division, both pulls (whmap 2026-09-09, phaseE2 2026-09-21/22)
+  FG01: "SHARED:PEM101,PEM107,CI101,PEM102"   # PEM101=124892u/82it; PEM107=361u/10it; CI101=44u/4it; PEM102=2u/2it (phaseE2 pull, 2026-09-21/22; item-to-warehouse direction)
+  FG02: "EMPTY"   # 0 nonzero rows for any division, both pulls (whmap 2026-09-09, phaseE2 2026-09-21/22)
+  FG03: "EMPTY"   # 0 nonzero rows for any division, both pulls (whmap 2026-09-09, phaseE2 2026-09-21/22)
+  FG11: "EMPTY"   # 0 nonzero rows for any division, both pulls (whmap 2026-09-09, phaseE2 2026-09-21/22)
+  FG12: "EMPTY"   # 0 nonzero rows for any division, both pulls (whmap 2026-09-09, phaseE2 2026-09-21/22)
+  FG13: "EMPTY"   # 0 nonzero rows for any division, both pulls (whmap 2026-09-09, phaseE2 2026-09-21/22)
+  FG16: "EMPTY"   # 0 nonzero rows for any division, both pulls (whmap 2026-09-09, phaseE2 2026-09-21/22)
+  FG17: "EMPTY"   # 0 nonzero rows for any division, both pulls (whmap 2026-09-09, phaseE2 2026-09-21/22)
+  FG21: "EXCLUSIVE:PEM101"   # PEM101=15721u/76it (phaseE2 pull, 2026-09-21/22; item-to-warehouse direction)
+  FG22: "EXCLUSIVE:PEM107"   # PEM107=7u/1it (phaseE2 pull, 2026-09-21/22; item-to-warehouse direction)
+  FG23: "EXCLUSIVE:PEM103"   # PEM103=43u/11it (phaseE2 pull, 2026-09-21/22; item-to-warehouse direction)
+  FG24: "EXCLUSIVE:PEM104"   # PEM104=1u/1it (phaseE2 pull, 2026-09-21/22; item-to-warehouse direction)
+  FG27: "EXCLUSIVE:PEM107"   # PEM107=250u/27it (phaseE2 pull, 2026-09-21/22; item-to-warehouse direction)
+  FMTO: "SHARED:PEM101,PEM107,CI101"   # PEM101=108u/4it; PEM107=11u/4it; CI101=1u/1it (phaseE2 pull, 2026-09-21/22; item-to-warehouse direction)
+  FMTS: "SHARED:PEM107,PEM103,PEM101,CI101"   # PEM107=39u/6it; PEM103=27u/7it; PEM101=23u/4it; CI101=1u/1it (phaseE2 pull, 2026-09-21/22; item-to-warehouse direction)
+  INTR: "EMPTY"   # 0 nonzero rows for any division, both pulls (whmap 2026-09-09, phaseE2 2026-09-21/22)
+  NCRM: "EXCLUSIVE:PEM101"   # PEM101=12u/1it (phaseE2 pull, 2026-09-21/22; item-to-warehouse direction)
+  P104: "EMPTY"   # 0 nonzero rows for any division, both pulls (whmap 2026-09-09, phaseE2 2026-09-21/22)
+  QA: "EMPTY"   # 0 nonzero rows for any division, both pulls (whmap 2026-09-09, phaseE2 2026-09-21/22)
+  W101: "EMPTY"   # 0 nonzero rows for any division, both pulls (whmap 2026-09-09, phaseE2 2026-09-21/22)
+  W121: "EMPTY"   # 0 nonzero rows for any division, both pulls (whmap 2026-09-09, phaseE2 2026-09-21/22)
+  W122: "EXCLUSIVE:PEM102"   # PEM102=1u/1it (phaseE2 pull, 2026-09-21/22; item-to-warehouse direction)
+  W124: "EMPTY"   # 0 nonzero rows for any division, both pulls (whmap 2026-09-09, phaseE2 2026-09-21/22)
+  W4-1: "EXCLUSIVE:PEM101"   # PEM101=8u/3it (phaseE2 pull, 2026-09-21/22; item-to-warehouse direction)
+  WH01: "EMPTY"   # 0 nonzero rows for any division, both pulls (whmap 2026-09-09, phaseE2 2026-09-21/22)
+  WH04: "EMPTY"   # 0 nonzero rows for any division, both pulls (whmap 2026-09-09, phaseE2 2026-09-21/22)
+  WH05: "EMPTY"   # 0 nonzero rows for any division, both pulls (whmap 2026-09-09, phaseE2 2026-09-21/22)
+  WH06: "EMPTY"   # 0 nonzero rows for any division, both pulls (whmap 2026-09-09, phaseE2 2026-09-21/22)
+  WH07: "EMPTY"   # 0 nonzero rows for any division, both pulls (whmap 2026-09-09, phaseE2 2026-09-21/22)
+  WH21: "EXCLUSIVE:PEM101"   # PEM101=11416u/6it (phaseE2 pull, 2026-09-21/22; item-to-warehouse direction)
+  WH22: "EXCLUSIVE:PEM107"   # PEM107=28u/4it (phaseE2 pull, 2026-09-21/22; item-to-warehouse direction)
+  WH23: "EMPTY"   # 0 nonzero rows for any division, both pulls (whmap 2026-09-09, phaseE2 2026-09-21/22)
+  WH24: "EXCLUSIVE:PEM107"   # PEM107=11u/4it (phaseE2 pull, 2026-09-21/22; item-to-warehouse direction)
+
+# ============================================================
 # Phase E1 assumptions (single Modeler, 2026-09-18) -- SCENARIO INPUTS, NOT FACTS.
 # Scope: PEM101 128-item pilot (adopted_scope_file above). This is a BOUNDED SCENARIO PILOT --
 # it produces NO actionable purchase recommendation, only a scenario analysis the business can
@@ -846,14 +913,36 @@ phase_e1_assumptions:
 
   # --- Sellable warehouse codes: sellability was NEVER confirmed by any field in this database
   # (Phase D headline: 0.00% confirmed sellable, 99.90% undetermined -- no sellability/status/stage
-  # column exists anywhere). FG01/FG21/WH21 is the best AVAILABLE PROXY: the warehouse/division
-  # trailing-digit mapping hypothesis test (output/summary/whmap_report.md) found these are the
-  # only 3 of 44 warehouse codes project-wide that are BOTH literally testable against the
-  # hypothesis AND currently hold stock, and all 3 map to PEM101 at moderate-to-high confidence.
-  # That is a DIVISION mapping, not a sellability confirmation -- treating them as "the sellable
-  # set" for Phase E1 is an explicit modelling assumption, not a fact.
-  sellable_warehouse_codes: ["FG01", "FG21", "WH21"]
-  sellable_warehouse_codes_owner: "business -- sellability itself was never confirmed by any field (Phase D). This is the Modeler's best-available proxy (STATUS.md whmap_report.md), not a fact."
+  # column exists anywhere).
+  #
+  # STANDING ASSUMPTION, applies to EVERY division listed below, PEM101 included (recorded
+  # 2026-09-22, Phase E2 Part 1 -- not a new caveat for the divisions added this round only):
+  # sellability of ANY warehouse code cannot be verified from this data, full stop. Verifying it
+  # would require the REVERSE direction of the warehouse_roles table above -- given a shipped
+  # sales order, which warehouse did it ship from -- and that direction DOES NOT EXIST in this
+  # schema: no row in cube_Sale_APD (or any sales/order table checked in this project) carries a
+  # warehouse field. `warehouse_roles` above answers "which division's items sit in this code"
+  # (the item-to-warehouse direction); it does NOT and CANNOT answer "is this code where sellable
+  # finished-goods stock is kept" (the item-to-*sale* direction), because that second direction
+  # has no data to check it against. Every sellable_warehouse_codes list below -- FG01/FG21/WH21
+  # for PEM101 exactly as much as the new PEM103/PEM107 entries -- is therefore a BUSINESS
+  # ASSUMPTION standing in for a fact the data cannot supply, to be confirmed by the warehouse
+  # team, never treated as verified. See STATUS.md's Phase E2 entry for the full account.
+  #
+  # Per-division picks (keyed by division, extended 2026-09-22 for Phase E2's PEM103/PEM107
+  # pilot): PEM101 unchanged from Phase E1 (FG01/FG21/WH21, all EXCLUSIVE:PEM101 or
+  # SHARED-but-PEM101-dominant per warehouse_roles above). PEM103 -> FG23 (the one code
+  # warehouse_roles found EXCLUSIVE:PEM103, 43 units/11 items). PEM107 -> FG27, WH22, WH24, FG22
+  # (all EXCLUSIVE:PEM107) plus the shared FG01 (PEM107 holds 361 units/10 items there too, per
+  # warehouse_roles) -- per the E2 readiness finding
+  # (output/summary/phaseE2_readiness_report.md). Divisions not yet given a list (CI101, PEM102,
+  # PEM104) have too few stocked items for a confident sellable-set and are excluded from the E2
+  # pilot, not silently defaulted to an empty or PEM101 list.
+  sellable_warehouse_codes:
+    PEM101: ["FG01", "FG21", "WH21"]
+    PEM103: ["FG23"]
+    PEM107: ["FG27", "WH22", "WH24", "FG22", "FG01"]
+  sellable_warehouse_codes_owner: "business -- sellability itself was never confirmed by any field, for ANY division (Phase D; reaffirmed as a standing assumption 2026-09-22, Phase E2 Part 1). Every list here is the Modeler's best-available item-to-warehouse proxy (STATUS.md whmap_report.md, phaseE2_readiness_report.md), not a fact."
 
   # --- Unit cost basis: IDENTICAL methodology to Phase D Check 2 (cost/qty per row, median over
   # the trailing 12 months, most-recent-transaction fallback) -- reused for cross-phase
