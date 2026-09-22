@@ -226,6 +226,14 @@ def build_page() -> str:
     ไม่ใช่คำแนะนำการสั่งซื้อ (purchase recommendation)</b> — การเปลี่ยนตัวควบคุมด้านล่างเปลี่ยนเฉพาะสิ่งที่แสดงผล ไม่ใช่ตัวแบบพยากรณ์
     (Tier A). การเปลี่ยนแปลงเชิงโครงสร้าง (Tier B, เช่น segment_policy) ต้องแก้ไข <code>config.yaml</code> และรัน pipeline ใหม่.
     รายการ placeholder/excluded จะไม่มี Min/Max และไม่มีปริมาณสั่งซื้อ (purchase quantity) ใดๆ ทั้งสิ้น.</p>
+  <p class="note-box" id="proration-note"><b>หมายเหตุวิธีคำนวณ (methodology note):</b> ตัวเลขบนหน้านี้คำนวณจากข้อมูลย้อนหลัง
+    <b>รายเดือน</b> ที่ฝังไว้ในหน้านี้ (monthly proration, METRICS.md Sec.4's explicit fallback) ไม่ใช่หน้าต่างข้อมูล
+    <b>รายวัน</b> (daily window) ที่ใช้ใน pipeline ฝั่งเซิร์ฟเวอร์ (<code>src/phaseE1fix_recompute.py</code>) — ที่ scenario ค่าเริ่มต้น
+    ตัวเลข stock_value บนหน้านี้ต่างจากตัวเลขจาก pipeline ประมาณ <b>3.3%</b> (สังเกตได้จากการรันจริง, ไม่ใช่ค่าประมาณการ).
+    On this page, figures use <b>monthly proration</b> (METRICS.md Sec.4's documented fallback, since only monthly
+    history is embedded here to keep page size reasonable) — NOT the <b>daily rolling window</b> the server-side
+    pipeline uses. At the default scenario this page's stock_value differs from the pipeline's by roughly
+    <b>3.3%</b> (an observed figure from an actual run, not an estimate).</p>
 
   <h2>Tier A — ตัวควบคุมสถานการณ์ (ปรับได้บนหน้านี้)</h2>
   <!-- source: config.yaml phase_e1_assumptions (defaults), segment_policy (Tier B, not editable here) -->
