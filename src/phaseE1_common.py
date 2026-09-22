@@ -196,11 +196,20 @@ def topdown_item_forecast(scope: pd.DataFrame, series: dict, fit_end: int, horiz
 # ------------------------------------------------------------------------------------------
 
 def query_sale_cost(item_codes: list) -> pd.DataFrame:
+    """METRICS.md Sec.1 requires 'Omni Channel scope, Actual + MPS status' for unit_cost's basis
+    rows. Fixed 2026-09-22: this query previously omitted that filter, letting non-Omni-Channel
+    rows (e.g. 'Total Customer Solution', 'Tendering') leak into the trailing-12-month median --
+    root cause of PEM107's 6.34% Modeler/Validator stock_value gap (STATUS.md, PEM107 gap
+    root-cause entry). Filter values are the literal terms from METRICS.md Sec.1's own wording,
+    matching src/phaseE1fix_recompute.py::compute_unit_cost_metrics1, which already applied them."""
     code_list = "','".join(sorted(item_codes))
-    sql = f"SELECT itemcode, qty, cost, createDate FROM {SALE_TABLE} WHERE itemcode IN ('{code_list}')"
+    sql = f"""SELECT itemcode, qty, cost, createDate FROM {SALE_TABLE}
+              WHERE itemcode IN ('{code_list}') AND revenue_type = 'Omni Channel'
+                AND status IN ('Actual','MPS')"""
     df = run_query(sql)
     df["createDate"] = pd.to_datetime(df["createDate"])
-    logger.info("Pulled %d rows from %s for %d item codes (unit-cost basis).", len(df), SALE_TABLE, len(item_codes))
+    logger.info("Pulled %d rows from %s for %d item codes (unit-cost basis, Omni Channel/Actual+MPS filtered).",
+                len(df), SALE_TABLE, len(item_codes))
     return df
 
 
