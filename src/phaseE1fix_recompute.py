@@ -485,7 +485,9 @@ def main():
 
     # sellable stock / current min-max
     inv = query_inventory_exact(scope["code"].tolist())
-    sellable = sellable_stock_per_item(inv, scope["code"].tolist(), e1["sellable_warehouse_codes"])
+    # sellable_warehouse_codes is keyed per division since 2026-09-22 (Phase E2 Part 2); this
+    # script is PEM101-specific by design (its scope is always the 128-item PEM101 pilot).
+    sellable = sellable_stock_per_item(inv, scope["code"].tolist(), e1["sellable_warehouse_codes"]["PEM101"])
     current_mm = current_minmax_per_item(inv, scope["code"].tolist())
     current_mm.to_csv(os.path.join(SUMMARY_DIR, "phaseE1fix_2_current_minmax.csv"), index=False)
 
