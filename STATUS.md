@@ -807,6 +807,82 @@ as a second direction when it is an independent recomputation, not a re-read of 
   pipeline change requiring a new test). Customer/company-name and credential scan of all new/
   changed files: zero matches.
 
+**Phase E2 scoped pilot — PEM103 and PEM107, warehouse-code closure, page extension — 2026-09-22.**
+Closes audit item 4 from the prior entry, records the standing sellability assumption, runs the
+first Max-Min scenario pilot outside PEM101, and extends the interactive page with a division
+selector. Full detail: `output/summary/phaseE2pilot_report.md`; data
+`output/summary/phaseE2pilot_*.csv`, `phaseE0part0_44code_classification.csv`. Scripts:
+`src/phaseE2_pilot_recompute.py` (Modeler), `src/investigations/phaseE2_pilot_validator.py`
+(independent Validator), `src/investigations/phaseE2_part4_cdp_verify.py` (visual check).
+
+- **Part 0 — all 44 warehouse codes classified, item-to-warehouse direction, no new DB query.**
+  Used the two pulls already on disk (`whmap_part1_division_by_warehouse_crosstab.csv`,
+  2026-09-09; `phaseE2_0_full_registry_inventory_raw.csv`, 2026-09-21/22 — both full 445-item,
+  6-division registries). **30 EMPTY** (zero nonzero rows for any division, both pulls — marked
+  as such, not guessed), **11 EXCLUSIVE** to one division (`FG21`/`NCRM`/`W4-1`/`WH21`→PEM101,
+  `FG22`/`FG27`/`WH22`/`WH24`→PEM107, `FG23`→PEM103, `FG24`→PEM104, `W122`→PEM102), **3 SHARED**
+  across divisions (`FG01`→PEM101/PEM107/CI101/PEM102, `FMTO`→PEM101/PEM107/CI101,
+  `FMTS`→PEM107/PEM103/PEM101/CI101). **0 UNRESOLVABLE** — every code resolved cleanly from the
+  item-to-warehouse data alone. Recorded in `config.yaml` under the new top-level `warehouse_roles`
+  key, one comment-cited entry per code.
+- **Part 1 — sellability standing assumption recorded, applies to every division including
+  PEM101.** Sellability cannot be verified from this data at all: no sales row carries a
+  warehouse field, so the reverse direction (which warehouse a shipment came from) does not
+  exist to check against. Every `sellable_warehouse_codes` entry — PEM101's original FG01/FG21/
+  WH21 as much as the new PEM103/PEM107 entries — is a **business assumption standing in for a
+  fact the data cannot supply**, recorded as such in `config.yaml`'s comment and here, not a
+  verified fact. Confirming it requires the warehouse/operations team, not more data mining.
+- **Part 2 — Modeler + independent Validator, PEM103 (87 items) and PEM107 (136 items), default
+  scenario.** Segmentation, P50, and all 3 top-value items' Min: **EXACT MATCH, both divisions**.
+  **Genuine finding, verified independently by both agents, not a bug**: PEM103's P50 annual
+  value is exactly ฿0.00 (57% of its 87 items have zero trailing-12-month sales), so METRICS.md
+  §15's literal inclusive-boundary formula (`annual_value >= P50`) classifies **all 87 items**
+  `finished_goods_stock` — flagged for a human decision on whether §15 needs a zero-P50
+  special case, not patched here. stock_value: PEM103 ฿186.4M/฿187.5M (0.58% apart), PEM107
+  ฿50.2M/฿53.4M (6.34% apart) — both residuals traced to the same already-disclosed `unit_cost`
+  methodology difference from the PEM101 rounds (Modeler: METRICS.md §1 literal; Validator: the
+  inherited, looser `phaseE1_common.compute_unit_cost`), not a new or unexplained mismatch.
+  fill_rate/cycle_service_level near-exact both divisions, same already-disclosed §5
+  Max-proration residual. **Acceptance criteria, both divisions: fill_rate PASSES by a wide
+  margin (92–98% ≫ 73.2%); scenario stock_value FAILS against on-hand value by one to two orders
+  of magnitude (PEM103: ฿186–187M vs ฿6.06M on-hand; PEM107: ฿50–53M vs ฿3.28M on-hand)** — same
+  directional finding as PEM101, not a recommendation to adopt as-is. Two-group reporting (items
+  WITH on-hand stock vs WITH NONE, Min/Max still computed from demand for the latter, gap_to_min
+  flagged as the full Min when on-hand is zero): PEM103 11 WITH / 76 WITHOUT; PEM107 33 WITH /
+  103 WITHOUT.
+- **Part 3 — division selector added to `forecast/inventory.html`.** Covers PEM101/PEM103/PEM107
+  (enabled, own embedded item data + own sellable-warehouse checklist); CI101/PEM102/PEM104
+  appear as disabled `<option>` entries with their exclusion reason as both a hover title and a
+  permanently visible note list (never silently omitted). Node/Python parity: **6 of 6 pass**
+  (default + non-default, all 3 enabled divisions) — `tests/test_inventory_parity.py`
+  parametrized over division.
+- **Part 4 — CDP visual verification: 24 of 24 checks PASS.** Own Edge instance
+  (`--remote-debugging-port`, `--user-data-dir` under the system temp folder, `--headless=new`),
+  PID recorded and closed by PID only afterward (verified live: pre-existing user `msedge.exe`
+  processes untouched). Confirmed per division: switching updates the title, stock_value total
+  (differs from the previous division every time), and warehouse checklist; both charts render;
+  a Tier A control change updates the total and redraws the trade-off chart; disabled entries
+  carry a non-empty exclusion note. Screenshots:
+  `output/charts/inventory_verification/e2_{pem101,pem103,pem107}_default.png`.
+- **Part 5 — full suite 74 passed** (70 + 4 net, the 2 old single-division parity tests replaced
+  by 6 division-parametrized ones). Customer/company-name and credential scan of all new/changed
+  files: zero matches.
+- **Direction checks supporting each division's sellable-warehouse list, stated per
+  CONVENTIONS.md's two-direction rule**: the DIVISION assignment (which division a warehouse
+  code belongs to) is item-to-warehouse-verified, two independent pulls, for all of PEM101's
+  FG01/FG21/WH21, PEM103's FG23, and PEM107's FG27/WH22/WH24/FG22/FG01 (Part 0 above). The
+  SELLABILITY of those same codes (i.e. that finished, sellable stock — not WIP or a staging
+  buffer — is what sits there) has only ever been checked from the warehouse-code → ledger
+  behavioural-signature direction (Phase D); the reverse (sale → warehouse) does not exist in
+  this schema (Part 1 above) — sellability itself therefore remains a **single-direction finding
+  elevated to a stated business assumption, never a two-direction conclusion**, for every
+  division without exception.
+- **Unresolved / not decided here**: whether METRICS.md §15 should special-case a zero-P50
+  division (PEM103); the larger (6.34%) PEM107 `unit_cost`-basis residual was not traced item-by
+  -item, only attributed to the same known cause as the smaller PEM103/PEM101 residuals; whether
+  PEM103/PEM107 should actually be adopted for any real Max-Min policy (acceptance criterion 4
+  fails on stock_value for both, same as PEM101 — a business decision, not made here).
+
 **Phase F — Measure the value**: compare against the team's current method, and estimate what
 would happen with no intervention at all, since on-time delivery has already improved from 57.8%
 to 73.2% with no system in place.
