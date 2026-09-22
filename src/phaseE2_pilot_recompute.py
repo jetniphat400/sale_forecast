@@ -316,6 +316,10 @@ def main():
         print(f"Segmentation (Sec.15): {r['counts']}")
         print(f"  P50 annual value: THB {r['thresholds']['p50_annual_value_thb']:,.2f}; "
               f"items within +-5%%: {len(r['sensitivity'])}")
+        print(f"  zero_p50_rule_used: {r['thresholds']['zero_p50_rule_used']} (informational P50 over "
+              f"annual_value>0 items: "
+              + (f"THB {r['thresholds']['p50_nonzero_informational_thb']:,.2f})"
+                 if r['thresholds']['p50_nonzero_informational_thb'] is not None else "undefined)"))
         print(f"stock_value (Sec.6): THB {r['stock_value']:,.2f}")
         print(f"current_stock_value (on-hand): THB {r['current_stock_value']:,.2f}")
         print(f"fill_rate: {r['fill_rate']:.4f}, cycle_service_level: {r['cycle_service_level']:.4f}")

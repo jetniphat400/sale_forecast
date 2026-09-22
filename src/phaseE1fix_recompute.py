@@ -103,21 +103,40 @@ def assign_policy_metrics15(facts: pd.DataFrame, assembly_time_days: int, median
         component_stock_ato  : otherwise, AND assembly_time_days <= 6 (median customer notice)
         make_to_order        : never (notice never exceeds procurement)
         placeholder/excluded : per config item status
-    'P50 of division' -- this scope IS PEM101 (config['divisions_in_scope'] equivalent for this
-    pilot is PEM101 alone), so 'division' population = the eligible_for_policy population of this
-    128-item scope (112 items). Stated as a resolved reading, not left ambiguous, because no other
-    population is available to this pilot (there is no cross-division item set here to choose
-    among)."""
+    'P50 of division' -- for the PEM101 pilot this scope IS PEM101 (128-item scope, 112 eligible);
+    for the E2 pilot divisions this scope is the passed-in division's own item set. Stated as a
+    resolved reading, not left ambiguous, because no other population is available to a single
+    division's pipeline run.
+
+    AMENDED 2026-09-22 (METRICS.md Sec.15): if P50 across the division's forecast items is
+    exactly 0 (found live for PEM103: 57% of its 87 items have zero trailing-12-month sales), the
+    value criterion is undefined and is NOT applied -- classification falls back to
+    order_frequency >= 6/year alone. A second, informational-only P50 is also computed over items
+    with annual_value > 0, reported but never used to classify."""
     elig = facts[facts["eligible_for_policy"]].copy()
     p50_value = float(elig["annual_value_thb"].median())
     freq_cutoff = 6.0
+
+    # METRICS.md Sec.15 (amended 2026-09-22): if P50 across the division's forecast items is
+    # zero, the value criterion is undefined and must not be applied -- classify by
+    # order_frequency alone. Found live for PEM103 (57% of its 87 items have zero trailing-12mo
+    # sales, pushing P50 to exactly 0, which under the OLD literal ">=" rule classified every
+    # item finished_goods_stock regardless of frequency -- defeating the split).
+    zero_p50_rule_used = p50_value == 0.0
+    p50_nonzero_informational = (
+        float(elig.loc[elig["annual_value_thb"] > 0, "annual_value_thb"].median())
+        if (elig["annual_value_thb"] > 0).any() else None
+    )  # informational only, per the amendment -- never drives classification
 
     def policy(row):
         if row["is_excluded"]:
             return "excluded"
         if row["is_placeholder"]:
             return "placeholder"
-        fg = (row["annual_value_thb"] >= p50_value) or (row["order_freq_per_year"] >= freq_cutoff)
+        if zero_p50_rule_used:
+            fg = row["order_freq_per_year"] >= freq_cutoff
+        else:
+            fg = (row["annual_value_thb"] >= p50_value) or (row["order_freq_per_year"] >= freq_cutoff)
         if fg:
             return "finished_goods_stock"
         # component_stock_ato requires assembly_time_days <= median_notice_days (6d default)
@@ -132,14 +151,23 @@ def assign_policy_metrics15(facts: pd.DataFrame, assembly_time_days: int, median
     facts["policy"] = facts.apply(policy, axis=1)
     facts["p50_annual_value_thb"] = p50_value
     facts["freq_cutoff_per_year"] = freq_cutoff
+    facts["zero_p50_rule_used"] = zero_p50_rule_used
     n_undefined = int((facts["policy"] == "UNDEFINED_BY_METRICS_MD_SEC15").sum())
     if n_undefined:
         logger.warning("%d items fall into METRICS.md Sec.15's undefined gap (assembly_time_days > "
                         "median notice, so neither finished_goods_stock nor component_stock_ato "
                         "criteria are met) -- reported explicitly, not silently assigned.", n_undefined)
+    if zero_p50_rule_used:
+        logger.warning("METRICS.md Sec.15 zero-P50 rule USED: P50 annual_value_thb is exactly 0 "
+                        "across %d eligible items -- the value criterion is undefined and was NOT "
+                        "applied; classification is by order_frequency >= %.0f/yr alone. "
+                        "Informational-only P50 over items with annual_value>0: %s.",
+                        len(elig), freq_cutoff,
+                        f"THB {p50_nonzero_informational:,.2f}" if p50_nonzero_informational is not None else "undefined (no item has any value)")
     return facts, {"p50_annual_value_thb": p50_value, "freq_cutoff_per_year": freq_cutoff,
                    "assembly_time_days_used": assembly_time_days, "median_notice_days_used": median_notice_days,
-                   "n_undefined_by_spec": n_undefined}
+                   "n_undefined_by_spec": n_undefined, "zero_p50_rule_used": zero_p50_rule_used,
+                   "p50_nonzero_informational_thb": p50_nonzero_informational}
 
 
 def threshold_sensitivity(facts: pd.DataFrame, thresholds: dict) -> pd.DataFrame:

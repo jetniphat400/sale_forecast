@@ -197,6 +197,14 @@ Two distinct metrics; never report one under the other's name.
 - Ambiguity resolved 2026-09-22: one agent measured frequency over the
   item's own active span, another over a fixed window, producing a
   one-item difference at 2.01 percent below the cutoff.
+- If P50 across the division's forecast items is zero, the value criterion
+  is undefined and must not be applied. In that case classify by
+  order_frequency alone: finished_goods_stock if order_frequency ≥ 6,
+  otherwise component_stock_ato. Report that the zero-P50 rule was used.
+- Separately, compute P50 over items with annual_value > 0 and report it,
+  so the reader can see what the value threshold would have been had the
+  inactive items been excluded. This second figure is informational and
+  does not drive classification.
 
 ## 16. simulation_mechanics
 

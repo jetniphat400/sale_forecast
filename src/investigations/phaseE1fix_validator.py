@@ -224,14 +224,23 @@ def compute_order_frequency(config: dict, eligible_codes: set, cutoff: pd.Period
 
 
 def classify_segment(annual_value: float, p50: float, order_freq: float, freq_cutoff: float,
-                      assembly_time_days: float, median_notice_days: float) -> str:
+                      assembly_time_days: float, median_notice_days: float,
+                      zero_p50_rule_used: bool = False) -> str:
     """METRICS.md sec.15, applied literally: finished_goods_stock if annual_value >= p50 OR
     order_freq >= freq_cutoff (both inclusive, per config['segment_policy']'s own stated reading);
     otherwise component_stock_ato provided assembly_time_days <= median_notice_days;
     make_to_order is never assigned (notice never exceeds procurement lead time project-wide, per
     STATUS.md) -- if neither condition holds this function raises, since METRICS.md's own set of
-    three outcomes (FG / ATO / MTO) should be exhaustive once MTO is ruled out a priori."""
-    if annual_value >= p50 or order_freq >= freq_cutoff:
+    three outcomes (FG / ATO / MTO) should be exhaustive once MTO is ruled out a priori.
+
+    AMENDED 2026-09-22 (METRICS.md sec.15): when the caller has determined P50==0 across the
+    division (zero_p50_rule_used=True), the value criterion (annual_value >= p50) is undefined
+    and is skipped entirely -- classification is by order_freq >= freq_cutoff alone."""
+    if zero_p50_rule_used:
+        fg = order_freq >= freq_cutoff
+    else:
+        fg = annual_value >= p50 or order_freq >= freq_cutoff
+    if fg:
         return "finished_goods_stock"
     if assembly_time_days <= median_notice_days:
         return "component_stock_ato"

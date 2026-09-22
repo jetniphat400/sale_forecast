@@ -162,11 +162,22 @@ def main():
         av, freq, median_notice, cutoff = own_annual_value_and_frequency(config, codes, monthly_long)
         merged = av.merge(freq, on="itemcode")
         own_p50 = float(merged["annual_value_thb"].median())
-        logger.info("[%s] OWN P50 annual_value_thb: %.2f (median notice %.2f days)", division, own_p50, median_notice)
+        # METRICS.md Sec.15 (amended 2026-09-22): if P50 is exactly 0, the value criterion is
+        # undefined and is skipped -- classify by order_frequency alone. Informational-only P50
+        # over items with annual_value>0, computed independently here (own re-derivation, not
+        # read from the Modeler's output), reported but never used to classify.
+        own_zero_p50_rule_used = own_p50 == 0.0
+        nonzero_vals = merged.loc[merged["annual_value_thb"] > 0, "annual_value_thb"]
+        own_p50_nonzero_informational = float(nonzero_vals.median()) if len(nonzero_vals) else None
+        logger.info("[%s] OWN P50 annual_value_thb: %.2f (median notice %.2f days). zero_p50_rule_used=%s. "
+                    "Informational P50 over annual_value>0 items: %s",
+                    division, own_p50, median_notice, own_zero_p50_rule_used,
+                    f"{own_p50_nonzero_informational:.2f}" if own_p50_nonzero_informational is not None else "undefined")
 
         merged["segment"] = merged.apply(
             lambda r: classify_segment(r["annual_value_thb"], own_p50, r["order_freq_per_year"],
-                                        freq_cutoff_per_year, assembly, median_notice), axis=1)
+                                        freq_cutoff_per_year, assembly, median_notice,
+                                        zero_p50_rule_used=own_zero_p50_rule_used), axis=1)
         merged["pct_from_value_threshold"] = np.where(
             own_p50 != 0, (merged["annual_value_thb"] - own_p50) / own_p50 * 100, np.nan)
         merged["pct_from_freq_threshold"] = (merged["order_freq_per_year"] - freq_cutoff_per_year) / freq_cutoff_per_year * 100
@@ -212,6 +223,8 @@ def main():
         results[division] = {
             "own_p50": own_p50, "counts": counts, "merged": merged, "c1_summary": c1_summary,
             "c2_summary": c2_summary, "top3_df": top3_df, "n_zero_value": n_zero_value,
+            "zero_p50_rule_used": own_zero_p50_rule_used,
+            "p50_nonzero_informational": own_p50_nonzero_informational,
         }
 
     print("\n" + "=" * 90)
@@ -220,6 +233,9 @@ def main():
     for division, r in results.items():
         print(f"\n--- {division} ---")
         print(f"OWN P50 annual_value_thb: {r['own_p50']:.2f} ({r['n_zero_value']} items with zero trailing-12mo value)")
+        print(f"OWN zero_p50_rule_used: {r['zero_p50_rule_used']} (informational P50 over annual_value>0 items: "
+              f"{r['p50_nonzero_informational']:.2f})" if r['p50_nonzero_informational'] is not None else
+              f"OWN zero_p50_rule_used: {r['zero_p50_rule_used']} (informational P50: undefined)")
         print(f"OWN segment counts: {r['counts']}")
         print(f"OWN stock_value: THB {r['c1_summary']['total_stock_value_thb']:,.2f}")
         print(f"OWN fill_rate: {r['c2_summary']['fill_rate_unit_weighted']:.4f}, "
