@@ -51,6 +51,21 @@
   against, so the disagreement could not be resolved as a simple lookup. See `METRICS.md` itself
   for the locked formulas, and its entries for `stock_value` and `segment_policy criteria`
   specifically for that incident's resolution.
+- **Any conclusion that something is absent — no stock, no rows, no history, no duplicates, no
+  cancellations — must be verified from at least two independent directions before it is
+  recorded.** For a relationship between two entities, that means checking both from A to B and
+  from B to A: not only "which warehouses hold this division's items" but also "which items sit
+  in each warehouse". A single-direction check may be reported as a finding, never as a
+  conclusion. Every `STATUS.md` entry that asserts absence must name the directions checked. This
+  rule exists because Phase D asserted that four divisions held no stock after checking only
+  warehouse-to-division, and two of them (PEM103, PEM107) turned out to hold over ฿12 million —
+  the reverse direction (item-to-warehouse) had never been checked. See `STATUS.md`'s Phase E2
+  readiness entry for the full account.
+- **When a Validator confirms a figure, `STATUS.md` must state whether the confirmation was an
+  independent recomputation or a re-read of the same query; only the former counts as a second
+  direction.** Re-running the same query, or re-reading the same script's output, confirms that
+  the number was recorded correctly — it does not check whether the method itself was right, and
+  must never be written up as if it did.
 
 ## Reproducibility
 

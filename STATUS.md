@@ -692,6 +692,121 @@ independent Validator confirmed, per AGENTS.md.**
   (this configuration ties up materially more capital than today, confirmed under yet another,
   now much tighter, independent cross-check).
 
+**Phase E2 readiness — PEM102/PEM103/PEM104/PEM107/CI101 warehouse investigation, single
+Explorer, 2026-09-22 — DONE, "other divisions have no stock" narrowed to a per-division, evidenced
+picture.** Follow-up to Phase D's finding that warehouse codes named for these divisions hold
+zero stock and 30/44 codes hold nothing — reversed the direction (item → warehouse, not
+warehouse → division) across a verified, pricelist-sourced scope. Full detail:
+`output/summary/phaseE2_readiness_report.md`; data `output/summary/phaseE2_*.csv`; scripts
+`src/investigations/phaseE2_readiness_investigation.py`, `e2_deepdive.py`. Single DB connection
+attempt, succeeded first try.
+- **Scope discrepancy, reported not reconciled**: the task's stated "317 codes for PEM102+PEM103+
+  PEM107+CI101" does not match the current pricelist (262 codes for those 4 divisions:
+  26+87+136+13). 445 − 128 (the PEM101 pilot subset) = 317 exactly — "317" appears to mean
+  "everything outside the 128-item PEM101 pilot," a different set. Used the **verified** 262 +
+  PEM104's 12 = **274-code scope** throughout, not a fabricated 317.
+- **Headline: 74–92% of each division's items have ZERO stock anywhere in `Cube_Inventory_Exact`**
+  (CI101 46.2% stocked / PEM102 11.5% / PEM103 20.7% / PEM107 25.0% / PEM104 8.3%). Where stock
+  exists: CI101 concentrated 95.7% in `FG01` (PEM101's own dominant code — co-location, not a
+  CI101 location, matching Phase D Check 3's prior identical finding); PEM102 similarly small and
+  mostly in `FG01`; **PEM103 and PEM107 have real, non-trivial stock in verified
+  division-EXCLUSIVE warehouse codes found directly from the data, not from naming** — `FG23`
+  (PEM103, 43 of its 70 units) and `FG27`/`WH22`/`WH24`/`FG22` (PEM107, 296 of its 707 units) —
+  none of which match the trailing-digit naming hypothesis (PEM107's own predicted codes,
+  `F107`/`WH07`, hold zero stock).
+- **Shared warehouses (`FG01`, `FMTO`, `FMTS`, cross-checked against the FULL 445-item registry,
+  all 6 divisions)**: all three are **shared locations holding separate stock, never genuinely
+  pooled** — 0 item codes appear under more than one division in any of them (verified directly,
+  not assumed from the pricelist's one-division-per-code rule).
+- **Self-caught methodology correction, `Cube_Inventory_Aging`**: a naive pull summing `Stock`
+  across all rows per item showed 236 items / 466,134 units — apparent large hidden stock. This
+  is an artifact: the table is GL-account-level (one row per item×warehouse×`GLAccount`), and
+  different GL accounts are NOT additive (proof: item `RS-F-99-090003` shows +34,574 under one
+  account, +25,874 under a different account, and −30,677 under a third, all in the same
+  warehouse). Matched against `Cube_Inventory_Exact`, `GLAccount 117100` is the physical-stock
+  account for these divisions (98.8% match rate). **Restricted to that account: 61 items match
+  `Cube_Inventory_Exact`'s 62 almost exactly (61/62 identical) — `Cube_Inventory_Aging`
+  independently CONFIRMS `Cube_Inventory_Exact`'s picture, it does not reveal hidden stock.**
+- **10 other tables checked** (systematic `INFORMATION_SCHEMA` search, 41 candidates narrowed to
+  9 plausible + `cube_Contract` added by hand since its item column, `product_id`, is not
+  `itemcode`-like and was missed by the search pattern — a reported gap): `information_state`
+  (189 items present) is a sales/production order log (`state`∈{sale_actual, actual production},
+  `company`='PMW' — not PEM/CI — has `forecast_date`/contract references), NOT stock.
+  `Cube_tobe_received`/`Cube_Incoming_Receipt` are PO-receiving-pipeline logs, immaterial volume
+  (58/123 units). `Cube_Inventory_Aging_PSL`, `Cube_Inventory_Exact_PPD`, `Cube_Inventory_Batch`,
+  `Cube_Incoming_Wait`, `Cube_pr_monitoring`, `cube_Contract`: zero rows for this scope.
+- **Verdict per division** (full evidence and confidence levels in the report): CI101/PEM102/
+  PEM104 — HIGH confidence essentially no stock exists (independently confirmed by Aging); the
+  sliver that exists co-locates with PEM101, not a hidden division-specific location. PEM103/
+  PEM107 — HIGH confidence real stock exists in verified division-exclusive codes (not
+  name-predicted); MODERATE confidence this generalises beyond the specific items tested (18/87,
+  34/136). **Unresolved**: whether the 74–92% zero-stock population holds stock in a system
+  outside the 11 tables checked here (a business question, not answerable from this data) or
+  genuinely holds none.
+- **Phase E2 implication**: none of the 5 divisions can reuse PEM101's `sellable_warehouse_codes`
+  (`FG01`/`FG21`/`WH21`) unchanged — either the analogous codes are near-empty (CI101/PEM102/
+  PEM104, too few items for a confident sellable-set) or a **division-specific
+  sellable-warehouse list** is needed (PEM103 should include `FG23`; PEM107 should include
+  `FG27`/`WH22`/`WH24`/`FG22` alongside the shared `FG01`) — a Tier A config assumption to record,
+  not inferred from a name. PEM103/PEM107 have thin but real, evidenced ground to attempt a
+  scoped Max-Min pilot on their stocked-item subset; CI101/PEM102/PEM104 cannot proceed to a
+  meaningful on-hand-stock-based Max-Min on this evidence.
+
+**Two-direction verification rule added to CONVENTIONS.md, and applied — 2026-09-22.** Phase D's
+stock-absence error (above) was a single-direction check (warehouse-named-for-a-division →
+stock) that a reverse check (item → warehouse) overturned for two divisions. `CONVENTIONS.md`
+Data Correctness now requires any absence conclusion to be checked from at least two independent
+directions before being recorded as a conclusion rather than a finding, and requires every
+`STATUS.md` absence entry to name the directions checked; a Validator "confirmation" only counts
+as a second direction when it is an independent recomputation, not a re-read of the same query.
+
+- **E0.2 (cancellations) re-verified from the demand side — CONFIRMED, zero-percent finding now
+  holds from BOTH directions.** E0.2 (`src/investigations/phaseE0_cancellations_validator2.py`)
+  checked Cube_CES Cancel rows → cube_Sale_APD only. A new, independently-written script
+  (`src/investigations/phaseE0_cancellations_validator3_demandside.py`, imports none of
+  `validator2.py`'s code) checked the reverse: every one of the 128-item PEM101 pilot's 28,235
+  demand-series rows (qty 3,448,724.0, value ฿719,767,457.96, Omni Channel, Actual+MPS,
+  `createDate>=2024-01-01`) was matched to Cube_CES by `(contractid, itemcode)` and every
+  matching Cube_CES status recorded. **Result: 0 demand rows classify as `ONLY_CANCEL` or
+  `CANCEL_PLUS_OTHER`** — no demand row's pair is tagged `Cancel` in Cube_CES, under either test
+  the task specified. The 3 focus items: 704 demand rows, 0 cancelled-survived. **Third signal**
+  (demand pairs with no Cube_CES counterpart at all, a possible cancelled-and-purged contract
+  signature): 4 pairs, 48 units, ฿106,920 (0.0014% of series qty) — dates recent and scattered
+  (2024-11-08 to 2025-04-04, 3 different contracts), not resembling a cancel-and-purge pattern;
+  not investigated further (immaterial, stopping rule). **Verdict: the zero-cancellation-
+  contamination finding is now a genuine two-direction CONCLUSION, HIGH confidence** — full
+  detail `output/summary/phaseE0_validator3_demandside_report.md`.
+- **Audit of other single-direction absence claims in `STATUS.md` — single Explorer, read-only,
+  no new checks run (scheduling list only, per this task's own instruction).** Full table:
+  `output/summary/phaseE0_two_direction_audit.md`. 10 substantive absence claims found; 2 already
+  resolved to two independent directions this session (Phase D stock; E0.2 cancellations, both
+  above). Of the remaining 8:
+  - **BLOCKING for Phase E2 (2)**: (1) sellable-warehouse determination — still **0.00%
+    confirmed sellable, 99.90% undetermined** (Phase D Check 1); only warehouse-code → ledger
+    behavioural evidence has ever been checked, and the reverse (sale-record → warehouse) is
+    **structurally impossible with current data** (no warehouse field exists on any sales row) —
+    this is not an unattempted check but a real data-model gap, and remains the E2
+    `sellable_warehouse_codes` blocker named in the Phase E2 entry above. (2) 30 of 44 warehouse
+    codes left `UNRESOLVED` by the `whmap` investigation (zero stock at that snapshot, so
+    untestable) — Phase E2's own item→warehouse pull covered only the 5 target divisions' items
+    against the full 445-item/44-code universe for the *shared-warehouse* check; a full sweep of
+    all 44 codes against all 6 divisions from this same already-pulled data
+    (`output/summary/phaseE2_0_full_registry_inventory_raw.csv`) would close most of this gap at
+    near-zero additional query cost — flagged as a cheap next step, not run here per this task's
+    instruction not to run new checks.
+  - **Non-blocking (6)**: duplicate-detection tag-pair check (`-OLD` vs. normal, 0/11 confirmed —
+    single exact-match key, no fuzzy-match reverse check); PEM103's 0 duplicate groups (same
+    method-bound limitation); E0.1 leakage ("structurally absent" — a code-read proof, not an
+    independent empirical recomputation); E0.3's partial-cancellation shortfall ("structurally
+    empty for confirmed contracts" — Cube_CES-side only, no demand-side cross-check); the 6
+    never-sold items (already cross-checked across 5 independent tables, not a single-direction
+    relational claim); the PEM102-OLD/PEM107-OLD tag cross-check (already tested both tag
+    directions). None of these bear directly on an E2 stock, segmentation, or sellable-warehouse
+    input.
+- **Full test suite: 70 passed** (unchanged — this task added an investigation script, not a
+  pipeline change requiring a new test). Customer/company-name and credential scan of all new/
+  changed files: zero matches.
+
 **Phase F — Measure the value**: compare against the team's current method, and estimate what
 would happen with no intervention at all, since on-time delivery has already improved from 57.8%
 to 73.2% with no system in place.
