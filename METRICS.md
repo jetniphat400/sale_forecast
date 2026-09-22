@@ -146,13 +146,26 @@ and whether any part is a configurable assumption.
 
 ## 14. forecast_consumption
 
+Two distinct metrics; never report one under the other's name.
+
+    confirmed[item, month]   = Σ qty of confirmed undelivered orders whose
+                               forecast_date falls in that month
+    confirmed_total          = Σ confirmed over the horizon
     open_demand[item, month] = max( forecast[item, month]
                                     − confirmed[item, month], 0 )
+    open_demand_total        = Σ open_demand over the horizon
 
-- confirmed = MPS rows in cube_Sale_APD plus Backlog rows in Cube_CES,
-  deduplicated on contract + item (same order must not count twice).
-- Overdue backlog (forecast_date < today) is placed in the current month.
-- Consumption never makes open_demand negative.
+- Source of confirmed orders: MPS rows in cube_Sale_APD PLUS rows in
+  Cube_CES with Status = 'Backlog', deduplicated on contract + item.
+  Do NOT use the separate table Cube_Backlog: verified 2026-09-22 that
+  it lags Cube_CES by roughly 14 hours and held 8 pairs already delivered
+  (Status = 'Actual' in Cube_CES), which would over-count open demand by
+  0.9 percent.
+- Overdue backlog (forecast_date before today) is placed in the current
+  month.
+- open_demand never goes negative.
+- Ambiguity resolved 2026-09-22: the section title "consumption" was read
+  as confirmed_total by one agent and open_demand_total by another.
 
 ## 15. segment_policy criteria
 
@@ -184,3 +197,33 @@ and whether any part is a configurable assumption.
 - Ambiguity resolved 2026-09-22: one agent measured frequency over the
   item's own active span, another over a fixed window, producing a
   one-item difference at 2.01 percent below the cutoff.
+
+## 16. simulation_mechanics
+
+The historical replay in Phase E uses these rules; any deviation must be
+recorded in config and reported.
+
+    review          : every review_interval_days (config), starting at
+                      day 0 of the replay
+    reorder trigger : on a review day, if on_hand + on_order ≤ Min,
+                      place an order of (Max − on_hand − on_order)
+    receipt         : an order placed on day d arrives at the start of
+                      day d + procurement_lead_time_days
+                      + assembly_time_days
+    demand          : daily, from the forecast_date-keyed actual series
+    fulfilment      : if on_hand ≥ demand, ship in full; otherwise ship
+                      on_hand and record the shortfall as a backorder
+                      that is filled first from the next receipt
+                      (backorders are never lost)
+    initial stock   : Max at day 0, with no order in flight — recorded
+                      as an assumption because no historical stock
+                      level exists
+    fill_rate       : per section 10, units shipped on the demand day
+                      ÷ units demanded; backordered units count as NOT
+                      shipped on the demand day
+    cycle_service   : per section 11; a cycle is the interval between
+                      two consecutive receipts
+
+- Ambiguity resolved 2026-09-22: two agents replayed the same demand
+  with different reorder and receipt timing, producing fill rates of
+  99.94 and 97.90 percent from identical inputs.
