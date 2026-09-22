@@ -44,7 +44,10 @@ SUMMARY_DIR = os.path.join(PROJECT_ROOT, "output", "summary")
 DATA_DIR = os.path.join(PROJECT_ROOT, "output", "data")
 OUT_PREFIX = "phaseE1fix_validator"
 
-TODAY = pd.Timestamp("2026-09-21")  # per system-reminder, "today's date"
+TODAY = pd.Timestamp.now().normalize()  # METRICS.md Sec.14's literal "today" -- live wall-clock
+# date, computed fresh at run time (not a hardcoded constant), consistent with the Modeler's own
+# choice (src/phaseE1fix_recompute.py) after the two independently used different "today"
+# references and produced a small (<=70-unit) drift (STATUS.md, Phase E1-fix-2 Part 3).
 
 # ============================================================================
 # Helpers: month grid, prorating over real calendar days
@@ -481,109 +484,123 @@ def part_c1_stock_value(config: dict, scope: pd.DataFrame, series: dict, fg_code
 # 6. Part C.2: historical simulation replay -- fill_rate + cycle_service_level
 # ============================================================================
 
-def simulate_item(qty_hist: np.ndarray, min_level: float, max_level: float,
-                   lead_plus_assembly_days: float) -> dict:
-    """One item's 31-month order-up-to-Max sawtooth simulation, per THIS Validator's own stated
-    assumptions (reusing config['phase_e1_assumptions']'s existing simulation-mechanics
-    assumptions, which are locked config inputs, not re-invented):
-    - initial stock at month 0 = Max (simulation_initial_stock_assumption).
-    - receipt timing: an order placed at month t arrives exactly
-      ceil(lead_plus_assembly_days/30.44) months later, deterministic, no variability
-      (simulation_receipt_timing_assumption).
-    - fulfilment sequence: within a month, any scheduled receipt is added to stock FIRST, then
-      that month's demand is subtracted; a backorder from a prior month is served BEFORE the
-      current month's own new demand (oldest obligation first); unmet current-month demand is
-      carried forward as backorder, never a lost sale (simulation_fulfilment_sequence_assumption).
-    - review interval ~= 1 month (30-day review vs ~30.44-day average month): an order is placed
-      every month if the post-receipt inventory position (stock, since no other pipeline order is
-      outstanding under a fixed 1-month review / L+A>1-month lead combination here) is below Max.
-    fill_rate = sum(shipped_from_that_month's_own_demand) / sum(that month's own historical
-      demand) -- unit-based, per METRICS.md sec.10, "immediately" read as "from this month's own
-      demand, not a demand backordered from an earlier month".
-    cycle_service_level = (months with that month's own demand fully met) / total months, per
-      METRICS.md sec.11 (1-month review cycle, since review_interval_days_default=30 ~= 1 month).
+def simulate_item(qty_daily: np.ndarray, min_level: float, max_level: float,
+                   review_interval_days: int, lead_time_days: int) -> dict:
+    """METRICS.md sec.16 (added 2026-09-22), applied literally and independently of the
+    Modeler's own implementation (src/phaseE1fix_simulation.py's simulate_item_daily) -- same
+    formula, this Validator's own variable names and control flow:
+    - review every review_interval_days, starting day 0 (t % review_interval_days == 0).
+    - reorder trigger: inventory position (on_hand + on_order) <= Min -> order up to Max.
+    - a receipt arrives at the START of day (order_day + lead_time_days), pays down any
+      outstanding backorder FIRST, remainder becomes on_hand; this closes the cycle it lands in
+      and opens the next one (a cycle = the interval between two consecutive receipts).
+    - daily demand; ship on_hand in full if sufficient, else ship on_hand and backorder the rest.
+    - initial stock = Max at day 0, nothing in the pipeline.
+    fill_rate (sec.10) = units shipped ON THE DEMAND DAY / units demanded -- a unit later paid
+    out of backorder from a receipt is NOT counted as shipped for this metric.
+    cycle_service_level (sec.11) = cycles with no stockout / total cycles.
     """
-    n = len(qty_hist)
-    lead_time_months = math.ceil(lead_plus_assembly_days / 30.44)
-    stock = max_level
+    n = len(qty_daily)
+    on_hand = float(max_level)
+    on_order = 0.0
+    inbound = {}  # arrival_day -> qty
     backorder = 0.0
-    pipeline = {}  # month_index -> qty arriving
-    total_orig_demand = 0.0
-    total_shipped_orig = 0.0
-    stockout_months = 0
+    total_demand = 0.0
+    total_shipped_that_day = 0.0
+    n_cycles = 0
+    n_cycles_stockout = 0
+    cycle_had_stockout = False
 
     for t in range(n):
-        # 1. receive any scheduled arrival
-        stock += pipeline.pop(t, 0.0)
+        if t in inbound:
+            qty_in = inbound.pop(t)
+            on_order -= qty_in
+            if backorder > 0:
+                settle = min(backorder, qty_in)
+                backorder -= settle
+                qty_in -= settle
+            on_hand += qty_in
+            n_cycles += 1
+            if cycle_had_stockout:
+                n_cycles_stockout += 1
+            cycle_had_stockout = False
 
-        # 2. place a replenishment order (review ~monthly) up to Max, based on inventory position
-        #    (on-hand + on-order not yet arrived - backorder)
-        on_order = sum(pipeline.values())
-        inv_position = stock + on_order - backorder
-        if inv_position < max_level:
-            order_qty = max_level - inv_position
-            arrive_t = t + lead_time_months
-            pipeline[arrive_t] = pipeline.get(arrive_t, 0.0) + order_qty
+        if t % review_interval_days == 0:
+            position = on_hand + on_order
+            if position <= min_level:
+                order_qty = max_level - position
+                if order_qty > 0:
+                    on_order += order_qty
+                    arrive_day = t + lead_time_days
+                    if arrive_day < n:
+                        inbound[arrive_day] = inbound.get(arrive_day, 0.0) + order_qty
 
-        # 3. serve backorder first, then this month's own demand
-        orig_demand = float(qty_hist[t])
-        total_orig_demand += orig_demand
+        demand_today = float(qty_daily[t])
+        total_demand += demand_today
+        if on_hand >= demand_today:
+            shipped_today = demand_today
+            on_hand -= demand_today
+        else:
+            shipped_today = on_hand
+            backorder += demand_today - on_hand
+            on_hand = 0.0
+            cycle_had_stockout = True
+        total_shipped_that_day += shipped_today
 
-        shipped_backorder = min(backorder, stock)
-        stock -= shipped_backorder
-        backorder -= shipped_backorder
+    n_cycles += 1
+    if cycle_had_stockout:
+        n_cycles_stockout += 1
 
-        shipped_orig = min(orig_demand, stock)
-        stock -= shipped_orig
-        total_shipped_orig += shipped_orig
-
-        unmet_orig = orig_demand - shipped_orig
-        if unmet_orig > 1e-9 or backorder > 1e-9:
-            stockout_months += 1
-        backorder += unmet_orig
-
-    fill_rate = total_shipped_orig / total_orig_demand if total_orig_demand > 0 else float("nan")
-    cycle_service_level = (n - stockout_months) / n
+    fill_rate = total_shipped_that_day / total_demand if total_demand > 0 else float("nan")
+    cycle_service_level = 1 - (n_cycles_stockout / n_cycles) if n_cycles > 0 else float("nan")
     return {"fill_rate": fill_rate, "cycle_service_level": cycle_service_level,
-            "total_orig_demand": total_orig_demand, "total_shipped_orig": total_shipped_orig,
-            "stockout_months": stockout_months, "n_months": n}
+            "total_demand": total_demand, "total_shipped_that_day": total_shipped_that_day,
+            "n_cycles": n_cycles, "n_cycles_stockout": n_cycles_stockout}
 
 
 def part_c2_simulation(config: dict, scope: pd.DataFrame, series: dict, fg_min: pd.DataFrame,
-                        last_month_end: pd.Timestamp) -> dict:
-    logger.info("=== PART C.2: historical simulation replay, fill_rate + cycle_service_level ===")
+                        last_month_end: pd.Timestamp, daily_series: dict) -> dict:
+    logger.info("=== PART C.2: historical simulation replay (METRICS.md sec.16), fill_rate + cycle_service_level ===")
     default = config["phase_e1_assumptions"]["default_scenario"]
     lead, assembly = default["procurement_lead_time_days"], default["assembly_time_days"]
     review = config["phase_e1_assumptions"]["review_interval_days_default"]
+    lead_time_days = lead + assembly
 
-    # Max = Min + review-interval expected demand (replenishment_qty_convention)
+    # Max = Min + review-interval expected demand (METRICS.md sec.5, unaffected by sec.16)
     fg_codes = fg_min.loc[fg_min["min"].notna(), "itemcode"].tolist()
     review_horizon = math.ceil(review / 30.44) + 1
     review_forecasts = fit_topdown_forecast(scope, series, fg_codes, review_horizon)
 
     rows = []
+    n_no_daily = 0
     for code in fg_codes:
         if code not in series or code not in review_forecasts:
+            continue
+        if code not in daily_series:
+            n_no_daily += 1
             continue
         weights = prorate_weights(last_month_end, review, len(review_forecasts[code]))
         review_qty = float(np.dot(review_forecasts[code], weights))
         min_level = float(fg_min.loc[fg_min["itemcode"] == code, "min"].iloc[0])
         max_level = min_level + review_qty
-        qty_hist = series[code][0]
-        sim = simulate_item(qty_hist, min_level, max_level, lead + assembly)
+        qty_daily = daily_series[code]
+        sim = simulate_item(qty_daily, min_level, max_level, review, lead_time_days)
         sim["itemcode"] = code
         sim["min_level"] = min_level
         sim["max_level"] = max_level
         rows.append(sim)
+    if n_no_daily:
+        logger.warning("%d finished_goods_stock items had no daily history and were excluded from "
+                        "the simulation (not silently zero-filled).", n_no_daily)
 
     sim_df = pd.DataFrame(rows)
-    overall_fill_rate = sim_df["total_shipped_orig"].sum() / sim_df["total_orig_demand"].sum()
-    overall_csl = 1 - (sim_df["stockout_months"].sum() / (sim_df["n_months"].sum()))
+    overall_fill_rate = sim_df["total_shipped_that_day"].sum() / sim_df["total_demand"].sum()
+    overall_csl = 1 - (sim_df["n_cycles_stockout"].sum() / sim_df["n_cycles"].sum())
     mean_item_fill_rate = sim_df["fill_rate"].mean()
     mean_item_csl = sim_df["cycle_service_level"].mean()
 
     logger.info("Simulation over %d items: unit-weighted fill_rate=%.4f, cycle_service_level "
-                "(1-total_stockout_months/total_months)=%.4f. Mean-of-item fill_rate=%.4f, "
+                "(1-total_stockout_cycles/total_cycles)=%.4f. Mean-of-item fill_rate=%.4f, "
                 "mean-of-item cycle_service_level=%.4f", len(sim_df), overall_fill_rate, overall_csl,
                 mean_item_fill_rate, mean_item_csl)
 
@@ -656,7 +673,8 @@ def part_c4_consumption(config: dict, focus_items: list, forecasts: dict, ces_ba
     ces["ForecastDelDate"] = pd.to_datetime(ces["ForecastDelDate"], errors="coerce")
 
     detail_rows = []
-    grand_total = 0.0
+    confirmed_total = 0.0
+    open_demand_total = 0.0
     for code in focus_items:
         mps_item = mps[mps["itemcode"] == code]
         mps_contracts = set(mps_item["contractid"])
@@ -683,7 +701,8 @@ def part_c4_consumption(config: dict, focus_items: list, forecasts: dict, ces_ba
 
             confirmed = float(mps_month) + float(ces_month)
             open_demand = max(fc - confirmed, 0.0)
-            grand_total += open_demand
+            confirmed_total += confirmed
+            open_demand_total += open_demand
             detail_rows.append({
                 "itemcode": code, "month": month_start.strftime("%Y-%m"), "forecast_weighted": fc,
                 "confirmed_mps": float(mps_month), "confirmed_ces_backlog_dedup": float(ces_month),
@@ -692,9 +711,10 @@ def part_c4_consumption(config: dict, focus_items: list, forecasts: dict, ces_ba
 
     detail = pd.DataFrame(detail_rows)
     detail.to_csv(os.path.join(SUMMARY_DIR, f"{OUT_PREFIX}_consumption_detail.csv"), index=False)
-    logger.info("Consumption total (3 focus items, protection-period horizon): %.2f units", grand_total)
+    logger.info("METRICS.md Sec.14 (corrected): confirmed_total=%.2f units, open_demand_total=%.2f "
+                "units (3 focus items, protection-period horizon)", confirmed_total, open_demand_total)
     logger.info("Per-item detail:\n%s", detail.to_string(index=False))
-    return {"grand_total": grand_total}, detail
+    return {"confirmed_total": confirmed_total, "open_demand_total": open_demand_total}, detail
 
 
 # ============================================================================
@@ -726,7 +746,7 @@ def main():
     fg_codes = seg_df.loc[seg_df["segment"] == "finished_goods_stock", "itemcode"].tolist()
     c1_summary, c1_detail = part_c1_stock_value(config, scope, series, fg_codes, last_month_end, daily_series)
     c2_summary, c2_detail = part_c2_simulation(config, scope, series, c1_detail.rename(
-        columns={"itemcode": "itemcode"}), last_month_end)
+        columns={"itemcode": "itemcode"}), last_month_end, daily_series)
 
     focus_items = config["pilot_item_codes"]
     c3_df, focus_forecasts, protection_period_days = part_c3_focus_min(

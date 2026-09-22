@@ -515,11 +515,19 @@ def main():
     n_infinite = int(np.isinf(moc_df["months_of_cover"]).sum())
     logger.info("months_of_cover: %d of %d items have forecast=0 -> reported as Inf.", n_infinite, len(moc_df))
 
-    # ---- forecast_consumption, METRICS.md Sec.14 literal reading (Cube_CES Status='Backlog') ----
+    # ---- forecast_consumption, METRICS.md Sec.14 (corrected 2026-09-22): confirmed_total and
+    # open_demand_total are two DISTINCT metrics, both reported, never one under the other's
+    # name. confirmed[item, month] = Sum qty of confirmed undelivered orders whose forecast_date
+    # falls in that month (MPS rows by their own forecast_date month; Cube_CES Status='Backlog'
+    # rows by their own ForecastDelDate month -- NOT force-placed in the current month unless
+    # actually overdue). Cube_Backlog table is never used (Part 1 finding, cited in Sec.14 now).
     pull_date = series_bundle["pull_date"]
     last_month = series_bundle["series"][next(iter(series_bundle["series"]))][1][-1] if series_bundle["series"] else None
     after_month_end = pd.Period(last_month, freq="M").end_time.strftime("%Y-%m-%d") if last_month else None
     fg_list = sorted(fg_codes)
+    today = pd.Timestamp.now().normalize()  # "today" per Sec.14's literal text -- the live wall-clock
+    # date, not the frozen series' snapshot_pull_date (that constant is the historical-actuals
+    # freeze date, unrelated to what "overdue" means for a live confirmed-order pull).
 
     code_list = "','".join(fg_list)
     # cube_Sale_APD's contract-id column is named 'contractid' (confirmed against the live schema,
@@ -531,7 +539,8 @@ def main():
                     AND forecast_date > '{after_month_end}'""" if fg_list else None
     mps = run_query(mps_sql) if mps_sql else pd.DataFrame()
 
-    ces_backlog_sql = f"""SELECT ItemCode AS itemcode, ContractID AS contract, CtrDate, ActualQty, BacklogQty
+    ces_backlog_sql = f"""SELECT ItemCode AS itemcode, ContractID AS contract, ForecastDelDate,
+                                 ActualQty, BacklogQty
                           FROM {CES_TABLE} WHERE ItemCode IN ('{code_list}') AND Status='Backlog'""" if fg_list else None
     try:
         ces_backlog = run_query(ces_backlog_sql) if ces_backlog_sql else pd.DataFrame()
@@ -549,17 +558,32 @@ def main():
         mps_dedup = mps
 
     if len(ces_backlog):
-        ces_backlog["CtrDate"] = pd.to_datetime(ces_backlog["CtrDate"], errors="coerce")
+        ces_backlog["ForecastDelDate"] = pd.to_datetime(ces_backlog["ForecastDelDate"], errors="coerce")
         ces_backlog["qty"] = ces_backlog["ActualQty"].fillna(0) + ces_backlog["BacklogQty"].fillna(0)
         ces_backlog["dedupe_key"] = ces_backlog["itemcode"].astype(str) + "::" + ces_backlog["contract"].astype(str)
         ces_dedup = ces_backlog.drop_duplicates(subset="dedupe_key").copy()
-        pull_ts = pd.Timestamp(pull_date)
-        ces_dedup["overdue"] = ces_dedup["CtrDate"] < pull_ts
+        # Cross-source dedup: METRICS.md Sec.14 says "deduplicated on contract + item" across
+        # BOTH sources combined, not each source deduped only against itself -- a contract that
+        # is both an MPS row in cube_Sale_APD AND a Cube_CES Backlog row (the same order, seen
+        # through two systems -- expected per STATUS.md's Phase A finding that MPS-linked
+        # contracts carry Cube_CES Status='Backlog') must count once, not twice. Confirmed as a
+        # real, not hypothetical, double-count here: dropping this line doubled confirmed_total
+        # for every focus item exactly 2x before this fix.
+        mps_keys = set(mps_dedup["dedupe_key"]) if len(mps_dedup) else set()
+        n_before = len(ces_dedup)
+        ces_dedup = ces_dedup[~ces_dedup["dedupe_key"].isin(mps_keys)]
+        n_dropped_dupe = n_before - len(ces_dedup)
+        if n_dropped_dupe:
+            logger.info("forecast_consumption: dropped %d Cube_CES Backlog rows already counted "
+                        "via MPS on the same (item, contract) key -- cross-source dedup per "
+                        "METRICS.md Sec.14.", n_dropped_dupe)
+        # overdue = forecast_date before today, OR null (a backlog row with no forecast_date at
+        # all cannot be placed in its own month, so it is treated as overdue and placed now).
+        ces_dedup["overdue"] = ces_dedup["ForecastDelDate"].isna() | (ces_dedup["ForecastDelDate"] < today)
+        ces_dedup["year_month"] = ces_dedup["ForecastDelDate"].dt.to_period("M").astype(str)
     else:
         ces_dedup = ces_backlog
 
-    # Build confirmed[item, month]: MPS rows by their own forecast_date month; overdue Cube_CES
-    # backlog rows placed in the CURRENT month (Period 1), per METRICS.md Sec.14.
     forecast_horizon_months = full_months + (1 if frac_month > 0 else 0)
     period_starts = pd.Period(after_month_end, freq="M") + 1
     period_labels = [str(period_starts + i) for i in range(forecast_horizon_months)]
@@ -570,10 +594,12 @@ def main():
             if r["itemcode"] in confirmed and r["year_month"] in confirmed[r["itemcode"]]:
                 confirmed[r["itemcode"]][r["year_month"]] += float(r["qty"])
     if len(ces_dedup):
-        overdue_rows = ces_dedup[ces_dedup["overdue"]]
-        for _, r in overdue_rows.iterrows():
-            if r["itemcode"] in confirmed:
-                confirmed[r["itemcode"]][period_labels[0]] += float(r["qty"])
+        for _, r in ces_dedup.iterrows():
+            if r["itemcode"] not in confirmed:
+                continue
+            target_month = period_labels[0] if r["overdue"] else r["year_month"]
+            if target_month in confirmed[r["itemcode"]]:
+                confirmed[r["itemcode"]][target_month] += float(r["qty"])
 
     consumption_rows = []
     fc_by_item = topdown_item_forecast(scope, series_bundle["series"], TOTAL_MONTHS, forecast_horizon_months)
@@ -583,16 +609,24 @@ def main():
             continue
         for i, m in enumerate(period_labels):
             forecast_val = float(fc[i])
+            # The horizon's LAST period is the same partial month LTD (Sec.3) prorates by
+            # frac_month -- weight it identically here so "the horizon" means the same thing
+            # (the protection period, not one extra whole month) in both places. Fixes an
+            # internal inconsistency found while re-tracing a confirmed/open_demand mismatch:
+            # LTD prorated the partial month, forecast_consumption previously did not.
+            if i == len(period_labels) - 1 and frac_month > 0:
+                forecast_val *= frac_month
             conf = confirmed[code][m]
             open_demand = max(forecast_val - conf, 0.0)
             consumption_rows.append({"code": code, "year_month": m, "raw_forecast": forecast_val,
                                       "confirmed": conf, "open_demand": open_demand})
     consumption_df = pd.DataFrame(consumption_rows)
-    total_confirmed = float(consumption_df["confirmed"].sum()) if len(consumption_df) else 0.0
+    confirmed_total = float(consumption_df["confirmed"].sum()) if len(consumption_df) else 0.0
+    open_demand_total = float(consumption_df["open_demand"].sum()) if len(consumption_df) else 0.0
     total_forecast = float(consumption_df["raw_forecast"].sum()) if len(consumption_df) else 0.0
-    logger.info("forecast_consumption (METRICS.md Sec.14): total confirmed=%.1f, total raw forecast=%.1f "
-                "(%.1f%% consumed), across %d finished_goods_stock items, horizon %s..%s",
-                total_confirmed, total_forecast, 100 * total_confirmed / total_forecast if total_forecast else 0,
+    logger.info("forecast_consumption (METRICS.md Sec.14, corrected): confirmed_total=%.1f, "
+                "open_demand_total=%.1f, total raw forecast=%.1f, across %d finished_goods_stock "
+                "items, horizon %s..%s", confirmed_total, open_demand_total, total_forecast,
                 len(fg_list), period_labels[0] if period_labels else None, period_labels[-1] if period_labels else None)
 
     mase_df = compute_mase(scope, series_bundle, sorted(fg_codes), forecast_horizon_months)
@@ -604,7 +638,9 @@ def main():
 
     focus_items = ["EEE-F-FC-1040010002", "HS-F-99-02110", "HS-F-99-0213"]
     focus_min = full_df[full_df["code"].isin(focus_items)][["code", "LTD", "safety_stock", "min_qty", "max_qty"]]
-    focus_consumption = consumption_df[consumption_df["code"].isin(focus_items)]["confirmed"].sum() if len(consumption_df) else 0.0
+    focus_rows = consumption_df[consumption_df["code"].isin(focus_items)] if len(consumption_df) else consumption_df
+    focus_confirmed_total = float(focus_rows["confirmed"].sum()) if len(focus_rows) else 0.0
+    focus_open_demand_total = float(focus_rows["open_demand"].sum()) if len(focus_rows) else 0.0
 
     # ---- write outputs ----
     full_df.to_csv(os.path.join(SUMMARY_DIR, "phaseE1fix_2_minmax_stockvalue.csv"), index=False)
@@ -634,9 +670,10 @@ def main():
     print(f"MASE: {n_mase_undefined} items MASE_undefined (excluded from mean); mean MASE (rest) = {mean_mase:.3f}")
     print(f"stock_value (Sec.6, Sum Min x unit_cost, finished_goods_stock only): THB {stock_value:,.2f}")
     print(f"current_stock_value (Sec.6 comparison, same item set): THB {current_stock_value:,.2f}")
-    print(f"forecast_consumption total confirmed (Sec.14): {total_confirmed:,.1f} units of "
-          f"{total_forecast:,.1f} raw forecast ({100*total_confirmed/total_forecast if total_forecast else 0:.1f}%)")
-    print(f"Focus-item consumption total: {focus_consumption:,.1f} units")
+    print(f"forecast_consumption (Sec.14): confirmed_total={confirmed_total:,.1f} units, "
+          f"open_demand_total={open_demand_total:,.1f} units, of {total_forecast:,.1f} raw forecast")
+    print(f"Focus-item confirmed_total: {focus_confirmed_total:,.1f} units; "
+          f"focus-item open_demand_total: {focus_open_demand_total:,.1f} units")
     print("\nFocus-item Min/Max:")
     print(focus_min.to_string(index=False))
     print(f"\nsnapshot_pull_date used for the frozen series: {pull_date}")
@@ -644,7 +681,8 @@ def main():
     return {"facts": facts, "thresholds": thresholds, "sensitivity": sensitivity, "full_df": full_df,
             "stock_value": stock_value, "current_stock_value": current_stock_value,
             "unit_cost_df": unit_cost_df, "moc_df": moc_df, "consumption_df": consumption_df,
-            "total_confirmed": total_confirmed, "focus_consumption": focus_consumption,
+            "confirmed_total": confirmed_total, "open_demand_total": open_demand_total,
+            "focus_confirmed_total": focus_confirmed_total, "focus_open_demand_total": focus_open_demand_total,
             "n_fallback": n_fallback, "n_no_cost": n_no_cost, "n_unreliable": n_unreliable,
             "n_daily_dist": n_daily_dist, "n_monthly_fallback_dist": n_monthly_fallback_dist,
             "protection_days": protection_days, "full_months": full_months, "frac_month": frac_month,
