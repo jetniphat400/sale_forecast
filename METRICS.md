@@ -205,6 +205,13 @@ Two distinct metrics; never report one under the other's name.
   so the reader can see what the value threshold would have been had the
   inactive items been excluded. This second figure is informational and
   does not drive classification.
+- Added 2026-09-23 (Phase J2, Part 0): if assembly_time_days exceeds the
+  notice threshold (6 days, median customer notice), component_stock_ato
+  is INFEASIBLE under this criterion — report it explicitly as
+  `component_stock_ato_infeasible`, not as an undefined/unclassified
+  policy. This replaces the prior silent `UNDEFINED_BY_METRICS_MD_SEC15`
+  label with a named, explicit state; it does not change which items are
+  affected, only how the affected state is reported.
 
 ## 16. simulation_mechanics
 
@@ -281,3 +288,19 @@ Otherwise it is DECISION-INSENSITIVE and may remain an assumption.
 - Replaying today's min and max over 2024 to 2026 assumes those settings
   applied throughout. They may not have. Report this as an assumption.
 - Rows lacking ActualDelDate are excluded from actual_on_time and counted.
+
+## 19. delivery_timeliness
+
+    on_time_exact  = share delivered ON the due date
+    not_late       = share delivered on or before the due date
+    late           = share delivered after the due date
+
+Each reported both row-weighted and unit-weighted, and the weighting
+always stated.
+
+- Only not_late is comparable to section 10 fill_rate, since an early
+  delivery is a satisfied order.
+- Correction 2026-09-22: the project's long-cited 73.2 percent figure was
+  on_time_exact, row-weighted, 2026 only. It excluded early deliveries
+  and must never be used as a fill-rate benchmark. Acceptance criteria
+  that used it were comparing unlike measures.
