@@ -46,6 +46,21 @@ in `output/summary/phaseJ3_report.md` / STATUS.md's Phase J3 entry) — no longe
 purely-data route, batch dates/sizes for Q17) is still blocked — a second clean connection attempt
 this session again returned 0 rows, contradicting the earlier "crashed session" explanation.
 
+**G2's scope split, 2026-09-23 (business-confirmed division facts, DATA_MAP.md §7):** G2 (stock
+policy) now covers **PEM101 and PEM107 only** — the two divisions whose fulfilment is genuinely
+stock-driven. **PEM103 is moved out of G2 and into G3**, via a new tender-pipeline question node
+(Q22): PEM103 is transformers, tendering-driven business for electricity utilities, consistent
+with its 65.5% Tendering-channel value share, its 69.3% batch-traceability rate, and the 5-12x
+capital gap found in J3 (DATA_MAP.md §7) — a stock-based policy was never the right frame for it.
+**PEM104 is closed as a dead end (DE4)**: made to order by business model, no stock policy
+applicable (DATA_MAP.md §7, superseding the earlier "insufficient data" framing). The
+external-factors node (utility budgets, EGP bid announcements — previously deferred to Phase 3.2,
+STATUS.md:5253) is raised to **relevant for PEM103, blocked on data**, since the tender pipeline is
+now understood to be PEM103's primary production driver. A new question, **Q23 — does the Omni
+Channel scope explain observed stock and delivery behaviour, or does production/stock shared with
+Tendering need to be included?** — is proposed, in progress, next task; it feeds both PEM103's G3
+path (Q22) and PEM107's still-unexplained 2026 delivery decline (Q10).
+
 ## Status legend
 
 | Color | Status |
@@ -83,12 +98,15 @@ flowchart TD
         E12["E12: Phase J2 4 Explorers -\nnone explain the gap"]
         E13["E13: 73.2% was on_time_exact,\nnot fill_rate-comparable"]
         E17["E17: six-model backtest,\nTop-down beats Naive 4/5 divisions"]
+        E18["E18: PEM103 = transformers,\ntendering-pipeline business (A)"]
+        EF1["EF1: utility budgets, EGP bid\nannouncements (external factors)"]
     end
 
     subgraph DEADENDS["Dead ends (closed, no downstream edge)"]
         DE1["DE1: Feb-Jul 2026 window\nanomaly - unresolved, stopped"]
         DE2["DE2: cross-division/Tendering\ncoverage outside pricelist scope\n- documented exclusion, not modelled"]
         DE3["DE3: quantity-clustering\nMOQ signal - business confirmed\nno MOQ data exists"]
+        DE4["DE4: PEM104 - made to order,\nno stock policy applicable"]
     end
 
     subgraph QUESTIONS["Questions"]
@@ -113,6 +131,8 @@ flowchart TD
         Q19["Q19 (G3, proposed): assembly\nand inspection time?"]
         Q20["Q20 (G3, proposed):\nproduction capacity?"]
         Q21["Q21 (G3, proposed): MTS vs\nMTO vs ETO per item?"]
+        Q22["Q22 (G3): PEM103 - does the\ntender pipeline govern production/\nstock behaviour?"]
+        Q23["Q23: does Omni Channel scope\nexplain stock/delivery, or is\nshared Tendering stock needed?"]
     end
 
     subgraph DECISIONS["Decisions"]
@@ -134,7 +154,7 @@ flowchart TD
 
     subgraph GOALS["Goals"]
         G1["G1: sales forecast"]
-        G2["G2: inventory policy"]
+        G2["G2: inventory policy\n(PEM101, PEM107 only)"]
         G3["G3: operations plan\n(purchasing + production)"]
     end
 
@@ -195,6 +215,8 @@ flowchart TD
     Q10 -.->|proposed| Q19
     Q10 -.->|proposed| Q20
     Q10 -.->|proposed| Q21
+    Q10 -.->|PEM103 path, 2026-09-23| Q22
+    Q10 -.->|PEM107 2026 decline| Q23
     Q17 -.-> G3
     Q18 -.-> G3
     Q19 -.-> G3
@@ -202,13 +224,20 @@ flowchart TD
     Q21 -.-> G3
     G2 -.->|needed, not yet in the right form| G3
 
-    class E1,E2,E3,E4,E5,E6,E7,E8,E9,E10,E11,E12,E13,E17 done
-    class DE1,DE2,DE3 closed
+    E18 --> Q22
+    EF1 -.->|blocked on data| Q22
+    Q22 -.-> G3
+    Q23 -.-> Q22
+
+    class E1,E2,E3,E4,E5,E6,E7,E8,E9,E10,E11,E12,E13,E17,E18 done
+    class DE1,DE2,DE3,DE4 closed
+    class EF1 blockeddata
     class Q1,Q2,Q3,Q4,Q6,Q7,Q8,Q9,Q11,Q12,Q13,Q16 done
     class Q5,Q15,Q10,Q17 inprogress
-    class Q18 done
+    class Q18,Q22 done
     class Q14 blockeddata
     class Q19,Q20,Q21 blockedperson
+    class Q23 inprogress
     class D1,D2,D3,D4,D6,D7,D8,D9 done
     class D5 uncalibrated
     class T1,T2 inprogress
@@ -235,9 +264,12 @@ flowchart TD
 | E12 | done | — | Q10 | STATUS.md Phase J2 entry; `output/summary/phaseJ2_synthesis_report.md` | — |
 | E13 | done | — | Q16 | METRICS.md §19; DATA_MAP.md §4 Trap 12 | — |
 | E17 | done | — | D2 | STATUS.md Phase C step 2 report, Top-down transferability | — |
+| E18 | done | — | Q22 | DATA_MAP.md §7, PEM103 business model (A, business-confirmed 2026-09-23) | — |
+| EF1 | blocked on data | — | Q22 | STATUS.md:5253, 5391-5392 (Phase 3.2 missing-data note); raised from deferred to relevant for PEM103 2026-09-23 since the tender pipeline is now understood to be PEM103's primary production driver | **data** |
 | DE1 | closed, no downstream use | — | (none — investigated and stopped) | STATUS.md, Modeler-tasks-1-3 log entry; reversal persists but is not chased further | — |
 | DE2 | closed, no downstream use | — | (none — documented, not modelled) | `config/config.yaml` cross_division_excluded_value_thb comment; STATUS.md Locked Decisions | — |
 | DE3 | closed, no downstream use | — | (none — business confirmed absent) | STATUS.md §8.3 "Removed from the data request list" | — |
+| DE4 | closed, no downstream use | — | (none — business confirmed, no stock policy applies) | DATA_MAP.md §7, PEM104 business model (A, business-confirmed 2026-09-23); supersedes the earlier "insufficient data" exclusion reason (STATUS.md:4817-4824) | — |
 | Q1 | done | E1, E2 | D1 | Answered — pricelist is authoritative | — |
 | Q2 | done | E4 | D4 | Answered — createDate ≈ PODate, usable as order date | — |
 | Q3 | done | E5 | Q4 | Answered — MPS = Cube_CES Backlog | — |
@@ -259,6 +291,8 @@ flowchart TD
 | Q19 | blocked on a person | Q10 (implicitly) | G3 | Proposed this task, Part 3 | **person** |
 | Q20 | blocked on a person | Q10 (implicitly) | G3 | Proposed this task, Part 3 | **person** |
 | Q21 | blocked on a person | Q10 (implicitly) | G3 | Proposed this task, Part 3 | **person** |
+| Q22 | done | E18, Q10 (PEM103 path) | G3 | Answered — PEM103 is transformers, tendering-pipeline-driven business (DATA_MAP.md §7); its production/stock behaviour follows awarded tenders, not a stock-based reorder policy. Its full production driver (batch timing/size against the tender pipeline) still needs EF1 (external factors, blocked on data). | — |
+| Q23 | in progress, next task | Q10 (PEM107 path) | Q22, Q10 (PEM107 2026 decline) | Proposed this task, Part 2 — does the Omni Channel scope explain observed stock/delivery behaviour, or does production/stock shared with Tendering need to be included? Not yet run. | — |
 | D1 | done | Q1 | D3, G1, G2 | CONVENTIONS.md, Data Correctness rule | — |
 | D2 | done | E17 | G1 | STATUS.md Locked Decisions, "Final forecasting method" | — |
 | D3 | done | D1 | G1 | STATUS.md Locked Decisions, "Project scope correction" | — |
@@ -271,7 +305,7 @@ flowchart TD
 | T1 | in progress | — | G1 | STATUS.md, "First scoreable target month is 2026-08, safe to score only from 2026-09-30" | time |
 | T2 | in progress | — | Q10 | STATUS.md, "Prospective posting-delay measurement: STARTED 2026-09-22" (+60 days ≈ 2026-11-21) | time |
 | **G1** | in progress | D1, D2, D3, D4, T1 | — | Forecasting method adopted and locked; Phase F (compare against the team's current method) not started | time (Phase F) |
-| **G2** | **uncalibrated** | D1, D5, D6, D7, D8, D9 | G3 (partially) | Phase J's calibration_gap; every figure banner-tagged in STATUS.md | data, pending J3 (Q10) — corrected 2026-09-25, was "person" |
+| **G2** | **uncalibrated — scope split 2026-09-23** | D1, D5, D6, D7, D8, D9 | G3 (partially) | **Scope now PEM101 and PEM107 only** (business-confirmed fulfilment is stock-driven for these two, DATA_MAP.md §7). PEM103 moved out — feeds G3 via Q22 (tender-pipeline) instead. PEM104 was never in scope for stock policy — see DE4. Phase J's calibration_gap; every figure banner-tagged in STATUS.md | data, pending J3 (Q10) — corrected 2026-09-25, was "person" |
 | **G3** | blocked on a person | Q17-Q21 | — | No question nodes existed before this task; all proposed, none answered | **person** |
 
 ## Time-bound tracks (detail)
@@ -303,6 +337,13 @@ flowchart TD
   suggestive of a lot size, but the business confirmed this data does not exist at all — **removed
   from the data request list**, the suggestive evidence is kept on record but no value was ever
   set from it (STATUS.md §8.3).
+- **DE4 — PEM104, made to order, no stock policy applicable.** Business-confirmed 2026-09-23
+  (DATA_MAP.md §7): PEM104 is made to order, consistent with only 12 transactions across 17
+  calendar months (STATUS.md:4819) and essentially no stock anywhere (STATUS.md:780-781). This
+  supersedes the earlier "insufficient data" framing of PEM104's exclusion (STATUS.md:4817-4824,
+  DATA_MAP.md §6 Corrections log) — the low transaction count is a structural consequence of the
+  business model, not a data-collection gap. **Closed, no downstream use**: no stock policy (G2)
+  or production-batch question (G3) applies.
 
 ## Part 3 — G3's question nodes (proposed, pending business confirmation)
 
@@ -319,6 +360,8 @@ instruction.**
 | Q19 | What is assembly and inspection time per item? | **Absent.** No field in any table links a raw-material consumption event to an assembled item becoming stock — a confirmed, hard gap (DATA_MAP.md §5, item 1). `cube_final`'s undiscussed `fg_check_date`/`qacheck_date`/`fg_final_date` columns (found, not analysed, this session) are the nearest untested lead. | Needs the business, or a successful, deeper `cube_final` pull. |
 | Q20 | What is production capacity (lines, labour, equipment) over time? | **Absent.** No table found anywhere in this project's investigations records a capacity figure of any kind. | Needs the business entirely. |
 | Q21 | Which items are made-to-stock vs. made-to-order vs. engineer-to-order? | **Partial, and known to be unreliable at face value.** `manufacturing_type` (MTS/MTO/ETO) exists in `cube_Sale_APD` but is an ORDER-level attribute, not a fixed per-item classification — 100 of 113 items show more than one value across their own sales rows (DATA_MAP.md §2, manufacturing_type). Using it directly as a per-item classification would repeat a known trap. | A per-item MTS/MTO/ETO classification would need to be derived (e.g. a mode or business rule) or confirmed by the business — not read off this column directly. |
+| Q22 | Does PEM103's tender-awarded pipeline govern its production/stock behaviour? | **Answered, 2026-09-23 (business-confirmed).** PEM103 is transformers, tendering-driven business (DATA_MAP.md §7) — consistent with 65.5% Tendering-channel value share, 69.3% batch-traceability, and the 5-12x stock-policy capital gap found in J3. | Replaces PEM103's place in G2 (stock policy) — feeds G3 instead. What governs batch timing/size against the tender pipeline still needs EF1 (external factors: utility budgets, EGP bid announcements — blocked on data). |
+| Q23 | Does the Omni Channel scope explain observed stock and delivery behaviour, or does production/stock shared with Tendering need to be included? | **Proposed this task, in progress — next task.** Not yet run; METRICS.md §21 (channel_scope and cross-scope comparison) defines how the two scopes will be compared once this is picked up. | Feeds PEM103's G3 path (Q22) and PEM107's still-unexplained 2026 delivery decline (Q10). Omni Channel stays the default scope regardless of outcome (STATUS.md decision, this task). |
 
 ### What G3 would consume from G2, and whether the current form fits
 
