@@ -235,3 +235,49 @@ recorded in config and reported.
 - Ambiguity resolved 2026-09-22: two agents replayed the same demand
   with different reorder and receipt timing, producing fill rates of
   99.94 and 97.90 percent from identical inputs.
+
+## 17. decision_sensitivity
+
+For an assumption swept across its range, holding all others at default:
+
+    min_shift[item]      = |Min(swept) − Min(default)| / Min(default)
+    policy_flip[item]    = segment policy differs from default
+    value_shift          = |stock_value(swept) − stock_value(default)|
+                           / stock_value(default)
+    fill_rate_shift      = fill_rate(swept) − fill_rate(default)
+
+An assumption is DECISION-RELEVANT if, anywhere in its range, any of:
+    - policy_flip occurs for any item, or
+    - min_shift > 10% for items holding ≥ 20% of the division's
+      stock_value, or
+    - value_shift > 10%, or
+    - |fill_rate_shift| > 2 percentage points.
+
+Otherwise it is DECISION-INSENSITIVE and may remain an assumption.
+
+- Thresholds (10%, 20%, 2pp) are themselves assumptions; report results at
+  5% and 20% as well so the classification's own sensitivity is visible.
+- Items with Min(default) = 0 are excluded from min_shift and counted.
+
+## 18. baseline_replay and calibration_gap
+
+    baseline_replay : the section 16 simulation run with the CURRENT
+                      policy instead of the scenario policy:
+        - Min and Max = current minimum and maximum from
+          Cube_Inventory_Exact summed across the division's sellable
+          warehouses
+        - items with no current setting: reactive — no reorder until a
+          backorder exists, then order exactly the backorder quantity
+        - initial stock = current on-hand in sellable warehouses
+        - all other section 16 rules unchanged
+    actual_on_time  : share of units, for the same items and the same
+                      replay horizon, delivered on or before their
+                      forecast_date, from Cube_CES ActualDelDate against
+                      ForecastDelDate
+    calibration_gap = fill_rate(baseline_replay) − actual_on_time
+
+- Section 16 fill_rate measures availability on the forecast_date, which
+  is the delivery due date, so it is comparable to actual_on_time.
+- Replaying today's min and max over 2024 to 2026 assumes those settings
+  applied throughout. They may not have. Report this as an assumption.
+- Rows lacking ActualDelDate are excluded from actual_on_time and counted.
