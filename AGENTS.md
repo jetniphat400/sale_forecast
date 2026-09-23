@@ -49,7 +49,9 @@ Explorer   Validator    Analyst      Modeler        Synthesizer
 ## Roles and boundaries
 
 ### Orchestrator
-- Reads `STATUS.md` and `CONVENTIONS.md` before dispatching any task.
+- Reads `STATUS.md`, `CONVENTIONS.md`, `DATA_MAP.md` and `PROJECT_GRAPH.md` before dispatching any
+  task, and names the task's target node (and the nodes it unblocks) from `PROJECT_GRAPH.md` when
+  dispatching it.
 - Applies the decomposition test above before splitting any task — does not split by default.
 - Breaks a phase into tasks and dispatches them to the worker agents (one agent, if the
   decomposition test says so).
@@ -107,7 +109,10 @@ Explorer   Validator    Analyst      Modeler        Synthesizer
    and say what changed. Never overwrite a previous conclusion silently.
 5. **Write results to `output/summary/`, in a separate file per agent.** Each agent's output must
    be independently readable and attributable to that agent.
-6. **Read `STATUS.md` and `CONVENTIONS.md` before starting any task.**
+6. **Read `STATUS.md`, `CONVENTIONS.md`, `DATA_MAP.md` and `PROJECT_GRAPH.md` before starting any
+   task.** When closing a task that establishes a new fact, add it to `DATA_MAP.md` with a
+   citation and verification level; when a task changes a node's status, update
+   `PROJECT_GRAPH.md` (CONVENTIONS.md, "Project map").
 7. **Separate what is confirmed from data from what is inferred.** Every output must mark each
    claim as either directly confirmed (a query result, a direct recomputation) or inferred/
    interpreted from it. **A receiving agent must never treat another agent's inference as fact**
@@ -132,7 +137,8 @@ Explorer   Validator    Analyst      Modeler        Synthesizer
   re-running everything — a targeted re-check is faster and keeps the rest of the phase's
   evidence intact.
 - Close each phase by updating `STATUS.md` with what was found, at what confidence, and what
-  remains open.
+  remains open — and update `DATA_MAP.md` (new facts, cited and levelled) and `PROJECT_GRAPH.md`
+  (any node's status) accordingly (CONVENTIONS.md, "Project map").
 
 ## Per-phase agent pattern
 

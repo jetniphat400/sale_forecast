@@ -108,6 +108,29 @@
   `Cube_Inventory_Exact` instead of requested," holding cost) for the related Phase 4 holding-cost
   approximation this rate would feed into.
 
+## Project map (added 2026-09-24)
+
+- **Every task begins by reading `DATA_MAP.md` and `PROJECT_GRAPH.md`, in addition to `STATUS.md`,
+  `CONVENTIONS.md` and `METRICS.md`.** `DATA_MAP.md` records what the project has established
+  about the data, with a citation and verification level per fact, so later agents stop
+  rediscovering (or acting on the wrong assumption about) facts already known — e.g. that `cost` is
+  a line total, that `-OLD` tags are swapped between divisions, that `Cube_Backlog` lags
+  `Cube_CES`, that MPS corresponds to `Cube_CES`'s `Backlog` status. `PROJECT_GRAPH.md` records how
+  the project's work connects to its goals (G1 sales forecast, G2 inventory policy, G3 operations
+  plan), so effort is not spent on questions that feed no decision.
+- **Every task prompt names its target node (from `PROJECT_GRAPH.md`) and the nodes it unblocks.**
+  Work with no edge to a decision or a goal is not started — if a proposed task cannot be placed on
+  the graph, that is itself a reason to question the task before beginning it, not a formality to
+  skip.
+- **When a task establishes a new fact, the agent that closes it adds the fact to `DATA_MAP.md`**,
+  with a citation to the file/section that states it and a verification level (V2/V1/A/H/X, per
+  `DATA_MAP.md`'s own header) — the same task that finds a fact is responsible for recording it,
+  not a later cleanup pass.
+- **When a task changes a node's status, it updates `PROJECT_GRAPH.md`** (the node's status, and
+  the critical path if the change affects it) — the graph is kept current by the agent that changes
+  something, not reconstructed retroactively.
+
 ---
 
-**Rule: every task must begin by reading `STATUS.md`, `CONVENTIONS.md` and `METRICS.md`.**
+**Rule: every task must begin by reading `STATUS.md`, `CONVENTIONS.md`, `METRICS.md`,
+`DATA_MAP.md` and `PROJECT_GRAPH.md`.**
