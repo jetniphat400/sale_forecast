@@ -1,5 +1,21 @@
 # STATUS
 
+> **CALIBRATION WARNING (2026-09-23, Phase J2, Part 0) — READ BEFORE USING ANY FIGURE BELOW.**
+> Phase J found that replaying the current inventory policy through the Section 16 simulation
+> predicts single-digit fill rates (8.2% PEM101, 1.1% PEM103, 1.6% PEM107) while the business
+> actually delivers 86-98% of units not-late — a calibration failure of 84-93 percentage points.
+> **Every `stock_value`, `Min`, `Max` and `fill_rate` figure from Phases E0, E1, E1-fix, E1-fix-2,
+> E2 (readiness and scoped pilot) and Phase I, wherever it appears in this document, is therefore
+> marked UNCALIBRATED and must not be used for any inventory decision** until Phase J2 (below)
+> establishes the real fulfilment mechanism. This is a blanket annotation covering every
+> occurrence of these terms in every phase entry listed above — individual occurrences are not
+> separately re-marked, and none of the historical text is deleted or rewritten. See the Phase J
+> entry (calibration_gap) and the Phase J2 entry (this task) for the full account. This warning
+> also applies to the widely-cited "73.2% on-time" figure: Phase J2 found it was `on_time_exact`
+> (delivered exactly ON the due date), row-weighted, 2026 only — it excluded early deliveries and
+> must never be used as a fill-rate benchmark; see METRICS.md Sec.19 and the Phase J2 entry for
+> the corrected `not_late` figures that supersede it wherever it was used as a comparison.
+
 ## 1. Project Overview
 
 Sales forecasting and inventory planning for PEM Group Omni Channel products sold to Thai
@@ -312,7 +328,8 @@ has_stock / 222 zero_stock / 57 no_db_record of 445 codes; 92 codes show negativ
 
 **Phase E — Phase 4 proper**: calculate Max-Min and simulate it against historical demand.
 **Phase E0 (pre-check gate) — three parallel Validators + a Synthesizer, then a single-Validator
-E0.2 re-run — CLOSED (2026-09-18).** See the dated log entries near the end of Section 2 and
+E0.2 re-run — CLOSED (2026-09-18).** **[Any stock_value/Min/Max/fill_rate figure this phase feeds
+into is UNCALIBRATED — Phase J2, see banner at top of file.]** See the dated log entries near the end of Section 2 and
 `output/summary/phaseE0_synthesis_report.md` for full detail. Headline: no point-in-time leakage
 found in allocation shares or model settings (E0.1); the DB login was reset and E0.2's cancellation
 re-run found **zero** cancelled `Cube_CES` contracts resurfacing as `Actual`/`MPS` demand anywhere
@@ -325,6 +342,8 @@ version history) carry forward unchanged from Phase A/E0.1.
 
 **Phase E1 — bounded scenario pilot, PEM101's 128 items, single Modeler + independent Validator
 (per `AGENTS.md`) — DONE 2026-09-18, with the Validator recomputation only PARTIALLY matching.**
+**[UNCALIBRATED — Phase J2, 2026-09-23: every stock_value/Min/Max/fill_rate figure below failed
+calibration against actual delivery performance. See banner at top of file.]**
 **This phase produces no actionable purchase recommendation — it is a scenario analysis for the
 business to evaluate, not a locked policy.** Full detail: `output/summary/phaseE1_modeler_report.md`,
 the five `phaseE1_{1..5}_*.md` sub-reports, and `output/summary/phaseE1_validator_report.md`
@@ -386,6 +405,11 @@ the five `phaseE1_{1..5}_*.md` sub-reports, and `output/summary/phaseE1_validato
      apples-to-apples current 128-item-pilot value computed directly in E1.5). **This conclusion is
      robust to the stock-value definitional ambiguity above — under EITHER definition, the default
      scenario ties up substantially more capital than today**, for FEWER items than today's 128.
+     **[SUPERSEDED — Phase J2, 2026-09-23: 73.2% was on_time_exact, row-weighted, 2026-only —
+     not comparable to fill_rate (METRICS.md Sec.19). The corrected not_late benchmark and the
+     fill_rate figure itself are both UNCALIBRATED regardless (Phase J) — this criterion cannot
+     be re-scored as a pass/fail without a calibrated model. Not re-evaluated here, per
+     "do not delete" — see banner at top of file.]**
      Best explanation (hypothesis, not proven): a 95% cycle-service-level target over a 4-month
      protection period requires large safety stock against genuinely Erratic/Lumpy/Intermittent
      demand (e.g. `EEE-F-FC-1040010002`'s safety stock alone, 6,450.5, exceeds its own mean
@@ -411,7 +435,9 @@ the five `phaseE1_{1..5}_*.md` sub-reports, and `output/summary/phaseE1_validato
 
 **Phase E1-fix — recompute under `METRICS.md`, single Modeler + independent Validator (per
 AGENTS.md), 2026-09-21 — NOT fully validated; two root causes found, one is a genuine METRICS.md
-ambiguity, one is a confirmed code defect.** `METRICS.md` (new, 2026-09-19) was written as this
+ambiguity, one is a confirmed code defect.**
+**[UNCALIBRATED — Phase J2, 2026-09-23: every stock_value/Min/Max/fill_rate figure below failed
+calibration against actual delivery performance. See banner at top of file.]** `METRICS.md` (new, 2026-09-19) was written as this
 project's single source of truth for every metric formula, specifically to close the definitional
 gaps (`stock_value`, the 66-vs-68 item segmentation) the original Phase E1 left open. This task
 applied it. Full detail: `src/phaseE1fix_recompute.py` (Modeler), `output/summary/
@@ -466,6 +492,9 @@ phaseE1fix_validator_report.md` (Validator, independent, read none of the Modele
     ฿37.4M full-445-item figure). The directional finding from the original Phase E1 — this
     scenario ties up materially more capital than today — **stands confirmed under a second,
     independent implementation**, even though the exact magnitude is not yet settled.
+    **[SUPERSEDED — Phase J2, 2026-09-23: the 73.2% comparison used on_time_exact, row-weighted,
+    2026-only (not comparable to fill_rate — METRICS.md Sec.19); both fill_rate and stock_value
+    here are also UNCALIBRATED (Phase J). Not re-scored — see banner at top of file.]**
   - Cross-check counts (Modeler / Validator): `unit_cost_fallback` 24/7 (eligible-112 scope
     differs — not reconciled further, secondary to the two root causes above); `no_unit_cost_items`
     15/0 (FG-76-set) — flagged, not resolved; `MASE_undefined` 0/16 — the Validator's 16 is exactly
@@ -477,6 +506,7 @@ phaseE1fix_validator_report.md` (Validator, independent, read none of the Modele
   assumption in config with owner+label) — **PASS**. 3 (no placeholder/excluded item gets a
   Min/Max) — **PASS**, verified by both. 4 (fill_rate ≥73.2%, stock_value ≤ comparison ceiling) —
   **fill_rate PASSES, stock_value FAILS, both robust to the unresolved ambiguity** (see above).
+  **[SUPERSEDED — Phase J2, 2026-09-23: see the annotation on the entry directly above.]**
   5 (Validator recomputation matches) — **FAILS as literally asked**: item-level figures do not
   match; per the task's own rule, this is reported, not papered over, and the root causes are
   named precisely enough to be fixed rather than re-guessed.
@@ -510,7 +540,9 @@ phaseE1fix_validator_report.md` (Validator, independent, read none of the Modele
 
 **Phase E1-fix-2 — close the two named follow-ups, 2026-09-22 — CLOSED for the items in scope;
 two new, smaller, precisely-named ambiguities surface and are left for a human decision, not
-picked.** Directly continues the entry above; both named blockers are resolved.
+picked.**
+**[UNCALIBRATED — Phase J2, 2026-09-23: every stock_value/Min/Max/fill_rate figure below failed
+calibration against actual delivery performance. See banner at top of file.]** Directly continues the entry above; both named blockers are resolved.
 - **Part 0 — `METRICS.md` §4 and §15 rewritten to remove the two ambiguities by hand** (user-
   authored replacement text, applied verbatim, only those two sections touched). §4 now requires
   the `ltd_distribution` window to be measured in exact DAYS, on the DAILY series when available,
@@ -614,7 +646,11 @@ picked.** Directly continues the entry above; both named blockers are resolved.
   the Cube_Backlog-table convention by re-reading the section literally.
 
 **Phase E1-fix-2 (round 2) — close both named ambiguities from the entry above, 2026-09-22 —
-CLOSED. `METRICS.md` §14 rewritten (confirmed_total and open_demand_total now two explicitly
+CLOSED.**
+**[UNCALIBRATED — Phase J2, 2026-09-23: every stock_value/Min/Max/fill_rate figure below failed
+calibration against actual delivery performance. See banner at top of file.]**
+
+`METRICS.md` §14 rewritten (confirmed_total and open_demand_total now two explicitly
 distinct, separately-reported metrics, source clarified as Cube_CES not Cube_Backlog with the
 Part 1 evidence cited inline) and §16 added (a fully-specified daily historical-replay
 simulation, closing the reorder/receipt-timing gap §10/11 left open). Both scripts recomputed,
@@ -673,7 +709,11 @@ independent Validator confirmed, per AGENTS.md.**
   excluded item gets a Min/Max) PASS, re-verified directly (0 violations). 4 (fill_rate ≥73.2%,
   stock_value ≤ comparison ceiling) — fill_rate PASSES by a wide margin under both agents
   (99.70%/99.72% ≫ 73.2%); stock_value FAILS under both (₿65.1M/₿65.0M ≫ the ₿12.1M
-  current_stock_value ceiling) — same directional verdict as every prior run. 5 (Validator
+  current_stock_value ceiling) — same directional verdict as every prior run.
+  **[SUPERSEDED — Phase J2, 2026-09-23: 73.2% was on_time_exact, row-weighted, 2026-only, not
+  comparable to fill_rate; both figures are also UNCALIBRATED (Phase J). Not re-scored — see
+  banner at top of file.]**
+  5 (Validator
   recomputation matches) — **every figure now either matches exactly (segmentation, P50, focus
   Min, confirmed_total) or matches within a small, fully-traced tolerance attributable to two
   disclosed, non-blocking methodology choices `METRICS.md` still leaves as legitimate agent
@@ -694,7 +734,9 @@ independent Validator confirmed, per AGENTS.md.**
 
 **Phase E2 readiness — PEM102/PEM103/PEM104/PEM107/CI101 warehouse investigation, single
 Explorer, 2026-09-22 — DONE, "other divisions have no stock" narrowed to a per-division, evidenced
-picture.** Follow-up to Phase D's finding that warehouse codes named for these divisions hold
+picture.**
+**[Any stock_value/Min/Max/fill_rate figure this phase feeds into is UNCALIBRATED — Phase J2, see
+banner at top of file.]** Follow-up to Phase D's finding that warehouse codes named for these divisions hold
 zero stock and 30/44 codes hold nothing — reversed the direction (item → warehouse, not
 warehouse → division) across a verified, pricelist-sourced scope. Full detail:
 `output/summary/phaseE2_readiness_report.md`; data `output/summary/phaseE2_*.csv`; scripts
@@ -808,6 +850,8 @@ as a second direction when it is an independent recomputation, not a re-read of 
   changed files: zero matches.
 
 **Phase E2 scoped pilot — PEM103 and PEM107, warehouse-code closure, page extension — 2026-09-22.**
+**[UNCALIBRATED — Phase J2, 2026-09-23: every stock_value/Min/Max/fill_rate figure below failed
+calibration against actual delivery performance. See banner at top of file.]**
 Closes audit item 4 from the prior entry, records the standing sellability assumption, runs the
 first Max-Min scenario pilot outside PEM101, and extends the interactive page with a division
 selector. Full detail: `output/summary/phaseE2pilot_report.md`; data
@@ -846,7 +890,10 @@ selector. Full detail: `output/summary/phaseE2pilot_report.md`; data
   Max-proration residual. **Acceptance criteria, both divisions: fill_rate PASSES by a wide
   margin (92–98% ≫ 73.2%); scenario stock_value FAILS against on-hand value by one to two orders
   of magnitude (PEM103: ฿186–187M vs ฿6.06M on-hand; PEM107: ฿50–53M vs ฿3.28M on-hand)** — same
-  directional finding as PEM101, not a recommendation to adopt as-is. Two-group reporting (items
+  directional finding as PEM101, not a recommendation to adopt as-is.
+  **[SUPERSEDED — Phase J2, 2026-09-23: 73.2% was on_time_exact, row-weighted, 2026-only, not
+  comparable to fill_rate; both figures are also UNCALIBRATED (Phase J). Not re-scored — see
+  banner at top of file.]** Two-group reporting (items
   WITH on-hand stock vs WITH NONE, Min/Max still computed from demand for the latter, gap_to_min
   flagged as the full Min when on-hand is zero): PEM103 11 WITH / 76 WITHOUT; PEM107 33 WITH /
   103 WITHOUT.
@@ -996,6 +1043,10 @@ the same entry's Part 3 proposed in place of it. Nothing left unresolved from ei
 **Phase I — Decision-sensitivity sweep on Phase E's Tier A assumptions — DONE (2026-09-23), single
 agent (per `AGENTS.md`: sweeping/classifying/reporting on one shared computation share the same
 context and cannot be usefully split; a separate Validator ran independently for Part 4 only).**
+**[UNCALIBRATED — Phase J2, 2026-09-23: every stock_value/Min/Max/fill_rate figure below failed
+calibration against actual delivery performance (Phase J). The sensitivity classifications
+(relevant/insensitive) themselves are separate from the absolute figures and are not necessarily
+invalidated, but no absolute number here may be used for a decision. See banner at top of file.]**
 Measured which of Phase E's unconfirmed assumptions (procurement lead time, assembly time, review
 interval, service level, sellable warehouses, unit-cost window, segment thresholds, placeholder
 concentration threshold) actually change a Min/Max/stock_value/fill_rate decision, for PEM101,
@@ -1113,6 +1164,19 @@ whether Phase I's scenario figures can be trusted before being treated as an act
   same treatment as placeholder/excluded. Not a new bug (the code already refuses to invent a 5th
   category, logs a warning) -- but a real operational gap this default change opens for PEM101
   specifically. PEM103 (median notice 30d) and PEM107 (16d) are unaffected.
+  **[REVERTED — Phase J2, 2026-09-23, Part 0: `assembly_time_days` set back to 3.** Making
+  `component_stock_ato` infeasible for all 36 of PEM101's affected items was too costly a side
+  effect to accept for an assumption this uncertain, especially once Phase J itself showed the
+  whole model fails calibration against actual delivery performance (this same Phase J entry,
+  above) -- assembly time may not even be the binding constraint on real fulfilment at all (see
+  Phase J2's Explorer findings). The robust-upper-bound change is DEFERRED, project-wide, until
+  the real fulfilment mechanism is known, not abandoned -- it can be revisited once Phase J2's
+  open question (what actually governs delivery timing) is answered. `procurement_lead_time_days`
+  is NOT reverted (still 60, was already the range's upper bound regardless). Headline figures
+  above (67.41M etc.) are therefore themselves now superseded by the reverted figures: PEM101
+  THB 65.10M / 99.70%, PEM103 THB 80.45M / 90.58%, PEM107 THB 50.20M / 97.74% (identical to
+  Phase I's own default-scenario figures, since assembly_time_days=3 is unchanged from Phase I) --
+  still UNCALIBRATED regardless, per the banner at the top of this file.]**
 - **Part 5 Validator**: independent implementation (own control flow for the baseline replay;
   reused only Phase I's own already-cross-validated `phaseI_validator.py` functions for Min/Max/
   stock_value, never Phase J's Modeler scripts) -- **every figure matched to floating-point
@@ -1128,6 +1192,94 @@ whether Phase I's scenario figures can be trusted before being treated as an act
   increase, not a reallocation of today's money. Both findings should reach the business before any
   scenario figure (Phase I's or Phase J's) is treated as an action plan. Full detail:
   `output/summary/phaseJ_report.md`.
+
+**Phase J2 — Why the model fails calibration: four parallel Explorers + a Synthesizer — DONE
+(2026-09-23).** Phase J found the model dramatically pessimistic (calibration_gap -84 to -93pp);
+this phase tests four specific hypotheses for why, corrects the long-cited 73.2% benchmark, and
+retracts Phase J Part 4's default change. Per `AGENTS.md`: the four hypotheses are independent of
+each other's results and need the same capability (database search) over disjoint questions —
+matching the Phase D precedent (three parallel Explorers) — so four parallel Explorers were used,
+each with its own single database-connection attempt, then a Synthesizer (the Orchestrator) merged
+their findings without gathering new data.
+- **Part 0 corrections**:
+  - Every `stock_value`/`Min`/`Max`/`fill_rate` figure from Phases E0, E1, E1-fix, E1-fix-2, E2 and
+    Phase I is now marked **UNCALIBRATED** throughout this document (a banner at the top of this
+    file plus a tag on each phase's own entry) — not deleted, per instruction.
+  - `METRICS.md` Sec.19 (`delivery_timeliness`) added: `on_time_exact` / `not_late` / `late`, always
+    both row- and unit-weighted. **The project's long-cited 73.2% figure was `on_time_exact`,
+    row-weighted, 2026-only** — it excludes early deliveries and must never be compared against
+    `fill_rate`. **Corrected `not_late`, 2023-2026** (`output/summary/phaseJ2_0_not_late_overall.csv`,
+    `_byyear.csv`, due date = `ForecastDelDate`, year = `CtrDate` year, matching
+    `delivery_performance.py`'s own precedent): **PEM101 90.2%, PEM103 84.7%, PEM107 86.3%**
+    (row-weighted); **87.9%/88.6%/88.7%** (unit-weighted, `ActualQty`). 7 comparison-usages of
+    73.2% in this document are individually tagged SUPERSEDED, pointing here.
+  - `assembly_time_days` **REVERTED 3→7→3** (Phase J Part 4's change is retracted): 7 days made
+    `component_stock_ato` infeasible for all 36 of PEM101's affected items under METRICS.md
+    Sec.15, and Phase J's own calibration failure means assembly time may not even be the binding
+    constraint — compounding an uncalibrated model with a further speculative change was not
+    justified. The robust-upper-bound change is **deferred, not abandoned**, until Phase J2's open
+    question (the real fulfilment mechanism) is answered. `METRICS.md` Sec.15 gained an addendum:
+    this state is now named `component_stock_ato_infeasible` explicitly (code updated to match,
+    `phaseE1fix_recompute.py`/`phaseI_sensitivity_engine.py`) rather than left undefined. Pipeline
+    outputs and `forecast/inventory.html` regenerated to match (no new DB access — reused Phase
+    I's cache); 76/76 + 6/6 parity tests pass.
+- **Part 1 — four parallel Explorers, each own DB connection attempt** (per the task's own DB rule:
+  each agent attempts once, no retries, a failure in one does not authorise retries in another):
+  - **Explorer A (real notice via quotation) — CONTRADICTS, moderate-high confidence.**
+    Data-driven join-key discovery found `Cube_Quotation.quotation` (not `id`) is the real key, and
+    corrected a prior investigation's date-column choice (`report_date` tracks a disposition date,
+    99.94% identical to `forecast_date` — NOT a quotation-issue date; `create_date` is). Even in
+    2025-2026 (the only years with usable `Cube_Quotation` coverage — 2024 is essentially empty,
+    CANNOT BE DETERMINED why), only ~25-29% of orders carry any quotation trace, and matched
+    quotations precede the PO by a median of just 3 days (confirmed independently from both
+    directions). `output/summary/phaseJ2_explorerA_report.md`.
+  - **Explorer B (due dates aligned to delivery) — CONTRADICTS, moderate-high confidence.** The
+    day-0 delivery spike is real and anomalous (3.8-37.6x what the surrounding spread predicts —
+    genuinely not just "naturally fast deliveries") but is NOT specific to `ForecastDelDate`:
+    `PlanDelDate` shows an equal-or-larger zero-day share (64.6% vs 62.5%), and in the 4.2% of
+    rows where the two fields diverge, `PlanDelDate` ends up closer to `ActualDelDate` far more
+    often (62.6% vs 11.1%) — the opposite of what the hypothesis predicts. **What actually causes
+    the real day-0 spike remains an open question, not resolved by any Explorer.**
+    `output/summary/phaseJ2_explorerB_report.md`.
+  - **Explorer C (component stock/fast assembly) — CONTRADICTS as a general explanation,
+    moderate-high confidence.** Decisive reverse-direction test: on-hand stock strongly,
+    monotonically correlates with FASTER delivery (order-level 30.5% fast at zero stock vs 85.6%
+    at substantial stock) — the opposite of the hypothesis. A narrow, real pocket (16 items, 0.31%
+    of order volume, concentrated in Medium Voltage Surge Arrester and fuse types) does fit the
+    hypothesis and is worth its own follow-up. `output/summary/phaseJ2_explorerC_report.md`.
+  - **Explorer D (production batching ahead of orders) — PARTIALLY SUPPORTS, low-moderate
+    confidence (data gap).** Within this 351-item scope, only 13.8% of job/batch tokens serve more
+    than one contract (narrower than the project-wide prior finding) with a real median 32-day
+    time spread where they do; by a proxy measure (since the true batch-date field,
+    `cube_final.final_date`, returned **zero rows** — the query is verified correct and the table
+    is verified to hold matching item codes from a prior investigation, so this is almost certainly
+    an artifact of the subagent being killed mid-task by an unrelated rate-limit error, not a real
+    absence of data), ~14.5% of delivered contracts trace to a batch token that already existed via
+    an earlier contract. **The decisive test could not be completed this session and needs a fresh
+    connection attempt in a follow-up task** — this agent's own connection had already succeeded,
+    so no retry was available under this task's DB rule. `output/summary/phaseJ2_explorerD_report.md`
+    (completed by the Orchestrator from the crashed agent's already-cached pulls, no new DB access).
+- **Part 2 Synthesis** (`output/summary/phaseJ2_synthesis_report.md`): **no single hypothesis, nor
+  all four combined, is large enough to explain an 84-93 percentage-point calibration gap.** Best-
+  evidenced pattern across all four reports: real delivery is fast (PEM101 median 5 days) and
+  correlates with SOME stock existing, turning over far faster than the model's 30-day review
+  would predict — but no Explorer tested "faster real review cadence" as its own hypothesis.
+  PEM103 stands out unexplained: 84.7% not_late but only 17.8% on_time_exact, the slowest median
+  delivery (24 days), and zero items with any current Min/Max setting — structurally different
+  from PEM101/PEM107 in a way this task's four hypotheses do not specifically explain. **Section 16
+  would need**: a much shorter review cadence (event-triggered, not calendar-triggered), a broader/
+  different definition of usable stock than the assumption-labelled "sellable" warehouses (plus
+  possibly a distinct batch-production supply channel), and a realistic lead time far shorter than
+  60+3+30=93 days for the bulk of order volume (worded change proposed only, not implemented, per
+  task instruction). **Calibration is NOT achievable from data alone.** The specific missing input
+  is named: a direct description from production/warehouse planning of (1) real review
+  frequency/trigger, (2) which physical stock (including non-"sellable" warehouses and component
+  buffers) is actually treated as available, and (3) how/whether production runs ahead of orders
+  for the fuse/surge-arrester families that dominate fast delivery. One narrower piece remains
+  achievable from data alone without business input: a successful, uninterrupted `cube_final`
+  re-pull to complete Explorer D's core test.
+- **Full test suite: 76 passed** (unchanged) plus **6/6** `test_inventory_parity.py`. Sensitive-
+  content scan of every new/changed file: zero matches (see commit).
 
 **Phase F — Measure the value**: compare against the team's current method, and estimate what
 would happen with no intervention at all, since on-time delivery has already improved from 57.8%
@@ -2472,7 +2624,13 @@ model choice was written to `config/config.yaml`. Scripts:
   2023/2024/2025/2026, and %% late has fallen from 24.4% (2023) to 2.8%
   (2026, partial)** — a real, large, monotonic improvement, though 2023's
   figure should be read with the Cube_CES boundary caveat in mind (dense data
-  only begins Jan 2023). Spike-month orders are somewhat more likely to be
+  only begins Jan 2023).
+  **[SUPERSEDED — Phase J2, 2026-09-23: this table is on_time_exact (delivered exactly on the due
+  date), row-weighted, vs. PlanDelDate — not comparable to fill_rate (METRICS.md Sec.19). The
+  corrected `not_late` figure (delivered on or before the due date, PEM101, row-weighted, vs.
+  ForecastDelDate, `output/summary/phaseJ2_0_not_late_byyear.csv`) is 76.0%/94.1%/95.5%/95.9% for
+  2023/2024/2025/2026 — still improving, but starting much higher than the on_time_exact series
+  above implies, because most "misses" here are early deliveries, not late ones.]** Spike-month orders are somewhat more likely to be
   late (13.1% vs. 8.6% for normal months; chi-square p<0.0001, statistically
   significant, computed on a spike-month definition recomputed directly on
   Cube_CES's own quantity using the identical 3x-median rule — NOT the exact
@@ -4437,6 +4595,10 @@ phase, particularly Phase 4. Full methodology, confidence levels and caveats are
   caveat (2026-09-02, high confidence)**: same caveat as above — this 15-point improvement is
   not explained by date rescheduling (bounded effect too small), reinforcing this finding rather
   than weakening it, but the underlying fixedness of `forecast_date` remains unproven.
+  **[SUPERSEDED as a fill-rate benchmark — Phase J2, 2026-09-23: 73.2%/57.8% are on_time_exact
+  (delivered exactly on the due date), row-weighted, PEM101 only — see METRICS.md Sec.19. The
+  improvement trend itself is not overturned (see the corrected by-year `not_late` series in the
+  by-year entry above), but this figure must never be compared against `fill_rate` again.]**
 - **Late deliveries are not, in the main, an order-timing problem.** 69.5% of late deliveries
   had adequate notice (at or above the overall median) and were still late — pointing to
   supply/stock availability rather than customers ordering too close to the delivery date.
@@ -5078,6 +5240,8 @@ last two points.
   On-time delivery rose from 57.8% to 73.2% (2023 to 2026, partial year) with no forecasting or
   inventory system in place. Phase F must estimate what a no-intervention baseline looks like
   going forward, since some or all of the apparent opportunity may already be closing on its own.
+  **[SUPERSEDED as a fill-rate benchmark — Phase J2, 2026-09-23: on_time_exact, row-weighted,
+  PEM101 only — see METRICS.md Sec.19 and the corrected `not_late` by-year series above.]**
 
 ## 8. Resolved and Closed Questions (Business Input, 2026-09-04)
 
@@ -5201,6 +5365,7 @@ operates were discovered during Phases B and C, not established at the start:
 - 6-day median customer order notice (Section 3, Business Findings — found investigating Phase 2
   bias, not at project start).
 - 73.2% on-time delivery, up from 57.8% (Section 3, Business Findings — same origin).
+  **[SUPERSEDED as a fill-rate benchmark — Phase J2, 2026-09-23, METRICS.md Sec.19.]**
 - The existing min/max inventory settings are unusable as an input (Locked Decisions, "The
   existing min/max values in the inventory system cannot be used as inputs to any calculation" —
   found 2026-09-02, well into the project).
