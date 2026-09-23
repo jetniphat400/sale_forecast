@@ -142,21 +142,23 @@ def assign_policy_metrics15(facts: pd.DataFrame, assembly_time_days: int, median
         # component_stock_ato requires assembly_time_days <= median_notice_days (6d default)
         if assembly_time_days <= median_notice_days:
             return "component_stock_ato"
-        # METRICS.md Sec.15 structural gap: if assembly_time_days > median notice, this item
-        # matches none of the four defined categories at the letter of the spec. At the config
-        # default (3d <= 6d) this branch never fires -- flagged, not invented a 5th category.
-        return "UNDEFINED_BY_METRICS_MD_SEC15"
+        # METRICS.md Sec.15 addendum (2026-09-23, Phase J2 Part 0): if assembly_time_days exceeds
+        # the notice threshold, component_stock_ato is INFEASIBLE under this criterion -- named
+        # explicitly rather than left as an undefined/unclassified state. At the config default
+        # (3d <= 6d) this branch never fires.
+        return "component_stock_ato_infeasible"
 
     facts = facts.copy()
     facts["policy"] = facts.apply(policy, axis=1)
     facts["p50_annual_value_thb"] = p50_value
     facts["freq_cutoff_per_year"] = freq_cutoff
     facts["zero_p50_rule_used"] = zero_p50_rule_used
-    n_undefined = int((facts["policy"] == "UNDEFINED_BY_METRICS_MD_SEC15").sum())
+    n_undefined = int((facts["policy"] == "component_stock_ato_infeasible").sum())
     if n_undefined:
-        logger.warning("%d items fall into METRICS.md Sec.15's undefined gap (assembly_time_days > "
-                        "median notice, so neither finished_goods_stock nor component_stock_ato "
-                        "criteria are met) -- reported explicitly, not silently assigned.", n_undefined)
+        logger.warning("%d items fall into METRICS.md Sec.15's component_stock_ato_infeasible "
+                        "state (assembly_time_days > median notice, so finished_goods_stock is not "
+                        "met and component_stock_ato is infeasible) -- reported explicitly, not "
+                        "silently assigned.", n_undefined)
     if zero_p50_rule_used:
         logger.warning("METRICS.md Sec.15 zero-P50 rule USED: P50 annual_value_thb is exactly 0 "
                         "across %d eligible items -- the value criterion is undefined and was NOT "

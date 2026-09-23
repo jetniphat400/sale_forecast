@@ -870,20 +870,29 @@ phase_e1_assumptions:
   # in any table links a raw-material consumption event to the resulting assembled item becoming
   # stock (Section 8.5, "Still open"). Unlike lead time, NO business figure exists at all for this
   # segment. Both values below are Modeler defaults only.
-  # ROBUST DEFAULT (Phase J Part 4, 2026-09-23): CHANGED from 3 to 7 days -- the upper end of the
-  # plausible [3,7] range this Modeler proposed -- for the same reason as lead time above:
+  # REVERTED 2026-09-23 (Phase J2, Part 0): Phase J Part 4 had changed this default from 3 to 7
+  # days (the "robust upper bound" reasoning below, kept for the record, not deleted). That change
+  # is now REVERTED back to 3 -- assembly_time_days=7 exceeds PEM101's 6-day median notice, making
+  # component_stock_ato INFEASIBLE under METRICS.md Sec.15 for every item assembly_time_days
+  # applies to, which silently removed all 36 of PEM101's component_stock_ato items from any
+  # policy at all (METRICS.md Sec.15's own addendum now names this state explicitly --
+  # component_stock_ato_infeasible -- instead of leaving it undefined, but the underlying
+  # infeasibility is real, not a labelling problem). Phase J's calibration finding (the model fails
+  # against actual delivery performance -- STATUS.md Phase J entry) means assembly time may not
+  # even be the binding constraint on real fulfilment at all (see Phase J2's Explorer findings) --
+  # so moving it to a stress-test upper bound is deferred until the real fulfilment mechanism is
+  # known, rather than compounding an uncalibrated model with a further speculative change.
+  # ROBUST-UPPER-BOUND REASONING, KEPT FOR THE RECORD (Phase J Part 4, 2026-09-23, NOW REVERTED):
+  # CHANGED from 3 to 7 days -- the upper end of the plausible [3,7] range this Modeler proposed --
   # under-provisioning costs more than over-provisioning against a 6-day median order notice, and
   # Phase I found assembly time DECISION-RELEVANT in PEM101 (flips policy for 72 items at 7 days)
-  # and PEM103 (relevant at 10%); PEM107 was insensitive at 10%, so this change affects PEM101/
-  # PEM103 more than PEM107. KNOWN CONSEQUENCE, not silently absorbed: PEM101's median customer
-  # notice is 6 days (STATUS.md), so assembly_time_days=7 > 6 trips METRICS.md Sec.15's own
-  # documented structural gap -- items that would be component_stock_ato now match neither defined
-  # category and are reported as UNDEFINED_BY_METRICS_MD_SEC15 (see phaseE1fix_recompute.py's
-  # assign_policy_metrics15, which already logs this non-silently). Reported in STATUS.md's Phase J
-  # entry and phaseJ_report.md with the exact count, not hidden.
-  assembly_time_days_default: 7
-  assembly_time_days_alternative: 3
-  assembly_time_days_owner: "Modeler default -- business has not supplied this figure (STATUS.md Section 8.1/8.5). 7 days (the new default, Phase J Part 4) represents a more conservative, multi-step assembly, chosen because Phase I found this assumption decision-relevant and under-provisioning is the costlier error against a 6-day order notice; 3 days (now the alternative) is a small, defensible placeholder for simple sub-assembly of a fuse cutout/surge arrester from purchased parts. NEITHER is derived from data -- both are stated guesses pending a real production-time figure."
+  # and PEM103 (relevant at 10%); PEM107 was insensitive at 10%. KNOWN CONSEQUENCE at the time (not
+  # silently absorbed then either): PEM101's median customer notice is 6 days, so assembly_time_
+  # days=7 > 6 tripped METRICS.md Sec.15's own documented structural gap -- exactly the problem
+  # this revert now undoes.
+  assembly_time_days_default: 3
+  assembly_time_days_alternative: 7
+  assembly_time_days_owner: "Modeler default -- business has not supplied this figure (STATUS.md Section 8.1/8.5). 3 days (REVERTED default, Phase J2 Part 0, 2026-09-23) is a small, defensible placeholder for simple sub-assembly of a fuse cutout/surge arrester from purchased parts, and keeps component_stock_ato FEASIBLE under METRICS.md Sec.15 for PEM101 (median notice 6 days). 7 days (alternative -- was briefly the default under Phase J Part 4, reverted) represents a more conservative, multi-step assembly, but makes component_stock_ato infeasible for PEM101 specifically. NEITHER is derived from data -- both are stated guesses pending a real production-time figure. The robust-upper-bound change is deferred, project-wide, until the real fulfilment mechanism is known (Phase J2) -- assembly time may not be the binding constraint at all."
   assembly_time_sensitivity_days: [1, 3, 5, 7, 10]   # E1.1 component-stock feasibility sensitivity table only
 
   # --- Review interval (periodic-review policy interval). No data source addresses this at all
@@ -907,9 +916,10 @@ phase_e1_assumptions:
   # Picked as the middle/most-typical value on every dimension, not tuned to pass any criterion.
   default_scenario:
     procurement_lead_time_days: 60
-    assembly_time_days: 7
+    assembly_time_days: 3
     cycle_service_level: 0.95
-    reason: "ROBUST DEFAULTS (Phase J Part 4, 2026-09-23, superseding the prior 'most typical value on every axis' reason below for procurement_lead_time_days and assembly_time_days): both are the UPPER BOUND of their confirmed/plausible range, not the middle -- under-provisioning costs more than over-provisioning against a 6-day median customer order notice (STATUS.md Business Findings), and Phase I (output/summary/phaseI_report.md) found BOTH decision-relevant (procurement lead time in every division; assembly time in PEM101/PEM103). cycle_service_level is unchanged (still the middle of 90/95/98 -- Phase I found it decision-relevant everywhere too, but Part 4's instruction names only lead time and assembly time for this change; service level stays a business decision per STATUS.md Section 8.5, not defaulted upward here)."
+    reason: "REVERTED 2026-09-23 (Phase J2, Part 0): assembly_time_days back to 3 (see assembly_time_days_owner above for the full reasoning -- 7 made component_stock_ato infeasible for all 36 of PEM101's items under it, and Phase J found the whole model uncalibrated against actual delivery performance, so a further speculative robust-upper-bound change is deferred, not compounded). procurement_lead_time_days stays 60 (was already the confirmed range's upper bound, not just its middle -- unaffected by this revert)."
+    superseded_reason_2026_09_23_phaseJ_part4: "ROBUST DEFAULTS (Phase J Part 4, 2026-09-23, NOW REVERTED by Phase J2 Part 0 -- see `reason` above): both were set to the UPPER BOUND of their confirmed/plausible range, not the middle -- under-provisioning costs more than over-provisioning against a 6-day median customer order notice (STATUS.md Business Findings), and Phase I (output/summary/phaseI_report.md) found BOTH decision-relevant (procurement lead time in every division; assembly time in PEM101/PEM103). cycle_service_level was left unchanged (still the middle of 90/95/98) and still is."
     prior_reason_2026_09_18: "Middle value of the lead-time grid (60 of 45/60/75), the Modeler DEFAULT (not the alternative) assembly-time assumption (which was 3 at the time), and the middle value of the service-level grid (95% of 90/95/98) -- the single most 'typical' combination on every axis, not selected to produce a favourable acceptance-criteria result."
 
   # --- Replenishment quantity convention (Max = Min + replenishment qty). No MOQ or lot size

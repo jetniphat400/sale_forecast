@@ -197,7 +197,9 @@ def assign_policy_param(facts: pd.DataFrame, assembly_time_days: float, median_n
             return "finished_goods_stock"
         if assembly_time_days <= median_notice_days:
             return "component_stock_ato"
-        return "UNDEFINED_BY_METRICS_MD_SEC15"
+        # METRICS.md Sec.15 addendum (2026-09-23, Phase J2 Part 0): named explicitly, not left
+        # undefined -- see phaseE1fix_recompute.assign_policy_metrics15 for the same change.
+        return "component_stock_ato_infeasible"
 
     facts = facts.copy()
     facts["policy"] = facts.apply(policy, axis=1)
