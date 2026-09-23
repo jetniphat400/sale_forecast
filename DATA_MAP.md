@@ -162,7 +162,21 @@ proof). **Trust note**: unusable regardless — no itemcode column, and no data 
   (outside sourcing vs. a recorded reference price only) — **H**.
 - **Cube_BOM_Exact** — bill-of-materials table; all 117 FG-classified items (of the 122) have a
   BOM entry, none of the 6 RM items do (STATUS.md:2322-2323) — **V1**, corroborating evidence for
-  the FG/RM split.
+  the FG/RM split. **Fully investigated 2026-09-25 (Phase J3 Explorer BOM,
+  `output/summary/phaseJ3_explorerBOM_report.md`)**: 20 columns; `ItemFG` = finished item,
+  `ItemRawmat` = component code, `Quantity`+`Unit` = per-unit consumption rate, `Sequenceno`
+  numbers BOM lines (0 = header row, not a component; `Type='Machine Hour'` flags 3 non-stock
+  labor/overhead pseudo-codes mixed into the component-code column). **Grain: one row per
+  (finished item, component) pair** — confirmed, zero duplicate keys across 1,751 scope rows —
+  **V1**. **Coverage of the 351-item inventory-model scope: 301/351 (85.8%)** — PEM101 95.3%,
+  PEM107 94.1%, **PEM103 only 58.6%** (new, no prior figure existed) — **V1**. **Components ARE
+  shared across finished items (Q18, confirmed): 141 of 805 distinct components (17.5%) appear on
+  more than one finished item's BOM**, concentrated in fuse/surge-arrester families — **V1**. **Join
+  to `Cube_Inventory_Exact`, both directions, mutually consistent: 765/805 (95.0%) component codes
+  exist as their own itemcode in inventory (forward); a targeted pull of exactly those 765 codes
+  returned 1,796 real stock rows (reverse, confirming genuine separate stock records, not a
+  coincidental string match)** — **V2**. 176/765 matched components (23.0%) carry nonzero on-hand
+  stock today.
 - **cube_po** — raw-material PO table; none of the FG items appear in it under their own code —
   weak, one-directional evidence they are manufactured rather than bought complete
   (STATUS.md:2325-2327) — **H**.
@@ -239,7 +253,23 @@ reading that an identical full list repeating across a contract's rows meant "on
 later finding, different scope, both recorded**: restricted to the 351-item PEM101/103/107 scope
 (Phase J2 Explorer D, this session), only 13.8% of tokens serve more than one contract — narrower
 than the project-wide "reused across dozens" finding; the two are not directly comparable
-(`output/summary/phaseJ2_explorerD_report.md`).
+(`output/summary/phaseJ2_explorerD_report.md`). **Refined further, 2026-09-25 (Phase J3 Explorer
+D, `output/summary/phaseJ3_explorerD_report.md`), independently recomputed on the `OLMJobCode`
+proxy (V2, matches Phase J2's pooled 13.8%/14.5% almost exactly when pooled the same way)**: the
+13.8%/14.5% pooled figures hide a LARGE division split in the reverse-traceability share (share of
+delivered contracts tracing to a pre-existing batch token) — **PEM101 only 2.0%, PEM103 69.3%,
+PEM107 58.9%**. Batch/cadence-based fulfilment looks weak for PEM101 but substantial for
+PEM103/PEM107. Per-item-typical cadence (median days between an item's own batches, a candidate
+Section 20 review-interval value): PEM101 56 days (p25 31, p75 124), PEM103 36 days (p25 15, p75
+133), PEM107 58 days (p25 22, p75 98) — wide spreads, reported as such, not collapsed to one
+number. A narrow, stale, 4-item legacy sample (`task2_cube_final_jobno_match.csv`, pre-existing,
+not scope-representative) gives one further qualitative lean, kept at low confidence given the
+sample size: `job_qty` looks like a fixed nominal lot size (e.g. always 20 or 30 units) unrelated
+to the 1-17 units actually delivered per order (supports batching qualitatively), but `final_date`
+is per-allocation (each row sharing a `jobno` has its own distinct `final_date`) and typically
+falls AFTER, not before, that allocation's own PO date (median lag -4 days in that small sample) —
+a genuine complication for a simple "batch precedes order" reading, reported plainly — **H**, 4
+items, not scope-representative.
 
 **manufacturing_type (cube_Sale_APD)** — MTS/MTO/ETO values, covers 113/128 pilot items, but is an
 **ORDER-level attribute, not a fixed per-item classification**: 100 of 113 items show more than one
@@ -296,6 +326,9 @@ rows.
 | ↳ forward (PO→quotation), match once found | | 17.26% of all 35,174 PO rows overall; 0.00% for 2024 specifically (near-zero table coverage that year); 95.54-98.67% for 2025/2026 | 351-item scope | 2026-09-23 | Forward | V1 (2025-2026); CANNOT BE DETERMINED for 2024 |
 | ↳ reverse (quotation→PO) | | 5,975/15,199 distinct quotations converted (39.31%), median 3 days to conversion | 351-item scope | 2026-09-23 | Reverse — independently confirms the forward-direction median (3 days each way) | **V2** for the join mechanism and 2025-2026 match rate (both directions, mutually confirming) |
 | `Cube_Inventory_Exact.itemcode` | `cube_Sale_APD.itemcode` | No report found testing this as an independent join with a stated match-rate figure — inventory pulls are always scoped by a pre-existing item-code list | — | — | Not tested as a join | **Gap, not a number** — flagged, not asserted |
+| `Cube_BOM_Exact.ItemRawmat` (component code) | `Cube_Inventory_Exact.itemcode` | 765/805 distinct components (95.0%) forward; reverse pull of exactly those 765 codes returned 1,796 real stock rows, confirming genuine separate stock records | 351-item inventory-model scope | 2026-09-25 | Both directions checked, mutually consistent | V2 |
+| `cube_final.ctrno` | `cube_Sale_APD.contractid` / `Cube_CES.ContractID` | Still not exercised — a second, clean, uninterrupted `cube_final` pull (Phase J3) STILL returned 0 rows for this scope, contradicting the earlier "crashed-agent artifact" explanation | 351-item scope | 2026-09-25 attempted (Phase J3 Explorer D) | Not checked either direction (no rows to join) | H (hypothesis only; the join itself remains untested — see §4 Trap 7, revised) |
+| `Cube_CES.OLMJobCode` token → first prior contract with that token (reverse-direction batch-traceability proxy) | delivered contracts (`Status='Actual'`) | Pooled 14.48% (median lag 29 days); **by division: PEM101 2.0%, PEM103 69.3%, PEM107 58.9%** — a large, division-dependent spread not visible in the earlier pooled figure | 351-item scope | 2026-09-25 (Phase J3 Explorer D, `output/summary/phaseJ3_explorerD_report.md`) | Reverse direction only (this IS the reverse-traceability check itself; no separate forward check performed beyond the existing token-match-rate entries above) | V2 by independent recomputation (matches Phase J2's own pooled 13.8-14.5% almost exactly when pooled the same way) |
 
 ---
 
@@ -357,14 +390,26 @@ produced a wrong result, with the correct handling and the report that found it.
    **V1**.
 
 7. **A `cube_final` pull returning zero rows was nearly indistinguishable from "this table has no
-   data for this scope."** Naive reading: zero rows means the table doesn't cover these items.
-   Reality: the pulling agent was killed by an unrelated infrastructure rate-limit mid-task, after
-   its database connection had already succeeded; item codes from a prior, already-completed
-   investigation are confirmed present in the same 351-item scope. **Correct handling**: treat this
-   specific empty result as CANNOT BE DETERMINED / needs re-attempt, not as a verified absence.
-   Found: Phase J2 Explorer D, this session (`output/summary/phaseJ2_explorerD_report.md`). **V1**
-   for the "almost certainly an artifact" read (not independently re-confirmed by a successful
-   re-pull this session).
+   data for this scope" — and the natural explanation (a crashed session) turned out to be wrong
+   too.** Naive reading #1: zero rows means the table doesn't cover these items. Reality (Phase J2):
+   the pulling agent was killed by an unrelated infrastructure rate-limit mid-task, after its
+   database connection had already succeeded — this looked like the explanation. Naive reading #2
+   (Phase J2's own correction): therefore a clean re-attempt would return real data. **This was
+   tested and CONTRADICTED, 2026-09-25 (Phase J3 Explorer D): a fresh, uninterrupted, full-column
+   connection attempt — no crash, correct 35-column schema returned — STILL returned zero rows for
+   the same 351-item scope.** A follow-up diagnostic query (row count table-wide; whether 4
+   previously-confirmed item codes still exist) was attempted but blocked by this task's own
+   one-connection-per-agent rule, so it is **CANNOT BE DETERMINED** whether `cube_final` is now
+   empty table-wide or just for this item scope — neither the original "artifact" theory nor a
+   simple "just re-attempt" fix is confirmed. **Correct handling, revised**: do not assume a repeat
+   empty pull will resolve itself; the next attempt should run the three specific diagnostic
+   queries first (row count; a handful of known-historical item codes; a date-unbounded, no-filter
+   `SELECT COUNT(*)`) before spending a connection on the full 351-item pull again. Found: Phase J2
+   Explorer D (`output/summary/phaseJ2_explorerD_report.md`) and Phase J3 Explorer D
+   (`output/summary/phaseJ3_explorerD_report.md`, which itself lists the exact diagnostic queries).
+   **V1** for both the original artifact theory (now known incomplete) and this correction (one
+   Explorer, one clean re-attempt) — genuinely **CANNOT BE DETERMINED** for the underlying question
+   of why the table is empty for this scope.
 
 8. **A one-direction "no stock" conclusion (warehouse-named-for-a-division → stock) was wrong for
    two divisions.** Naive reading: if a warehouse code is named for a division and shows no stock,
@@ -522,6 +567,17 @@ itself names it).
     Section 16 parameters. METRICS.md §20 (inverse calibration) proposes exactly that test,
     scheduled as J3, before concluding business input is the only route — see §6 Corrections log
     and PROJECT_GRAPH.md's critical path.
+    **RESOLVED PARTIALLY, 2026-09-25 (Phase J3, Part 2, independently confirmed V2 — see §6):**
+    PEM101 IS fittable to a realistic stock level (partially — no single parameter uniquely
+    identified). **PEM103 and PEM107 are NOT fittable to a stationary reorder/order-up-to policy at
+    a realistic stock level at all** — for different, well-evidenced reasons (PEM103: matching
+    reality needs 5-12x more capital than the business holds; PEM107: no fixed policy fits both the
+    2024-2025 and 2026 periods simultaneously, implying a real operational change between them, not
+    a parameter-search failure). This is now a real, quantified answer, not an open unknown — see
+    §6 Corrections log's new J3 entry and STATUS.md's Phase J3 entry for the full account. The
+    business-input question named above is NARROWED, not closed: for PEM103, specifically whether
+    production-batch timing (not warehouse stock) governs fulfilment; for PEM107, specifically what
+    changed operationally between 2024-2025 and 2026.
 16. **PEM103's Tendering-channel scope decision** — 65.5% of item-code value sits outside the
     Omni-Channel-only scope; a business call on whether it belongs in this project. STATUS.md §5,
     Phase C step 1 residual item 4. Owner: business.
@@ -558,3 +614,5 @@ itself names it).
 | `Cube_Quotation.report_date` treated as a usable quotation date | 99.94% identical to `forecast_date` — a disposition date, not a quotation-issue date; `create_date` is the defensible one | 2026-09-23 | `output/summary/phaseJ2_explorerA_report.md` §2 |
 | Phase J's calibration_gap (baseline_fill_rate 8.2-1.6% vs. actual_on_time 86-98%, an 84-93pp gap) read as showing the Section 16 model's own mechanics (review cadence, lead time, min/max logic) fail against reality | **SUPERSEDED, kept not deleted.** The calibration design itself was flawed: it replayed the CURRENT min/max settings, which the project had already established nobody follows (existing settings are known-unusable as an input — see §1 Cube_Inventory_Exact trust note). The 89-point gap therefore shows today's settings are disconnected from real practice, not that Section 16's own mechanics are wrong — that question is still open. Explorer D's batch data was lost mid-task (§4 Trap 7), not resolved either way. Inverse calibration (METRICS.md §20) had not been attempted; the data route is not exhausted, pursued in J3. | 2026-09-25 | This task (Q10 correction); METRICS.md §20; PROJECT_GRAPH.md critical-path note |
 | Explorer B (due dates aligned to delivery) — CONTRADICTS, moderate-high confidence | **SUPERSEDED, kept not deleted.** UNDETERMINED: a day-0 delivery spike appearing equally on `ForecastDelDate` and `PlanDelDate` is consistent both with due dates being set to match delivery AND with the business scheduling shipment on the promised day (normal practice) — the data available cannot separate the two. The original CONTRADICTS verdict overstated what the evidence rules out. | 2026-09-25 | STATUS.md Phase J2 entry, Explorer B (corrected); `output/summary/phaseJ2_explorerB_report.md` |
+| Phase J's 97.8% actual_on_time (PEM101, unit-weighted) vs. Phase J2's 87.9% not_late (PEM101, unit-weighted) — an unexplained 9.9pp gap between two figures both in the repo | **RECONCILED, not a bug either side.** Item scope, Status filter and weighting are identical between the two computations; the ONLY real difference is the window: Phase J bounds by `ForecastDelDate` in [2024-01, 2026-07]; Phase J2 bucketed by `CtrDate` YEAR 2023-2026, which pulls in 2023 (55.97% unit-weighted not_late, a genuinely much worse year) alongside 2024-2026 (~97-99%). Quantified: -10.29pp from including 2023, +0.35pp from the bucketing-method difference, net -9.93pp — matches the observed gap almost exactly. `ForecastDelDate` is the METRICS.md Sec.18/19/20-correct field going forward. | 2026-09-25 | `output/summary/phaseJ3_validator_reconciliation.md` (independent recomputation, one Validator, one session — V1) |
+| "The data route is not exhausted" (this file's own 2026-09-25 correction, above) — an open question, not yet a result | **ANSWERED, per-division, 2026-09-25 (Phase J3 Part 2, METRICS.md Sec.20 inverse_calibration, independently confirmed — Part 3 Validator, own code, 12/12 figures match).** PEM101: partially calibratable — 59 of 4,130 grid combinations reproduce both the 2024-2025 and 2026+ periods within tolerance (not_late ±3pp, stock value ±15%) at a realistic capital level, but no single parameter is uniquely identified (r_months ambiguous 0.25-2.0 months, s_months 1.5-3.0, review interval 1-30 days, lead time 1-30 days — all four span more than one grid step). PEM103: NOT calibratable to a stationary policy at a realistic stock level — a fit exists for `not_late` alone (117 combinations), but every one needs 5-12x more capital than the business holds (best: THB 57.6M simulated vs. THB 6.06M real on-hand). PEM107: NOT calibratable at all — no single parameter set fits both periods simultaneously (the best joint compromise is still 14-18 percentage points off on one side), implying a genuine operational change between 2024-2025 and 2026, not a search failure. | 2026-09-25 | `output/summary/phaseJ3_2_calibration_summary.json`, `phaseJ3_2_grid_{PEM101,PEM103,PEM107}.csv`, `phaseJ3_validator2_independent_check.md` |

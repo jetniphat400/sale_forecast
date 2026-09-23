@@ -1301,6 +1301,84 @@ their findings without gathering new data.
 - **Full test suite: 76 passed** (unchanged) plus **6/6** `test_inventory_parity.py`. Sensitive-
   content scan of every new/changed file: zero matches (see commit).
 
+**Phase J3 — Inverse calibration (METRICS.md Sec.20), target node Q10 — DONE (2026-09-25).**
+Three parallel agents (Validator, Explorer D, Explorer BOM — independent, per `AGENTS.md`: same
+capability, disjoint questions), then a single Modeler (grid search needs all inputs together in
+one view, per the decomposition test), then a separate Validator for the independent check.
+- **Part 1 Validator — reconciled the 97.8%-vs-87.9% PEM101 discrepancy.** Not a bug either side:
+  item scope, status filter and weighting are identical; the only real difference is the window
+  (Phase J bounded by `ForecastDelDate` 2024-01/2026-07; Phase J2 bucketed by `CtrDate` calendar
+  YEAR 2023-2026, pulling in a genuinely much worse 2023 — 55.97% unit-weighted `not_late` vs.
+  ~97-99% in 2024-2026). Quantified: -10.29pp from including 2023, +0.35pp from the bucketing
+  method, net -9.93pp, matching the observed gap almost exactly. **Reconciled calibration/
+  validation targets** (`ForecastDelDate`-windowed, unit-weighted, `output/summary/
+  phaseJ3_validator_reconciliation.md`): calibration (2024-01 to 2025-12) `not_late` PEM101 97.70%,
+  PEM103 90.89%, PEM107 86.61%; validation (2026-01 onward) PEM101 98.28%, PEM103 96.56%, **PEM107
+  76.54% — a real degradation, not noise**. Current on-hand stock value (single snapshot, flagged
+  as an assumption that stock was broadly stable across the period): PEM101 THB 18.25M, PEM103
+  THB 6.06M, PEM107 THB 3.40M.
+- **Part 1 Explorer D — completed the lost Phase J2 test, with an important correction.** A fresh,
+  clean, uninterrupted `cube_final` connection (full 35-column schema, no crash) **still returned
+  zero rows** for the 351-item scope — this CONTRADICTS Phase J2's "almost certainly a
+  process-kill artifact" theory; a follow-up diagnostic query was blocked by this task's own
+  one-connection-per-agent rule, so it is genuinely CANNOT BE DETERMINED whether the table is now
+  empty table-wide or just for this scope. What WAS computed (from the `Cube_CES` `OLMJobCode`
+  proxy, independently recomputed, matching Phase J2's pooled figures almost exactly): the pooled
+  13.8%/14.5% reverse-traceable-batch-share figures hide a large division split — **PEM101 only
+  2.0%, PEM103 69.3%, PEM107 58.9%** — and per-item-typical cadence (PEM101 56d, PEM103 36d, PEM107
+  58d median, all with wide spreads). No lead-time value could be derived at all (the decisive
+  `cube_final` field never returned data either session).
+- **Part 1 Explorer BOM — `Cube_BOM_Exact` investigated for the first time.** Structure/grain
+  confirmed (one row per finished-item/component pair); **85.8% coverage of the 351-item scope
+  (PEM103 only 58.6%)**; components confirmed **shared across finished items** (141 of 805, 17.5%,
+  concentrated in fuse/surge-arrester families) — answers Q18. Join to `Cube_Inventory_Exact`
+  confirmed both directions (V2, 95.0% match). Of Phase J2's 16 zero-finished-stock-fast-delivery
+  items, 14 have at least one stocked component — **PLAUSIBLE, not VERIFIED**, support for a
+  component-stock explanation of that narrow pocket; does not overturn Explorer C's project-wide
+  verdict.
+- **Part 2 Modeler — METRICS.md Sec.20 grid search, per division** (review interval extended
+  beyond the originally-suggested 30-day cap to span Explorer D's actual observed cadence, up to
+  130 days; lead time bounded by Cube_PO_Exact/business-confirmed figures since Explorer D's
+  batch-date route failed again; r/s_months extended twice after the first two grids kept
+  clipping their own edge — disclosed, not silently widened):
+  - **PEM101: PARTIALLY CALIBRATED.** 59/4,130 combinations fit both periods within tolerance
+    (`not_late` ±3pp, stock value ±15%) at a realistic capital level. No parameter uniquely
+    identified: r = 0.25-2.0 months of mean demand, S = 1.5-3.0 months, review interval = 1-30
+    days, lead time = 1-30 days, all span more than one grid step. Best fit: r=0.5mo, S=2.5mo,
+    review=1d, lead=3d (calib `not_late` 98.9% vs. target 97.7%; valid 98.3% vs. 98.3%; calib
+    stock value THB 18.42M vs. THB 18.25M target).
+  - **PEM103: NOT CALIBRATABLE at a realistic stock level.** `not_late` alone is matchable (117
+    combinations) but every one needs 5-12x more capital than the business holds (best: THB 57.6M
+    simulated vs. THB 6.06M real on-hand, +850%).
+  - **PEM107: NOT CALIBRATABLE at all.** No parameter set fits both periods simultaneously — the
+    closest joint compromise is still 14-18 percentage points off on one side (a policy generous
+    enough for the 86.6% calibration target overshoots the 76.5% validation target by ~15-20pp,
+    and vice versa).
+- **Part 3 independent Validator — 12/12 figures (4 per division x 3 divisions) MATCH**, own code
+  written from METRICS.md Sec.16/20's literal text, never reading the Modeler's scripts
+  (`output/summary/phaseJ3_validator2_independent_check.md`). The one nonzero gap (PEM103 stock
+  value, ~0.06-0.09%) is well inside the 1% tolerance and traced to a handful of extremely
+  high-value, low-volume transformer items, not a methodology disagreement.
+- **Part 4 Gate:**
+  - PEM101: **calibrated with wide uncertainty bands** — may be used for scenarios only with those
+    bands stated, not as a single confident policy.
+  - PEM103: **not calibratable from data** at a realistic stock level. Single narrowest question:
+    **does PEM103 fulfil orders primarily through production-batch timing rather than
+    finished-goods buffer stock, and if so, what governs when a batch is run and how large it
+    is?** (Ties directly to Q17, still blocked on a working `cube_final` connection.)
+  - PEM107: **not calibratable from data.** Single narrowest question: **what changed
+    operationally for PEM107 between 2024-2025 and 2026 — capacity, a supplier, a customer-mix
+    shift — that dropped delivery performance from ~87% to ~77%?**
+  - Fallback evidence (PEM103/PEM107, project-wide/pooled, not per-division): Explorer C's
+    (Phase J2) already-verified stock-tier-vs-delivery-speed relationship — zero on-hand stock:
+    30.5% delivered within 14 days (median 25 days); some stock: 66.0% within 14 days (median 8
+    days); substantial stock: 85.6% within 14 days (median 5 days). Monotonic, real, but pooled
+    across items, not a per-division calibration.
+- **Full test suite: 76 passed** (unchanged — this task added only new `phaseJ3_*.py` scripts).
+- Node statuses updated in `PROJECT_GRAPH.md`: **Q10** in progress (answered per-division, two of
+  three narrowed to one named business question each); **Q17** in progress (cadence known, batch
+  dates/sizes still blocked on `cube_final`); **Q18** done.
+
 **Phase F — Measure the value**: compare against the team's current method, and estimate what
 would happen with no intervention at all, since on-time delivery has already improved from 57.8%
 to 73.2% with no system in place.

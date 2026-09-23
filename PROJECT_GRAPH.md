@@ -17,17 +17,34 @@ falls short (E12); **how the business actually fulfils orders and how fast it re
 remains unresolved** — and every G2 figure (Min, Max, stock_value, fill_rate, segment policy) is
 marked UNCALIBRATED and depends on Q10 being answered before it can be trusted for a decision.
 
-**Q10 status corrected 2026-09-25: IN PROGRESS, data route J3 — not blocked on a person.** Phase
-J's calibration replayed the CURRENT min/max settings, which the project had already established
-nobody follows (DATA_MAP.md, Cube_Inventory_Exact trust note; STATUS.md Locked Decisions, "existing
-min/max values cannot be used as calculation inputs") — so its 89-point gap tested an unused
-policy, not the model's own mechanics. Explorer D's batch data (a candidate lead on the real
-fulfilment mechanism) was lost mid-task to an infrastructure failure, not resolved against the
-data. **Inverse calibration (METRICS.md §20, fitting Section 16's own parameters to reproduce
-observed `not_late` and stock value, instead of assuming today's settings) has not yet been
-attempted.** The data route is not exhausted — this is what J3 pursues. Q10 is on the graph as
-**in progress**, not **blocked on a person**, until J3 reports whether inverse calibration
-identifies its parameters or genuinely cannot from the data available.
+**Q10 update, 2026-09-25 (Phase J3): the data route was pursued to completion and gave a real,
+per-division answer** (METRICS.md §20 inverse calibration, grid search independently confirmed —
+V2, 12/12 figures match, `phaseJ3_validator2_independent_check.md`):
+
+- **PEM101: PARTIALLY CALIBRATED.** A stock-based reorder policy (reorder level r, order-up-to
+  level S, review interval, replenishment lead time) CAN reproduce both PEM101's 2024-2025 and
+  2026+ `not_late` and stock value within tolerance, at a realistic capital level — 59 of 4,130
+  grid combinations qualify. No single parameter is uniquely identified (r = 0.25-2.0 months of
+  mean demand, S = 1.5-3.0 months, review interval = 1-30 days, lead time = 1-30 days all remain
+  ambiguous), so this is usable for scenarios only with wide uncertainty bands, not a single
+  confident policy.
+- **PEM103: NOT CALIBRATABLE to a stock-based policy at a realistic capital level.** `not_late`
+  alone CAN be matched (117 combinations), but every one requires 5-12x more stock value than the
+  business actually holds (best: THB 57.6M simulated vs. THB 6.06M real). Corroborating evidence:
+  69.3% of PEM103's delivered contracts trace to a pre-existing production-batch token (Explorer D,
+  Phase J3) — far higher than PEM101's 2.0% — pointing toward batch/production-driven, not
+  stock-buffer-driven, fulfilment.
+- **PEM107: NOT CALIBRATABLE under any tested parameter set.** No stationary policy fits both
+  periods simultaneously — the best joint compromise is still 14-18 percentage points off on one
+  side. This implies a genuine operational change between 2024-2025 and 2026 (delivery performance
+  dropped from ~87% to ~77%), not a search failure.
+
+**Q10 is therefore substantially resolved for PEM101 (data-answerable, with named uncertainty) and
+NARROWED to one specific named business question each for PEM103 and PEM107** (see the Gate detail
+in `output/summary/phaseJ3_report.md` / STATUS.md's Phase J3 entry) — no longer the single, vague
+"how does the business fulfil orders" question it was before J3. `cube_final` (the one remaining
+purely-data route, batch dates/sizes for Q17) is still blocked — a second clean connection attempt
+this session again returned 0 rows, contradicting the earlier "crashed session" explanation.
 
 ## Status legend
 
@@ -188,9 +205,10 @@ flowchart TD
     class E1,E2,E3,E4,E5,E6,E7,E8,E9,E10,E11,E12,E13,E17 done
     class DE1,DE2,DE3 closed
     class Q1,Q2,Q3,Q4,Q6,Q7,Q8,Q9,Q11,Q12,Q13,Q16 done
-    class Q5,Q15,Q10,Q18 inprogress
+    class Q5,Q15,Q10,Q17 inprogress
+    class Q18 done
     class Q14 blockeddata
-    class Q17,Q19,Q20,Q21 blockedperson
+    class Q19,Q20,Q21 blockedperson
     class D1,D2,D3,D4,D6,D7,D8,D9 done
     class D5 uncalibrated
     class T1,T2 inprogress
@@ -229,15 +247,15 @@ flowchart TD
 | Q7 | done | E10 | D5 | Answered for division/sharing; sellability itself remains a standing assumption (DATA_MAP.md §5 item 9) | — |
 | Q8 | done | E8 | Q10 | Answered — 6-day median, but Phase J2 found this doesn't explain real fulfilment speed | — |
 | Q9 | done | E11 | Q10 | Answered — no, the model does not reproduce actual delivery performance | — |
-| **Q10** | **in progress, data route J3** | E12, Q8, Q9, Q11, Q12, Q13, Q14, T2 | Q15, D8, D9, G2 | Corrected 2026-09-25: Phase J's calibration replayed the current min/max settings, already established as unfollowed (Cube_Inventory_Exact trust note), so its 89-point gap tested an unused policy, not the model's mechanics; Explorer D's batch data was lost mid-task, not resolved; inverse calibration (METRICS.md §20) not yet attempted. The data route is not exhausted — pursued in J3. | — |
+| **Q10** | **in progress — answered per-division, 2026-09-25 (Phase J3)** | E12, Q8, Q9, Q11, Q12, Q13, Q14, T2 | Q15, D8, D9, G2 | METRICS.md §20 inverse calibration run and independently confirmed (V2, 12/12 figures match, `phaseJ3_validator2_independent_check.md`): **PEM101 partially calibratable** (59/4,130 combos fit both periods at a realistic stock level; no parameter uniquely identified). **PEM103 NOT calibratable to a stock-based policy at a realistic capital level** (needs 5-12x more stock value than held; 69.3% of its delivered contracts trace to a pre-existing production batch — points to batch-driven, not stock-driven, fulfilment). **PEM107 NOT calibratable at all** (no fixed policy fits both 2024-2025 and 2026 — implies a real operational change, not a search failure). Full detail: `output/summary/phaseJ3_2_calibration_summary.json`, STATUS.md Phase J3 entry. | data, largely resolved; PEM103/PEM107 each now have ONE narrow named business question (see PROJECT_GRAPH.md Part 4/Gate note below) |
 | Q11 | done | (Explorer A) | Q10 | Contradicted — `output/summary/phaseJ2_explorerA_report.md` | — |
 | Q12 | done | (Explorer B) | Q10 | Contradicted — `output/summary/phaseJ2_explorerB_report.md` | — |
 | Q13 | done | (Explorer C) | Q10 | Contradicted as general explanation — `output/summary/phaseJ2_explorerC_report.md` | — |
 | Q14 | blocked on data | (Explorer D) | Q10 | Partially supported; decisive test needs a re-pull of `cube_final.final_date` — `output/summary/phaseJ2_explorerD_report.md` | **data** |
 | Q15 | in progress | Q10 | D8 | Proposed in words (synthesis report); not implemented, and not finalizable until Q10 answered | — |
 | Q16 | done | E13 | D6 | Answered — no, corrected `not_late` figures now used instead | — |
-| Q17 | blocked on a person | Q10 (implicitly) | G3 | Proposed this task, Part 3; no data source evaluated yet | **person** |
-| Q18 | in progress, scheduled in J3 | Q10 (implicitly) | G3 | Corrected 2026-09-25: evidence partial — `Cube_BOM_Exact` exists and is unread for its own content; scheduled for J3, not a person-blocker | data (a re-read of an existing table) |
+| Q17 | in progress | Q10 (implicitly) | G3 | Advanced 2026-09-25 (Phase J3 Explorer D): per-item-typical cadence now known per division (median 36-58 days, wide spreads) and the reverse-traceable batch share is known per division (PEM101 2.0%, PEM103 69.3%, PEM107 58.9%) — but true batch DATES and SIZES remain absent: a second, clean `cube_final` pull still returned 0 rows (§4 Trap 7, revised), so this is advanced, not closed. | data (a working `cube_final` connection, diagnosed not yet fixed) |
+| **Q18** | **done, 2026-09-25 (Phase J3 Explorer BOM)** | Q10 (implicitly) | G3 | Fully investigated: structure/grain confirmed, 85.8% coverage of the 351-item scope (PEM103 only 58.6%), components confirmed SHARED across finished items (141/805, 17.5%), join to `Cube_Inventory_Exact` confirmed both directions (V2, 95.0%). `output/summary/phaseJ3_explorerBOM_report.md`. | — |
 | Q19 | blocked on a person | Q10 (implicitly) | G3 | Proposed this task, Part 3 | **person** |
 | Q20 | blocked on a person | Q10 (implicitly) | G3 | Proposed this task, Part 3 | **person** |
 | Q21 | blocked on a person | Q10 (implicitly) | G3 | Proposed this task, Part 3 | **person** |
@@ -296,8 +314,8 @@ instruction.**
 
 | Node | Question | Evidence in the database | Notes |
 |---|---|---|---|
-| Q17 | What production batch cadence and size does each item/family run on? | **Partial.** `cube_final.jobno`/`Cube_CES.OLMJobCode` establish that batching happens and that one batch serves many contracts (DATA_MAP.md §2, jobcode), but the true batch date/size fields (`cube_final.final_date`, `job_qty`, `fg_pack_date`) were not successfully pulled this session (§4 Trap 7) — cadence and size are not yet computable even where the mechanism is confirmed. | Directly blocked by Q10/Q14's open data gap. |
-| Q18 | What bill of materials and shared components exist across items? | **Partial.** `Cube_BOM_Exact` exists and was used once to corroborate a Finished-Goods/Raw-Material split (DATA_MAP.md §1, "Other tables") — it has not been read for its own content (which components, shared across which items) at all. | A real table exists; this project has never queried it for BOM content itself. **Scheduled in J3** (corrected 2026-09-25 — moved off "blocked on a person": reading an existing, already-located table is a data action, not a business-input gap). |
+| Q17 | What production batch cadence and size does each item/family run on? | **Partial, advanced 2026-09-25 (Phase J3).** Cadence now known (per-item-typical median: PEM101 56d, PEM103 36d, PEM107 58d, wide spreads) and reverse-traceable batch share known per division (2.0%/69.3%/58.9%). Batch SIZE and exact dates still absent — a second, clean `cube_final` connection this session again returned 0 rows (contradicting the earlier "crashed session" theory), so this remains a diagnosed, not fixed, data gap (`output/summary/phaseJ3_explorerD_report.md` names the 3 diagnostic queries to run first). | Feeds Q10's PEM103/PEM107 findings directly; still blocked on a working `cube_final` pull. |
+| Q18 | What bill of materials and shared components exist across items? | **Resolved, 2026-09-25 (Phase J3 Explorer BOM).** Structure/grain confirmed; 85.8% coverage of the 351-item scope (PEM103 only 58.6%); components confirmed SHARED across finished items (141/805 components, 17.5%, concentrated in fuse/surge-arrester families); join to `Cube_Inventory_Exact` confirmed both directions (95.0%, V2). 14 of Phase J2's 16 zero-finished-stock-fast-delivery items have at least one stocked component — PLAUSIBLE (not fully verified as causal) support for a component-stock explanation of that narrow pocket. | Feeds Q10/Q13 (component-stock hypothesis) directly. `output/summary/phaseJ3_explorerBOM_report.md`. |
 | Q19 | What is assembly and inspection time per item? | **Absent.** No field in any table links a raw-material consumption event to an assembled item becoming stock — a confirmed, hard gap (DATA_MAP.md §5, item 1). `cube_final`'s undiscussed `fg_check_date`/`qacheck_date`/`fg_final_date` columns (found, not analysed, this session) are the nearest untested lead. | Needs the business, or a successful, deeper `cube_final` pull. |
 | Q20 | What is production capacity (lines, labour, equipment) over time? | **Absent.** No table found anywhere in this project's investigations records a capacity figure of any kind. | Needs the business entirely. |
 | Q21 | Which items are made-to-stock vs. made-to-order vs. engineer-to-order? | **Partial, and known to be unreliable at face value.** `manufacturing_type` (MTS/MTO/ETO) exists in `cube_Sale_APD` but is an ORDER-level attribute, not a fixed per-item classification — 100 of 113 items show more than one value across their own sales rows (DATA_MAP.md §2, manufacturing_type). Using it directly as a per-item classification would repeat a known trap. | A per-item MTS/MTO/ETO classification would need to be derived (e.g. a mode or business rule) or confirmed by the business — not read off this column directly. |
