@@ -555,7 +555,7 @@ itself names it).
     almost certainly an interrupted-agent artifact; a fresh, uninterrupted pull is needed.
     `output/summary/phaseJ2_explorerD_report.md`. Owner: re-attemptable from data — no business
     input needed, just a connection that survives to completion.
-15. **The real fulfilment/replenishment mechanism — the headline unknown of Phase J2.** Named
+15. **The real fulfilment/replenishment mechanism
     exactly in the source: a direct description from whoever runs production/warehouse planning of
     (1) real review frequency/trigger, (2) which physical stock (including non-"sellable"
     warehouses and component buffers) is actually treated as available, (3) whether/how production
@@ -581,8 +581,12 @@ itself names it).
 16. **PEM103's Tendering-channel scope decision** — 65.5% of item-code value sits outside the
     Omni-Channel-only scope; a business call on whether it belongs in this project. STATUS.md §5,
     Phase C step 1 residual item 4. Owner: business.
-17. **PEM104's true volume** — whether 12 transactions is the complete picture, or real volume flows
-    through an uncaptured division/channel. STATUS.md §5, item 5. Owner: not named.
+17. ~~**PEM104's true volume** — whether 12 transactions is the complete picture, or real volume flows
+    through an uncaptured division/channel. STATUS.md §5, item 5. Owner: not named.~~
+    **RESOLVED, 2026-09-23 (business-confirmed): PEM104 is made to order.** 12 transactions across
+    17 calendar months, and near-zero stock (STATUS.md:780-781), are consistent with a made-to-order
+    business model, not evidence of a data gap or an uncaptured channel — see §7. The volume
+    question is closed; no stock policy applies to PEM104 (PROJECT_GRAPH.md, dead end DE4).
 18. **Whether the `PEM102-OLD`/`PEM107-OLD` tag mechanism is one reorganisation or two unrelated
     relabelings** — resolved at the filter level (business said which tag means which division)
     but the mechanism/reason itself was never explained. STATUS.md §5 item 1, cross-ref §8.1.
@@ -616,3 +620,36 @@ itself names it).
 | Explorer B (due dates aligned to delivery) — CONTRADICTS, moderate-high confidence | **SUPERSEDED, kept not deleted.** UNDETERMINED: a day-0 delivery spike appearing equally on `ForecastDelDate` and `PlanDelDate` is consistent both with due dates being set to match delivery AND with the business scheduling shipment on the promised day (normal practice) — the data available cannot separate the two. The original CONTRADICTS verdict overstated what the evidence rules out. | 2026-09-25 | STATUS.md Phase J2 entry, Explorer B (corrected); `output/summary/phaseJ2_explorerB_report.md` |
 | Phase J's 97.8% actual_on_time (PEM101, unit-weighted) vs. Phase J2's 87.9% not_late (PEM101, unit-weighted) — an unexplained 9.9pp gap between two figures both in the repo | **RECONCILED, not a bug either side.** Item scope, Status filter and weighting are identical between the two computations; the ONLY real difference is the window: Phase J bounds by `ForecastDelDate` in [2024-01, 2026-07]; Phase J2 bucketed by `CtrDate` YEAR 2023-2026, which pulls in 2023 (55.97% unit-weighted not_late, a genuinely much worse year) alongside 2024-2026 (~97-99%). Quantified: -10.29pp from including 2023, +0.35pp from the bucketing-method difference, net -9.93pp — matches the observed gap almost exactly. `ForecastDelDate` is the METRICS.md Sec.18/19/20-correct field going forward. | 2026-09-25 | `output/summary/phaseJ3_validator_reconciliation.md` (independent recomputation, one Validator, one session — V1) |
 | "The data route is not exhausted" (this file's own 2026-09-25 correction, above) — an open question, not yet a result | **ANSWERED, per-division, 2026-09-25 (Phase J3 Part 2, METRICS.md Sec.20 inverse_calibration, independently confirmed — Part 3 Validator, own code, 12/12 figures match).** PEM101: partially calibratable — 59 of 4,130 grid combinations reproduce both the 2024-2025 and 2026+ periods within tolerance (not_late ±3pp, stock value ±15%) at a realistic capital level, but no single parameter is uniquely identified (r_months ambiguous 0.25-2.0 months, s_months 1.5-3.0, review interval 1-30 days, lead time 1-30 days — all four span more than one grid step). PEM103: NOT calibratable to a stationary policy at a realistic stock level — a fit exists for `not_late` alone (117 combinations), but every one needs 5-12x more capital than the business holds (best: THB 57.6M simulated vs. THB 6.06M real on-hand). PEM107: NOT calibratable at all — no single parameter set fits both periods simultaneously (the best joint compromise is still 14-18 percentage points off on one side), implying a genuine operational change between 2024-2025 and 2026, not a search failure. | 2026-09-25 | `output/summary/phaseJ3_2_calibration_summary.json`, `phaseJ3_2_grid_{PEM101,PEM103,PEM107}.csv`, `phaseJ3_validator2_independent_check.md` |
+| PEM104's exclusion reason recorded as "insufficient data" (12 transactions across 17 calendar months, too few to fit any forecasting model at any aggregation level) | **SUPERSEDED, kept not deleted.** The underlying reason is that PEM104 is made to order by business model — no stock policy is applicable, and the low, sporadic transaction count is a structural consequence of that business model, not a data-collection gap. "Insufficient data" was a correct symptom, not the cause. | 2026-09-23 | STATUS.md Locked Decisions, "Exclusion — PEM104" (STATUS.md:4817-4824); this task, §7 below |
+
+---
+
+## 7. Division business models (business-confirmed)
+
+Business-confirmed statements about what a division's underlying business actually is — not
+themselves derived from data, but consistent with data already recorded elsewhere in this file.
+**A** level (business-confirmed, not independently verifiable from data alone).
+
+**PEM103 is transformers, and most of its business is tendering work for electricity utilities**
+— business-confirmed 2026-09-23. Consistent with data already recorded in this file:
+- Under Phase C, the Omni Channel filter captured only 33.3% of PEM103's item-code value; 65.5%
+  was Tendering-channel (STATUS.md:3894-3895) — §5 Unknowns item 16.
+- Under Phase J3, 69.3% of PEM103's delivered contracts trace to a production-batch token that
+  existed before the PO — far higher than PEM101's 2.0% (STATUS.md:1328; §2, jobcode/jobno/
+  OLMJobCode entry).
+- A stock-based reorder policy could not reproduce PEM103's observed delivery performance without
+  5-12x more capital than the business actually holds (STATUS.md:1351; §6 Corrections log, Phase
+  J3 entry; §3 Joins, batch-traceability row).
+
+**PEM104 is made to order** — business-confirmed 2026-09-23. Consistent with data already recorded
+in this file:
+- Only 12 transactions across 17 calendar months exist for PEM104's item codes (STATUS.md:4819,
+  Phase C step 1 log entry) — a low, sporadic count expected of a made-to-order business, not a
+  data gap.
+- PEM104 shows essentially no stock anywhere, HIGH confidence, independently confirmed by
+  `Cube_Inventory_Aging` (STATUS.md:780-781, Phase E2 readiness) — consistent with holding no
+  finished-goods buffer because nothing is produced until an order exists.
+
+This changes the stated reason for PEM104's exclusion from stock/inventory-policy work: **made to
+order by business model, with no stock policy applicable** — not "insufficient data" (§6
+Corrections log, above; PROJECT_GRAPH.md, dead end DE4).
