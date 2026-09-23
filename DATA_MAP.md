@@ -1,0 +1,552 @@
+# DATA MAP
+
+Every future task reads this file first (CONVENTIONS.md, Part 4 wiring). It records only what an
+existing file in this repository already states — never a fresh inference. Every fact below
+carries a citation (file + section/line) and a verification level:
+
+- **V2** — confirmed from two independent directions or by independent recomputation
+- **V1** — confirmed from one direction or one agent only
+- **A** — business-confirmed statement, not verifiable from data
+- **H** — hypothesis or inference
+- **X** — superseded — the text is kept, with what replaced it and when
+
+Where two sources disagree, both are recorded with their dates and scopes; neither is chosen for
+the reader. No credentials, server names/addresses, customer names or codes, contract IDs, or
+employee names appear below (repository is public).
+
+Built 2026-09-24, from files already in the repository — **no database access was used**.
+
+---
+
+## 1. Tables
+
+### cube_Sale_APD
+Primary demand-history source (Omni Channel sales order lines). **Grain**: one row per order
+line-item — confirmed via `INFORMATION_SCHEMA.COLUMNS` (62 columns) and cross-table row-count
+checks (STATUS.md:1326). **Date coverage**: whole-table history from 2021-01-11 (STATUS.md:1894);
+2024-onward is the project's "usable" era — pre-2024 rows use a different division-tagging scheme
+(`PSP101-105`) and lack current-convention `revenue_type`/`division` values (STATUS.md:1906-1907).
+**Row scale**: ~51,000 rows in an early scoped pull (STATUS.md:1326); 35,174 rows for the 351-item
+Phase I/J combined scope (Phase J). **Trust note**: reliable for 2024+ Omni Channel/Actual+MPS
+scope; `division` is reference-only, never a filter (§2). **V2** for grain/schema (cross-checked
+against `Cube_CES` on 99.79-99.94% of rows, STATUS.md:2054-2066, 3330-3343).
+
+### Cube_CES
+Independently-populated delivery/contract-tracking table; ground truth for on-time delivery and a
+cross-check on `cube_Sale_APD`. **Grain**: finer than `cube_Sale_APD` in places (splits one
+`cube_Sale_APD` total across multiple `PlanID` rows, STATUS.md:2060-2062) — no source states a
+single "one row per X" rule. **Date coverage**: `CtrDate` 2012-01-03 to 2029-08-05 table-wide
+(STATUS.md:1575); dense/comparable data begins January 2023 (STATUS.md:2077,
+`delivery_performance.py`). **Row scale**: 166,432 rows table-wide (STATUS.md:1575); 63,032 rows
+for the Phase J2 351-item/Omni Channel/Actual+Backlog scoped pull (`output/summary/
+phaseJ2_explorerD_cube_ces_raw.csv`, Phase J2, this session). **Trust note**: agrees with
+`cube_Sale_APD` on 99.79-100% of fields tested for 2024+ (STATUS.md:2110) — **V2**. Pre-2024 is
+only pattern-checked, not row-audited — **V1/H** for that era (STATUS.md:2001-2003).
+
+### Cube_Contract
+Contract/delivery tracking; considered as corroboration for duplicate-vs-split-lot detection.
+**Grain**: `contractid`, `plan_qty`/`actual_qty`, `actual_del_date`, but only a free-text
+`product` field — **no ItemCode column** (STATUS.md:1535-1536, 1576). **Date coverage**: only
+`ctr_date >= 2025-01-01` — zero 2024 contracts exist in this table (STATUS.md:1542). This was
+first misread as "2024 contract data doesn't exist anywhere," corrected once `Cube_CES` was found
+to cover 2024 fully with a proper key (STATUS.md:1573-1579) — **X, superseded 2026-08-31**.
+**Trust note**: its weak free-text join key undercounted matches (8/29 vs. 100% once rejoined via
+`Cube_CES`'s `ContractID`+`ItemCode`, STATUS.md:1580-1583) — a Traps entry, §4.
+
+### Cube_Backlog
+Was the confirmed-open-demand source in an early METRICS.md §14 draft; since replaced. **Trust
+note**: lags `Cube_CES` by ~13.6-14 hours (STATUS.md:557 "~13.6 hours at check time"; METRICS.md
+§14 "roughly 14 hours") — using it over-counts open demand by 0.9% (8 already-delivered pairs per
+`Cube_CES`'s fresher refresh) (STATUS.md:552-558, METRICS.md:158-163). **V2** for the lag finding
+(independently checked twice — STATUS.md:445-451 and 552-560). **X** as the METRICS.md §14 source
+specifically — `Cube_CES Status='Backlog'` is used instead (METRICS.md:158-159).
+
+### Cube_Inventory_Exact
+Current-state finished-goods/stock snapshot with literal `minimum`/`maximum` columns. **Grain**:
+one row per (company, warehouse, itemcode) (columns: company, warehouse, itemcode, stock, minimum,
+maximum, reserve_bywa, timestamp, costPrice_standard). **Date coverage**: single-refresh snapshot —
+all timestamps within one ~2-minute load window (STATUS.md:2007-2008) — **V1**, "snapshot not
+history." **Row scale**: 403 rows for 66/68 pilot codes in an early pull (STATUS.md:2007); 2,057
+rows for the 351-item combined scope (Phase I). **Trust note**: the existing min/max VALUES cannot
+be used as calculation inputs — 46/128 items have no setting at all, settings range from under 1
+month to over 1,700 months of cover, 81/119 multi-warehouse items disagree across warehouses, 7
+items carry a setting despite no sales (STATUS.md:4830-4835) — **V1**, one investigation,
+comparison-baseline use only (Locked Decisions).
+
+### Cube_Inventory_Aging
+Despite its name, **has no age-bucket structure** — `Condition`, `Type`, `ItemStatus` are constant
+across all 441,427 rows; it is a GL-account-level stock-valuation snapshot, single timestamp, no
+history (STATUS.md:2300-2306) — cannot answer "how long has this stock been held." A naive pull
+summing `Stock` across all rows per item showed apparent large hidden stock (236 items /
+466,134 units); this is an artifact — the table is GL-account-level and different GL accounts are
+NOT additive (proof: one item shows +34,574 under one account, +25,874 under another, −30,677
+under a third, same warehouse). GL account `117100` is the physical-stock account (98.8% match to
+`Cube_Inventory_Exact`); restricted to it, 61 of 62 items match `Cube_Inventory_Exact` almost
+exactly (STATUS.md:763-770) — **V2** for the corrected reading. Its `GLDescription` field
+(Finished goods/Raw materials) is independently useful for FG/RM classification (§ below) — **V2**
+(three independent tables agree, STATUS.md:2320-2324).
+
+### cube_inventory_tran
+A genuine historical movement ledger (QtyIn/QtyOut) — the one inventory table that is NOT a
+snapshot. **Date coverage**: 2007-2026 (STATUS.md:2010). **Row scale**: 2.9M rows table-wide
+(STATUS.md:2010). **Trust note**: used to verify 1,572 exact-quantity-matched transfers between
+warehouse stages, mostly forward but with genuine bidirectional movement, tied to one
+order-reference document; aggregate received-minus-issued reconciles with on-hand exactly for 2/6
+tested items, within 1.5% for the rest (STATUS.md:4849-4857) — **V2** for the warehouse-stage
+finding. At first mention it had not yet been tested against the pilot items (STATUS.md:2010-2011,
+**H/V1** at that point) — superseded by the later warehouse-stage verification above; both are
+recorded since the later entry doesn't explicitly restate/retire the earlier one by name.
+
+### Cube_Quotation
+Pre-order enquiry/quotation records; tested this session (Phase J2 Explorer A) as a possible
+source of longer real customer notice. **Grain**: one row per item-line within a quotation
+document (inferred from the join: `quotation` document number + `itemcode`,
+`output/summary/phaseJ2_explorerA_report.md` §1-2). **Schema**: 47 columns (only `itemcode`,
+`ctr_leadtime`, `report_date` were known before this session; full list in the report above) —
+**V1**, one Explorer, one session. **Date coverage**: essentially zero rows with a 2024
+`create_date` for the 351-item scope (25 rows) vs. 6,742 (2025) and 8,463 (2026); reason **CANNOT
+BE DETERMINED** (`phaseJ2_explorerA_report.md` §3). **Trust note / trap**: `report_date` (used by
+an earlier investigation, `investigate_leadtime_classification.py`) is **NOT a quotation-issue
+date** — 99.94% identical to `forecast_date`, actually a disposition/delivery date; `create_date`
+is the defensible quotation date (`phaseJ2_explorerA_report.md` §2) — **V1**, corrects a prior
+unlabelled assumption; see §4 Traps.
+
+### cube_final
+Production-batch/job tracking; `jobno` values match individual tokens inside
+`cube_Sale_APD.jobcode`'s comma-separated lists (STATUS.md:1584-1601). **Schema**: at minimum
+`jobno, ctrno, customer_name, project, descriptions, final_date, itemcode, pono, job_qty`
+(STATUS.md:1587-1600, `output/summary/task2_cube_final_jobno_match.csv`); a fuller 35-column schema
+(including `finalcheck_date`, `finalreceive_date`, `fg_check_date`, `fg_pack_date`,
+`fg_final_date`) was discovered but not analysed this session (`output/summary/
+phaseJ2_explorerD_cube_final_schema_sample.csv`). **Grain**: `jobno` ties to exactly one itemcode
+in 99.5% of cases (17,875 of 17,971 distinct values) but is reused across many contracts/customers/
+dates — a production-batch reference, not a per-sale job ID (STATUS.md:1588-1591) — **V1**, one
+investigation, project-wide scope. **Match rate**: of 12,952 distinct job/batch tokens in
+`cube_Sale_APD.jobcode`, 87.6% match `Cube_CES.OLMJobCode`, 40.0% match `cube_final.jobno`
+(STATUS.md:1597-1598). **Trust note / trap**: a 2026-09-23 pull for the 351-item scope returned
+**zero rows** — almost certainly an interrupted-process artifact (the pulling agent was killed by
+an unrelated rate-limit mid-task, after its database connection had already succeeded), NOT
+evidence the table lacks this scope's data — item codes from the prior investigation
+(`CT-F-99-020503` etc.) are confirmed present in the 351-item scope file
+(`output/summary/phaseJ2_explorerD_report.md`). **Do not read a future empty pull of this exact
+query as "no data" — re-attempt it.** See §4 Traps.
+
+### Cube_PO_Exact
+Would be the ideal empirical procurement-lead-time source (po_date to fulfilment_date). **Trust
+note**: had zero rows for any of the 68 original pilot codes (STATUS.md:2013-2015) — **V1**, one
+pull, one (smaller, earlier) scope; not re-tested against the current 351-item scope. A different,
+later figure (7/128 items, 5.5%, 16-189 day range, mean 70 days) is recorded once the 128-item
+pilot scope was in place (STATUS.md:2307-2309) — both recorded, different scopes/dates, not
+reconciled.
+
+### Cube_PriceList
+Supplier-item delivery-time reference — distinct from the project's main pricelist reference file
+(`reference/pricelist.xlsx`, an Excel workbook, not a database table). Has a literal `DeliveryTime`
+field (e.g. "30 Days"). **Coverage, two figures, different scopes, both recorded — do not
+choose**: 24 of 68 items (STATUS.md:2012-2013, the original 68-item pilot scope) vs. 62 of 128
+items, 48.4% (STATUS.md:2313, the later 128-item pilot scope) — **V1** each.
+
+### Cube_emanu
+Candidate manufacturing lead-time source, literal `leadtime` column. **Established, high
+confidence**: `leadtime` exactly equals `DATEDIFF(day, createJobDate, lastestReceiptDate)` for
+every sampled row (an exact-formula match) — genuine manufacturing job cycle time, not a
+supplier/vendor lead time (no such field exists in the table at all) — **V2** (exact-formula
+proof). **Trust note**: unusable regardless — no itemcode column, and no data since March 2019
+(STATUS.md:2307-2309).
+
+### Other tables a report relies on
+- **Cube_ItemList** — `Assortment1` field, used with `Cube_Inventory_Aging.GLDescription` and
+  `Cube_BOM_Exact` presence to establish Finished-Goods-vs-Raw-Material classification: 122/128
+  Finished Goods, 6/128 Raw Material (STATUS.md:2320-2324) — **V2**, three independent tables in
+  exact agreement. Also has a `PurchasePrice` field: 48 items show a nonzero value, ambiguous
+  (outside sourcing vs. a recorded reference price only) — **H**.
+- **Cube_BOM_Exact** — bill-of-materials table; all 117 FG-classified items (of the 122) have a
+  BOM entry, none of the 6 RM items do (STATUS.md:2322-2323) — **V1**, corroborating evidence for
+  the FG/RM split.
+- **cube_po** — raw-material PO table; none of the FG items appear in it under their own code —
+  weak, one-directional evidence they are manufactured rather than bought complete
+  (STATUS.md:2325-2327) — **H**.
+
+---
+
+## 2. Columns with established meaning
+
+**cube_Sale_APD.createDate** — the PO-received date (order intake), not a record-creation
+artifact: no load-batch/weekend-clustering signature (652 distinct calendar dates, max 0.42% of
+rows on any one date); 99.95% agreement with the independently-populated `Cube_CES.CtrDate`
+(STATUS.md:3323, 3330-3334, 3344-3347). **V2** (cross-table, two-direction). Caveat kept explicit
+in the source: cannot fully rule out "keyed into the system" vs. "literal moment of customer
+intent" (STATUS.md:3348-3351) — this narrows the claim's scope, not its match-rate confidence.
+
+**cube_Sale_APD.PODate** — matches `createDate` exactly on 99.9458% of rows (27,664/27,679); all 15
+disagreements have `PODate` earlier, never later, median gap 8 days (STATUS.md:3317-3319). Matches
+`Cube_CES.CtrDate` at 100.000% (STATUS.md:3333). **V2**. Practical conclusion in the source:
+`createDate` and `PODate` are not meaningfully different fields for this project's purposes
+(STATUS.md:3358).
+
+**cube_Sale_APD.forecast_date** — a scheduled-delivery-date concept, not a raw event date: weekday
+distribution is a completely different shape from `createDate`/`PODate` (37.4% Friday, nonzero
+weekend share vs. zero for the other two, STATUS.md:3326-3327); matches `Cube_CES.CtrDate` at only
+6.49% (median/mean offset 6.0/10.8 days), confirming it is a genuinely different concept from the
+order date (STATUS.md:3334-3335). **V2** for "different concept from order date." Whether
+`forecast_date` is ever revised in place after intake is **explicitly unresolved** — no audit
+trail exists; every test bounds any possible revision at under 2.5% of rows with no consistent
+direction (STATUS.md:4588-4592) — **H**, stated as an assumption, never proven.
+
+**cube_Sale_APD.timeStamp** — a pure ETL/refresh artifact, not a business date: all rows in a
+scoped pull land on one calendar date, spanning ~17 minutes to 64.2 seconds depending on the pull
+(STATUS.md:1337, 1469, 3320-3322); re-stamps on every reload (the date itself moved forward between
+two checks, one earlier date to a later one, STATUS.md:3321-3322). **V2** (re-confirmed
+independently at least twice).
+
+**status (cube_Sale_APD Actual/MPS) ↔ Cube_CES.Status (Actual/Backlog)** — **`Backlog` is the true
+MPS equivalent**, proven both directions: 158 of 158 MPS-linked pairs (2024+) carry `Cube_CES`
+Status='Backlog'; reverse direction, of 155 Backlog-linked pairs, 158 are MPS vs. 6 Actual in
+`cube_Sale_APD` (STATUS.md:2044-2050). **V2** (both directions). `Cube_CES`'s own literal `"MPS"`
+status (504 rows table-wide) is **unrelated** — a naming coincidence, not the same concept
+(STATUS.md:2051-2053). See §4 Traps.
+
+**division (cube_Sale_APD.division) and the `-OLD` tags** — the database's `division` column is
+reference-only, never a filter; the pricelist is authoritative for which division an item belongs
+to (STATUS.md:4756-4772, CONVENTIONS.md) — **A/decision** (a corrected project rule, not itself a
+raw data fact). The underlying data fact: PEM102's real 2024 activity sits under
+`division='PEM107-OLD'` and PEM107's under `division='PEM102-OLD'`; the mechanism producing this
+swap is still unexplained (`output/summary/phaseC_synthesis_report.md` §5) — **V1**, one
+investigation, mechanism itself unresolved. This is the single most costly Traps entry in the
+project — see §4.
+
+**revenue_type** — a sales-channel classification; 7 distinct values exist table-wide
+(STATUS.md:1441). Project scope is fixed to `Omni Channel`, project-wide, confirmed from the start
+(STATUS.md:4684-4685) — **A**, business-confirmed scope decision. Other observed values include
+Tendering, Total Customer Solution, and PPS-routed Tendering (STATUS.md:4870-4874) — **V1**.
+
+**cube_Sale_APD.cost** — a **LINE TOTAL, not a unit cost** (METRICS.md §1; STATUS.md:4271-4272,
+Phase D Check 2: `cost/qty` is exactly constant across rows of varying qty for a test item; median
+within-item CV of `cost/qty` is 0.061 at project scope, consistent with a per-unit price that
+drifts, not a stored line total held constant). Using it raw as a unit price would have overstated
+stock value by roughly one to two orders of magnitude. **V2** (locked into METRICS.md as the
+formula's own input note, independently re-derived from the Phase D investigation). The single
+highest-severity Traps entry by stated magnitude — see §4.
+
+**jobcode (cube_Sale_APD) / jobno (cube_final) / OLMJobCode (Cube_CES)** — all three reference the
+same underlying concept: a **production-batch reference**, not a per-sale job identifier. An
+individual token ties to exactly one itemcode 99.5% of the time but
+is reused across many unrelated contracts/customers/dates (STATUS.md:1584-1601) — **V1**, one
+investigation, project-wide scope. `cube_Sale_APD.jobcode` stores this as a comma-concatenated
+list, one token per distinct item-batch on a contract — this explains an earlier, now-superseded
+reading that an identical full list repeating across a contract's rows meant "one job per row"
+(STATUS.md:1591-1594) — **X** for that earlier reading, superseded same investigation. **Narrower,
+later finding, different scope, both recorded**: restricted to the 351-item PEM101/103/107 scope
+(Phase J2 Explorer D, this session), only 13.8% of tokens serve more than one contract — narrower
+than the project-wide "reused across dozens" finding; the two are not directly comparable
+(`output/summary/phaseJ2_explorerD_report.md`).
+
+**manufacturing_type (cube_Sale_APD)** — MTS/MTO/ETO values, covers 113/128 pilot items, but is an
+**ORDER-level attribute, not a fixed per-item classification**: 100 of 113 items show more than one
+value across their own sales rows (STATUS.md:2329-2332), re-confirmed later (STATUS.md:2852) —
+**V2**. It describes production strategy per order, not a fixed make-vs-buy classification
+(STATUS.md:2332).
+
+**warehouse field (sales-order tables)** — **no sales-order-level table checked (cube_Sale_APD,
+Cube_CES, or any other) carries a warehouse field at all** — repeated, independently re-affirmed
+across at least five separate STATUS.md entries/dates (STATUS.md:829, 874, 3591, 4861, 4876, 5190).
+This is why sellability of any warehouse code is a standing, never-verifiable-from-data business
+assumption, for every division (STATUS.md:872-878) — **V2** for the absence-of-field finding
+itself (the two-direction rule is explicitly invoked in the source: the item-to-warehouse direction
+IS checkable via `Cube_Inventory_Exact`/pricelist joins; the reverse — which warehouse a given sale
+shipped from — has no field to check at all, so sellability itself stays unverifiable in either
+direction).
+
+**Cube_Inventory_Exact.warehouse / warehouse_roles (config.yaml)** — all 44 warehouse codes ever
+seen in the 445-item pricelist registry classified from the item-to-warehouse direction, using two
+independent live pulls 13 days apart (2026-09-09 and 2026-09-21/22): 30 EMPTY, 11 EXCLUSIVE to one
+division, 3 SHARED across divisions, 0 UNRESOLVABLE (STATUS.md:862-871) — **V2** (two independent
+pulls, same result both times). This is a division/sharing map only — **not** a sellability
+determination (see warehouse field, above).
+
+**Cube_CES date fields** — `CtrDate` (contract/order date, matches `cube_Sale_APD.createDate`/
+`PODate` at 99.946%/100.000% respectively, STATUS.md:3333-3334); `PlanDelDate` and
+`ForecastDelDate` are identical on 95.79-97.9% of rows depending on scope/window — **three
+independent measurements, all mutually consistent, recorded together**: 97.9% (STATUS.md:2614,
+original Phase 3.1/delivery-baseline scope); 100% exact agreement between
+`cube_Sale_APD.forecast_date` and `Cube_CES.ForecastDelDate` on joinable rows, 2.3-3.2%
+disagreement with `PlanDelDate` depending on scope, no consistent direction (STATUS.md:3037-3043,
+Phase A); 95.79% (`output/summary/phaseJ2_explorerB_report.md` §6, n=34,580, 2024+, 351-item
+scope, this session). **V2** (three independent measurements, different scopes/dates, mutually
+consistent). `ActualDelDate` is the actual delivery date, populated only for `Status='Actual'`
+rows.
+
+---
+
+## 3. Joins
+
+| Left | Right | Match rate | Scope | Verified | Directions | Level |
+|---|---|---|---|---|---|---|
+| `cube_Sale_APD.itemcode` | pricelist `Product Code` (visible sheets) | 343/445 (77.1%) | Full 445-code registry | 2026-08-31 | Pricelist→DB checked; reverse not separately reported | V1 |
+| `cube_Sale_APD.division` | pricelist Business Unit | 3/3 sample match exactly; `PEM105` value matches no sheet; `-OLD` tags (`PEM102-OLD` 2,402 rows, `PEM107-OLD` 590 rows) not in pricelist at all | 3-code sample, then project-wide | 2026-08-31, reinforced 2026-09-04 | Sample check one direction; project-wide rule reinforced by the independent -OLD mirror-pattern finding | V1 sample → V2 as a project-wide rule once combined with the -OLD finding |
+| `cube_Sale_APD.jobcode` tokens | `cube_final.jobno` | 5,187/12,952 tokens (40.0%) | Project-wide | 2026-08-31 | Token→table only; no reverse ("do all jobno values appear in some jobcode") reported | V1 — candidate trap if ever treated as bidirectional |
+| `cube_Sale_APD.jobcode` tokens | `Cube_CES.OLMJobCode` | 11,350/12,952 tokens (87.6%) | Project-wide | 2026-08-31 | Token→table only, same caveat as above | V1 |
+| `cube_final.ctrno` | `cube_Sale_APD.contractid` / `Cube_CES.ContractID` | Not exercised — `cube_final` pull returned 0 rows this session (see §1, §4) | 351-item scope | 2026-09-23 attempted | Not checked either direction | H (hypothesis only, never confirmed by a successful query) |
+| Warehouse code | division (division→warehouse) | Full 445-item, 6-division crosstab, ≥60% dominance threshold | Project-wide | 2026-09-09 | This direction only | V1 at the time |
+| Warehouse code | division (item→warehouse, reverse) | All 44 codes resolved, 0 UNRESOLVABLE, two independent pulls 13 days apart agree | Project-wide | 2026-09-21/22 | Reverse direction added — closes the Phase D gap | **V2** combined with the row above |
+| `Cube_Backlog` | `Cube_CES` (Status='Backlog') | 273/273 (100%) CES pairs corroborated; the 8 extra Backlog-only pairs independently confirmed Status='Actual' in CES's fresher refresh | PEM101 128-item scope | 2026-09-22 | Full pair-level diff, both directions | V2 |
+| `Cube_CES.PlanDelDate` | `Cube_CES.ForecastDelDate` (internal identity) | 97.9% / 100%-exact-with-cube_Sale_APD-2.3-3.2%-disagreement / 95.79% — three measurements, see §2 | Three different scopes/dates | 2026 (multiple dates) | N/A (internal field identity, not a cross-table join) | V2 (mutually consistent across 3 independent checks) |
+| `division='CI101'` items | `division='PEM101'` tag (value split) | 37.2% of combined CI101+PEM101 Omni Channel value for CI101's 13 codes recorded under `PEM101`, not `CI101` | CI101's 13 item codes | Phase C | One investigation cited, no explicit second-direction check in this passage | V1 |
+| `cube_Sale_APD.quotationid` | `Cube_Quotation.quotation` | Join key itself: 2,374/3,987 distinct quotationid values overlap (59.5%); `Cube_Quotation.id` overlaps 0% (not the key) | 351-item scope | 2026-09-23 (Phase J2, this session) | Data-driven discovery, one direction for key discovery | V1 |
+| ↳ forward (PO→quotation), match once found | | 17.26% of all 35,174 PO rows overall; 0.00% for 2024 specifically (near-zero table coverage that year); 95.54-98.67% for 2025/2026 | 351-item scope | 2026-09-23 | Forward | V1 (2025-2026); CANNOT BE DETERMINED for 2024 |
+| ↳ reverse (quotation→PO) | | 5,975/15,199 distinct quotations converted (39.31%), median 3 days to conversion | 351-item scope | 2026-09-23 | Reverse — independently confirms the forward-direction median (3 days each way) | **V2** for the join mechanism and 2025-2026 match rate (both directions, mutually confirming) |
+| `Cube_Inventory_Exact.itemcode` | `cube_Sale_APD.itemcode` | No report found testing this as an independent join with a stated match-rate figure — inventory pulls are always scoped by a pre-existing item-code list | — | — | Not tested as a join | **Gap, not a number** — flagged, not asserted |
+
+---
+
+## 4. Traps
+
+*This section matters most (task instruction) — every case where a naive reading of the data
+produced a wrong result, with the correct handling and the report that found it.*
+
+1. **`cost` is a line total, not a unit price.** Naive reading: use `cube_Sale_APD.cost` directly
+   as a per-unit cost. Reality: `cost/qty` is exactly constant across rows of varying qty for a
+   test item; it is qty × unit price. Using it raw would have overstated stock value by roughly
+   one to two orders of magnitude. **Correct handling**: unit_cost = median(`cost`/`qty`) over the
+   trailing window (METRICS.md §1). Found: Phase D Check 2 (STATUS.md:4271-4272). **V1**
+   (downgraded from V2 by Validator, 2026-09-24: the source is one investigation, one test item
+   proven exactly plus a project-scope CV statistic from the same pass — not an independent
+   second direction or a recomputation by a separate agent).
+
+2. **The database's `division` column, including its `-OLD` tags, was first "fixed" by excluding
+   the unreliable value instead of asking what the source of truth is.** Naive reading: rows tagged
+   `PEM102-OLD`/`PEM107-OLD` look unreliable, so exclude them from scope. Reality: PEM102's real
+   2024 activity sits under `PEM107-OLD` and vice versa (a mirror swap, mechanism unexplained) —
+   excluding those rows would have discarded roughly 26-40% of PEM102's and PEM107's real
+   Omni-Channel sales value. **Correct handling**: the pricelist is authoritative for an item's
+   division; the database's `division` column (every value, including `-OLD` tags) is kept only as
+   a reference column, never a filter. Found: STATUS.md Locked Decisions, "Division source-of-truth
+   correction" (STATUS.md:4756-4801); CONVENTIONS.md. **V1** for the underlying data pattern, **A**
+   for the corrected project rule.
+
+3. **A pilot-scope filter (`division='PEM101'`) was written into STATUS.md as if it were the whole
+   project's scope**, and propagated unquestioned into Phase C, causing confusion when
+   PEM102/103/104/107/CI101 needed their own division values. Not caught until Phase C. **Correct
+   handling**: `division='PEM101'` was only ever the Fuse/Surge-Arrester pilot's condition (those
+   products exist only on that sheet); `revenue_type='Omni Channel'` and the Actual+MPS status
+   basis remain, and remain correctly, project-wide. CONVENTIONS.md's rule that every decision must
+   state whether it is project-wide or pilot/task-scoped was added because of this exact error.
+   Found/corrected: STATUS.md Locked Decisions, "Project scope correction" (STATUS.md:4673-4685).
+   **V1**, one traced incident, but the corrected rule is now **A** (adopted convention).
+
+4. **`Cube_CES`'s own literal `"MPS"` status is unrelated to `cube_Sale_APD`'s `MPS` status** — a
+   naming coincidence, not the same concept. Naive reading: join/equate the two tables on the
+   literal string "MPS". Reality: `cube_Sale_APD` MPS rows map to `Cube_CES` **`Status='Backlog'`**
+   (proven both directions: 158/158 forward, 158-of-164 reverse); `Cube_CES`'s own 504 `"MPS"` rows
+   table-wide are a different thing entirely — this fully explained an original count gap (2,158
+   vs. 504) that had prompted the investigation. Found: STATUS.md:2044-2053. **V2**.
+
+5. **Using `Cube_Backlog` for confirmed/open demand would over-count it.** Naive reading:
+   `Cube_Backlog` is the obvious table name for backlog demand. Reality: its snapshot lags
+   `Cube_CES` by ~13.6-14 hours; 8 pairs it holds are already delivered per `Cube_CES`'s fresher
+   refresh — using it would over-count open demand by 421 units (0.9% of scope qty) at the checked
+   snapshot. **Correct handling**: METRICS.md §14 sources confirmed demand from `Cube_CES
+   Status='Backlog'`, never the `Cube_Backlog` table. Found: STATUS.md:552-560; METRICS.md §14.
+   **V2**.
+
+6. **`Cube_Quotation.report_date` looks like a quotation-issue date but is not.** Naive reading (an
+   earlier investigation, `investigate_leadtime_classification.py`): treat `report_date` as when
+   the quotation was raised. Reality: 99.94% identical to `forecast_date` — it is a
+   disposition/delivery date. **Correct handling**: `create_date` is the defensible quotation date.
+   Found: Phase J2 Explorer A, this session (`output/summary/phaseJ2_explorerA_report.md` §2).
+   **V1**.
+
+7. **A `cube_final` pull returning zero rows was nearly indistinguishable from "this table has no
+   data for this scope."** Naive reading: zero rows means the table doesn't cover these items.
+   Reality: the pulling agent was killed by an unrelated infrastructure rate-limit mid-task, after
+   its database connection had already succeeded; item codes from a prior, already-completed
+   investigation are confirmed present in the same 351-item scope. **Correct handling**: treat this
+   specific empty result as CANNOT BE DETERMINED / needs re-attempt, not as a verified absence.
+   Found: Phase J2 Explorer D, this session (`output/summary/phaseJ2_explorerD_report.md`). **V1**
+   for the "almost certainly an artifact" read (not independently re-confirmed by a successful
+   re-pull this session).
+
+8. **A one-direction "no stock" conclusion (warehouse-named-for-a-division → stock) was wrong for
+   two divisions.** Naive reading: if a warehouse code is named for a division and shows no stock,
+   that division holds no stock anywhere. Reality: the reverse direction (item → warehouse) found
+   PEM103 and PEM107 hold real stock (over ฿12 million combined) in codes not named for them.
+   **Correct handling**: CONVENTIONS.md's two-direction rule — any absence conclusion needs both
+   directions checked before being recorded as a conclusion, not just a finding; a Validator
+   "confirmation" only counts as a second direction when it is an independent recomputation, not a
+   re-read of the same query. Found: STATUS.md:790-802 (Phase E2 readiness). **V2** once the
+   reverse direction was added.
+
+9. **The literal `>=` P50 rule silently classified every item `finished_goods_stock` when a
+   division's P50 annual value was exactly zero.** Naive reading: apply METRICS.md §15's
+   `annual_value >= P50` criterion literally in every case. Reality: PEM103 has 57% of its 87 items
+   with zero trailing-12-month sales, pushing its P50 to exactly ฿0 — under the plain rule, EVERY
+   item cleared the value threshold regardless of frequency, defeating the segmentation entirely.
+   **Correct handling**: METRICS.md §15 now states that a zero P50 makes the value criterion
+   undefined; classify by `order_frequency >= 6/yr` alone in that case, and report that the rule
+   was used. PEM103's split changed from 87/0 to 14 finished_goods_stock / 73 component_stock_ato.
+   Found: STATUS.md:938-954, `output/summary/phaseE1fix2r3_part1_zero_p50_report.md`. **V2**
+   (independently recomputed by Modeler and Validator, exact match).
+
+10. **A safety-stock formula subtracted the wrong baseline.** Naive/buggy reading (present in three
+    places — the Modeler's script, the Validator's script, and the interactive page's embedded JS):
+    `safety_stock = percentile(ltd_distribution, sl) − cum.mean()` (the empirical distribution's
+    own historical mean). METRICS.md §4's literal text requires `percentile(...) − LTD` (the
+    forecast-based point estimate) — these differ whenever the forecast and the historical average
+    disagree, a confirmed code defect, not a modelling ambiguity. Found and fixed: STATUS.md
+    Phase E1-fix / E1-fix-2 Part 2 (STATUS.md:473-481, 561-578). **V2** (independently re-derived
+    and fixed in all three locations, regression test added).
+
+11. **`query_sale_cost` omitted a filter the Modeler's own unit-cost function already applied,**
+    letting non-Omni-Channel rows leak into two items' trailing-12-month unit-cost medians and
+    accounting for 97.0% of a 6.34% Modeler/Validator stock_value gap for PEM107. **Correct
+    handling**: added the same `revenue_type`/`status` filter METRICS.md §1 requires. Found and
+    fixed 2026-09-22: STATUS.md, "PEM107's 6.34% stock_value gap" entry;
+    `output/summary/phaseE1fix2r3_part2_pem107_trace_report.md`. **V2** (traced item-by-item to the
+    exact root cause).
+
+12. **The project's long-cited "73.2% on-time" figure was compared directly against `fill_rate`, an
+    unlike measure.** Naive reading: 73.2% is a general on-time/fill-rate benchmark, usable as an
+    acceptance-criterion ceiling. Reality: it is `on_time_exact` (delivered exactly ON the due
+    date), row-weighted, 2026-only, PEM101-only, computed against `PlanDelDate` — it excludes early
+    deliveries entirely and is not comparable to a unit-based fill rate. Corrected `not_late`
+    figures (2023-2026, both weightings, per division) are far higher (PEM101 90.2%/87.9%, PEM103
+    84.7%/88.6%, PEM107 86.3%/88.7%, row/unit-weighted). Found and corrected 2026-09-23: STATUS.md
+    banner and Phase J2 entry; METRICS.md §19. Seven prior acceptance-criterion usages were tagged
+    superseded, not deleted. **V2** for the corrected figures (independently recomputed by a
+    Validator in the same task).
+
+13. **Setting `assembly_time_days` above the median customer notice silently removed 36 items'
+    entire policy.** Naive reading: raising a Tier-A default to its "robust upper bound" (7 days)
+    is a conservative, safe change. Reality: METRICS.md §15's `component_stock_ato` criterion
+    requires `assembly_time_days <= median_notice_days` (6 days for PEM101) — exceeding it made
+    every one of PEM101's 36 `component_stock_ato` items match neither defined policy category,
+    silently reported under a generic undefined label. **Correct handling**: reverted the default to
+    3 days; METRICS.md §15 now names this state `component_stock_ato_infeasible` explicitly instead
+    of leaving it undefined. Found and reverted same day: STATUS.md Phase J2 Part 0 entry. **V1**
+    (downgraded from V2 by Validator, 2026-09-24: the "36 items" figure is computed once, when
+    `assembly_time_days=7` was adopted in Phase J Part 4, and the same figure is cited again in
+    Phase J2 Part 0 to justify reverting it — STATUS.md does not show a fresh, independent
+    recomputation confirming the 36-item count after the revert, only pipeline parity tests
+    (76/76 + 6/6) that check general output consistency, not this specific figure).
+
+14. **`numpy.bool_(True) is True` evaluates to `False`** — a stability flag read back from a CSV via
+    Python's `is True` silently forced every series to "Naive" instead of the intended model. Fixed
+    to `==`. Found: STATUS.md:2413-2417 (rule-based-selection implementation). **V1** (one incident,
+    code-level not data-level, kept because it produced a wrong RESULT from a naive reading of a
+    round-tripped value, exactly the class of trap this section is for).
+
+15. **An initial warehouse-classification pass wrongly flagged every code with zero issue-events
+    among the 6 raw-material items (including FG01/FG11/FG21) as "not available."** Naive reading:
+    no issue events recorded for an item in a warehouse means that warehouse holds none of it.
+    Reality: those 6 items hold almost none of FG01's stock in the first place (144,094 units
+    across the full 128-item scope belong to other items) — the ledger's silence there proves
+    nothing about the Finished Goods actually sitting there. Found and corrected: STATUS.md
+    Locked Decisions, "Warehouses are STAGES" investigation (STATUS.md:2985-2995). **V1**.
+
+16. **A duplicate-detection join on `cube_Contract`'s free-text `product` field undercounted real
+    matches.** Naive reading: 8 of 29 "confirmed duplicate" sets corroborated. Reality: rejoining on
+    `Cube_CES`'s proper key (`ContractID`+`ItemCode`) gets a 100% match rate (29/29), fully
+    reversing the earlier conclusion for most of the 29 sets (9 fully corroborated as genuine split
+    lots vs. 5 previously, 16 unresolved vs. 21 previously). Found and corrected: STATUS.md:1580-1588.
+    **V1** (downgraded from V2 by Validator, 2026-09-24: the source is one investigation's
+    corrected re-join on the proper key, not a second independent agent or direction reconfirming
+    the 29/29 match rate; a related control test in the same investigation (STATUS.md:1595-1600)
+    found the underlying method has an ~11.5% false-negative rate, which argues against treating
+    this as doubly confirmed).
+
+17. **A test for whether `createDate` was ever revised after the fact could not fully rule it out,
+    but also found no evidence for it beyond a small, one-directional lag** — recorded as a
+    limitation, not resolved either way, and every later figure that depends on `createDate`/
+    `forecast_date` being fixed at intake states this explicitly rather than treating it as settled.
+    Found: STATUS.md, Date-column Validator investigation (STATUS.md:3303-3319). **H**, an
+    assumption the project keeps flagging rather than quietly relying on.
+
+---
+
+## 5. Unknowns
+
+Facts the project needs but the data cannot supply, with the party that would know (as the source
+itself names it).
+
+1. **Assembly/production time** (raw-material consumption → assembled item becoming stock). No
+   field in any table links these events. STATUS.md §6 (Missing Data by Phase), reaffirmed §8.5
+   "Still open." Owner: **production / the business**.
+2. **Target service level.** Not yet set anywhere in the data. STATUS.md §6, §8.5. Owner: **the
+   business** (Phase 4 presents levels, does not pick one).
+3. **Stockout cost.** No source identified; a `saleGM`-based lost-margin proxy was suggested by the
+   business but is explicitly "an assumption if adopted, not a measured figure." STATUS.md §7
+   (Red Team Review Findings), §8.5. Owner: not named beyond "the business."
+4. **Make-versus-buy per item** (whether any Finished Goods item is ever bought complete instead of
+   made in-house). Ambiguous from data (§1, Cube_ItemList.PurchasePrice note). STATUS.md §6. Owner:
+   not named.
+5. **Minimum order quantities / lot sizes.** Business confirmed this data does not exist at all.
+   STATUS.md §8.3 "Removed from the data request list."
+6. **Finished-goods movement history.** Business confirmed this does not exist. STATUS.md §8.3.
+7. **Whether Tendering-channel stock for one focus item is the same physical stock as Omni Channel
+   items.** Business confirmed this data does not exist. STATUS.md §8.3. Owner: was "the warehouse
+   team" before being confirmed non-existent.
+8. **Whether `forecast_date` is ever revised in place after PO intake.** Undetectable in this
+   schema; no audit trail. STATUS.md §5 (Open Questions), Date-column Validator residuals. Owner:
+   **IT / business**.
+9. **Sellability of any "sellable warehouse" list, for every division without exception.** Cannot
+   be verified from this data — no sales row carries a warehouse field, so the reverse direction to
+   check it does not exist. STATUS.md Phase E2 readiness entry. Owner: **warehouse/operations
+   team**.
+10. **What system `Cube_CES` belongs to / what populates it.** Currently unprovable from read-only
+    data. STATUS.md §5. Owner: not named.
+11. **`jobcode`'s populating mechanism** (why it concatenates, why duplication correlates with it).
+    Needs visibility into the stored procedure/view that populates it. STATUS.md §5, dated log
+    correction. Owner: **IT / whoever owns the view or procedure**.
+12. **The 2024 `Cube_Quotation` coverage gap** (25 rows vs. thousands in 2025/2026 for the same
+    351-item scope) — real absence, different numbering scheme, or retention gap is undetermined;
+    no further query was available under this session's one-connection rule. `output/summary/
+    phaseJ2_explorerA_report.md` §3. Owner: not named (implicitly IT/whoever owns Cube_Quotation).
+13. **What causes the real, anomalous day-0 delivery-date spike**
+    (`ActualDelDate=PlanDelDate=ForecastDelDate` far more often than the surrounding distribution
+    would predict), if not after-the-fact date revision — explicitly left open.
+    `output/summary/phaseJ2_explorerB_report.md`. Owner: not named.
+14. **The true production-batch date** (`cube_final.final_date` and neighbouring
+    `fg_check_date`/`fg_pack_date`/`fg_final_date`) — this session's pull returned zero rows,
+    almost certainly an interrupted-agent artifact; a fresh, uninterrupted pull is needed.
+    `output/summary/phaseJ2_explorerD_report.md`. Owner: re-attemptable from data — no business
+    input needed, just a connection that survives to completion.
+15. **The real fulfilment/replenishment mechanism — the headline unknown of Phase J2.** Named
+    exactly in the source: a direct description from whoever runs production/warehouse planning of
+    (1) real review frequency/trigger, (2) which physical stock (including non-"sellable"
+    warehouses and component buffers) is actually treated as available, (3) whether/how production
+    runs ahead of orders for the fuse/surge-arrester families that dominate fast delivery.
+    `output/summary/phaseJ2_synthesis_report.md`. Owner: **production/warehouse planning**.
+16. **PEM103's Tendering-channel scope decision** — 65.5% of item-code value sits outside the
+    Omni-Channel-only scope; a business call on whether it belongs in this project. STATUS.md §5,
+    Phase C step 1 residual item 4. Owner: business.
+17. **PEM104's true volume** — whether 12 transactions is the complete picture, or real volume flows
+    through an uncaptured division/channel. STATUS.md §5, item 5. Owner: not named.
+18. **Whether the `PEM102-OLD`/`PEM107-OLD` tag mechanism is one reorganisation or two unrelated
+    relabelings** — resolved at the filter level (business said which tag means which division)
+    but the mechanism/reason itself was never explained. STATUS.md §5 item 1, cross-ref §8.1.
+19. **Procurement/vendor lead time, full coverage.** No source has both clean data and full item
+    coverage (§1: `Cube_emanu` unusable, `Cube_PO_Exact` 5.5-7.5% coverage, `Cube_PriceList`
+    24/68-62/128 coverage, `Cube_Quotation.ctr_leadtime` inconsistent/order-circumstance-dependent).
+    STATUS.md:2307-2316. Owner: **the purchasing team**, stated explicitly as needed for full
+    coverage.
+
+---
+
+## 6. Corrections log
+
+| Old claim | New claim | Date | Evidence |
+|---|---|---|---|
+| All queries filter on `division='PEM101'`, recorded as project-wide scope | That was only ever the pilot's condition; project scope is Omni Channel across every pricelist division, `division` is a grouping key not a filter | 2026-09-04 | STATUS.md Locked Decisions, "Project scope correction" |
+| Exclude any row with a `-OLD` division suffix from scope | Never filter on `division` at all — pricelist is authoritative; database `division` (incl. `-OLD`) kept only as reference | 2026-09-04 (same day, later) | STATUS.md Locked Decisions, "Division source-of-truth correction" |
+| `cube_Contract`'s 2025-01-01 floor means 2024 contract detail cannot be verified anywhere | Wrong — `Cube_CES` carries `ContractID` and `ItemCode` and covers 2024 fully | 2026-08-31 | STATUS.md:1573-1579 |
+| Duplicate-set join via `cube_Contract`'s free-text `product` field: 8/29 matchable | Rejoin via `Cube_CES` `ContractID`+`ItemCode`: 100% (29/29) match; revised to 9 fully corroborated / 4 partial / 16 unresolved | 2026-08-31 | STATUS.md:1580-1588 |
+| 3 Actual/MPS overlap cases leaning legitimate, not fully proven | Definitively resolved as legitimate multi-tranche orders via `Cube_CES`'s own Status/Qty fields; source of the MPS↔Backlog mapping fact | 2026-08-31 | STATUS.md:1624-1635 |
+| jobcode mechanism hypothesis: a database JOIN fanout (one row per matching job) | Contradicted — the same complete job list repeats identically across a duplicate set's rows; mechanism still not understood beyond ruling this out | 2026-08-31 | STATUS.md:1605-1623 |
+| `safety_stock = percentile(ltd_distribution, sl) − cum.mean()` (distribution's own mean), in the Modeler script, Validator script, and page JS | `percentile(...) − LTD` (forecast-based point estimate), per METRICS.md §4's literal text — a confirmed code defect | 2026-09-22 | STATUS.md Phase E1-fix / E1-fix-2 Part 2 |
+| METRICS.md §4/§15 window wording ambiguous (whole-month rounding vs. exact days; item's own span vs. fixed window) | §4 requires exact days on the daily series, never rounded; §15 fixes both facts to the same trailing-12-months-ending-at-cutoff window | 2026-09-22 | STATUS.md Phase E1-fix-2 Part 0 |
+| METRICS.md §14 confirmed demand sourced from the `Cube_Backlog` table | `Cube_CES Status='Backlog'` is the correct source — `Cube_Backlog` lags by ~13.6 hours, would over-count by 0.9% | 2026-09-22 | STATUS.md Phase E1-fix-2 Part 1 |
+| METRICS.md §15: no zero-P50 special case; a division with P50=฿0 classified every item `finished_goods_stock` | If P50=0 exactly, the value criterion is undefined; classify by order_frequency alone | 2026-09-22 | STATUS.md, "zero-P50 rule" entry; `phaseE1fix2r3_part1_zero_p50_report.md` |
+| PEM107's 6.34% Modeler/Validator stock_value gap: unattributed | Root cause: `query_sale_cost` missing the `revenue_type`/`status` filter, 97.0% of the gap from 2 items | 2026-09-22 | STATUS.md, "PEM107 stock_value gap" entry; `phaseE1fix2r3_part2_pem107_trace_report.md` |
+| 73.2%/57.8% on-time figures cited project-wide as a general fill-rate benchmark | Was `on_time_exact`, row-weighted, 2026-only, PEM101-only, vs. `PlanDelDate` — not comparable to `fill_rate`; corrected `not_late` figures recorded per division, both weightings, 2023-2026 | 2026-09-23 | STATUS.md banner + Phase J2 entry; METRICS.md §19 |
+| `assembly_time_days` default changed 3→7 ("robust upper bound") | Reverted 7→3 — made `component_stock_ato` infeasible for all 36 of PEM101's affected items; deferred until the real fulfilment mechanism is known | 2026-09-23 (same day) | STATUS.md Phase J2 Part 0 entry |
+| `Cube_Quotation.report_date` treated as a usable quotation date | 99.94% identical to `forecast_date` — a disposition date, not a quotation-issue date; `create_date` is the defensible one | 2026-09-23 | `output/summary/phaseJ2_explorerA_report.md` §2 |
