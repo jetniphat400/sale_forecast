@@ -328,4 +328,28 @@ always stated.
 - Two targets are required. Fitting service alone leaves stock level
   free and many combinations will match; the observed stock value is
   what pins the policy down.
+
+## 21. channel_scope and cross-scope comparison
+
+    channel_scope ∈ { omni, omni_tendering }
+      omni           : revenue_type = 'Omni Channel'
+                       — project default and official requirement
+      omni_tendering : revenue_type IN ('Omni Channel', 'Tendering')
+                       — contingency scope
+    relative_bias    = bias / mean(actual) over the same window, in %
+
+    same-target rule: two scopes are compared for accuracy ONLY on the
+    same target series. To test whether the combined scope forecasts
+    Omni demand better, the omni_tendering forecast is allocated to Omni
+    by Omni's historical share of the combined series per item and Type,
+    computed from data before each origin only; both scopes' Omni
+    forecasts are then scored against actual Omni demand.
+
+- MASE and relative_bias may be reported per scope to describe how
+  predictable each series is, but never to claim one scope forecasts
+  more accurately than the other, since the series differ.
+- Other revenue types are excluded from both scopes; report their share
+  of each division's value, and flag any above 2 percent.
+- The allocation share obeys the point-in-time rule: no data after the
+  origin.
 - The historical initial stock is unknown; the warm-up absorbs it.

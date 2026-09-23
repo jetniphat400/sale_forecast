@@ -1379,6 +1379,43 @@ one view, per the decomposition test), then a separate Validator for the indepen
   three narrowed to one named business question each); **Q17** in progress (cadence known, batch
   dates/sizes still blocked on `cube_final`); **Q18** done.
 
+**Phase J4 — PEM103/PEM104 business facts, G2/G3 scope split, channel-scope decision — DONE
+(2026-09-23).** Documentation only: no database access, no analysis, no code/config changes.
+
+- **PEM103 is transformers, and most of its business is tendering work for electricity
+  utilities** (business-confirmed). Consistent with data already in the repository: Phase C found
+  the Omni Channel filter captures only 33.3% of PEM103's item-code value, with 65.5% Tendering
+  (STATUS.md:3894-3895); Phase J3 found 69.3% of PEM103's delivered contracts trace to a
+  pre-existing production batch (vs. PEM101's 2.0%, STATUS.md:1328); and Phase J3's inverse
+  calibration found a stock-based policy cannot reproduce PEM103's delivery without 5-12x more
+  capital than the business holds (STATUS.md:1351). Recorded at level A: DATA_MAP.md §7.
+- **PEM104 is made to order** (business-confirmed). Consistent with only 12 transactions across 17
+  calendar months (Phase C step 1, STATUS.md:4819) and essentially no stock anywhere (Phase E2
+  readiness, STATUS.md:780-781). This changes PEM104's exclusion reason from "insufficient data"
+  (STATUS.md:4817-4824) to "made to order, no stock policy applicable" — the old reason is
+  superseded, not deleted, in DATA_MAP.md §6 Corrections log.
+- **PROJECT_GRAPH.md updated**: G2 (stock policy) now scoped to PEM101/PEM107 only. PEM103 moved
+  out of G2, feeding G3 instead through a new node, Q22 (tender-pipeline governs PEM103's
+  production/stock behaviour — answered). PEM104 closed as a dead end, DE4 (made to order, no
+  stock policy). The external-factors node (utility budgets, EGP bid announcements — STATUS.md
+  §6, Phase 3.2 missing-data note) is raised from deferred to **relevant for PEM103, blocked on
+  data**, since the tender pipeline is now PEM103's understood primary production driver. A new
+  question node, Q23, is proposed (in progress, next task): does the Omni Channel scope explain
+  observed stock/delivery behaviour, or does production/stock shared with Tendering need to be
+  included? It feeds PEM103's G3 path (Q22) and PEM107's still-unexplained 2026 delivery decline
+  (Q10).
+- **Decision: the official requirement remains Omni Channel, and stays the project default.** A
+  combined Omni Channel + Tendering scope (`channel_scope = omni_tendering`, METRICS.md §21) will
+  be built as a **contingency** and compared against the default — this does not change the
+  default, and nothing is re-scoped until Q23 is actually run and a decision is made from its
+  result.
+- **METRICS.md §21 (channel_scope and cross-scope comparison) added**, defining `omni` (default)
+  and `omni_tendering` (contingency) scopes, the same-target comparison rule (omni_tendering's
+  forecast allocated to Omni by historical share, point-in-time, before scoring against actual Omni
+  demand), and the rule that MASE/relative_bias per scope describe predictability, never a
+  cross-scope accuracy claim.
+- No database access, no code changes. Full test suite unaffected (no code touched).
+
 **Phase F — Measure the value**: compare against the team's current method, and estimate what
 would happen with no intervention at all, since on-time delivery has already improved from 57.8%
 to 73.2% with no system in place.
