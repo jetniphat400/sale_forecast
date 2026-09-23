@@ -993,6 +993,142 @@ the same entry's Part 3 proposed in place of it. Nothing left unresolved from ei
 - **Full test suite: 76 passed** (74 + 2 new `test_phaseE1_common_unit_cost.py` tests). Sensitive-
   content scan (customer/company names, credentials) of every new/changed file: zero matches.
 
+**Phase I — Decision-sensitivity sweep on Phase E's Tier A assumptions — DONE (2026-09-23), single
+agent (per `AGENTS.md`: sweeping/classifying/reporting on one shared computation share the same
+context and cannot be usefully split; a separate Validator ran independently for Part 4 only).**
+Measured which of Phase E's unconfirmed assumptions (procurement lead time, assembly time, review
+interval, service level, sellable warehouses, unit-cost window, segment thresholds, placeholder
+concentration threshold) actually change a Min/Max/stock_value/fill_rate decision, for PEM101,
+PEM103 and PEM107, per a new formal metric, `METRICS.md` Sec.17 `decision_sensitivity` (added this
+phase, Part 0 of the task). **One database connection attempt for the whole task** (per
+DATABASE ACCESS RULE), pulling the combined 351-item scope (0 overlaps) from `cube_Sale_APD` and
+`Cube_Inventory_Exact` in one connection (`src/investigations/phaseI_single_pull.py`), cached to
+`output/data/phaseI_raw_sales_351items.csv` / `phaseI_inventory_exact_351items.csv` — every sweep
+value afterward (dozens of scenarios × 3 divisions) was recomputed purely from that cache, no
+further DB access.
+- **Engine** (`src/investigations/phaseI_sensitivity_engine.py`) reuses the existing pipeline's
+  already-locked functions unmodified (`compute_ltd_and_distribution`, `compute_max_and_stock_value`,
+  `simulate_item_daily`, `topdown_item_forecast`), adding only parameterized policy-assignment and
+  unit-cost functions (needed to sweep the frequency/window thresholds without a second live
+  query). **Verified against the already-frozen/live pipeline outputs before any sweep ran**:
+  policy counts matched exactly for all three divisions; PEM101 fill_rate/cycle_service_level
+  matched to 10+ decimal places; stock_value matched within 0.01–0.02% (a fresh pull's slightly
+  later most-recent-transaction anchor for a few fallback unit costs, not a methodology gap).
+- **Part 1/2 classification** (`output/summary/phaseI_2_classification.csv`, full detail in
+  `phaseI_1_scenario_results.csv` / `phaseI_1_item_detail_<division>.csv`): **RELEVANT in every
+  division at the 10% default threshold** — procurement lead time, review interval, cycle service
+  level, segment frequency threshold (the last via real policy flips: 9/6/2 items in
+  PEM101/PEM103/PEM107, and a 101% stock_value swing in PEM103 specifically, whose zero-P50 rule
+  makes classification depend on frequency alone). Assembly time is RELEVANT in PEM101/PEM103 but
+  INSENSITIVE for PEM107 at 10% (division-dependent). **INSENSITIVE everywhere**: sellable
+  warehouses (verified by direct recomputation, not just reasoned — Min/Max/stock_value/simulation
+  formulas never read on-hand stock at all under current METRICS.md formulas: all three tested
+  warehouse-set variants gave identical results to floating-point precision) and unit-cost window
+  in PEM101 (RELEVANT only in PEM103/PEM107 at 10%, but never at 20%, and never moves Min/policy —
+  a cost-only effect). Placeholder concentration threshold is report-only (placeholders carry no
+  Min): PEM101 0/11 flip, **PEM103 all 37/37 flip together between 30% and 40%** (its no-history
+  items cluster at exactly 30.71% top-sibling share), PEM107 1/24 flips.
+- **Service-level curve and knee** (`output/summary/phaseI_2_service_level_curve.csv`): PEM101/
+  PEM107 knee at SL=0.90 (marginal stock_value per fill-rate-point more than doubles beyond it);
+  PEM103's knee is at 0.98 — its fill_rate is still only 90.6% at the SL=0.95 default, a genuine
+  finding that cycle-service-level and unit fill-rate diverge far more sharply for PEM103's lumpier
+  demand than for PEM101/PEM107.
+- **Part 3 two-way grid** (`output/summary/phaseI_3_two_way_grid.csv`): top-2-by-value-shift pairs
+  per division (PEM101: lead×review; PEM103: freq-threshold×service-level; PEM107: service-level×
+  lead) are **dominantly roughly additive** (13/15, 11/15, 19/25 cells) — amplification/dampening
+  appears only right at a classification boundary (PEM103's zero-P50 rule switching on/off; PEM107
+  around lead=45–90 at SL=0.90), not spread across the grid.
+- **Part 4 Validator** (`output/summary/phaseI_4_validator_*.csv`, `src/investigations/phaseI_validator.py`):
+  independent re-implementation of policy/unit-cost/LTD/Min/Max/stock_value (own code, reusing only
+  pre-existing infrastructure that predates this task — `phaseE1_common`/`phaseE2_pilot_recompute`
+  — never the Analyst's new Phase I scripts), from the same single cached pull. **19/19 checked
+  scenarios matched to floating-point precision** (default row + the extreme end of every RELEVANT
+  assumption, all three divisions, division totals, and the three focus items' Min/policy). One
+  real bug was caught and fixed during Validator development (first draft skipped PEM101's
+  excluded/placeholder overrides, producing a 1.3–1.4% discrepancy on two scenarios) — fixed, then
+  re-verified to exact match; recorded per CONVENTIONS.md as an independent recomputation, not a
+  re-read of the same query.
+- **Full test suite: 76 passed** (unchanged from the prior baseline — this phase added only new
+  `src/investigations/phaseI_*.py` scripts, touching no existing pipeline module).
+- **Assumptions that genuinely need a human answer** (full reasoning and per-division flip
+  brackets in `output/summary/phaseI_report.md`): cycle service level (never set — STATUS.md
+  Sec.8.5), procurement lead time (business confirmed only a 45–60 day *range*, and that range
+  itself spans a relevant swing), review interval (pure Modeler default), segment frequency
+  threshold (Modeler default, causes real policy flips everywhere), assembly time
+  (division-dependent). Sellable warehouses, unit-cost window and the placeholder concentration
+  threshold can remain assumptions — verified decision-insensitive for the Min/Max/stock_value/
+  fill_rate decisions this project computes.
+
+**Phase J — Calibrate the scenario model against reality, and adopt robust defaults — DONE
+(2026-09-23), single agent (per `AGENTS.md`: calibration/curve/frontier/default-change all share
+one computation and cannot be usefully split), with a separate Validator for Part 5.** Built
+`METRICS.md` Sec.18 (`baseline_replay`, `actual_on_time`, `calibration_gap`) and used it to check
+whether Phase I's scenario figures can be trusted before being treated as an action plan.
+- **One new database connection attempt** (Cube_CES, `src/investigations/phaseJ_single_pull.py`)
+  — everything else reused Phase I's cached raw pull. **Process error, disclosed not hidden:**
+  Part 6's page regeneration initially made an UNINTENDED second live query (a call site inside
+  `build_inventory_page_data.build_data()` — `phaseE2_pilot_recompute.pull_raw_sales` — not
+  covered by the first monkeypatch draft). Caught immediately; read-only, no data modified; both
+  call sites are now patched (`src/investigations/phaseJ_regenerate_page.py`) and the page was
+  rebuilt cleanly on the corrected run. Recorded here as a genuine rule violation, not minimised.
+- **Part 1 calibration — the model is DRAMATICALLY PESSIMISTIC in every division, the OPPOSITE
+  direction this task's own Purpose section anticipated** (stated plainly per CONVENTIONS.md's
+  contradiction-reporting rule): baseline_fill_rate 8.2%/1.1%/1.6% (PEM101/103/107) vs.
+  actual_on_time 97.8%/94.1%/86.1% — calibration_gap -89.6/-93.0/-84.5 percentage points.
+  **Root causes, verified**: PEM103 and PEM107 have ZERO items with any current Min/Max setting
+  in their sellable warehouses (100% reactive under Sec.18's definition); PEM101's settings are
+  the ALREADY-KNOWN-unreliable ones (Locked Decisions: 46/128 no setting, up to 1,700 months of
+  cover) -- several of its highest-demand items hold a Min/Max a 30-day review cycle exhausts in
+  10-15 days, guaranteeing 15-20 stockout days between reviews. **Hypothesis, not verified**: real
+  replenishment almost certainly does not follow a rigid 30-day review the way Section 16
+  mechanically assumes -- no historical stock-movement/reorder-event log exists to confirm this
+  directly (same absence Phase D/E1 already documented).
+- **Part 2 — same money would NOT buy better delivery, in any division, by any margin.** Even
+  extending the search to SL=0.01 (near-zero safety stock, Min=LTD only), the model's stock_value
+  (THB 44.9M/31.5M/16.0M) still exceeds each division's current on-hand (THB 18.07M/6.06M/3.28M)
+  by 2.4-5.2x -- **no service level in the model's valid range matches today's capital level**; the
+  model's structural minimum already costs more than the business holds today. RAW model fill_rate
+  at this floor (91%/44%/32%) is already below actual_on_time in every division -- the direct
+  answer is no even before any correction. **The instructed calibration correction produces
+  figures above 100% in every division and is reported as NOT MEANINGFUL here, not silently
+  applied** -- the calibration_gap does not transfer additively from today's broken-settings
+  regime to a near-zero-safety-stock scenario; this divergence is itself informative.
+- **Part 3 — frequency-threshold Pareto frontier**: PEM101's current threshold (6) is DOMINATED
+  (frontier = {11,12} only -- a higher threshold gives lower stock_value AND marginally higher
+  fill_rate); PEM103/PEM107's current threshold (6) IS on the frontier (every value 2-12 is a
+  genuine trade-off there). No threshold recommended, per task instruction -- frontier reported,
+  decision left to the business, especially since PEM101's fill-rate cost of its current
+  (dominated) choice is under 0.01pp, arguably too small to act on without a firmer stockout-cost
+  basis (still absent, STATUS.md Sec.8.5).
+- **Part 4 — robust defaults adopted in `config.yaml`**: `procurement_lead_time_days` unchanged
+  at 60 (already the confirmed range's upper bound; comment corrected from a prior mislabel of
+  "middle"); `assembly_time_days` changed 3 -> 7 (upper end of the Modeler's own plausible [3,7]
+  range), both commented with the under-provisioning-costs-more reasoning and Phase I's
+  decision-relevance finding. New default-scenario headline: PEM101 stock_value THB 67.41M (+3.6%),
+  fill_rate 99.62%; PEM103 THB 82.44M (+2.5%), 91.14%; PEM107 THB 51.08M (+1.7%), 98.06%.
+  **Material, foreseen, disclosed consequence: PEM101's entire former 36-item
+  `component_stock_ato` population now falls into `UNDEFINED_BY_METRICS_MD_SEC15`** (assembly=7 >
+  PEM101's median customer notice of 6 days trips METRICS.md Sec.15's own documented structural
+  gap) -- these items get no Min/Max, no stock_value, and do not appear on the inventory page,
+  same treatment as placeholder/excluded. Not a new bug (the code already refuses to invent a 5th
+  category, logs a warning) -- but a real operational gap this default change opens for PEM101
+  specifically. PEM103 (median notice 30d) and PEM107 (16d) are unaffected.
+- **Part 5 Validator**: independent implementation (own control flow for the baseline replay;
+  reused only Phase I's own already-cross-validated `phaseI_validator.py` functions for Min/Max/
+  stock_value, never Phase J's Modeler scripts) -- **every figure matched to floating-point
+  precision**: baseline_fill_rate, actual_on_time, the SL-at-current-onhand crossing (all three
+  divisions independently confirmed "<0.01"), and the new default-scenario stock_value.
+- **Inventory page regenerated** (`forecast/inventory.html`, under the new default) and
+  **`tests/test_inventory_parity.py`: 6/6 pass**. **Full test suite: 76 passed** (unchanged count).
+- **Bottom line**: the scenario model does not simply need minor calibration -- Phase J found (1)
+  today's actual settings/review cadence are themselves so broken that replaying them looks far
+  worse than reality (a data problem, not a scenario-model problem), and (2) separately, the
+  model's own recommended stock levels are structurally far above what the business holds today at
+  every tested service level, meaning adopting this model at any service level is a capital
+  increase, not a reallocation of today's money. Both findings should reach the business before any
+  scenario figure (Phase I's or Phase J's) is treated as an action plan. Full detail:
+  `output/summary/phaseJ_report.md`.
+
 **Phase F — Measure the value**: compare against the team's current method, and estimate what
 would happen with no intervention at all, since on-time delivery has already improved from 57.8%
 to 73.2% with no system in place.
