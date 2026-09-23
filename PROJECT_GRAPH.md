@@ -10,14 +10,24 @@ status, it updates this file (CONVENTIONS.md, Part 4).
 
 ## Critical path
 
-**As of 2026-09-24, the critical path runs: E11 → E12 → Q10 → (blocks D9's resolution and every
+**As of 2026-09-25, the critical path runs: E11 → E12 → Q10 → (blocks D9's resolution and every
 downstream G2 figure).** Phase J found the Section 16 model fails calibration against actual
 delivery performance (E11); Phase J2's four Explorers each tested a candidate explanation and each
 falls short (E12); **how the business actually fulfils orders and how fast it replenishes (Q10)
 remains unresolved** — and every G2 figure (Min, Max, stock_value, fill_rate, segment policy) is
 marked UNCALIBRATED and depends on Q10 being answered before it can be trusted for a decision.
-Q10 is **blocked on a person** (production/warehouse planning — see DATA_MAP.md §5, item 15, for
-the exact input named).
+
+**Q10 status corrected 2026-09-25: IN PROGRESS, data route J3 — not blocked on a person.** Phase
+J's calibration replayed the CURRENT min/max settings, which the project had already established
+nobody follows (DATA_MAP.md, Cube_Inventory_Exact trust note; STATUS.md Locked Decisions, "existing
+min/max values cannot be used as calculation inputs") — so its 89-point gap tested an unused
+policy, not the model's own mechanics. Explorer D's batch data (a candidate lead on the real
+fulfilment mechanism) was lost mid-task to an infrastructure failure, not resolved against the
+data. **Inverse calibration (METRICS.md §20, fitting Section 16's own parameters to reproduce
+observed `not_late` and stock value, instead of assuming today's settings) has not yet been
+attempted.** The data route is not exhausted — this is what J3 pursues. Q10 is on the graph as
+**in progress**, not **blocked on a person**, until J3 reports whether inverse calibration
+identifies its parameters or genuinely cannot from the data available.
 
 ## Status legend
 
@@ -147,7 +157,7 @@ flowchart TD
     E11 --> Q9
     Q9 --> Q10
     E12 --> Q10
-    Q10 -.->|blocked on a person| Q15
+    Q10 -.->|in progress, data route J3| Q15
     Q11 --> Q10
     Q12 --> Q10
     Q13 --> Q10
@@ -164,7 +174,7 @@ flowchart TD
     Q16 --> D6
 
     Q10 -.->|proposed| Q17
-    Q10 -.->|proposed| Q18
+    Q10 -.->|scheduled in J3| Q18
     Q10 -.->|proposed| Q19
     Q10 -.->|proposed| Q20
     Q10 -.->|proposed| Q21
@@ -178,10 +188,9 @@ flowchart TD
     class E1,E2,E3,E4,E5,E6,E7,E8,E9,E10,E11,E12,E13,E17 done
     class DE1,DE2,DE3 closed
     class Q1,Q2,Q3,Q4,Q6,Q7,Q8,Q9,Q11,Q12,Q13,Q16 done
-    class Q5,Q15 inprogress
-    class Q10 blockedperson
+    class Q5,Q15,Q10,Q18 inprogress
     class Q14 blockeddata
-    class Q17,Q18,Q19,Q20,Q21 blockedperson
+    class Q17,Q19,Q20,Q21 blockedperson
     class D1,D2,D3,D4,D6,D7,D8,D9 done
     class D5 uncalibrated
     class T1,T2 inprogress
@@ -220,7 +229,7 @@ flowchart TD
 | Q7 | done | E10 | D5 | Answered for division/sharing; sellability itself remains a standing assumption (DATA_MAP.md §5 item 9) | — |
 | Q8 | done | E8 | Q10 | Answered — 6-day median, but Phase J2 found this doesn't explain real fulfilment speed | — |
 | Q9 | done | E11 | Q10 | Answered — no, the model does not reproduce actual delivery performance | — |
-| **Q10** | **blocked on a person** | E12, Q8, Q9, Q11, Q12, Q13, Q14, T2 | Q15, D8, D9, G2 | Phase J2 synthesis: not achievable from data alone; exact input named (DATA_MAP.md §5 item 15) | **person** |
+| **Q10** | **in progress, data route J3** | E12, Q8, Q9, Q11, Q12, Q13, Q14, T2 | Q15, D8, D9, G2 | Corrected 2026-09-25: Phase J's calibration replayed the current min/max settings, already established as unfollowed (Cube_Inventory_Exact trust note), so its 89-point gap tested an unused policy, not the model's mechanics; Explorer D's batch data was lost mid-task, not resolved; inverse calibration (METRICS.md §20) not yet attempted. The data route is not exhausted — pursued in J3. | — |
 | Q11 | done | (Explorer A) | Q10 | Contradicted — `output/summary/phaseJ2_explorerA_report.md` | — |
 | Q12 | done | (Explorer B) | Q10 | Contradicted — `output/summary/phaseJ2_explorerB_report.md` | — |
 | Q13 | done | (Explorer C) | Q10 | Contradicted as general explanation — `output/summary/phaseJ2_explorerC_report.md` | — |
@@ -228,7 +237,7 @@ flowchart TD
 | Q15 | in progress | Q10 | D8 | Proposed in words (synthesis report); not implemented, and not finalizable until Q10 answered | — |
 | Q16 | done | E13 | D6 | Answered — no, corrected `not_late` figures now used instead | — |
 | Q17 | blocked on a person | Q10 (implicitly) | G3 | Proposed this task, Part 3; no data source evaluated yet | **person** |
-| Q18 | blocked on a person | Q10 (implicitly) | G3 | Proposed this task, Part 3 | **person** |
+| Q18 | in progress, scheduled in J3 | Q10 (implicitly) | G3 | Corrected 2026-09-25: evidence partial — `Cube_BOM_Exact` exists and is unread for its own content; scheduled for J3, not a person-blocker | data (a re-read of an existing table) |
 | Q19 | blocked on a person | Q10 (implicitly) | G3 | Proposed this task, Part 3 | **person** |
 | Q20 | blocked on a person | Q10 (implicitly) | G3 | Proposed this task, Part 3 | **person** |
 | Q21 | blocked on a person | Q10 (implicitly) | G3 | Proposed this task, Part 3 | **person** |
@@ -244,7 +253,7 @@ flowchart TD
 | T1 | in progress | — | G1 | STATUS.md, "First scoreable target month is 2026-08, safe to score only from 2026-09-30" | time |
 | T2 | in progress | — | Q10 | STATUS.md, "Prospective posting-delay measurement: STARTED 2026-09-22" (+60 days ≈ 2026-11-21) | time |
 | **G1** | in progress | D1, D2, D3, D4, T1 | — | Forecasting method adopted and locked; Phase F (compare against the team's current method) not started | time (Phase F) |
-| **G2** | **uncalibrated** | D1, D5, D6, D7, D8, D9 | G3 (partially) | Phase J's calibration_gap; every figure banner-tagged in STATUS.md | **person** (Q10) |
+| **G2** | **uncalibrated** | D1, D5, D6, D7, D8, D9 | G3 (partially) | Phase J's calibration_gap; every figure banner-tagged in STATUS.md | data, pending J3 (Q10) — corrected 2026-09-25, was "person" |
 | **G3** | blocked on a person | Q17-Q21 | — | No question nodes existed before this task; all proposed, none answered | **person** |
 
 ## Time-bound tracks (detail)
@@ -288,7 +297,7 @@ instruction.**
 | Node | Question | Evidence in the database | Notes |
 |---|---|---|---|
 | Q17 | What production batch cadence and size does each item/family run on? | **Partial.** `cube_final.jobno`/`Cube_CES.OLMJobCode` establish that batching happens and that one batch serves many contracts (DATA_MAP.md §2, jobcode), but the true batch date/size fields (`cube_final.final_date`, `job_qty`, `fg_pack_date`) were not successfully pulled this session (§4 Trap 7) — cadence and size are not yet computable even where the mechanism is confirmed. | Directly blocked by Q10/Q14's open data gap. |
-| Q18 | What bill of materials and shared components exist across items? | **Partial.** `Cube_BOM_Exact` exists and was used once to corroborate a Finished-Goods/Raw-Material split (DATA_MAP.md §1, "Other tables") — it has not been read for its own content (which components, shared across which items) at all. | A real table exists; this project has never queried it for BOM content itself. |
+| Q18 | What bill of materials and shared components exist across items? | **Partial.** `Cube_BOM_Exact` exists and was used once to corroborate a Finished-Goods/Raw-Material split (DATA_MAP.md §1, "Other tables") — it has not been read for its own content (which components, shared across which items) at all. | A real table exists; this project has never queried it for BOM content itself. **Scheduled in J3** (corrected 2026-09-25 — moved off "blocked on a person": reading an existing, already-located table is a data action, not a business-input gap). |
 | Q19 | What is assembly and inspection time per item? | **Absent.** No field in any table links a raw-material consumption event to an assembled item becoming stock — a confirmed, hard gap (DATA_MAP.md §5, item 1). `cube_final`'s undiscussed `fg_check_date`/`qacheck_date`/`fg_final_date` columns (found, not analysed, this session) are the nearest untested lead. | Needs the business, or a successful, deeper `cube_final` pull. |
 | Q20 | What is production capacity (lines, labour, equipment) over time? | **Absent.** No table found anywhere in this project's investigations records a capacity figure of any kind. | Needs the business entirely. |
 | Q21 | Which items are made-to-stock vs. made-to-order vs. engineer-to-order? | **Partial, and known to be unreliable at face value.** `manufacturing_type` (MTS/MTO/ETO) exists in `cube_Sale_APD` but is an ORDER-level attribute, not a fixed per-item classification — 100 of 113 items show more than one value across their own sales rows (DATA_MAP.md §2, manufacturing_type). Using it directly as a per-item classification would repeat a known trap. | A per-item MTS/MTO/ETO classification would need to be derived (e.g. a mode or business rule) or confirmed by the business — not read off this column directly. |

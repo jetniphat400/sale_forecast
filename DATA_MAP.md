@@ -516,6 +516,12 @@ itself names it).
     warehouses and component buffers) is actually treated as available, (3) whether/how production
     runs ahead of orders for the fuse/surge-arrester families that dominate fast delivery.
     `output/summary/phaseJ2_synthesis_report.md`. Owner: **production/warehouse planning**.
+    **Partially corrected 2026-09-25 (kept, not deleted): the "not achievable from data alone"
+    framing was itself premature.** Phase J's calibration replayed settings already known to be
+    unfollowed, so it never actually tested whether the data supports a fitted (not assumed) set of
+    Section 16 parameters. METRICS.md §20 (inverse calibration) proposes exactly that test,
+    scheduled as J3, before concluding business input is the only route — see §6 Corrections log
+    and PROJECT_GRAPH.md's critical path.
 16. **PEM103's Tendering-channel scope decision** — 65.5% of item-code value sits outside the
     Omni-Channel-only scope; a business call on whether it belongs in this project. STATUS.md §5,
     Phase C step 1 residual item 4. Owner: business.
@@ -550,3 +556,5 @@ itself names it).
 | 73.2%/57.8% on-time figures cited project-wide as a general fill-rate benchmark | Was `on_time_exact`, row-weighted, 2026-only, PEM101-only, vs. `PlanDelDate` — not comparable to `fill_rate`; corrected `not_late` figures recorded per division, both weightings, 2023-2026 | 2026-09-23 | STATUS.md banner + Phase J2 entry; METRICS.md §19 |
 | `assembly_time_days` default changed 3→7 ("robust upper bound") | Reverted 7→3 — made `component_stock_ato` infeasible for all 36 of PEM101's affected items; deferred until the real fulfilment mechanism is known | 2026-09-23 (same day) | STATUS.md Phase J2 Part 0 entry |
 | `Cube_Quotation.report_date` treated as a usable quotation date | 99.94% identical to `forecast_date` — a disposition date, not a quotation-issue date; `create_date` is the defensible one | 2026-09-23 | `output/summary/phaseJ2_explorerA_report.md` §2 |
+| Phase J's calibration_gap (baseline_fill_rate 8.2-1.6% vs. actual_on_time 86-98%, an 84-93pp gap) read as showing the Section 16 model's own mechanics (review cadence, lead time, min/max logic) fail against reality | **SUPERSEDED, kept not deleted.** The calibration design itself was flawed: it replayed the CURRENT min/max settings, which the project had already established nobody follows (existing settings are known-unusable as an input — see §1 Cube_Inventory_Exact trust note). The 89-point gap therefore shows today's settings are disconnected from real practice, not that Section 16's own mechanics are wrong — that question is still open. Explorer D's batch data was lost mid-task (§4 Trap 7), not resolved either way. Inverse calibration (METRICS.md §20) had not been attempted; the data route is not exhausted, pursued in J3. | 2026-09-25 | This task (Q10 correction); METRICS.md §20; PROJECT_GRAPH.md critical-path note |
+| Explorer B (due dates aligned to delivery) — CONTRADICTS, moderate-high confidence | **SUPERSEDED, kept not deleted.** UNDETERMINED: a day-0 delivery spike appearing equally on `ForecastDelDate` and `PlanDelDate` is consistent both with due dates being set to match delivery AND with the business scheduling shipment on the promised day (normal practice) — the data available cannot separate the two. The original CONTRADICTS verdict overstated what the evidence rules out. | 2026-09-25 | STATUS.md Phase J2 entry, Explorer B (corrected); `output/summary/phaseJ2_explorerB_report.md` |

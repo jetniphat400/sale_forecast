@@ -304,3 +304,28 @@ always stated.
   on_time_exact, row-weighted, 2026 only. It excluded early deliveries
   and must never be used as a fill-rate benchmark. Acceptance criteria
   that used it were comparing unlike measures.
+
+## 20. inverse_calibration
+
+    Fit the parameters of the section 16 simulation so that it
+    reproduces observed outcomes, instead of assuming them.
+
+    targets   : not_late (unit-weighted, section 19) per division
+                AND average on-hand stock value per division
+    parameters: effective review interval, effective replenishment
+                lead time, reorder level and order-up-to level
+                expressed as months of mean demand, usable-stock
+                definition
+    fit       : calibrate on 2024-01 to 2025-12; the first 6 months
+                are warm-up and excluded from scoring; validate
+                out-of-sample on 2026-01 onward
+    tolerance : not_late within ±3 points AND stock value within ±15%
+    identified: a parameter is identified if every combination within
+                tolerance on the calibration period, which also stays
+                within tolerance on the validation period, agrees on
+                that parameter within one grid step
+
+- Two targets are required. Fitting service alone leaves stock level
+  free and many combinations will match; the observed stock value is
+  what pins the policy down.
+- The historical initial stock is unknown; the warm-up absorbs it.

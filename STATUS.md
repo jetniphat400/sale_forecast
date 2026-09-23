@@ -1233,20 +1233,32 @@ their findings without gathering new data.
     CANNOT BE DETERMINED why), only ~25-29% of orders carry any quotation trace, and matched
     quotations precede the PO by a median of just 3 days (confirmed independently from both
     directions). `output/summary/phaseJ2_explorerA_report.md`.
-  - **Explorer B (due dates aligned to delivery) — CONTRADICTS, moderate-high confidence.** The
-    day-0 delivery spike is real and anomalous (3.8-37.6x what the surrounding spread predicts —
-    genuinely not just "naturally fast deliveries") but is NOT specific to `ForecastDelDate`:
+  - **Explorer B (due dates aligned to delivery) — UNDETERMINED, corrected 2026-09-25 (was:
+    CONTRADICTS, moderate-high confidence — kept below, superseded, not deleted).** The day-0
+    delivery spike is real and anomalous (3.8-37.6x what the surrounding spread predicts —
+    genuinely not just "naturally fast deliveries") and is NOT specific to `ForecastDelDate`:
     `PlanDelDate` shows an equal-or-larger zero-day share (64.6% vs 62.5%), and in the 4.2% of
     rows where the two fields diverge, `PlanDelDate` ends up closer to `ActualDelDate` far more
-    often (62.6% vs 11.1%) — the opposite of what the hypothesis predicts. **What actually causes
-    the real day-0 spike remains an open question, not resolved by any Explorer.**
-    `output/summary/phaseJ2_explorerB_report.md`.
+    often (62.6% vs 11.1%). **Correction: this pattern does not actually distinguish the
+    hypothesis from the alternative.** A spike of deliveries exactly on the due date, appearing
+    equally on `ForecastDelDate` and `PlanDelDate`, is consistent BOTH with due dates being set to
+    match delivery AND with the business simply scheduling shipment on the promised day — normal
+    practice, not an artifact. The data available cannot separate these two explanations; the
+    original CONTRADICTS verdict overstated what the evidence rules out. **What actually causes
+    the real day-0 spike remains an open question, not resolved by any Explorer, now under either
+    reading.** `output/summary/phaseJ2_explorerB_report.md`.
+    ~~Explorer B (due dates aligned to delivery) — CONTRADICTS, moderate-high confidence.~~
   - **Explorer C (component stock/fast assembly) — CONTRADICTS as a general explanation,
     moderate-high confidence.** Decisive reverse-direction test: on-hand stock strongly,
     monotonically correlates with FASTER delivery (order-level 30.5% fast at zero stock vs 85.6%
-    at substantial stock) — the opposite of the hypothesis. A narrow, real pocket (16 items, 0.31%
-    of order volume, concentrated in Medium Voltage Surge Arrester and fuse types) does fit the
-    hypothesis and is worth its own follow-up. `output/summary/phaseJ2_explorerC_report.md`.
+    at substantial stock) — the opposite of the hypothesis. **Recorded explicitly (2026-09-25): at
+    the same moderate-high confidence level Explorer C itself established, this finding — items
+    holding stock deliver fast 85.6% of the time against 30.5% without — supports stock as the
+    driver of timely delivery**, not merely "contradicts Hypothesis C." Both framings describe the
+    same evidence; stated as a positive finding here so it is not read only as a negative result
+    for the hypothesis it was testing. A narrow, real pocket (16 items, 0.31% of order volume,
+    concentrated in Medium Voltage Surge Arrester and fuse types) does fit the hypothesis and is
+    worth its own follow-up. `output/summary/phaseJ2_explorerC_report.md`.
   - **Explorer D (production batching ahead of orders) — PARTIALLY SUPPORTS, low-moderate
     confidence (data gap).** Within this 351-item scope, only 13.8% of job/batch tokens serve more
     than one contract (narrower than the project-wide prior finding) with a real median 32-day
@@ -1271,10 +1283,18 @@ their findings without gathering new data.
   different definition of usable stock than the assumption-labelled "sellable" warehouses (plus
   possibly a distinct batch-production supply channel), and a realistic lead time far shorter than
   60+3+30=93 days for the bulk of order volume (worded change proposed only, not implemented, per
-  task instruction). **Calibration is NOT achievable from data alone.** The specific missing input
-  is named: a direct description from production/warehouse planning of (1) real review
-  frequency/trigger, (2) which physical stock (including non-"sellable" warehouses and component
-  buffers) is actually treated as available, and (3) how/whether production runs ahead of orders
+  task instruction). ~~**Calibration is NOT achievable from data alone.**~~ **CORRECTED 2026-09-25,
+  kept not deleted: this was premature.** Phase J's calibration replayed the CURRENT min/max
+  settings, already established as unfollowed (existing settings are known-unusable — Locked
+  Decisions), so it tested an unused policy, not whether Section 16's own mechanics could be fitted
+  to reality. `METRICS.md` §20 (inverse calibration) proposes exactly that fit, scheduled as J3;
+  see this Phase J2 entry's own annotation and `DATA_MAP.md` §5 item 15 / §6. The specific business
+  input Phase J2 named is not withdrawn — it may still be needed if J3 cannot identify Section 16's
+  parameters from data — but it is no longer the ONLY route, until J3 reports back. The specific
+  missing input, as originally named: a direct description from production/warehouse planning of
+  (1) real review frequency/trigger, (2) which physical stock (including non-"sellable" warehouses
+  and component buffers) is actually treated as available, and (3) how/whether production runs
+  ahead of orders
   for the fuse/surge-arrester families that dominate fast delivery. One narrower piece remains
   achievable from data alone without business input: a successful, uninterrupted `cube_final`
   re-pull to complete Explorer D's core test.
