@@ -854,17 +854,36 @@ phase_e1_assumptions:
   # SAME grid is applied to every item -- that uniform application is itself a stated
   # simplification (owner: Modeler default), not a business-confirmed per-item schedule. 75 days
   # extends one point beyond the confirmed 45-60 range as a sensitivity/stress point.
+  # ROBUST DEFAULT (Phase J Part 4, 2026-09-23): set to the UPPER BOUND of the business-confirmed
+  # 45-60 day range, not the middle -- under-provisioning costs more than over-provisioning when
+  # customer orders arrive with a median 6 days' notice (STATUS.md Business Findings), and Phase I
+  # (output/summary/phaseI_report.md) found procurement lead time DECISION-RELEVANT in every
+  # division (max value_shift 20.8-28.4%, already relevant at the very first alternative tested).
+  # Numerically unchanged from the prior "middle of 45-60" default (60 was already the grid's
+  # middle value AND the range's upper bound at the same time -- the prior comment was imprecise,
+  # not the number) -- corrected here for a robust-defaults reason, not a robust-defaults change.
   procurement_lead_time_days_grid: [45, 60, 75]
   procurement_lead_time_days_owner: "business (45 and 60 confirmed, STATUS.md Section 8.1); 75 is a Modeler-added sensitivity point beyond the confirmed range, owner Modeler default"
-  procurement_lead_time_days_default: 60   # middle of the confirmed 45-60 day range
+  procurement_lead_time_days_default: 60   # upper end of the confirmed 45-60 day range (robust default, Phase J Part 4 -- see comment above)
 
   # --- Assembly time: STATUS.md confirms this is a genuine, UNRESOLVED business gap -- no field
   # in any table links a raw-material consumption event to the resulting assembled item becoming
   # stock (Section 8.5, "Still open"). Unlike lead time, NO business figure exists at all for this
   # segment. Both values below are Modeler defaults only.
-  assembly_time_days_default: 3
-  assembly_time_days_alternative: 7
-  assembly_time_days_owner: "Modeler default -- business has not supplied this figure (STATUS.md Section 8.1/8.5). 3 days is a small, defensible placeholder for simple sub-assembly of a fuse cutout/surge arrester from purchased parts; 7 days represents a more conservative, multi-step assembly. NEITHER is derived from data -- both are stated guesses pending a real production-time figure."
+  # ROBUST DEFAULT (Phase J Part 4, 2026-09-23): CHANGED from 3 to 7 days -- the upper end of the
+  # plausible [3,7] range this Modeler proposed -- for the same reason as lead time above:
+  # under-provisioning costs more than over-provisioning against a 6-day median order notice, and
+  # Phase I found assembly time DECISION-RELEVANT in PEM101 (flips policy for 72 items at 7 days)
+  # and PEM103 (relevant at 10%); PEM107 was insensitive at 10%, so this change affects PEM101/
+  # PEM103 more than PEM107. KNOWN CONSEQUENCE, not silently absorbed: PEM101's median customer
+  # notice is 6 days (STATUS.md), so assembly_time_days=7 > 6 trips METRICS.md Sec.15's own
+  # documented structural gap -- items that would be component_stock_ato now match neither defined
+  # category and are reported as UNDEFINED_BY_METRICS_MD_SEC15 (see phaseE1fix_recompute.py's
+  # assign_policy_metrics15, which already logs this non-silently). Reported in STATUS.md's Phase J
+  # entry and phaseJ_report.md with the exact count, not hidden.
+  assembly_time_days_default: 7
+  assembly_time_days_alternative: 3
+  assembly_time_days_owner: "Modeler default -- business has not supplied this figure (STATUS.md Section 8.1/8.5). 7 days (the new default, Phase J Part 4) represents a more conservative, multi-step assembly, chosen because Phase I found this assumption decision-relevant and under-provisioning is the costlier error against a 6-day order notice; 3 days (now the alternative) is a small, defensible placeholder for simple sub-assembly of a fuse cutout/surge arrester from purchased parts. NEITHER is derived from data -- both are stated guesses pending a real production-time figure."
   assembly_time_sensitivity_days: [1, 3, 5, 7, 10]   # E1.1 component-stock feasibility sensitivity table only
 
   # --- Review interval (periodic-review policy interval). No data source addresses this at all
@@ -888,9 +907,10 @@ phase_e1_assumptions:
   # Picked as the middle/most-typical value on every dimension, not tuned to pass any criterion.
   default_scenario:
     procurement_lead_time_days: 60
-    assembly_time_days: 3
+    assembly_time_days: 7
     cycle_service_level: 0.95
-    reason: "Middle value of the lead-time grid (60 of 45/60/75), the Modeler DEFAULT (not the alternative) assembly-time assumption, and the middle value of the service-level grid (95% of 90/95/98) -- the single most 'typical' combination on every axis, not selected to produce a favourable acceptance-criteria result."
+    reason: "ROBUST DEFAULTS (Phase J Part 4, 2026-09-23, superseding the prior 'most typical value on every axis' reason below for procurement_lead_time_days and assembly_time_days): both are the UPPER BOUND of their confirmed/plausible range, not the middle -- under-provisioning costs more than over-provisioning against a 6-day median customer order notice (STATUS.md Business Findings), and Phase I (output/summary/phaseI_report.md) found BOTH decision-relevant (procurement lead time in every division; assembly time in PEM101/PEM103). cycle_service_level is unchanged (still the middle of 90/95/98 -- Phase I found it decision-relevant everywhere too, but Part 4's instruction names only lead time and assembly time for this change; service level stays a business decision per STATUS.md Section 8.5, not defaulted upward here)."
+    prior_reason_2026_09_18: "Middle value of the lead-time grid (60 of 45/60/75), the Modeler DEFAULT (not the alternative) assembly-time assumption (which was 3 at the time), and the middle value of the service-level grid (95% of 90/95/98) -- the single most 'typical' combination on every axis, not selected to produce a favourable acceptance-criteria result."
 
   # --- Replenishment quantity convention (Max = Min + replenishment qty). No MOQ or lot size
   # exists in this data -- confirmed ABSENT by the business (STATUS.md Section 8.3: "business
