@@ -56,10 +56,22 @@ capital gap found in J3 (DATA_MAP.md §7) — a stock-based policy was never the
 applicable (DATA_MAP.md §7, superseding the earlier "insufficient data" framing). The
 external-factors node (utility budgets, EGP bid announcements — previously deferred to Phase 3.2,
 STATUS.md:5253) is raised to **relevant for PEM103, blocked on data**, since the tender pipeline is
-now understood to be PEM103's primary production driver. A new question, **Q23 — does the Omni
-Channel scope explain observed stock and delivery behaviour, or does production/stock shared with
-Tendering need to be included?** — is proposed, in progress, next task; it feeds both PEM103's G3
-path (Q22) and PEM107's still-unexplained 2026 delivery decline (Q10).
+now understood to be PEM103's primary production driver.
+
+**Q23 update, 2026-09-25 (this task): ANSWERED.** Q23 asked whether the Omni Channel scope explains
+observed stock and delivery behaviour, or whether production/stock shared with Tendering needs to
+be included. It does not need to be included for forecasting or calibration purposes: widening the
+demand scope to Omni+Tendering forecasts Omni demand no more accurately in any of the three
+divisions (independently confirmed by a from-scratch Validator recomputation — same direction and
+significance verdict in all 3, MAE within 3%), and makes PEM103's stock-based-policy calibration
+gap WORSE (27-37x real capital under combined demand, vs J3's 5-12x Omni-only) rather than
+resolving it — reinforcing Q22's tender-pipeline finding, not a shared-stock finding. PEM107's 2026
+not_late decline (86.6%→76.5%) DOES coincide with a real, independently-confirmed channel-mix
+reversal (Tendering value share 28-39%→72% in 2026) and a genuine drop in Omni's own not_late
+(88.6%→76.5%, not merely a compositional artifact) — a supported, not proven, hypothesis (level H)
+that shared capacity/stock was diverted toward Tendering in 2026. Omni Channel remains the
+project's default scope regardless (decision unaffected). Full detail:
+`output/summary/phaseQ23_{explorer,modeler,analyst,validator}_report.md`; STATUS.md Q23 entry.
 
 ## Status legend
 
@@ -237,7 +249,7 @@ flowchart TD
     class Q18,Q22 done
     class Q14 blockeddata
     class Q19,Q20,Q21 blockedperson
-    class Q23 inprogress
+    class Q23 done
     class D1,D2,D3,D4,D6,D7,D8,D9 done
     class D5 uncalibrated
     class T1,T2 inprogress
@@ -291,8 +303,8 @@ flowchart TD
 | Q19 | blocked on a person | Q10 (implicitly) | G3 | Proposed this task, Part 3 | **person** |
 | Q20 | blocked on a person | Q10 (implicitly) | G3 | Proposed this task, Part 3 | **person** |
 | Q21 | blocked on a person | Q10 (implicitly) | G3 | Proposed this task, Part 3 | **person** |
-| Q22 | done | E18, Q10 (PEM103 path) | G3 | Answered — PEM103 is transformers, tendering-pipeline-driven business (DATA_MAP.md §7); its production/stock behaviour follows awarded tenders, not a stock-based reorder policy. Its full production driver (batch timing/size against the tender pipeline) still needs EF1 (external factors, blocked on data). | — |
-| Q23 | in progress, next task | Q10 (PEM107 path) | Q22, Q10 (PEM107 2026 decline) | Proposed this task, Part 2 — does the Omni Channel scope explain observed stock/delivery behaviour, or does production/stock shared with Tendering need to be included? Not yet run. | — |
+| Q22 | **answered (level A)** — production mechanism pending EF1 | E18, Q10 (PEM103 path) | G3 | Business-confirmed PEM103 is transformers, tendering-pipeline-driven business (DATA_MAP.md §7); its production/stock behaviour follows awarded tenders, not a stock-based reorder policy — this is a business-confirmed statement (level A), not itself derived from data. **How the pipeline actually governs batch timing against the tender pipeline is NOT yet established** — that mechanism still needs EF1 (external factors: utility budgets, EGP bid announcements — blocked on data). Q23 (below) reinforces this from the data side: PEM103's combined-demand calibration gap WIDENS (27-37x capital vs J3's Omni-only 5-12x), evidence against a stock-buffer explanation regardless of demand scope. | data (EF1) |
+| Q23 | **done — answered, 2026-09-25** | Q10 (PEM107 path) | Q22, Q10 (PEM107 2026 decline) | **Answered: the Omni Channel scope is not the problem — widening to Omni+Tendering does not explain PEM103/PEM107's stock/delivery behaviour better, and forecasts Omni demand no more accurately (worse for PEM107, t=2.43, and PEM103's dominant focus item, independently confirmed by a from-scratch Validator recomputation — same direction/significance in all 3 divisions, MAE within 3%).** PEM103's combined-demand calibration gap WIDENS (27-37x real capital, vs J3's Omni-only 5-12x) — reinforces Q22, not a shared-stock finding. PEM107's 2026 not_late decline (86.6%→76.5%) coincides with a real, independently-confirmed channel-mix reversal (Tendering value share 28-39%→72% in 2026) AND a genuine drop in Omni's own not_late (88.6%→76.5%) — a supported hypothesis (level H) that shared capacity was diverted toward Tendering, not proven. Omni Channel remains the project's default scope (decision unaffected by this finding). Full detail: `output/summary/phaseQ23_explorer_report.md`, `phaseQ23_modeler_report.md`, `phaseQ23_analyst_report.md`, `phaseQ23_validator_report.md`; STATUS.md Q23 entry. | — |
 | D1 | done | Q1 | D3, G1, G2 | CONVENTIONS.md, Data Correctness rule | — |
 | D2 | done | E17 | G1 | STATUS.md Locked Decisions, "Final forecasting method" | — |
 | D3 | done | D1 | G1 | STATUS.md Locked Decisions, "Project scope correction" | — |
@@ -361,7 +373,7 @@ instruction.**
 | Q20 | What is production capacity (lines, labour, equipment) over time? | **Absent.** No table found anywhere in this project's investigations records a capacity figure of any kind. | Needs the business entirely. |
 | Q21 | Which items are made-to-stock vs. made-to-order vs. engineer-to-order? | **Partial, and known to be unreliable at face value.** `manufacturing_type` (MTS/MTO/ETO) exists in `cube_Sale_APD` but is an ORDER-level attribute, not a fixed per-item classification — 100 of 113 items show more than one value across their own sales rows (DATA_MAP.md §2, manufacturing_type). Using it directly as a per-item classification would repeat a known trap. | A per-item MTS/MTO/ETO classification would need to be derived (e.g. a mode or business rule) or confirmed by the business — not read off this column directly. |
 | Q22 | Does PEM103's tender-awarded pipeline govern its production/stock behaviour? | **Answered, 2026-09-23 (business-confirmed).** PEM103 is transformers, tendering-driven business (DATA_MAP.md §7) — consistent with 65.5% Tendering-channel value share, 69.3% batch-traceability, and the 5-12x stock-policy capital gap found in J3. | Replaces PEM103's place in G2 (stock policy) — feeds G3 instead. What governs batch timing/size against the tender pipeline still needs EF1 (external factors: utility budgets, EGP bid announcements — blocked on data). |
-| Q23 | Does the Omni Channel scope explain observed stock and delivery behaviour, or does production/stock shared with Tendering need to be included? | **Proposed this task, in progress — next task.** Not yet run; METRICS.md §21 (channel_scope and cross-scope comparison) defines how the two scopes will be compared once this is picked up. | Feeds PEM103's G3 path (Q22) and PEM107's still-unexplained 2026 delivery decline (Q10). Omni Channel stays the default scope regardless of outcome (STATUS.md decision, this task). |
+| Q23 | Does the Omni Channel scope explain observed stock and delivery behaviour, or does production/stock shared with Tendering need to be included? | **Answered, 2026-09-25 (Explorer/Modeler/Analyst, independently cross-checked by a from-scratch Validator — METRICS.md §21).** NO evidence that widening scope helps: Omni+Tendering forecasts Omni demand no more accurately anywhere (worse for PEM107, t=2.43, and PEM103's calibration gap WIDENS to 27-37x real capital under combined demand, vs J3's 5-12x Omni-only). PEM107's 2026 not_late decline (86.6%→76.5%) DOES coincide with a real channel-mix reversal (Tendering value share 28-39%→72%) and a genuine Omni-only not_late drop (88.6%→76.5%) — a supported (not proven) diversion hypothesis, level H. Channel mix itself (PEM103/PEM107, 2025/2026) is V2: independently recomputed twice (Explorer, Validator), exact agreement. | Feeds PEM103's G3 path (Q22 — reinforces it, does not change it) and closes the data-route side of PEM107's 2026 delivery decline (Q10) with a supported-not-proven diversion hypothesis. Omni Channel stays the default scope (STATUS.md decision, unaffected by this finding). Full detail: `output/summary/phaseQ23_{explorer,modeler,analyst,validator}_report.md`. |
 
 ### What G3 would consume from G2, and whether the current form fits
 

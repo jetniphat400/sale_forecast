@@ -306,6 +306,17 @@ scope, this session). **V2** (three independent measurements, different scopes/d
 consistent). `ActualDelDate` is the actual delivery date, populated only for `Status='Actual'`
 rows.
 
+**Cube_CES.RevenueType** — `Cube_CES` carries its own NATIVE `RevenueType` column (full 36-column
+schema confirmed this session: ..., `RevenueType`, `SaleDivision`, `Status`, `Timestamp`, `id`) —
+no join to `cube_Sale_APD` is needed to know a CES row's channel. Cross-checked against
+`cube_Sale_APD.revenue_type` via (ContractID, ItemCode): 72.28% of CES rows join to a
+`cube_Sale_APD` row; of those matched, 100.00% agree on revenue_type; 0 of 36,168 matched
+(contractid, itemcode) pairs carry more than one revenue_type in `cube_Sale_APD` (checked, not
+assumed). **V2** for "the native column exists and is usable directly" (same-table field, no join
+uncertainty); **V1** for the cross-table agreement rate (one pull, one direction, consistency only
+per CONVENTIONS.md). Found: Q23 Part 1, Explorer, 2026-09-25
+(`output/summary/phaseQ23_explorer_report.md`).
+
 ---
 
 ## 3. Joins
@@ -506,6 +517,21 @@ produced a wrong result, with the correct handling and the report that found it.
     Found: STATUS.md, Date-column Validator investigation (STATUS.md:3303-3319). **H**, an
     assumption the project keeps flagging rather than quietly relying on.
 
+18. **A fresh `Cube_CES` pull built for a channel-mix task added a `CtrDate >= '2023-01-01'` filter
+    that looked harmless but was NOT equivalent to this project's established `not_late` method
+    (METRICS.md Sec.18/19/20: `ForecastDelDate`-windowed, no `CtrDate` filter).** Naive reading: any
+    date floor wide enough to cover the scope should give the same `not_late` figure. Reality: the
+    `CtrDate` filter cut the pulled row count from 8,524 to 5,686 for PEM107 and produced a blended
+    `not_late` (94.8%→52.8%) unrecognizable against this project's own already-established headline
+    (86.6%→76.5%, Phase J3). **Correct handling**: recompute `not_late` from the older, unfiltered
+    `output/data/phaseJ_cube_ces_351items.csv` pull for the Omni-channel figures (reproduces the
+    established target almost exactly, 88.6%/76.5%); the new pull's Tendering-channel figures were
+    kept but flagged directional-only, not precision-grade, since no unfiltered equivalent existed
+    for Tendering. Found: Q23 Part 4, Analyst (`output/summary/phaseQ23_analyst_report.md`), this
+    task, 2026-09-25. **V1** (one Analyst, one investigation; the affected script,
+    `src/investigations/phaseQ23_explorer.py`, was not itself corrected — a downstream agent worked
+    around it instead, so the query bug remains live in that file for any future reader).
+
 ---
 
 ## 5. Unknowns
@@ -621,6 +647,7 @@ itself names it).
 | Phase J's 97.8% actual_on_time (PEM101, unit-weighted) vs. Phase J2's 87.9% not_late (PEM101, unit-weighted) — an unexplained 9.9pp gap between two figures both in the repo | **RECONCILED, not a bug either side.** Item scope, Status filter and weighting are identical between the two computations; the ONLY real difference is the window: Phase J bounds by `ForecastDelDate` in [2024-01, 2026-07]; Phase J2 bucketed by `CtrDate` YEAR 2023-2026, which pulls in 2023 (55.97% unit-weighted not_late, a genuinely much worse year) alongside 2024-2026 (~97-99%). Quantified: -10.29pp from including 2023, +0.35pp from the bucketing-method difference, net -9.93pp — matches the observed gap almost exactly. `ForecastDelDate` is the METRICS.md Sec.18/19/20-correct field going forward. | 2026-09-25 | `output/summary/phaseJ3_validator_reconciliation.md` (independent recomputation, one Validator, one session — V1) |
 | "The data route is not exhausted" (this file's own 2026-09-25 correction, above) — an open question, not yet a result | **ANSWERED, per-division, 2026-09-25 (Phase J3 Part 2, METRICS.md Sec.20 inverse_calibration, independently confirmed — Part 3 Validator, own code, 12/12 figures match).** PEM101: partially calibratable — 59 of 4,130 grid combinations reproduce both the 2024-2025 and 2026+ periods within tolerance (not_late ±3pp, stock value ±15%) at a realistic capital level, but no single parameter is uniquely identified (r_months ambiguous 0.25-2.0 months, s_months 1.5-3.0, review interval 1-30 days, lead time 1-30 days — all four span more than one grid step). PEM103: NOT calibratable to a stationary policy at a realistic stock level — a fit exists for `not_late` alone (117 combinations), but every one needs 5-12x more capital than the business holds (best: THB 57.6M simulated vs. THB 6.06M real on-hand). PEM107: NOT calibratable at all — no single parameter set fits both periods simultaneously (the best joint compromise is still 14-18 percentage points off on one side), implying a genuine operational change between 2024-2025 and 2026, not a search failure. | 2026-09-25 | `output/summary/phaseJ3_2_calibration_summary.json`, `phaseJ3_2_grid_{PEM101,PEM103,PEM107}.csv`, `phaseJ3_validator2_independent_check.md` |
 | PEM104's exclusion reason recorded as "insufficient data" (12 transactions across 17 calendar months, too few to fit any forecasting model at any aggregation level) | **SUPERSEDED, kept not deleted.** The underlying reason is that PEM104 is made to order by business model — no stock policy is applicable, and the low, sporadic transaction count is a structural consequence of that business model, not a data-collection gap. "Insufficient data" was a correct symptom, not the cause. | 2026-09-23 | STATUS.md Locked Decisions, "Exclusion — PEM104" (STATUS.md:4817-4824); this task, §7 below |
+| Q23 open: "does the Omni Channel scope explain observed stock/delivery behaviour, or must combined Omni+Tendering be included?" | **ANSWERED, 2026-09-25 (this task, METRICS.md §21, four agents — Explorer/Modeler/Analyst/independent from-scratch Validator).** NO accuracy or calibration case for widening scope: Omni+Tendering forecasts Omni demand no more accurately in any of 3 divisions (worse for PEM107, t=2.43, and PEM103's dominant focus item, t=2.61 — independently reproduced by the Validator, same direction/significance in all 3, MAE within 3%); PEM103's combined-demand calibration gap WIDENS to 27-37x real capital (vs J3's Omni-only 5-12x), reinforcing Q22's tender-pipeline finding rather than a shared-stock one. PEM107's 2026 not_late decline (86.6%→76.5%) DOES coincide with a real, twice-independently-confirmed channel-mix reversal (Tendering value share 28-39%→72.3-72.4%) and a genuine drop in Omni's own not_late (88.6%→76.5%, not a compositional artifact) — supported (not proven), level H. Omni Channel remains the project's default scope. | 2026-09-25 | `output/summary/phaseQ23_{explorer,modeler,analyst,validator}_report.md`; PROJECT_GRAPH.md Q23/Q22 rows; STATUS.md Q23 entry |
 
 ---
 
@@ -640,6 +667,28 @@ themselves derived from data, but consistent with data already recorded elsewher
 - A stock-based reorder policy could not reproduce PEM103's observed delivery performance without
   5-12x more capital than the business actually holds (STATUS.md:1351; §6 Corrections log, Phase
   J3 entry; §3 Joins, batch-traceability row).
+- **Q23, 2026-09-25: PEM103's Omni/Tendering split swings sharply year to year, not a stable
+  ratio** — Tendering dominated 2025 (88.5% of value) but Omni Channel dominated the partial 2026
+  (96.6% of value, 3.4% Tendering); 2024 sat in between (37.7% Omni / 62.3% Tendering). This is NOT
+  a contradiction of the 33.3%/65.5% Phase C figure above (a different, earlier aggregate window)
+  — both are recorded, neither chosen for the reader. **V2** (independently recomputed twice from
+  two separate fresh DB pulls — Explorer and Validator, `output/summary/phaseQ23_explorer_report.md`,
+  `phaseQ23_validator_report.md` — exact agreement to 2 decimal places). Feeding this combined
+  (Omni+Tendering) demand into a stock-based-policy calibration makes PEM103's capital gap WORSE
+  (27-37x real stock, vs 5-12x Omni-only, J3) — reinforcing, not weakening, the tender-pipeline
+  finding above. See §6 Corrections log, Q23 entry.
+
+**PEM107's Omni/Tendering split also reverses, in the opposite direction, in exactly the year its
+delivery performance drops** — Omni Channel dominated 2025 (71.6% of value) but Tendering dominates
+2026 (72.3%); Omni's OWN not_late fell from 88.6% (2024-2025) to 76.5% (2026) in the same period —
+not merely a compositional artifact of more orders shifting into a channel with different baseline
+performance. **V2** for the channel-mix reversal (independently recomputed twice, Explorer and
+Validator, exact agreement). **H** (supported, not proven) for the causal reading that shared
+capacity/stock was diverted toward Tendering — an alternative explanation (an independent 2026
+capacity constraint affecting both channels, no actual resource competition) cannot be ruled out
+from this data alone. Found: Q23 Part 4, Analyst, 2026-09-25
+(`output/summary/phaseQ23_analyst_report.md`). See §4 Trap 18 for a data-quality issue found and
+worked around while establishing this.
 
 **PEM104 is made to order** — business-confirmed 2026-09-23. Consistent with data already recorded
 in this file:

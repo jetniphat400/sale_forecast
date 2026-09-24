@@ -1416,6 +1416,101 @@ one view, per the decomposition test), then a separate Validator for the indepen
   cross-scope accuracy claim.
 - No database access, no code changes. Full test suite unaffected (no code touched).
 
+**Phase Q23 — channel_scope comparison (METRICS.md Sec.21), target node Q23 — DONE (2026-09-25).**
+Four agents: a single Explorer (Part 1, one DB connection, channel-mix crosstab + Cube_CES pull),
+a single Modeler (Parts 2-3, same capability, needs both inputs in one view per the decomposition
+test), a single Analyst in parallel with the Modeler (Part 4, different capability, independent of
+the Modeler's results), then a separate from-scratch Validator (Part 6, own DB connection, no
+Modeler/Analyst/Explorer file read).
+
+- **Part 1 — channel mix, PEM101 (171 codes)/PEM103 (87)/PEM107 (136), 2024-2026** (2023: zero
+  usable rows for this scope, confirmed independently twice — consistent with the known pre-2024
+  tagging-scheme change, `DATA_MAP.md` §1). No revenue type besides Omni Channel/Tendering exceeds
+  2% of any division-year's value (`Total Customer Solution` stays under 0.09%). **PEM101's full
+  171-code scope is LESS Omni-dominated than the 128-item Fuse/Surge-Arrester pilot** (78.77% vs.
+  87.68% Omni value share, an 8.9pp gap) — the pilot's high Omni purity does not generalise to the
+  whole division. **PEM103 and PEM107 both show a sharp year-over-year channel-mix REVERSAL, not a
+  stable split**: PEM103 was Tendering-dominated in 2025 (88.5% of value) but Omni-dominated in the
+  partial 2026 (96.6%); PEM107 was Omni-dominated in 2025 (71.6%) but Tendering-dominated in 2026
+  (72.3-72.4%). **V2** for both reversals — independently recomputed twice from two separate fresh
+  DB pulls (Explorer and Validator), exact agreement to 2 decimal places.
+- **Part 2 — same-target accuracy comparison**: Method A (top-down on Omni-only) vs. Method B
+  (top-down on Omni+Tendering, allocated back to Omni by each item's point-in-time historical Omni
+  share of its own combined demand, with a disclosed fallback for zero-history items). **B is never
+  more accurate than A for forecasting Omni demand, and is measurably, statistically distinguishably
+  WORSE for PEM107** (division-wide, paired t=2.43 Modeler / t=2.43 Validator) **and for the single
+  dominant focus item EEE-F-FC-1040010002** (t=2.61, Modeler only — not separately re-tested by the
+  Validator, which checked divisions not individual focus items). PEM101 and PEM103 (division-wide)
+  show no statistically distinguishable difference (PEM103 borderline, t=1.88-1.98, just under the
+  |t|>2 threshold in both independent runs). **Independently reproduced**: Modeler and Validator's
+  MAE figures agree within 3% and reach the identical significance verdict in every division —
+  **V2** for the overall verdict (same direction, same significance conclusion, two independent
+  implementations); **V1** for the exact MAE values (small, disclosed differences from each
+  agent's own choice of zero-history fallback rule, never specified by METRICS.md §21 itself).
+  Separately (never mixed into the accuracy claim, per §21's own warning): the omni_tendering
+  series is far less predictable on its own terms (MASE 3-58x worse than the omni series across
+  divisions) — a predictability description, not an accuracy comparison.
+- **Part 3 — combined-demand calibration re-run (METRICS.md Sec.20), PEM103/PEM107 only, same
+  grid/tolerance/targets as Phase J3**: **neither division calibrates.** PEM103: 0/4,130 combinations
+  pass both-window tolerance (unchanged from J3); relaxing to `not_late` alone, the best fit needs
+  **27-37x more capital than the real THB 6.06M target** (Modeler: 27.5-37.0x, cost-basis-invariant;
+  Validator: 33.5x calib/27.4x valid) — **WORSE than J3's Omni-only 5-12x gap**, not better. Per
+  this task's own conditional instruction, since PEM103 does not calibrate under either scope, no
+  shared-stock finding is stated — this **reinforces**, rather than overturns, Q22's tender-pipeline
+  finding. PEM107: 0/4,130 pass even `not_late` alone (worse than PEM103), unchanged from J3 — its
+  2024-2025-to-2026 operational change is not a demand-scope artifact either. **V2** for "neither
+  division calibrates, and the PEM103 gap widens under combined demand" (Modeler and Validator,
+  independent grid searches, same 4,130-point count, same qualitative and order-of-magnitude
+  result); **V1** for the exact best-fit capital multiple (differs by choice of tie-break among
+  passing grid points, disclosed by both agents).
+- **Part 4 — PEM107's 2026 not_late decline (86.6%→76.5%) vs. channel mix**: recomputed
+  independently of Part 1 (Analyst), confirms the same reversal (Tendering value share 35.0%→72.3%,
+  2024-2025→2026). Critically, **Omni's OWN `not_late` also fell substantially, 88.6%→76.5%
+  (-12.1pp)** — not merely a compositional artifact of more orders shifting into a channel with a
+  different baseline rate. **Verdict: SUPPORTED HYPOTHESIS, not proven (level H)** — the timing
+  coincidence (large Tendering-volume months concentrated in 2026: Jan 5,398 units, May 18,620, Jul
+  4,610, Aug 7,027 units) and both channels degrading together in the same year both point toward
+  shared capacity/stock being diverted to Tendering, but an independent 2026 capacity constraint
+  affecting both channels with no actual resource competition cannot be ruled out from this data
+  alone. Tendering's own `not_late` figures (99.3%→48.3%) carry a data-quality caveat — see Trap
+  below — and are reported as directional only.
+- **Trap found and worked around, not fixed at the source**: the Explorer's fresh `Cube_CES` pull
+  added a `CtrDate >= '2023-01-01'` filter that is NOT equivalent to this project's established
+  `ForecastDelDate`-windowed `not_late` method (METRICS.md Sec.18/19/20) — it silently cut PEM107's
+  row count (8,524→5,686) and produced an unrecognizable blended `not_late` (94.8%→52.8%) versus
+  the already-established 86.6%/76.5% headline. The Analyst traced this and used the older,
+  unfiltered `output/data/phaseJ_cube_ces_351items.csv` pull for the Omni-channel figures instead
+  (reproduces the established target almost exactly). **`src/investigations/phaseQ23_explorer.py`
+  itself was NOT corrected** — the bug remains live in that file for any future reader. See
+  `DATA_MAP.md` §4 Trap 18.
+- **Part 6 — independent Validator, from scratch, own DB connection, no Modeler/Analyst/Explorer
+  file read**: reproduced the channel-mix figures exactly (Part 1) and reached the identical
+  qualitative verdict on Parts 2 and 3, with small, explained numerical differences (disclosed
+  fallback/tie-break choices, never a data or methodology disagreement). No discrepancy found that
+  changes any conclusion above.
+- **Decision (unaffected by this finding, per task instruction): Omni Channel remains the project's
+  default and official scope.** The `omni_tendering` scope exists only as the contingency METRICS.md
+  §21 always said it was — this task's own result argues against, not for, ever promoting it to the
+  default: it does not forecast Omni demand more accurately, and it does not make either
+  under-calibrating division's stock policy more explainable.
+- **Config**: `channel_scope` added to `config.yaml` (`omni` default / `omni_tendering`
+  contingency, cited to METRICS.md §21), read by `src/load_data_full.py` and
+  `src/load_data_all_divisions.py` via a shared `src/channel_scope.py` helper. Default query text is
+  byte-for-byte unchanged (a single-value `IN`-list is logically identical to the old equality
+  filter). Two new tests added (`tests/test_channel_scope.py`, 8 cases: default-unchanged at both
+  the config-function and generated-SQL level, `omni_tendering` selects both revenue types, unknown
+  scope raises).
+- **Node statuses updated in `PROJECT_GRAPH.md`**: **Q23 done — answered.** **Q22 changed from
+  "done" to "answered (level A) — production mechanism pending EF1"**, since the business-confirmed
+  tender-pipeline statement is level A (not itself derived from data) and how the pipeline governs
+  batch timing against that pipeline is still unestablished, blocked on EF1. Also corrected a
+  date typo on the G2 node row (read "corrected 2026-09-25" on a row committed 2026-09-23, a
+  date-in-the-future-relative-to-its-own-commit error — corrected to 2026-09-23, matching the
+  neighbouring "scope split 2026-09-23" text in the same cell).
+- **Full test suite: 84 passed** (76 existing + 8 new `test_channel_scope.py` cases; unaffected by
+  the Q23 investigation scripts themselves, which are one-off `src/investigations/` tools, not
+  pipeline code under test).
+
 **Phase F — Measure the value**: compare against the team's current method, and estimate what
 would happen with no intervention at all, since on-time delivery has already improved from 57.8%
 to 73.2% with no system in place.
