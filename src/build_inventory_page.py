@@ -270,18 +270,27 @@ def build_page() -> str:
   <p>คลังสินค้าที่นับเป็น sellable สำหรับ division ที่เลือก (เปลี่ยนตาม division):</p>
   <div class="item-check-list" id="warehouse-checklist"></div>
 
-  <div id="robust-minmax-section" style="display:none;">
-    <h2>PEM101 — Robust Ensemble (METRICS.md Sec.22) — <span style="color:#1baf7a;">PARTIALLY CALIBRATED</span></h2>
-    <p class="note-box" id="robust-ensemble-summary"></p>
+  <div id="curve-target-section" style="display:none;">
+    <h2>PEM101 — Trade-off Curve Target (METRICS.md Sec.22) — <span style="color:#1baf7a;">PARTIALLY CALIBRATED</span></h2>
+    <p class="note-box" id="curve-target-summary"></p>
+    <p class="hint">ข้อมูลไม่สามารถระบุ reorder level ที่ถูกต้องได้ด้วยตัวเอง (ทุกรายการให้ range ratio เดียวกัน ไม่มีข้อมูลระดับรายการ) —
+      การเลือกเป้าหมาย not_late ต่างหากที่เป็นตัวกำหนด reorder level (METRICS.md Sec.22)</p>
     <div id="chart-robust-curve" class="plotly-chart"></div>
-    <p class="hint">Range ratio = max(Min)/min(Min) ข้าม ensemble; robust ถ้า range_ratio &le; 1.25 (แสดง median);
-      sensitive ถ้า &gt; 1.25 (แสดงช่วงเต็ม และพารามิเตอร์ที่ทำให้เกิดช่วงนี้)</p>
-    <table class="report-table" id="robust-item-table">
+    <div class="preset-controls" style="display:flex; gap:10px; flex-wrap:wrap; margin:10px 0;">
+      <button type="button" id="preset-today-lowest" class="preset-btn"></button>
+      <button type="button" id="preset-highest-at-today" class="preset-btn"></button>
+      <button type="button" id="preset-stretch" class="preset-btn"></button>
+    </div>
+    <div class="slider-control" style="margin:10px 0;">
+      <label for="notlate-slider">not_late target: <b id="notlate-slider-value"></b></label><br>
+      <input type="range" id="notlate-slider" step="0.01" style="width:100%;">
+    </div>
+    <div class="totals-box" id="curve-target-totals"></div>
+    <table class="report-table" id="curve-item-table">
       <thead><tr>
-        <th>Item</th><th>Range ratio</th><th>Badge (1.25)</th>
-        <th>Min (median or range)</th><th>Max (median or range)</th><th>Driver (if sensitive)</th>
+        <th>Item</th><th>Min</th><th>Max (median)</th><th>Max range (across members)</th>
       </tr></thead>
-      <tbody id="robust-item-table-body"></tbody>
+      <tbody id="curve-item-table-body"></tbody>
     </table>
   </div>
 
@@ -406,46 +415,121 @@ function renderMinVsCurrent(perItem) {{
   ], {{ margin: {{t:10}}, barmode: 'group', xaxis: {{tickangle: -60, tickfont:{{size:8}}}} }}, {{responsive: true}});
 }}
 
-function renderRobustMinMax(divisionData) {{
-  const section = document.getElementById('robust-minmax-section');
-  const rmm = divisionData.robust_minmax;
-  if (!rmm) {{ section.style.display = 'none'; return; }}
-  section.style.display = '';
+// BEGIN_CURVE_INTERP_JS
+function lerp(a, b, t) {{ return a + (b - a) * t; }}
 
-  const perDef = Object.entries(rmm.ensemble_per_definition).map(([k, v]) => `${{k}}=${{v}}`).join(', ');
-  document.getElementById('robust-ensemble-summary').innerHTML =
-    `<b>Ensemble size: ${{rmm.ensemble_size}}</b> members (${{perDef}}, ${{rmm.ensemble_collapsed}} collapsed by dedup) — ` +
-    `<b>${{rmm.n_robust_at_1_25}} robust</b> / <b>${{rmm.n_sensitive_at_1_25}} sensitive</b> at range_ratio&le;1.25. ` +
-    `Usable-stock definition ${{rmm.stockdef_matters ? 'DOES' : 'does NOT'}} move PEM101's Min/Max range ` +
-    `(see ${{rmm.source_report}}). Today's point: not_late ${{rmm.today_point.not_late_pct}}%, ` +
-    `stock value ${{fmtTHB(rmm.today_point.stock_value_thb)}} (${{rmm.today_point.source}}).`;
+function interpolateGridAtNotLate(grid, targetNotLate) {{
+  const g = grid;
+  if (targetNotLate <= g[0].not_late_median_pct) return gridPointAsResult(g[0]);
+  if (targetNotLate >= g[g.length - 1].not_late_median_pct) return gridPointAsResult(g[g.length - 1]);
+  for (let i = 0; i < g.length - 1; i++) {{
+    const a = g[i], b = g[i + 1];
+    if (targetNotLate >= a.not_late_median_pct && targetNotLate <= b.not_late_median_pct) {{
+      const t = (targetNotLate - a.not_late_median_pct) / (b.not_late_median_pct - a.not_late_median_pct);
+      return lerpGridPoints(a, b, t);
+    }}
+  }}
+}}
 
-  const tbody = document.getElementById('robust-item-table-body');
+function gridPointAsResult(g) {{
+  return {{
+    r: g.r, not_late_median_pct: g.not_late_median_pct,
+    stock_value_min: g.stock_value_min, stock_value_median: g.stock_value_median, stock_value_max: g.stock_value_max,
+    items: g.items.map(it => ({{ code: it.code, Min: it.Min, Max_median: it.Max_median, Max_min: it.Max_min, Max_max: it.Max_max }})),
+  }};
+}}
+
+function lerpGridPoints(a, b, t) {{
+  const items = a.items.map((ai, idx) => {{
+    const bi = b.items[idx];
+    return {{
+      code: ai.code, Min: lerp(ai.Min, bi.Min, t), Max_median: lerp(ai.Max_median, bi.Max_median, t),
+      Max_min: lerp(ai.Max_min, bi.Max_min, t), Max_max: lerp(ai.Max_max, bi.Max_max, t),
+    }};
+  }});
+  return {{
+    r: lerp(a.r, b.r, t), not_late_median_pct: lerp(a.not_late_median_pct, b.not_late_median_pct, t),
+    stock_value_min: lerp(a.stock_value_min, b.stock_value_min, t),
+    stock_value_median: lerp(a.stock_value_median, b.stock_value_median, t),
+    stock_value_max: lerp(a.stock_value_max, b.stock_value_max, t),
+    items,
+  }};
+}}
+// END_CURVE_INTERP_JS
+
+let curCurveTarget = null;
+
+function applyCurveTarget(targetNotLate) {{
+  const state = curCurveTarget;
+  if (!state) return;
+  const {{ ct, grid }} = state;
+  const result = interpolateGridAtNotLate(grid, targetNotLate);
+
+  document.getElementById('notlate-slider').value = targetNotLate;
+  document.getElementById('notlate-slider-value').textContent = targetNotLate.toFixed(2) + '%';
+
+  const diff = result.stock_value_median - ct.today_point.stock_value_thb;
+  const diffPct = 100 * diff / ct.today_point.stock_value_thb;
+  document.getElementById('curve-target-totals').innerHTML = `
+    <div class="stat">not_late target<b>${{result.not_late_median_pct.toFixed(2)}}%</b></div>
+    <div class="stat">Stock value (median)<b>${{fmtTHB(result.stock_value_median)}}</b></div>
+    <div class="stat">Stock value band (min–max)<b>${{fmtTHB(result.stock_value_min)}} – ${{fmtTHB(result.stock_value_max)}}</b></div>
+    <div class="stat">Change vs today's on-hand<b style="color:${{diff>=0?'#c0392b':'#1baf7a'}}">${{diff>=0?'+':''}}${{fmtTHB(diff)}} (${{diffPct>=0?'+':''}}${{diffPct.toFixed(1)}}%)</b></div>
+  `;
+
+  const tbody = document.getElementById('curve-item-table-body');
   tbody.innerHTML = '';
-  for (const it of rmm.items) {{
-    const badge = it.robust_at_1_25
-      ? '<span style="color:#1baf7a;font-weight:700;">robust</span>'
-      : '<span style="color:#eb6834;font-weight:700;">sensitive</span>';
-    const minCell = it.robust_at_1_25 ? Math.round(it.median_Min).toLocaleString() + ' (median)'
-      : Math.round(it.min_Min).toLocaleString() + ' – ' + Math.round(it.max_Min).toLocaleString();
-    const maxCell = it.robust_at_1_25 ? Math.round(it.median_Max).toLocaleString() + ' (median)'
-      : Math.round(it.min_Max).toLocaleString() + ' – ' + Math.round(it.max_Max).toLocaleString();
+  for (const it of result.items) {{
     const tr = document.createElement('tr');
-    tr.innerHTML = `<td>${{it.code}}</td><td>${{it.range_ratio.toFixed(2)}}</td><td>${{badge}}</td>` +
-      `<td>${{minCell}}</td><td>${{maxCell}}</td><td>${{it.driver_param || '-'}}</td>`;
+    tr.innerHTML = `<td>${{it.code}}</td><td>${{Math.round(it.Min).toLocaleString()}}</td>` +
+      `<td>${{Math.round(it.Max_median).toLocaleString()}}</td>` +
+      `<td>${{Math.round(it.Max_min).toLocaleString()}} – ${{Math.round(it.Max_max).toLocaleString()}}</td>`;
     tbody.appendChild(tr);
   }}
 
-  const env = rmm.envelope;
-  const x = env.map(r => r.not_late_bin_pct);
-  Plotly.newPlot('chart-robust-curve', [
-    {{ x, y: env.map(r => r.min), name: 'min stock_value', mode: 'lines', line: {{color:'#898781', dash:'dot'}} }},
-    {{ x, y: env.map(r => r.median), name: 'median stock_value', mode: 'lines', line: {{color:'#2a78d6'}} }},
-    {{ x, y: env.map(r => r.max), name: 'max stock_value', mode: 'lines', line: {{color:'#898781', dash:'dot'}} }},
-    {{ x: [rmm.today_point.not_late_pct], y: [rmm.today_point.stock_value_thb], name: "today's point",
-       mode: 'markers', marker: {{color:'#eb6834', size:12, symbol:'star'}} }},
-  ], {{ margin: {{t:10}}, xaxis: {{title: 'not_late (%)'}}, yaxis: {{title: 'Stock value (THB), envelope across ensemble'}} }},
+  Plotly.react('chart-robust-curve', [
+    {{ x: grid.map(g => g.not_late_median_pct), y: grid.map(g => g.stock_value_min), name: 'min stock_value', mode: 'lines', line: {{color:'#898781', dash:'dot'}} }},
+    {{ x: grid.map(g => g.not_late_median_pct), y: grid.map(g => g.stock_value_median), name: 'median stock_value', mode: 'lines', line: {{color:'#2a78d6'}} }},
+    {{ x: grid.map(g => g.not_late_median_pct), y: grid.map(g => g.stock_value_max), name: 'max stock_value', mode: 'lines', line: {{color:'#898781', dash:'dot'}} }},
+    {{ x: [ct.today_point.not_late_pct], y: [ct.today_point.stock_value_thb], name: "today's point",
+      mode: 'markers', marker: {{color:'#eb6834', size:12, symbol:'star'}} }},
+    {{ x: [result.not_late_median_pct], y: [result.stock_value_median], name: 'selected target',
+      mode: 'markers', marker: {{color:'#1baf7a', size:11, symbol:'diamond'}} }},
+  ], {{ margin: {{t:10}}, xaxis: {{title: 'not_late (%)'}}, yaxis: {{title: 'Stock value (THB), median curve + band'}} }},
   {{responsive: true}});
+}}
+
+function renderCurveTarget(divisionData) {{
+  const section = document.getElementById('curve-target-section');
+  const ct = divisionData.curve_target;
+  if (!ct) {{ section.style.display = 'none'; curCurveTarget = null; return; }}
+  section.style.display = '';
+  curCurveTarget = {{ ct, grid: ct.grid }};
+
+  document.getElementById('curve-target-summary').innerHTML =
+    `<b>${{ct.n_distinct_members}} distinct ensemble members</b> (deduplicated on reorder level, order-up-to level, ` +
+    `review interval and replenishment lead time -- METRICS.md Sec.22, ${{ct.source_report}}). ` +
+    `Today's point: not_late ${{ct.today_point.not_late_pct}}%, stock value ${{fmtTHB(ct.today_point.stock_value_thb)}} ` +
+    `(${{ct.today_point.source}}).`;
+
+  const slider = document.getElementById('notlate-slider');
+  slider.min = ct.not_late_range_pct[0];
+  slider.max = ct.not_late_range_pct[1];
+  slider.oninput = () => applyCurveTarget(parseFloat(slider.value));
+
+  const p1 = ct.presets.today_lowest_stock, p2 = ct.presets.highest_at_today_stock, p3 = ct.presets.stretch_99pct;
+  const b1 = document.getElementById('preset-today-lowest');
+  b1.textContent = `Today's not_late, lowest stock (${{p1.not_late_pct.toFixed(2)}}%)`;
+  b1.onclick = () => applyCurveTarget(p1.not_late_pct);
+  const b2 = document.getElementById('preset-highest-at-today');
+  b2.textContent = `Highest not_late at today's stock (${{p2.not_late_pct.toFixed(2)}}%)`;
+  b2.onclick = () => applyCurveTarget(p2.not_late_pct);
+  const b3 = document.getElementById('preset-stretch');
+  b3.textContent = p3.capped ? `Stretch: curve's max (${{p3.not_late_pct.toFixed(2)}}%, 99% not reached)`
+                              : `Stretch: 99% not_late`;
+  b3.onclick = () => applyCurveTarget(p3.not_late_pct);
+
+  applyCurveTarget(p1.not_late_pct);
 }}
 
 function onDivisionChange() {{
@@ -456,7 +540,7 @@ function onDivisionChange() {{
   document.getElementById('snapshot-note').textContent = 'Snapshot pull date: ' + divisionData.snapshot_pull_date;
   renderWarehouseChecklist(divisionData);
   renderNoPolicyTable(divisionData);
-  renderRobustMinMax(divisionData);
+  renderCurveTarget(divisionData);
   onControlChange();
 }}
 

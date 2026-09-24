@@ -57,48 +57,15 @@ DISABLED_DIVISIONS = {
 }
 
 
-def _build_robust_minmax_pem101() -> dict:
-    """METRICS.md Sec.22 (robust_minmax) data for PEM101, added 2026-09-24 -- reads the Modeler's
-    already-computed CSVs (output/summary/phase22_modeler_*.csv), no database access. See
-    output/summary/phase22_modeler_report.md for the full derivation and every figure's citation.
+def _build_curve_target_pem101() -> dict:
+    """METRICS.md Sec.22 selectable not_late target data for PEM101, added 2026-09-24 (Phase 23,
+    Part 5) -- reads the already-computed dense grid (output/summary/phase23_dense_grid_PEM101.json,
+    built by src/investigations/phase23_page_precompute.py from the Modeler's locked-config curve),
+    no database access. Supersedes the prior robust/sensitive table (every item returned the same
+    range_ratio, carrying no item-level information -- see output/summary/phase23_modeler_report.md).
     """
-    ensemble = pd.read_csv(os.path.join(SUMMARY_DIR, "phase22_modeler_ensemble_dedup.csv"))
-    range_ratio = pd.read_csv(os.path.join(SUMMARY_DIR, "phase22_modeler_range_ratio.csv"))
-    drivers = pd.read_csv(os.path.join(SUMMARY_DIR, "phase22_modeler_sensitive_drivers.csv"))
-    envelope = pd.read_csv(os.path.join(SUMMARY_DIR, "phase22_modeler_tradeoff_envelope.csv"))
-
-    per_def_counts = ensemble["stockdef"].value_counts().to_dict()
-    items = []
-    driver_by_code = dict(zip(drivers["itemcode"], drivers["driver_param"]))
-    for _, r in range_ratio.iterrows():
-        code = r["itemcode"]
-        robust_125 = bool(r["robust_at_1.25"])
-        items.append({
-            "code": code,
-            "range_ratio": round(float(r["range_ratio"]), 3),
-            "robust_at_1_10": bool(r["robust_at_1.1"]),
-            "robust_at_1_25": robust_125,
-            "robust_at_1_50": bool(r["robust_at_1.5"]),
-            "min_Min": round(float(r["min_Min"]), 2), "median_Min": round(float(r["median_Min"]), 2),
-            "max_Min": round(float(r["max_Min"]), 2),
-            "min_Max": round(float(r["min_Max"]), 2), "median_Max": round(float(r["median_Max"]), 2),
-            "max_Max": round(float(r["max_Max"]), 2),
-            "driver_param": driver_by_code.get(code) if not robust_125 else None,
-        })
-
-    return {
-        "ensemble_size": int(len(ensemble)),
-        "ensemble_per_definition": {str(k): int(v) for k, v in per_def_counts.items()},
-        "ensemble_collapsed": 0,
-        "stockdef_matters": False,
-        "n_robust_at_1_25": int(range_ratio["robust_at_1.25"].sum()),
-        "n_sensitive_at_1_25": int((~range_ratio["robust_at_1.25"]).sum()),
-        "items": items,
-        "envelope": envelope.to_dict("records"),
-        "today_point": {"not_late_pct": 98.28, "stock_value_thb": 18250000,
-                         "source": "output/summary/phaseJ3_report.md (J3 reconciled targets)"},
-        "source_report": "output/summary/phase22_modeler_report.md",
-    }
+    with open(os.path.join(SUMMARY_DIR, "phase23_dense_grid_PEM101.json"), encoding="utf-8") as f:
+        return json.load(f)
 
 
 def _build_pem101_division(config: dict) -> dict:
@@ -154,9 +121,9 @@ def _build_pem101_division(config: dict) -> dict:
         "snapshot_pull_date": series_bundle["pull_date"],
         "n_items_label": f"{len(items)} รายการ",
         "warehouse_scope_note": "PEM101 128-item Fuse/Surge-Arrester pilot -- see STATUS.md whmap_report.md. "
-                                 "PARTIALLY CALIBRATED (METRICS.md Sec.22 robust ensemble, 139 members -- "
-                                 "see the Robust Ensemble section below).",
-        "robust_minmax": _build_robust_minmax_pem101(),
+                                 "PARTIALLY CALIBRATED (METRICS.md Sec.22, 80 distinct ensemble members -- "
+                                 "see the Trade-off Curve Target section below).",
+        "curve_target": _build_curve_target_pem101(),
     }
 
 
