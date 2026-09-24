@@ -257,7 +257,14 @@ combine/exclude decision needed); CI101's cross-division question is likewise re
 automatically, since `division` is no longer filtered); PEM104 stays confirmed excluded from
 **forecasting** specifically (placeholder for Phase 4, unrelated to the division-tagging
 question); PEM103's Tendering-**channel** scope question remains open, unaffected by either
-correction (it concerns `revenue_type`, not `division`). A full-scope re-validation on the
+correction (it concerns `revenue_type`, not `division`).
+**[SUPERSEDED — Q22, 2026-09-23 (business-confirmed, DATA_MAP.md §7), then Q23, 2026-09-24
+(METRICS.md §21, this file's Phase Q23 and Phase 136 entries below): this question was later
+picked up and answered. PEM103 is transformers, tendering-pipeline-driven business (Q22, level A);
+PEM103 moved out of G2 (inventory policy) into G3 via Q22 (PROJECT_GRAPH.md); the 2026 channel-mix
+reversal itself was tested and found to be a genuine business change, not a recording change (Q23/
+Phase 136, level V2). Kept, not deleted — this sentence was accurate at the time it was written.]**
+A full-scope re-validation on the
 corrected basis (445 codes) is DONE — see the dated log entry below and
 `output/summary/phaseC_revalidation_report.md`: no double-counting found between `-OLD`-tagged
 and normally-tagged rows, PEM102/PEM107 regain their 2024 history, CI101's totals rise 59.94%,
@@ -896,6 +903,13 @@ as a second direction when it is an independent recomputation, not a re-read of 
 **Phase E2 scoped pilot — PEM103 and PEM107, warehouse-code closure, page extension — 2026-09-22.**
 **[UNCALIBRATED — Phase J2, 2026-09-23: every stock_value/Min/Max/fill_rate figure below failed
 calibration against actual delivery performance. See banner at top of file.]**
+**[SUPERSEDED FRAMING — Phase J4, 2026-09-23 (STATUS.md Phase J4 entry; PROJECT_GRAPH.md node G2):
+this entry treats PEM103 as a co-equal member of the same stock-policy Max-Min pilot as PEM107.
+The following day, PEM103 was moved OUT of G2 (inventory policy) entirely and into G3 via Q22
+(tender-pipeline/transformers business, level A) — a stock-based Max-Min policy is no longer the
+right frame for PEM103 at all, independent of the calibration failure above. Kept, not deleted —
+the figures and method below were a legitimate pilot at the time; only the "PEM103 belongs in this
+policy" framing is superseded.]**
 Closes audit item 4 from the prior entry, records the standing sellability assumption, runs the
 first Max-Min scenario pilot outside PEM101, and extends the interactive page with a division
 selector. Full detail: `output/summary/phaseE2pilot_report.md`; data
@@ -4477,7 +4491,15 @@ not split). Full detail: `output/summary/phaseC_closure_report.md`.
   | PEM103 | Top-down combination | Beats Naive (2.49 vs 2.70); thin, non-significant edge over Direct (t=0.545, n=48); demand entirely Intermittent/Lumpy | Moderate |
   | PEM107 | Top-down combination | Beats Naive (11.57 vs 13.61); thin, non-significant edge over Direct (t=0.118, n=112) | Moderate |
   | CI101 | Top-down combination | **Falls 1.6% behind Naive** (10.27 vs 10.11, not significant, t=0.117, n=13); significantly beats Direct (t=-2.124, borderline, small n) | Moderate-low |
-  | PEM104 | Excluded (not forecast) | 12 transactions/17 months, insufficient for any model | High |
+  | PEM104 | Excluded (not forecast) | 12 transactions/17 months, insufficient for any model **[SUPERSEDED — see note below]** | High |
+
+  **[SUPERSEDED reason, not deleted — business-confirmed 2026-09-23 (DATA_MAP.md §7; STATUS.md
+  Phase J4 entry; PROJECT_GRAPH.md dead end DE4): PEM104's exclusion reason is "made to order by
+  business model, no stock policy applicable," not "insufficient data."** The 12-transactions/
+  17-months figure in the row above is real and correctly counted, but "insufficient for any
+  model" was a correct SYMPTOM, not the cause — the low, sporadic transaction count is a
+  structural consequence of a made-to-order business model, not a data-collection gap. The
+  exclusion decision itself (PEM104 excluded from forecasting) is unchanged by this correction.]**
 
   **The honest position, stated plainly**: Top-down combination beats Naive in **4 of 5
   forecastable divisions** and holds a **thin, non-significant edge over Direct in 3 of 5**
