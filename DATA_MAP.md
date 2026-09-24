@@ -435,6 +435,22 @@ produced a wrong result, with the correct handling and the report that found it.
    Explorer, one clean re-attempt) — genuinely **CANNOT BE DETERMINED** for the underlying question
    of why the table is empty for this scope.
 
+   **Update, 2026-09-24 (this task's Part 0 diagnostic, `src/investigations/phase22_cubefinal_diagnostic.py`,
+   one connection attempt, unfiltered/no itemcode restriction):** `cube_final` is **NOT empty
+   table-wide** — `INFORMATION_SCHEMA.COLUMNS` returned the same 35-column schema (`output/summary/
+   phase22_cubefinal_columns.csv`), and a `TOP 10` query for its own most recent month
+   (`final_date >= start of the month containing MAX(final_date)`) returned 10 real rows, dated
+   2026-09-23 (`output/summary/phase22_cubefinal_top10.csv` — contains real customer names, not
+   committed/quoted per this file's own privacy rule). **This resolves the narrow "is the table
+   empty" question — it is not.** It does **NOT** resolve why the earlier itemcode-filtered
+   351-item-scope pulls (Phase J2/J3) returned zero rows: this diagnostic ran no itemcode filter at
+   all, so the original filtered-query failure remains unexplained (still **CANNOT BE DETERMINED**
+   for that narrower question). A `SELECT COUNT(*)` (table-wide row count) was also run in the same
+   session per the script, but no artifact captured its numeric result for later citation, so that
+   figure is **not** recorded here (per CONVENTIONS.md "Verify, never recall" — an unverifiable
+   recalled number is not reported as fact). **Level V1** (one diagnostic pass, this task); the
+   itemcode-filtered-query question remains **CANNOT BE DETERMINED**, unchanged from above.
+
 8. **A one-direction "no stock" conclusion (warehouse-named-for-a-division → stock) was wrong for
    two divisions.** Naive reading: if a warehouse code is named for a division and shows no stock,
    that division holds no stock anywhere. Reality: the reverse direction (item → warehouse) found
@@ -555,6 +571,27 @@ produced a wrong result, with the correct handling and the report that found it.
     in place, since the only prior "recorded" figures already used the pre-bug unfiltered file, not
     the buggy pull. **V2** for the fix itself (code change + passing regression test + two
     independent downstream re-pulls with no anomaly).
+
+19. **It looks like the still-unresolved "which warehouses count as PEM101's usable/sellable stock"
+    standing assumption (§5 item 9) must materially affect the robust Min/Max policy range METRICS.md
+    §22 computes for PEM101 — it does not.** Naive reading: since the three candidate usable-stock
+    definitions (`current` {FG01,FG21,WH21}; `fg_prefixed_only`; `all_stockholding_except_qa_fmto_fmts`
+    {FG01,FG21,WH21,W4-1}) resolve to different warehouse-code sets, using a different one should
+    move an item's computed Min/Max. Reality: `Min_e`/`Max_e` (METRICS.md §22) depend only on
+    `r_months`/`s_months` and an item's own mean daily demand — the usable-stock definition enters
+    nowhere in that formula, it only gates which (r,s,review,lead) combinations pass the Sec.20
+    calibration tolerance. For PEM101, `current` alone already spans the full ensemble's `r_months`
+    range (0.25–2.0); the other two definitions' extra/narrower passing sets contribute nothing
+    beyond what `current` already covers. Comparing `range_ratio` computed from the full 139-member
+    ensemble vs. the `current`-only 59-member subset gives a difference of exactly 0.0 for all 112
+    eligible PEM101 items (`output/summary/phase22_modeler_stockdef_effect.csv`). **Correct handling:
+    for PEM101 specifically, this open standing assumption can be set aside when reasoning about
+    Min/Max policy ranges — it is not a live source of uncertainty for that question, even though it
+    remains open for other purposes (e.g. actual on-hand stock value).** Found: this task, 2026-09-24,
+    `src/investigations/phase22_modeler_part2.py`; independently re-derivable from the same two facts
+    (the verified `Min_e` formula and the ensemble's own `r_months` range) rather than merely an
+    empirical coincidence. **Level V2** (mathematically forced given the two verified facts, not
+    just an observation that could differ by chance).
 
 ---
 

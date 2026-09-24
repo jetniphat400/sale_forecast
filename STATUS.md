@@ -64,17 +64,26 @@ regenerated snapshot of it, not an independent status record kept by hand.**
   locked (D1-D4); Phase F (compare against the team's current method) not started. PEM103/PEM107
   were checked for a channel-mix recording bug that would require correcting the forecast/
   forward-test log before 2026-09-30 scoring — none found. (PROJECT_GRAPH.md, node G1.)
-- **G2 (inventory policy)** — uncalibrated, scope split 2026-09-23. Now covers PEM101 and PEM107
-  only; PEM103 moved out (feeds G3 via Q22); PEM104 was never in scope (see DE4).
-  (PROJECT_GRAPH.md, node G2.)
+- **G2 (inventory policy)** — uncalibrated, scope split 2026-09-23; PEM101 robust ensemble built
+  2026-09-24. Now covers PEM101 and PEM107 only; PEM103 moved out (feeds G3 via Q22); PEM104 was
+  never in scope (see DE4). PEM101's METRICS.md §22 robust_minmax ensemble (139 members, all 3
+  usable-stock definitions, 0 collapsed by dedup) is built: all 112 eligible items are SENSITIVE
+  (range_ratio≈8.0, driver `r_months`) at every threshold tested (1.10/1.25/1.50) — zero robust
+  items. The usable-stock-definition choice does not move any item's Min/Max (V2). The stock_value
+  vs. not_late trade-off curve is built and shown on the inventory page with today's point (98.28%
+  not_late, THB 18.25M) marked inside the envelope — choosing a target point on it is blocked on a
+  person. (PROJECT_GRAPH.md, node G2.)
 - **G3 (operations plan)** — blocked on a person. Needs business input on Q19 (assembly/
   inspection time), Q20 (capacity) and Q21 (MTS/MTO/ETO split) — each blocked on a person; Q17
   (batch cadence/size) is separately in progress, blocked on data (a working `cube_final`
   connection), not on a person; Q18 (BOM/shared components) is resolved. (PROJECT_GRAPH.md, node
   G3 and nodes Q17-Q21.)
 - **PEM101** — G1 method locked. G2: partially calibratable (59 of 4,130 grid combinations fit
-  both periods within tolerance; no single parameter uniquely identified). (PROJECT_GRAPH.md,
-  node Q10.)
+  both periods within tolerance; no single parameter uniquely identified). Robust ensemble
+  (METRICS.md §22, 2026-09-24): 0 of 112 eligible items robust at range_ratio≤1.25 — every item is
+  sensitive, driven by the reorder level (`r_months`); the usable-stock-definition assumption does
+  not affect this. Trade-off curve ready; a target service level is blocked on a person.
+  (PROJECT_GRAPH.md, nodes Q10, G2.)
 - **PEM102** — covered only by the project-wide G1 forecasting-method decision (D2, Top-down
   Combination); PROJECT_GRAPH.md carries no division-specific open question for PEM102.
 - **PEM103** — moved out of G2. Q22: answered (level A) — transformers/tendering-pipeline
