@@ -25,7 +25,8 @@
   discarded roughly 26-40% of two divisions' real sales — before the actual fix was recognized:
   the pricelist already determines an item's division, so the database's `division` column should
   never have been used as a filter at all. See `STATUS.md` Locked Decisions, "Division
-  source-of-truth correction," for the full account.
+  source-of-truth correction," for the full account. (Excluding -OLD tags would have discarded
+  about 40 percent of PEM107's sales — DATA_MAP.md §4 Trap 2, STATUS.md:4756-4801.)
 - **Agreement between two cubes/tables that share an upstream source demonstrates consistency,
   not correctness.** High agreement between two derived views of the same underlying transaction
   system (e.g. `cube_Sale_APD` vs. `Cube_CES`, cross-checked repeatedly in this project at
@@ -50,7 +51,10 @@
   (66 vs. 68 items) — neither was a bug, but neither had a written definition to be checked
   against, so the disagreement could not be resolved as a simple lookup. See `METRICS.md` itself
   for the locked formulas, and its entries for `stock_value` and `segment_policy criteria`
-  specifically for that incident's resolution.
+  specifically for that incident's resolution. Compare only like with like: two figures are
+  compared only when their definitions and target series match. (Fill rate was compared with 73.2
+  percent, which was on-time-exact — DATA_MAP.md §4 Trap 12; two agents produced THB 55,399,687 and
+  93,935,502.88 for an undefined stock value — STATUS.md:438-451.)
 - **Any conclusion that something is absent — no stock, no rows, no history, no duplicates, no
   cancellations — must be verified from at least two independent directions before it is
   recorded.** For a relationship between two entities, that means checking both from A to B and
@@ -60,7 +64,8 @@
   rule exists because Phase D asserted that four divisions held no stock after checking only
   warehouse-to-division, and two of them (PEM103, PEM107) turned out to hold over ฿12 million —
   the reverse direction (item-to-warehouse) had never been checked. See `STATUS.md`'s Phase E2
-  readiness entry for the full account.
+  readiness entry for the full account. (Phase D concluded other divisions held no stock; two held
+  over 12 million THB.)
 - **When a Validator confirms a figure, `STATUS.md` must state whether the confirmation was an
   independent recomputation or a re-read of the same query; only the former counts as a second
   direction.** Re-running the same query, or re-reading the same script's output, confirms that
@@ -95,7 +100,8 @@
   to a pilot, task or phase.** A condition adopted for a pilot must never be written as a project
   rule. This rule exists because a pilot filter (`division = 'PEM101'`) was recorded in `STATUS.md`
   as project scope and propagated unquestioned into Phase C — see `STATUS.md` Locked Decisions,
-  "Project scope correction," for the full account.
+  "Project scope correction," for the full account. (A division filter for the PEM101 pilot was
+  once locked as project scope.)
 - **Any specific figure, threshold or attribution stated without a cited source must be treated
   as unverified until checked.** This applies to a remembered number as much as a guessed one —
   confident recall is not a citation. Two examples from this project: the original SBC (2005)
@@ -139,6 +145,33 @@
 - **When a task changes a node's status, it updates `PROJECT_GRAPH.md`** (the node's status, and
   the critical path if the change affects it) — the graph is kept current by the agent that changes
   something, not reconstructed retroactively.
+
+## Error review (added 2026-09-24)
+
+Added from a review of every error made in this project. Where an existing rule above already
+covered one of these in substance, its bracketed example was appended to that rule instead of
+repeating it here (see "System tags are not business truth," "Conclusions of absence require two
+directions," "Compare only like with like," and "Pilot scope is not project scope," above).
+
+- Domain terms and column meanings. When the meaning of a business term or a database column is
+  not established in `DATA_MAP.md`, ask or prove it before using it. (Drop and Surge were once read
+  as analytic terms; they are product names.)
+- Check that a test measures what it is meant to before interpreting it. (Phase J calibrated
+  against min/max settings nobody follows and read the 89-point gap as a model failure.)
+- Do not mark a question blocked on a person until the data route is exhausted, listing what was
+  tried. Evidence consistent with more than one explanation is undetermined, not contradicting.
+- Deduplicate on what affects the computed output, not on parameter identity. (139 members were
+  used where 80 were distinct.)
+- Before changing a default, check every rule and threshold that references it. (Raising assembly
+  time to 7 days left 36 items with no policy under section 15.)
+- Verify the actual technology in use before specifying a tool. (A prompt specified Plotly for a
+  dashboard that used none.)
+- Report shares alongside absolute volumes. (Annual channel shares for PEM103 and PEM107 swung on
+  a few large tender contracts.)
+- State which decision a sensitivity result applies to. (Warehouse definition does not affect Min,
+  but does affect the quantity to order today.)
+- Confirm a subagent's output exists before relying on it. (A subagent once returned immediately
+  having done nothing.)
 
 ---
 
