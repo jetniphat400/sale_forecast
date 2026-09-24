@@ -6,8 +6,10 @@ future regression: it must always scope by `itemcode IN (...)` and must never ad
 the SQL level (the same Trap-18 pattern already guarded for Cube_CES).
 """
 import pandas as pd
+import pytest
 
 import cube_final_pull
+from zero_row_guard import EmptyQueryResultError
 
 
 def test_pull_cube_final_for_items_has_no_date_filter(monkeypatch):
@@ -18,7 +20,7 @@ def test_pull_cube_final_for_items_has_no_date_filter(monkeypatch):
         return pd.DataFrame(columns=cube_final_pull.CUBE_FINAL_COLUMNS)
 
     monkeypatch.setattr(cube_final_pull, "run_query", fake_run_query)
-    cube_final_pull.pull_cube_final_for_items(["A", "B"])
+    cube_final_pull.pull_cube_final_for_items(["A", "B"], allow_empty=True)
 
     sql = captured["sql"]
     assert "itemcode IN" in sql
@@ -43,7 +45,7 @@ def test_pull_cube_final_for_items_scopes_by_itemcode_only(monkeypatch):
         return pd.DataFrame(columns=cube_final_pull.CUBE_FINAL_COLUMNS)
 
     monkeypatch.setattr(cube_final_pull, "run_query", fake_run_query)
-    cube_final_pull.pull_cube_final_for_items(["X-1", "X-2", "X-3"])
+    cube_final_pull.pull_cube_final_for_items(["X-1", "X-2", "X-3"], allow_empty=True)
 
     sql = captured["sql"]
     assert "'X-1'" in sql and "'X-2'" in sql and "'X-3'" in sql
@@ -61,7 +63,7 @@ def test_pull_cube_final_for_items_uses_verified_working_key(monkeypatch):
         return pd.DataFrame(columns=cube_final_pull.CUBE_FINAL_COLUMNS)
 
     monkeypatch.setattr(cube_final_pull, "run_query", fake_run_query)
-    cube_final_pull.pull_cube_final_for_items(["EEE-F-FC-1040010002"])
+    cube_final_pull.pull_cube_final_for_items(["EEE-F-FC-1040010002"], allow_empty=True)
 
     sql = captured["sql"]
     where_clause = sql.split("WHERE", 1)[1]
@@ -70,3 +72,25 @@ def test_pull_cube_final_for_items_uses_verified_working_key(monkeypatch):
         "not a transformed expression such as UPPER(itemcode), LTRIM/RTRIM(itemcode), or a "
         "different column -- see output/summary/phase23_part0_cubefinal_join_report.md."
     )
+
+
+def test_pull_cube_final_raises_on_zero_rows_by_default(monkeypatch):
+    """This task's Part 0 zero-row guard: a zero-row cube_final pull must fail loudly, not
+    silently propagate as if it were a normal (if empty) result -- DATA_MAP.md Sec.4 Trap 7."""
+    def fake_run_query(sql):
+        return pd.DataFrame(columns=cube_final_pull.CUBE_FINAL_COLUMNS)
+
+    monkeypatch.setattr(cube_final_pull, "run_query", fake_run_query)
+    with pytest.raises(EmptyQueryResultError):
+        cube_final_pull.pull_cube_final_for_items(["A", "B"])
+
+
+def test_pull_cube_final_allow_empty_true_does_not_raise(monkeypatch):
+    """The explicit opt-out: a caller that knows zero rows is a valid answer must be able to say
+    so, without the guard firing."""
+    def fake_run_query(sql):
+        return pd.DataFrame(columns=cube_final_pull.CUBE_FINAL_COLUMNS)
+
+    monkeypatch.setattr(cube_final_pull, "run_query", fake_run_query)
+    result = cube_final_pull.pull_cube_final_for_items(["A", "B"], allow_empty=True)
+    assert len(result) == 0

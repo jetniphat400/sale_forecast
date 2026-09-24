@@ -22,6 +22,7 @@ from db import run_query
 from models import combination_forecast
 from leakage_guard import check_window_closed, load_min_margin_days
 from backtest_rekeyed import MA_WINDOWS, get_origins, compute_metrics
+from zero_row_guard import guard_nonempty
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 logger = logging.getLogger("phaseE1_common")
@@ -195,18 +196,23 @@ def topdown_item_forecast(scope: pd.DataFrame, series: dict, fit_end: int, horiz
 # Unit cost (Phase D Check 2 methodology, reused verbatim for consistency across phases)
 # ------------------------------------------------------------------------------------------
 
-def query_sale_cost(item_codes: list) -> pd.DataFrame:
+def query_sale_cost(item_codes: list, allow_empty: bool = False) -> pd.DataFrame:
     """METRICS.md Sec.1 requires 'Omni Channel scope, Actual + MPS status' for unit_cost's basis
     rows. Fixed 2026-09-22: this query previously omitted that filter, letting non-Omni-Channel
     rows (e.g. 'Total Customer Solution', 'Tendering') leak into the trailing-12-month median --
     root cause of PEM107's 6.34% Modeler/Validator stock_value gap (STATUS.md, PEM107 gap
     root-cause entry). Filter values are the literal terms from METRICS.md Sec.1's own wording,
-    matching src/phaseE1fix_recompute.py::compute_unit_cost_metrics1, which already applied them."""
+    matching src/phaseE1fix_recompute.py::compute_unit_cost_metrics1, which already applied them.
+
+    Raises `zero_row_guard.EmptyQueryResultError` on zero rows unless `allow_empty=True`."""
     code_list = "','".join(sorted(item_codes))
     sql = f"""SELECT itemcode, qty, cost, createDate FROM {SALE_TABLE}
               WHERE itemcode IN ('{code_list}') AND revenue_type = 'Omni Channel'
                 AND status IN ('Actual','MPS')"""
     df = run_query(sql)
+    guard_nonempty(df, table=SALE_TABLE,
+                   filter_desc=f"itemcode IN ({len(item_codes)} codes) AND revenue_type='Omni Channel' AND status IN ('Actual','MPS')",
+                   allow_empty=allow_empty)
     df["createDate"] = pd.to_datetime(df["createDate"])
     logger.info("Pulled %d rows from %s for %d item codes (unit-cost basis, Omni Channel/Actual+MPS filtered).",
                 len(df), SALE_TABLE, len(item_codes))
@@ -255,11 +261,14 @@ def compute_unit_cost(item_codes: list) -> pd.DataFrame:
 # Min/Max (comparison baseline only, per STATUS.md's locked "cannot be used as inputs" finding)
 # ------------------------------------------------------------------------------------------
 
-def query_inventory_exact(item_codes: list) -> pd.DataFrame:
+def query_inventory_exact(item_codes: list, allow_empty: bool = False) -> pd.DataFrame:
+    """Raises `zero_row_guard.EmptyQueryResultError` on zero rows unless `allow_empty=True`."""
     code_list = "','".join(sorted(item_codes))
     sql = f"""SELECT company, warehouse, itemcode, stock, minimum, maximum, reserve_bywa, timestamp
               FROM {INV_TABLE} WHERE itemcode IN ('{code_list}')"""
     df = run_query(sql)
+    guard_nonempty(df, table=INV_TABLE, filter_desc=f"itemcode IN ({len(item_codes)} codes)",
+                   allow_empty=allow_empty)
     df["warehouse"] = df["warehouse"].str.strip()
     logger.info("Pulled %d rows from %s for %d item codes.", len(df), INV_TABLE, len(item_codes))
     return df
@@ -316,16 +325,24 @@ def query_backlog(item_codes: list) -> pd.DataFrame:
 # monthly series' last month -- by construction these are NOT already counted as history)
 # ------------------------------------------------------------------------------------------
 
-def query_confirmed_future_orders(item_codes: list, after_month_end: str) -> pd.DataFrame:
+def query_confirmed_future_orders(item_codes: list, after_month_end: str, allow_empty: bool = True) -> pd.DataFrame:
     """Rows with status='MPS' and forecast_date strictly after `after_month_end` (the last
     calendar month already present in the historical monthly series, e.g. '2026-07-31') --
     these cannot already be counted in that series (verified below by the caller), so adding
-    them as 'confirmed future demand' does not double-count history."""
+    them as 'confirmed future demand' does not double-count history.
+
+    `allow_empty` defaults to True here (unlike this module's other guarded loaders): zero
+    confirmed future MPS orders is a common, legitimate outcome for many item scopes/windows, not
+    a sign of a broken pull. Pass `allow_empty=False` explicitly if a specific call expects
+    nonzero rows and should fail loudly otherwise."""
     code_list = "','".join(sorted(item_codes))
     sql = f"""SELECT itemcode, forecast_date, qty, status, createDate
               FROM {SALE_TABLE}
               WHERE itemcode IN ('{code_list}') AND status = 'MPS' AND forecast_date > '{after_month_end}'"""
     df = run_query(sql)
+    guard_nonempty(df, table=SALE_TABLE,
+                   filter_desc=f"itemcode IN ({len(item_codes)} codes) AND status='MPS' AND forecast_date > '{after_month_end}'",
+                   allow_empty=allow_empty)
     df["forecast_date"] = pd.to_datetime(df["forecast_date"])
     logger.info("Confirmed future MPS orders: %d rows for %d item codes with forecast_date > %s.",
                 len(df), len(item_codes), after_month_end)
@@ -336,12 +353,14 @@ def query_confirmed_future_orders(item_codes: list, after_month_end: str) -> pd.
 # Order-level rows (for order notice = forecast_date - createDate, and order-frequency counts)
 # ------------------------------------------------------------------------------------------
 
-def query_order_level(item_codes: list, config: dict) -> pd.DataFrame:
+def query_order_level(item_codes: list, config: dict, allow_empty: bool = False) -> pd.DataFrame:
     """One row per cube_Sale_APD order line for the scope items (Omni Channel, Actual+MPS,
     date_range-bounded -- identical filter to this project's whole demand series,
     src/load_data_full.py), with notice_days = forecast_date - createDate computed here.
     Negative/null-forecast_date rows are dropped (same known anomaly class Phase A/B already
-    document and exclude from the forecast_date-keyed series)."""
+    document and exclude from the forecast_date-keyed series).
+
+    Raises `zero_row_guard.EmptyQueryResultError` on zero rows unless `allow_empty=True`."""
     code_list = "','".join(sorted(item_codes))
     statuses = "','".join(config["status_basis"])
     start_date = config["date_range"]["start"]
@@ -354,6 +373,10 @@ def query_order_level(item_codes: list, config: dict) -> pd.DataFrame:
           AND createDate >= '{start_date}'
     """
     df = run_query(sql)
+    guard_nonempty(df, table=SALE_TABLE,
+                   filter_desc=f"itemcode IN ({len(item_codes)} codes) AND revenue_type='{config['revenue_type']}' "
+                               f"AND status IN ({statuses}) AND createDate >= '{start_date}'",
+                   allow_empty=allow_empty)
     df["createDate"] = pd.to_datetime(df["createDate"])
     df["forecast_date"] = pd.to_datetime(df["forecast_date"], errors="coerce")
     n_before = len(df)

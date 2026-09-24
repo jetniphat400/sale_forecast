@@ -21,6 +21,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from db import run_query
+from zero_row_guard import guard_nonempty
 
 logger = logging.getLogger("cube_ces_pull")
 
@@ -30,13 +31,17 @@ CUBE_CES_COLUMNS = [
 ]
 
 
-def pull_cube_ces_for_items(item_codes: list, columns: list = None):
+def pull_cube_ces_for_items(item_codes: list, columns: list = None, allow_empty: bool = False):
     """Pulls Cube_CES rows for `item_codes`, with NO date filter of any kind at the SQL level --
     the scope is itemcode only. Any date window (calibration/validation periods, a specific year,
     etc.) must be applied afterward in Python against whichever date field the analysis actually
     needs (`ForecastDelDate` for `not_late`, METRICS.md Sec.18/19/20), never re-added here as a
     pull-time floor -- that is exactly the mistake this module exists to prevent (see module
     docstring, DATA_MAP.md Trap 18).
+
+    Raises `zero_row_guard.EmptyQueryResultError` if the pull returns zero rows, unless
+    `allow_empty=True` is passed explicitly (this task's Part 0 zero-row guard -- see
+    src/zero_row_guard.py; DATA_MAP.md Sec.4 Trap 7, the cube_final precedent this generalizes).
     """
     cols = columns or CUBE_CES_COLUMNS
     code_list = "','".join(item_codes)
@@ -47,6 +52,8 @@ def pull_cube_ces_for_items(item_codes: list, columns: list = None):
         WHERE ItemCode IN ('{code_list}')
     """
     df = run_query(sql)
+    guard_nonempty(df, table="Cube_CES", filter_desc=f"ItemCode IN ({len(item_codes)} codes)",
+                   allow_empty=allow_empty)
     logger.info("Pulled %d Cube_CES rows for %d item codes (no date filter at pull -- "
                 "any date window is applied afterward, never as a SQL floor).",
                 len(df), len(item_codes))
