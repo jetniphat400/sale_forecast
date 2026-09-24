@@ -1168,3 +1168,48 @@ segment_policy:
   generated_by_script: "src/phaseE1fix_recompute.py"
   result_counts: {finished_goods_stock: 76, component_stock_ato: 36, placeholder: 10, excluded: 6}
 
+# ============================================================
+# Trade-off curve construction (locked 2026-09-24, METRICS.md Sec.22) -- TIER B: a structural
+# input to the Modeler and Validator scripts, not an on-page control. Locked here because the
+# prior task's Modeler and Validator built the curve with different reorder-level grids and
+# different scoring windows and agreed only in magnitude, not to floating-point tolerance -- both
+# agents in this task must read this block directly; neither may choose its own. See
+# output/summary/phase22_modeler_report.md Part 3 and phase22_validator_report.md Part 3 for the
+# prior, unlocked disagreement this resolves.
+# ============================================================
+trade_off_curve:
+  # Reorder-level (r_months) sweep grid, applied per ensemble member, holding that member's own
+  # (order-up-to minus reorder) gap constant (METRICS.md Sec.22). 20 points, denser inside the
+  # ensemble's own observed r_months range (0.25-2.0 per the Phase J3 grid, confirmed Part 1 below)
+  # where most curve detail matters, sparser at the extremes -- wide enough to cover both prior
+  # runs' ranges (Modeler 0.10-4.00, Validator 0.25-6.00), so this curve is not narrower than
+  # either prior one.
+  reorder_level_grid_r_months: [0.10, 0.20, 0.30, 0.40, 0.50, 0.65, 0.80, 1.00, 1.20, 1.40, 1.60, 1.80, 2.00, 2.25, 2.50, 3.00, 3.50, 4.00, 5.00, 6.00]
+
+  # Simulation/scoring window: the SAME combined calibration-score + validation window the prior
+  # Modeler used (src/investigations/phase22_modeler_part3.py), not the Validator's
+  # calibration-only window. Chosen because "today's point" (Part 3, this task) is read from the
+  # validation-period J3 reconciled target -- the curve must be scored over a window that includes
+  # that period to be comparable to it, and scoring over more days (calibration + validation) is a
+  # strictly more robust average than calibration alone.
+  simulation_window:
+    start: "2024-07-01"   # phaseJ3_calibration_engine.CALIBRATION_SCORE_START
+    end: "2026-08-31"     # phaseJ3_calibration_engine.determine_validation_end(raw), re-verified
+                           # this task by direct computation against output/data/
+                           # phaseI_raw_sales_351items.csv, not recalled from the prior task.
+
+  # Warm-up: the daily series/simulation state is built starting CALIBRATION_START (2024-01-01),
+  # 6 months before scoring begins, so each member's simulated on-hand/backorder state is not
+  # starting from an arbitrary zero at the scored window's own first day. The warm-up period
+  # itself is never scored into not_late or stock_value.
+  warm_up:
+    start: "2024-01-01"   # phaseJ3_calibration_engine.CALIBRATION_START
+    end: "2024-06-30"     # the day before CALIBRATION_SCORE_START
+    months: 6
+
+  # not_late weighting: unit-weighted (METRICS.md Sec.19 and Sec.22's own text) -- every unit of
+  # demand counts once; this is not a per-contract/per-order weighting.
+  not_late_weighting: "unit_weighted"
+
+  owner: "Locked 2026-09-24 (this task, Part 2). Both the Modeler and Validator scripts in this task read reorder_level_grid_r_months, simulation_window, warm_up and not_late_weighting directly from this block -- neither computes or chooses its own."
+
