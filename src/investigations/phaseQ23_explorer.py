@@ -27,6 +27,7 @@ import yaml
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
+from cube_ces_pull import pull_cube_ces_for_items
 from db import run_query
 from pricelist_reader import load_visible_product_rows
 
@@ -185,14 +186,17 @@ def main():
     has_native_revenue_type = any("revenue" in c.lower() for c in ces_cols)
     logger.info("Cube_CES has a native revenue-type-like column: %s", has_native_revenue_type)
 
-    ces = run_query(f"""
-        SELECT ItemCode, ContractID, Status, CtrDate, PlanDelDate, ForecastDelDate, ActualDelDate, ActualQty,
-               RevenueType
-        FROM Cube_CES
-        WHERE ItemCode IN ('{code_list}')
-          AND CtrDate >= '2023-01-01'
-    """)
-    logger.info("Pulled %d Cube_CES rows for the 394-code scope.", len(ces))
+    # FIXED 2026-09-25 (DATA_MAP.md Trap 18): this used to add "AND CtrDate >= '2023-01-01'",
+    # which is NOT equivalent to this project's established not_late method (ForecastDelDate-
+    # windowed, no CtrDate floor) and silently dropped legitimate rows. Now uses the shared
+    # src/cube_ces_pull.py helper, which pulls the full, unbounded history for the item scope and
+    # applies no date filter at the SQL level at all.
+    ces = pull_cube_ces_for_items(
+        all_codes,
+        columns=["ItemCode", "ContractID", "Status", "CtrDate", "PlanDelDate", "ForecastDelDate",
+                 "ActualDelDate", "ActualQty", "RevenueType"],
+    )
+    logger.info("Pulled %d Cube_CES rows for the 394-code scope (no date filter at pull).", len(ces))
 
     # Cube_CES carries its OWN native RevenueType column (confirmed by the schema check above) --
     # use it directly as the primary source (same table, no join needed, no join-key ambiguity).
