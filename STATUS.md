@@ -55,7 +55,51 @@ and where it says "Phase 4," that refers to what is now Phases D/E.
 
 ## 2. Phase Status
 
-### Current Status Summary (2026-09-02)
+### Current Status Summary (2026-09-24)
+
+**PROJECT_GRAPH.md is the authoritative source for goal/question/node status; this summary is a
+regenerated snapshot of it, not an independent status record kept by hand.**
+
+- **G1 (sales forecast)** — in progress. Top-down Combination forecasting method adopted and
+  locked (D1-D4); Phase F (compare against the team's current method) not started. PEM103/PEM107
+  were checked for a channel-mix recording bug that would require correcting the forecast/
+  forward-test log before 2026-09-30 scoring — none found. (PROJECT_GRAPH.md, node G1.)
+- **G2 (inventory policy)** — uncalibrated, scope split 2026-09-23. Now covers PEM101 and PEM107
+  only; PEM103 moved out (feeds G3 via Q22); PEM104 was never in scope (see DE4).
+  (PROJECT_GRAPH.md, node G2.)
+- **G3 (operations plan)** — blocked on a person. Needs business input on Q19 (assembly/
+  inspection time), Q20 (capacity) and Q21 (MTS/MTO/ETO split) — each blocked on a person; Q17
+  (batch cadence/size) is separately in progress, blocked on data (a working `cube_final`
+  connection), not on a person; Q18 (BOM/shared components) is resolved. (PROJECT_GRAPH.md, node
+  G3 and nodes Q17-Q21.)
+- **PEM101** — G1 method locked. G2: partially calibratable (59 of 4,130 grid combinations fit
+  both periods within tolerance; no single parameter uniquely identified). (PROJECT_GRAPH.md,
+  node Q10.)
+- **PEM102** — covered only by the project-wide G1 forecasting-method decision (D2, Top-down
+  Combination); PROJECT_GRAPH.md carries no division-specific open question for PEM102.
+- **PEM103** — moved out of G2. Q22: answered (level A) — transformers/tendering-pipeline
+  business; the production mechanism itself is still pending EF1 (blocked on data). Q10: not
+  calibratable to a stock-based policy (would need 5-12x more capital than the business holds).
+  (PROJECT_GRAPH.md, nodes Q10, Q22.)
+- **PEM104** — closed, dead end (DE4). Made to order by business model; no stock policy
+  applicable. (PROJECT_GRAPH.md, node DE4.)
+- **PEM107** — in G2's scope, but Q10: not calibratable under any tested parameter set (implies a
+  genuine operational change between 2024-2025 and 2026, not a search failure). Q23: the 2026
+  channel-mix reversal is a business change, not a recording change; the capacity-diversion
+  hypothesis survives, at level H, not proven. (PROJECT_GRAPH.md, nodes Q10, Q23.)
+- **CI101** — covered only by the project-wide G1 forecasting-method decision (D2); PROJECT_GRAPH.md
+  carries no division-specific open question for CI101.
+
+**This summary is regenerated from PROJECT_GRAPH.md at the close of every task** — it is not
+hand-maintained between tasks, and must not be edited without first re-checking PROJECT_GRAPH.md
+is itself current.
+
+*Full evidence, methodology and per-task detail for every phase is preserved in the detailed log
+below, in chronological order. The detailed log uses the phase numbering (3.1, 3.2, 4) in effect at
+the time each task was completed; that numbering is superseded by the A-F plan and is not renamed
+retroactively.*
+
+---
 
 **Phase 1 — Trend: DONE.** Demand classified by ADI and CV²; dashboard published on GitHub
 Pages with daily drill-down. The ₿2,015.3 million figure was reproduced exactly once the
