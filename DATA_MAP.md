@@ -317,6 +317,19 @@ uncertainty); **V1** for the cross-table agreement rate (one pull, one direction
 per CONVENTIONS.md). Found: Q23 Part 1, Explorer, 2026-09-25
 (`output/summary/phaseQ23_explorer_report.md`).
 
+**cube_Sale_APD.customer_segment** — a real, informative customer-classification field (values seen:
+`Contractor`, `Dealer`, `Smart Shop`, `End User`, `Local Utility`, `Inside Group`, `PEA Regional
+Office`, and several Thai-language utility-region labels). Institutional/utility segments
+(`Local Utility`/`Inside Group`/PEA-region) dominate Tendering-tagged rows; retail-type segments
+(`Contractor`/`Dealer`/`Smart Shop`/`End User`) dominate Omni-tagged rows, STABLY across both 2025
+and 2026 for both PEM103 and PEM107 — this project's first-established customer-type field, and
+the field that most directly explains why `revenue_type` tracks a real distinction rather than an
+arbitrary tag (see §7, PEM103/PEM107 channel-shift finding). `typeOfSale` also exists but is
+constant (`Sale` for every row in the scope tested) — uninformative. `customerid` is 100% populated
+in the scope tested. **V1** (one Explorer, one pull; not yet independently recomputed by a second
+agent, though the Validator's separate pull of the same scope did not contradict it). Found: this
+task, Explorer 2 (`output/summary/phase136_explorer2_report.md`), 2026-09-25.
+
 ---
 
 ## 3. Joins
@@ -531,6 +544,17 @@ produced a wrong result, with the correct handling and the report that found it.
     task, 2026-09-25. **V1** (one Analyst, one investigation; the affected script,
     `src/investigations/phaseQ23_explorer.py`, was not itself corrected — a downstream agent worked
     around it instead, so the query bug remains live in that file for any future reader).
+    **FIXED AT SOURCE, 2026-09-25 (this task, Part 3)**: `phaseQ23_explorer.py`'s inline query
+    replaced with a shared helper, `src/cube_ces_pull.py`, that pulls Cube_CES for an item-code
+    scope with NO date filter at the SQL level, ever — the established, working pattern already
+    used by `phaseJ_cube_ces_351items.csv`/`phaseJ3_validator_reconciliation.py`. A regression test
+    (`tests/test_cube_ces_pull.py`) fails against the old filter and passes against the fix. Two
+    downstream agents (Explorer 1 and the independent Validator, this task's Part 1/4) re-pulled
+    Cube_CES via the fixed helper for PEM103/PEM107's full scope and report figures consistent with
+    each other and with the pre-existing headline — no figure changed materially once the fix was
+    in place, since the only prior "recorded" figures already used the pre-bug unfiltered file, not
+    the buggy pull. **V2** for the fix itself (code change + passing regression test + two
+    independent downstream re-pulls with no anomaly).
 
 ---
 
@@ -648,6 +672,8 @@ itself names it).
 | "The data route is not exhausted" (this file's own 2026-09-25 correction, above) — an open question, not yet a result | **ANSWERED, per-division, 2026-09-25 (Phase J3 Part 2, METRICS.md Sec.20 inverse_calibration, independently confirmed — Part 3 Validator, own code, 12/12 figures match).** PEM101: partially calibratable — 59 of 4,130 grid combinations reproduce both the 2024-2025 and 2026+ periods within tolerance (not_late ±3pp, stock value ±15%) at a realistic capital level, but no single parameter is uniquely identified (r_months ambiguous 0.25-2.0 months, s_months 1.5-3.0, review interval 1-30 days, lead time 1-30 days — all four span more than one grid step). PEM103: NOT calibratable to a stationary policy at a realistic stock level — a fit exists for `not_late` alone (117 combinations), but every one needs 5-12x more capital than the business holds (best: THB 57.6M simulated vs. THB 6.06M real on-hand). PEM107: NOT calibratable at all — no single parameter set fits both periods simultaneously (the best joint compromise is still 14-18 percentage points off on one side), implying a genuine operational change between 2024-2025 and 2026, not a search failure. | 2026-09-25 | `output/summary/phaseJ3_2_calibration_summary.json`, `phaseJ3_2_grid_{PEM101,PEM103,PEM107}.csv`, `phaseJ3_validator2_independent_check.md` |
 | PEM104's exclusion reason recorded as "insufficient data" (12 transactions across 17 calendar months, too few to fit any forecasting model at any aggregation level) | **SUPERSEDED, kept not deleted.** The underlying reason is that PEM104 is made to order by business model — no stock policy is applicable, and the low, sporadic transaction count is a structural consequence of that business model, not a data-collection gap. "Insufficient data" was a correct symptom, not the cause. | 2026-09-23 | STATUS.md Locked Decisions, "Exclusion — PEM104" (STATUS.md:4817-4824); this task, §7 below |
 | Q23 open: "does the Omni Channel scope explain observed stock/delivery behaviour, or must combined Omni+Tendering be included?" | **ANSWERED, 2026-09-25 (this task, METRICS.md §21, four agents — Explorer/Modeler/Analyst/independent from-scratch Validator).** NO accuracy or calibration case for widening scope: Omni+Tendering forecasts Omni demand no more accurately in any of 3 divisions (worse for PEM107, t=2.43, and PEM103's dominant focus item, t=2.61 — independently reproduced by the Validator, same direction/significance in all 3, MAE within 3%); PEM103's combined-demand calibration gap WIDENS to 27-37x real capital (vs J3's Omni-only 5-12x), reinforcing Q22's tender-pipeline finding rather than a shared-stock one. PEM107's 2026 not_late decline (86.6%→76.5%) DOES coincide with a real, twice-independently-confirmed channel-mix reversal (Tendering value share 28-39%→72.3-72.4%) and a genuine drop in Omni's own not_late (88.6%→76.5%, not a compositional artifact) — supported (not proven), level H. Omni Channel remains the project's default scope. | 2026-09-25 | `output/summary/phaseQ23_{explorer,modeler,analyst,validator}_report.md`; PROJECT_GRAPH.md Q23/Q22 rows; STATUS.md Q23 entry |
+| "Phase 1 reported 136 codes present on both the PEM103 and PEM107 sheets" (premise stated in this task's own instructions; no prior STATUS.md/DATA_MAP.md passage matching this exact claim could be located) | **CHECKED AGAINST THE FILE AS IT CURRENTLY EXISTS, 2026-09-25: ZERO overlap.** An exhaustive, both-direction re-read of every sheet in `reference/pricelist.xlsx` (visible AND hidden `Version1`/differently-spaced-name duplicates) finds no item code shared between any PEM103-named sheet and any PEM107-named sheet. 136 is simply PEM107's own total code count (consistent across its own hidden/visible sheet pair) — not, and apparently never was correctly, an overlap figure; the likely origin is a conflation of "PEM107 has 136 codes" with an overlap claim. Does not rule out the pricelist file having been edited since whenever the original claim was made (no version history available) — a residual limitation, not resolved further. | 2026-09-25 | This task, Explorer 1 (`output/summary/phase136_explorer1_report.md`) |
+| PEM103/PEM107's 2026 channel-mix reversal (Q23, above): cause not yet investigated at the point Q23 closed | **INVESTIGATED, 2026-09-25 (this task): supports a BUSINESS change, not a recording change, for BOTH divisions — V2, three independent checks converge** (two Explorers, different angles, plus an independent from-scratch Validator): customer channel identity is essentially fixed (0 switchers in PEM103, at most 1 noise-level switcher in PEM107, independently reconfirmed); order size and customer segment directly contradict a same-order-relabeling reading; no clean step-change date exists in either division (lumpy, contract-driven spikes in both years, independently reconfirmed); PEM107's Tendering notice days genuinely grew 40→60 between years. **The business's stated view (level A, recorded 2026-09-23: "most likely a recording-method change") is recorded as stated, alongside this direct data contradiction — both stated, neither chosen** (AGENTS.md rule 4/9). No reconstruction/reassignment rule proposed (not warranted); no G1/forward-test correction needed on these grounds; the PEM107 capacity-diversion hypothesis (Q23) SURVIVES and is strengthened on its "is the surge real" dimension, still level H. | 2026-09-25 | This task: `output/summary/phase136_explorer1_report.md`, `phase136_explorer2_report.md`, `phase136_synthesis_report.md`, `phase136_validator_report.md`; DATA_MAP.md §7 |
 
 ---
 
@@ -689,6 +715,83 @@ capacity constraint affecting both channels, no actual resource competition) can
 from this data alone. Found: Q23 Part 4, Analyst, 2026-09-25
 (`output/summary/phaseQ23_analyst_report.md`). See §4 Trap 18 for a data-quality issue found and
 worked around while establishing this.
+
+**Business view, recorded 2026-09-23 (level A): the PEM103/PEM107 2026 channel-mix reversal "most
+likely reflects a change in recording method, not a change in what the divisions sell."** This is
+recorded as stated, per this project's convention that a business-confirmed statement is level A
+regardless of what independent analysis later finds. **It is recorded here alongside a direct
+data-derived contradiction, per AGENTS.md rule 4/9 (report contradictions explicitly, do not pick a
+side):**
+
+**Data finding, 2026-09-25 (this task): the evidence supports a BUSINESS change for BOTH divisions,
+not a recording change** — **V2**, converging from three independent checks (two Explorers on
+different angles, order-side and attribute-side, neither reading the other's files, PLUS an
+independent from-scratch Validator recomputation reading none of the Explorers' files):
+- **Customer channel identity is essentially fixed, not flipped.** Of customers active in both 2025
+  and 2026, 0/46 (PEM103, Explorer 1) or 0/43 (PEM103, Validator, a slightly different both-years
+  customer count from an independently-derived pull — same zero-switch conclusion) changed their
+  dominant channel; PEM107 shows at most 1 switcher out of 86-87 (Explorer 1: 2.13% of qty;
+  Validator: 0.02-0.03% of qty — both agree the switch is noise-level, not a Tendering↔Omni flip at
+  all in the Validator's re-read). If a database recording rule had flipped in place, existing
+  customers' recorded channel is exactly what would change — it did not, independently confirmed
+  twice.
+- **Order size and customer segment directly contradict a same-order relabeling** (Explorer 2):
+  PEM103's 2026 Omni orders (median contract THB 295,000) match 2025's OWN Omni scale, not 2025's
+  Tendering scale (THB 142.5M, ~483x larger) as a relabeling would require; PEM107's 2026 Tendering
+  orders (median THB 7.5M) are ~12x LARGER than 2025's own Tendering, not smaller/Omni-like.
+  Customer-segment composition (a real field, `customer_segment` — institutional/utility for
+  Tendering, retail/dealer/contractor for Omni) is stable across both years for both divisions, and
+  customer overlap between the channels that supposedly swapped is ~0%.
+- **No clean step-change date; timing is lumpy and contract-driven, in both years, independently
+  reconfirmed** (Explorer 1 AND Validator, separately): PEM103's 2025 Tendering share comes from two
+  isolated giant months (Jan 97.9%, Jun 98.9%, each 1-2 large transformer contracts); PEM107's
+  Tendering-heavy months land in DIFFERENT calendar months in 2025 vs 2026, not a single date after
+  which the series changes character and stays changed. A recording-rule flip (like the historical
+  `-OLD` division-tag swap, which touched thousands of rows continuously) would not naturally
+  produce this pattern.
+- **A genuine attribute shift, not attributable to relabeling** (Validator, one attribute,
+  independently chosen): PEM107's Tendering-order notice (`forecast_date - createDate`) grew from a
+  median 40 days (2025) to 60 days (2026) on comparable sample sizes (45 vs 49 rows) — a real
+  lead-time change a pure relabeling of the same orders would not produce.
+- **The "136 codes present on both the PEM103 and PEM107 sheets" premise does not hold against the
+  pricelist file as it currently exists** — an exhaustive, both-direction re-read of every sheet
+  (visible AND hidden `Version1`) finds ZERO codes shared between any PEM103-named and PEM107-named
+  sheet (Explorer 1). 136 is simply PEM107's own total code count. This rules out a pricelist
+  reference-data artifact as a third explanation for either division's item-level channel flips.
+  **V2** (exhaustive, both-direction check). See §6 Corrections log.
+
+**Both positions stand recorded, neither chosen for the reader**: the business says recording
+change (level A); the data, from three independent angles, says business/composition change (level
+V2). **Recommendation (not a decision): this should go back to the business as a specific,
+falsifiable question** — was there a named system/process/form change to how Tendering orders are
+entered or classified, and on what date? If no such specific change can be named, the
+recording-change hypothesis has no remaining mechanism to point to. Found: this task's Explorer 1
+(`output/summary/phase136_explorer1_report.md`), Explorer 2
+(`output/summary/phase136_explorer2_report.md`), Synthesis
+(`output/summary/phase136_synthesis_report.md`), and independent Validator
+(`output/summary/phase136_validator_report.md`), 2026-09-25.
+
+**PEM107 capacity-diversion hypothesis (above): SURVIVES, and is strengthened on one dimension —
+still level H, not proven.** The prior task's own conditional ("if the channel shift is a recording
+artifact, the hypothesis loses its basis and must be downgraded") does not fire, since its
+antecedent is false (the shift is not an artifact, per the finding above). A CONFIRMED-REAL
+Tendering surge (genuine institutional/utility demand, not relabeled retail orders) is, if
+anything, a more concrete basis for a capacity-diversion story than a merely apparent one — real
+large orders genuinely compete for real finished-goods stock and production time. The unresolved
+question is unchanged: whether shared capacity was actually diverted (a causal mechanism, still not
+directly observed) versus an independent 2026 operational constraint affecting both channels
+without real resource competition. Neither this task nor the prior one distinguishes those two
+readings.
+
+**No effect on the G1 Omni forecast or forward-test log for PEM103/PEM107 on the grounds
+investigated here** — the project's forecast scope has always been Omni-Channel-only, and this
+task finds that tag to be real and customer-linked, not a database artifact contaminating which
+rows count as Omni; there is nothing to retroactively reassign. A separate, pre-existing caution
+survives and is reaffirmed, not newly created: PEM103/PEM107's demand (including within the
+Omni-only series the forecast consumes) is driven by a churning customer population placing lumpy,
+large, tender-adjacent orders — grounds for continued wide uncertainty bands on these two
+divisions' G1 point forecasts, not for treating the 2026-09-30 scoring as provisional. See
+`output/summary/phase136_synthesis_report.md` §4.
 
 **PEM104 is made to order** — business-confirmed 2026-09-23. Consistent with data already recorded
 in this file:
