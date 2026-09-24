@@ -7621,6 +7621,11 @@ ADI ${it.adi} · CV² ${it.cv2} · ${it.cls}
   $('c2').querySelectorAll('.dot').forEach(dt=>dt.addEventListener('click',()=>openSku(dt.dataset.c)));
 }
 function chart4(){
+  // Caption corrected 2026-09-24: an earlier caption warned that CT codes on the PEM103/PEM107
+  // sheets are double-counted across bars. A verification audit checked this directly against
+  // the embedded data (every item's `sh` array has exactly one sheet; the 6 bars' item counts sum
+  // to exactly the dataset's total distinct item count, 0 overlap) and found the warning did not
+  // match the data -- see output/summary/audit_dates_supersessions_report.md, Part 4.
   const sheets=['PEM101','PEM102','PEM103','PEM104','PEM107','CI101'];
   const rows=sheets.map(sh=>{let a=0,p=0,c=0;
     for(const it of items){ if(!it.sh.includes(sh))continue;
@@ -7635,7 +7640,7 @@ function chart4(){
     s+=`<text x="${L-6}" y="${y+bh/2+4}" text-anchor="end" font-size="12" font-weight="${on?'700':'400'}" fill="#17324f">${r.sh}</text>`;
     s+=`<g class="shbar" data-sh="${r.sh}" style="cursor:pointer"><rect x="${L}" y="${y}" width="${Math.max(wa,1)}" height="${bh}" fill="${C_ACT}"/><rect x="${L+wa}" y="${y}" width="${wp}" height="${bh}" fill="${C_MPS}"/><title>${r.sh}: ${fmt(r.a+r.p,F.unit1)} (${r.c} รหัส)</title></g>`;
     s+=`<text x="${L+wa+wp+5}" y="${y+bh/2+4}" font-size="11" fill="#33506b">${F.unit1=='b'?((r.a+r.p)/1e6).toFixed(1)+' ลบ.':Math.round(r.a+r.p).toLocaleString()}</text>`;});
-  s+='</svg><div class="hint">คลิกแท่ง = กรองทั้งหน้า (คลิกซ้ำยกเลิก) — รหัส CT อยู่ทั้ง PEM103/PEM107 นับซ้ำข้ามแท่งได้</div>';
+  s+='</svg><div class="hint">คลิกแท่ง = กรองทั้งหน้า (คลิกซ้ำยกเลิก) — ตรวจสอบแล้ว (2026-09-24): ไม่มีรหัสสินค้าใดถูกนับซ้ำข้ามหน่วยธุรกิจ (ทุกรหัสอยู่ในหน่วยธุรกิจเดียว)</div>';
   $('c4').innerHTML=s;
   $('c4').querySelectorAll('.shbar').forEach(g=>g.addEventListener('click',()=>{F.sheet=(F.sheet==g.dataset.sh)?'ALL':g.dataset.sh;$('fSheet').value=F.sheet;render();}));
 }

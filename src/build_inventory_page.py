@@ -259,13 +259,31 @@ def build_page() -> str:
     history is embedded here to keep page size reasonable) — NOT the <b>daily rolling window</b> the server-side
     pipeline uses.</p>
 
-  <h2>Tier A — ตัวควบคุมสถานการณ์ (ปรับได้บนหน้านี้, ใช้ร่วมกันทุก division)</h2>
+  <h2>Tier A — ตัวควบคุมสถานการณ์ (scenario tool — UNCALIBRATED, assumed mechanics; ปรับได้บนหน้านี้, ใช้ร่วมกันทุก division)</h2>
+  <p class="hint">ตัวควบคุมด้านล่างใช้กลไก (mechanics) ที่<b>สมมติไว้</b>จาก METRICS.md Sec.5/16 (LTD + safety stock ตาม forecast) —
+    ยังไม่ผ่านการ calibrate กับพฤติกรรมจริง ต่างจากส่วน &quot;PEM101 — Robust Ensemble&quot; ด้านล่าง ซึ่ง calibrate กับผลลัพธ์จริงแล้ว
+    (METRICS.md Sec.20/22) — ห้ามใช้ตัวเลขจากส่วนนี้แทนส่วนที่ calibrate แล้ว.</p>
   <!-- source: config.yaml phase_e1_assumptions (defaults), segment_policy (Tier B, not editable here) -->
   <div class="ctrl-panel">
     {controls_html}
   </div>
   <p>คลังสินค้าที่นับเป็น sellable สำหรับ division ที่เลือก (เปลี่ยนตาม division):</p>
   <div class="item-check-list" id="warehouse-checklist"></div>
+
+  <div id="robust-minmax-section" style="display:none;">
+    <h2>PEM101 — Robust Ensemble (METRICS.md Sec.22) — <span style="color:#1baf7a;">PARTIALLY CALIBRATED</span></h2>
+    <p class="note-box" id="robust-ensemble-summary"></p>
+    <div id="chart-robust-curve" class="plotly-chart"></div>
+    <p class="hint">Range ratio = max(Min)/min(Min) ข้าม ensemble; robust ถ้า range_ratio &le; 1.25 (แสดง median);
+      sensitive ถ้า &gt; 1.25 (แสดงช่วงเต็ม และพารามิเตอร์ที่ทำให้เกิดช่วงนี้)</p>
+    <table class="report-table" id="robust-item-table">
+      <thead><tr>
+        <th>Item</th><th>Range ratio</th><th>Badge (1.25)</th>
+        <th>Min (median or range)</th><th>Max (median or range)</th><th>Driver (if sensitive)</th>
+      </tr></thead>
+      <tbody id="robust-item-table-body"></tbody>
+    </table>
+  </div>
 
   <h2>ผลรวม (Totals) — คำนวณใหม่ทุกครั้งที่เปลี่ยนตัวควบคุมหรือ division</h2>
   <div class="totals-box">
@@ -388,6 +406,48 @@ function renderMinVsCurrent(perItem) {{
   ], {{ margin: {{t:10}}, barmode: 'group', xaxis: {{tickangle: -60, tickfont:{{size:8}}}} }}, {{responsive: true}});
 }}
 
+function renderRobustMinMax(divisionData) {{
+  const section = document.getElementById('robust-minmax-section');
+  const rmm = divisionData.robust_minmax;
+  if (!rmm) {{ section.style.display = 'none'; return; }}
+  section.style.display = '';
+
+  const perDef = Object.entries(rmm.ensemble_per_definition).map(([k, v]) => `${{k}}=${{v}}`).join(', ');
+  document.getElementById('robust-ensemble-summary').innerHTML =
+    `<b>Ensemble size: ${{rmm.ensemble_size}}</b> members (${{perDef}}, ${{rmm.ensemble_collapsed}} collapsed by dedup) — ` +
+    `<b>${{rmm.n_robust_at_1_25}} robust</b> / <b>${{rmm.n_sensitive_at_1_25}} sensitive</b> at range_ratio&le;1.25. ` +
+    `Usable-stock definition ${{rmm.stockdef_matters ? 'DOES' : 'does NOT'}} move PEM101's Min/Max range ` +
+    `(see ${{rmm.source_report}}). Today's point: not_late ${{rmm.today_point.not_late_pct}}%, ` +
+    `stock value ${{fmtTHB(rmm.today_point.stock_value_thb)}} (${{rmm.today_point.source}}).`;
+
+  const tbody = document.getElementById('robust-item-table-body');
+  tbody.innerHTML = '';
+  for (const it of rmm.items) {{
+    const badge = it.robust_at_1_25
+      ? '<span style="color:#1baf7a;font-weight:700;">robust</span>'
+      : '<span style="color:#eb6834;font-weight:700;">sensitive</span>';
+    const minCell = it.robust_at_1_25 ? Math.round(it.median_Min).toLocaleString() + ' (median)'
+      : Math.round(it.min_Min).toLocaleString() + ' – ' + Math.round(it.max_Min).toLocaleString();
+    const maxCell = it.robust_at_1_25 ? Math.round(it.median_Max).toLocaleString() + ' (median)'
+      : Math.round(it.min_Max).toLocaleString() + ' – ' + Math.round(it.max_Max).toLocaleString();
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${{it.code}}</td><td>${{it.range_ratio.toFixed(2)}}</td><td>${{badge}}</td>` +
+      `<td>${{minCell}}</td><td>${{maxCell}}</td><td>${{it.driver_param || '-'}}</td>`;
+    tbody.appendChild(tr);
+  }}
+
+  const env = rmm.envelope;
+  const x = env.map(r => r.not_late_bin_pct);
+  Plotly.newPlot('chart-robust-curve', [
+    {{ x, y: env.map(r => r.min), name: 'min stock_value', mode: 'lines', line: {{color:'#898781', dash:'dot'}} }},
+    {{ x, y: env.map(r => r.median), name: 'median stock_value', mode: 'lines', line: {{color:'#2a78d6'}} }},
+    {{ x, y: env.map(r => r.max), name: 'max stock_value', mode: 'lines', line: {{color:'#898781', dash:'dot'}} }},
+    {{ x: [rmm.today_point.not_late_pct], y: [rmm.today_point.stock_value_thb], name: "today's point",
+       mode: 'markers', marker: {{color:'#eb6834', size:12, symbol:'star'}} }},
+  ], {{ margin: {{t:10}}, xaxis: {{title: 'not_late (%)'}}, yaxis: {{title: 'Stock value (THB), envelope across ensemble'}} }},
+  {{responsive: true}});
+}}
+
 function onDivisionChange() {{
   currentDivision = document.getElementById('division-select').value;
   const divisionData = getDivisionData(currentDivision);
@@ -396,6 +456,7 @@ function onDivisionChange() {{
   document.getElementById('snapshot-note').textContent = 'Snapshot pull date: ' + divisionData.snapshot_pull_date;
   renderWarehouseChecklist(divisionData);
   renderNoPolicyTable(divisionData);
+  renderRobustMinMax(divisionData);
   onControlChange();
 }}
 

@@ -51,9 +51,54 @@ DISABLED_DIVISIONS = {
              "for an independent sellable-warehouse set (output/summary/phaseE2_readiness_report.md).",
     "PEM102": "Only 3 of 26 items ever have any on-hand stock (11.5%), 3 units total -- far too "
               "few to establish a confident sellable-warehouse set.",
-    "PEM104": "Only 1 of 12 items ever has any on-hand stock (8.3%), 1 unit total -- a single "
-              "data point, not a basis for any warehouse assumption.",
+    "PEM104": "Made to order by business model -- no stock policy applicable (DATA_MAP.md Sec.7, "
+              "PROJECT_GRAPH.md dead end DE4, business-confirmed 2026-09-23). Consistent with the "
+              "data: only 1 of 12 items ever has any on-hand stock (8.3%), 1 unit total.",
 }
+
+
+def _build_robust_minmax_pem101() -> dict:
+    """METRICS.md Sec.22 (robust_minmax) data for PEM101, added 2026-09-24 -- reads the Modeler's
+    already-computed CSVs (output/summary/phase22_modeler_*.csv), no database access. See
+    output/summary/phase22_modeler_report.md for the full derivation and every figure's citation.
+    """
+    ensemble = pd.read_csv(os.path.join(SUMMARY_DIR, "phase22_modeler_ensemble_dedup.csv"))
+    range_ratio = pd.read_csv(os.path.join(SUMMARY_DIR, "phase22_modeler_range_ratio.csv"))
+    drivers = pd.read_csv(os.path.join(SUMMARY_DIR, "phase22_modeler_sensitive_drivers.csv"))
+    envelope = pd.read_csv(os.path.join(SUMMARY_DIR, "phase22_modeler_tradeoff_envelope.csv"))
+
+    per_def_counts = ensemble["stockdef"].value_counts().to_dict()
+    items = []
+    driver_by_code = dict(zip(drivers["itemcode"], drivers["driver_param"]))
+    for _, r in range_ratio.iterrows():
+        code = r["itemcode"]
+        robust_125 = bool(r["robust_at_1.25"])
+        items.append({
+            "code": code,
+            "range_ratio": round(float(r["range_ratio"]), 3),
+            "robust_at_1_10": bool(r["robust_at_1.1"]),
+            "robust_at_1_25": robust_125,
+            "robust_at_1_50": bool(r["robust_at_1.5"]),
+            "min_Min": round(float(r["min_Min"]), 2), "median_Min": round(float(r["median_Min"]), 2),
+            "max_Min": round(float(r["max_Min"]), 2),
+            "min_Max": round(float(r["min_Max"]), 2), "median_Max": round(float(r["median_Max"]), 2),
+            "max_Max": round(float(r["max_Max"]), 2),
+            "driver_param": driver_by_code.get(code) if not robust_125 else None,
+        })
+
+    return {
+        "ensemble_size": int(len(ensemble)),
+        "ensemble_per_definition": {str(k): int(v) for k, v in per_def_counts.items()},
+        "ensemble_collapsed": 0,
+        "stockdef_matters": False,
+        "n_robust_at_1_25": int(range_ratio["robust_at_1.25"].sum()),
+        "n_sensitive_at_1_25": int((~range_ratio["robust_at_1.25"]).sum()),
+        "items": items,
+        "envelope": envelope.to_dict("records"),
+        "today_point": {"not_late_pct": 98.28, "stock_value_thb": 18250000,
+                         "source": "output/summary/phaseJ3_report.md (J3 reconciled targets)"},
+        "source_report": "output/summary/phase22_modeler_report.md",
+    }
 
 
 def _build_pem101_division(config: dict) -> dict:
@@ -108,7 +153,10 @@ def _build_pem101_division(config: dict) -> dict:
         "segment_policy": sp,
         "snapshot_pull_date": series_bundle["pull_date"],
         "n_items_label": f"{len(items)} รายการ",
-        "warehouse_scope_note": "PEM101 128-item Fuse/Surge-Arrester pilot -- see STATUS.md whmap_report.md.",
+        "warehouse_scope_note": "PEM101 128-item Fuse/Surge-Arrester pilot -- see STATUS.md whmap_report.md. "
+                                 "PARTIALLY CALIBRATED (METRICS.md Sec.22 robust ensemble, 139 members -- "
+                                 "see the Robust Ensemble section below).",
+        "robust_minmax": _build_robust_minmax_pem101(),
     }
 
 
@@ -159,8 +207,25 @@ def _build_pilot_division(config: dict, division: str, raw: pd.DataFrame) -> dic
         "snapshot_pull_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S") + " (live pull, not a frozen file)",
         "n_items_label": f"{len(items)} รายการ (ของทั้งหมด {len(codes)}, เฉพาะที่มีนโยบาย)",
         "warehouse_scope_note": f"{division} -- E2 scoped pilot, sellable-warehouse list is a business assumption "
-                                 f"(output/summary/phaseE2_readiness_report.md, phaseE2pilot_report.md).",
+                                 f"(output/summary/phaseE2_readiness_report.md, phaseE2pilot_report.md). "
+                                 + _division_calibration_note(division),
     }
+
+
+def _division_calibration_note(division: str) -> str:
+    """Sec.22 (2026-09-24): per-division calibration/planning status shown in the page's scope
+    note, so a reader never mistakes this page's scenario values for a calibrated recommendation
+    outside PEM101's own Robust Ensemble section. Cited: PROJECT_GRAPH.md Q10/Q22/Q23 nodes."""
+    if division == "PEM103":
+        return ("PLANNED UNDER G3, NOT G2 (PROJECT_GRAPH.md Q22, business-confirmed 2026-09-23): "
+                "PEM103 is a transformers/tendering-pipeline business, not a stock-policy division -- "
+                "the Tier A scenario values on this page are illustrative only, not a basis for "
+                "planning PEM103.")
+    if division == "PEM107":
+        return ("UNCALIBRATED (METRICS.md Sec.20; Phase J3 found no stock-based policy fits both "
+                "the 2024-2025 and 2026 periods simultaneously) -- the Tier A scenario values on "
+                "this page are a scenario tool only, not a calibrated policy.")
+    return ""
 
 
 def build_data() -> dict:
