@@ -362,6 +362,25 @@ always stated.
                       periods. If that set is empty, the calibration-only
                       set may be used, labelled calibration-only in every
                       output.
+
+    SUPERSEDED, 2026-09-24: the deduplication rule below treated two
+    members as distinct whenever their usable-stock definitions differed,
+    even when every other parameter matched. For PEM101 this produced a
+    139-member ensemble (59 `current` + 21 `fg_prefixed_only` + 59
+    `all_stockholding_except_qa_fmto_fmts`) in which the 59 `current` and
+    59 `all_stockholding_except_qa_fmto_fmts` members shared the exact
+    same (reorder level, order-up-to level, review interval, replenishment
+    lead) tuple and therefore simulated to numerically identical Min_e/
+    Max_e — only 80 tuples were actually distinct for that purpose
+    (independent Validator, `output/summary/phase22_validator_report.md`
+    Part 1, lines 81-95). Min_e/Max_e do not read on-hand stock at all, so
+    the usable-stock definition cannot affect them or range_ratio — the
+    same run's `phase22_modeler_stockdef_effect.csv` found a difference of
+    0.0 for every item (DATA_MAP.md §4 Trap 19). Counting such members
+    twice biased the reported medians toward whichever definition happened
+    to contribute more passing combinations. Replaced by the two rules
+    below.
+
     per item, for each ensemble member e:
                       Min_e, Max_e per sections 5 and 16, using e's review
                       interval, replenishment lead, reorder level,
@@ -389,3 +408,12 @@ always stated.
 - The trade-off curve is the input for the service-level decision D2. It
   is valid only for divisions with a non-empty robust_ensemble.
 - Placeholder and excluded items receive no Min or Max, as before.
+- Deduplicate ensemble members on the parameters that affect the quantity
+  being computed. For Min, Max, range_ratio and the trade-off curve, these
+  are reorder level, order-up-to level, review interval and replenishment
+  lead time; usable-stock definition does not enter them. For quantities
+  that read on-hand stock — the order quantity needed today (Min minus
+  on-hand) and current_stock_value — usable-stock definition matters and
+  members stay distinct.
+- Every output states which deduplication applied and the resulting
+  member count.
