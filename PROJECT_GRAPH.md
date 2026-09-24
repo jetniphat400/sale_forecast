@@ -305,7 +305,7 @@ flowchart TD
 | T1 | in progress | — | G1 | STATUS.md, "First scoreable target month is 2026-08, safe to score only from 2026-09-30" | time |
 | T2 | in progress | — | Q10 | STATUS.md, "Prospective posting-delay measurement: STARTED 2026-09-22" (+60 days ≈ 2026-11-21) | time |
 | **G1** | in progress | D1, D2, D3, D4, T1 | — | Forecasting method adopted and locked; Phase F (compare against the team's current method) not started | time (Phase F) |
-| **G2** | **uncalibrated — scope split 2026-09-23** | D1, D5, D6, D7, D8, D9 | G3 (partially) | **Scope now PEM101 and PEM107 only** (business-confirmed fulfilment is stock-driven for these two, DATA_MAP.md §7). PEM103 moved out — feeds G3 via Q22 (tender-pipeline) instead. PEM104 was never in scope for stock policy — see DE4. Phase J's calibration_gap; every figure banner-tagged in STATUS.md | data, pending J3 (Q10) — corrected 2026-09-25, was "person" |
+| **G2** | **uncalibrated — scope split 2026-09-23** | D1, D5, D6, D7, D8, D9 | G3 (partially) | **Scope now PEM101 and PEM107 only** (business-confirmed fulfilment is stock-driven for these two, DATA_MAP.md §7). PEM103 moved out — feeds G3 via Q22 (tender-pipeline) instead. PEM104 was never in scope for stock policy — see DE4. Phase J's calibration_gap; every figure banner-tagged in STATUS.md | data, pending J3 (Q10) — corrected 2026-09-23, was "person" |
 | **G3** | blocked on a person | Q17-Q21 | — | No question nodes existed before this task; all proposed, none answered | **person** |
 
 ## Time-bound tracks (detail)

@@ -51,6 +51,7 @@ import pandas as pd
 import yaml
 
 sys.path.insert(0, os.path.dirname(__file__))
+from channel_scope import revenue_type_sql_clause, revenue_types_for_scope
 from db import run_query
 from pricelist_reader import load_visible_product_rows
 
@@ -117,7 +118,7 @@ def pull_raw_sales(config: dict, item_codes: list, division_by_code: dict) -> pd
     `division`; the database's own value is kept unmodified as `division_db_raw` so discrepancies
     between the two can still be inspected, never silently discarded."""
     source_table = config["source_table"]
-    revenue_type = config["revenue_type"]
+    revenue_types = revenue_types_for_scope(config)
     statuses = config["status_basis"]
     start_date = config["date_range"]["start"]
 
@@ -127,15 +128,15 @@ def pull_raw_sales(config: dict, item_codes: list, division_by_code: dict) -> pd
         SELECT itemcode, createDate, forecast_date, qty, sale, status, division AS division_db_raw, revenue_type
         FROM {source_table}
         WHERE itemcode IN ('{code_list}')
-          AND revenue_type = '{revenue_type}'
+          AND {revenue_type_sql_clause(config)}
           AND status IN ('{status_list}')
           AND createDate >= '{start_date}'
     """
     df = run_query(sql)
     logger.info(
-        "Pulled %d raw rows: %d items, revenue_type=%s, status in %s, createDate >= %s "
+        "Pulled %d raw rows: %d items, channel_scope=%s (revenue_type in %s), status in %s, createDate >= %s "
         "(no division filter — division is attached from the pricelist below, not queried)",
-        len(df), len(item_codes), revenue_type, statuses, start_date,
+        len(df), len(item_codes), config.get("channel_scope", "omni"), revenue_types, statuses, start_date,
     )
     df["division"] = df["itemcode"].map(division_by_code)
     unmapped = df[df["division"].isna()]

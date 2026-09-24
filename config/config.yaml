@@ -95,6 +95,24 @@ division: "PEM101"
 # business unit; other channels are out of scope for forecasting.
 revenue_type: "Omni Channel"
 
+# --- Channel scope (METRICS.md Sec.21, added 2026-09-25 for Q23) ------------------------------
+# channel_scope selects which revenue_type value(s) the pipeline pulls and forecasts against.
+#   omni           : revenue_type = 'Omni Channel' only -- PROJECT DEFAULT AND OFFICIAL
+#                    REQUIREMENT. Omni Channel remains the project default regardless of what
+#                    Q23's channel-scope investigation finds (STATUS.md, this task's decision).
+#   omni_tendering : revenue_type IN ('Omni Channel', 'Tendering') -- a CONTINGENCY SCOPE ONLY,
+#                    not an alternate default. It exists because Q23 (PROJECT_GRAPH.md) asks
+#                    whether PEM103/PEM107's stock and delivery behaviour is governed by demand
+#                    shared with the Tendering channel, not captured by an Omni-only scope -- see
+#                    METRICS.md Sec.21 for the same-target comparison rule this scope feeds. This
+#                    key must never be flipped to omni_tendering as a project-wide default without
+#                    a fresh business decision; it is here so that comparison can be run and
+#                    reproduced, not so the pipeline quietly changes what it reports.
+# When channel_scope=omni (the default), every query this key touches produces the exact same
+# revenue_type = 'Omni Channel' filter as before this key existed -- a single-value IN-list is
+# logically identical to an equality filter, so the default pipeline run is unchanged.
+channel_scope: "omni"
+
 # --- Sales status basis --------------------------------------------------
 # Actual plus MPS matches the Phase 1 convention.
 status_basis:

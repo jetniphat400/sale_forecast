@@ -30,6 +30,7 @@ import pandas as pd
 import yaml
 
 sys.path.insert(0, os.path.dirname(__file__))
+from channel_scope import revenue_type_sql_clause, revenue_types_for_scope
 from db import run_query
 from leakage_guard import load_min_margin_days
 from pricelist_reader import load_visible_product_rows
@@ -79,7 +80,7 @@ def get_forecast_scope(config: dict) -> pd.DataFrame:
 def pull_raw_sales(config: dict, scope: pd.DataFrame) -> pd.DataFrame:
     """No division filter -- see module docstring. division_db_raw kept for reference only."""
     source_table = config["source_table"]
-    revenue_type = config["revenue_type"]
+    revenue_types = revenue_types_for_scope(config)
     statuses = config["status_basis"]
     start_date = config["date_range"]["start"]
     item_codes = sorted(scope["code"].unique())
@@ -90,15 +91,16 @@ def pull_raw_sales(config: dict, scope: pd.DataFrame) -> pd.DataFrame:
         SELECT itemcode, createDate, forecast_date, qty, sale, status, division AS division_db_raw, revenue_type
         FROM {source_table}
         WHERE itemcode IN ('{code_list}')
-          AND revenue_type = '{revenue_type}'
+          AND {revenue_type_sql_clause(config)}
           AND status IN ('{status_list}')
           AND createDate >= '{start_date}'
     """
     df = run_query(sql)
     logger.info(
-        "Pulled %d raw rows: %d items across %d divisions, revenue_type=%s, status in %s, createDate >= %s "
-        "(no division filter — division attached from pricelist below).",
-        len(df), len(item_codes), scope["division"].nunique(), revenue_type, statuses, start_date,
+        "Pulled %d raw rows: %d items across %d divisions, channel_scope=%s (revenue_type in %s), "
+        "status in %s, createDate >= %s (no division filter — division attached from pricelist below).",
+        len(df), len(item_codes), scope["division"].nunique(), config.get("channel_scope", "omni"),
+        revenue_types, statuses, start_date,
     )
     division_by_code = dict(zip(scope["code"], scope["division"]))
     df["division"] = df["itemcode"].map(division_by_code)
