@@ -1653,6 +1653,30 @@ separate independent Validator; plus a source-level bug fix (Part 3) done direct
   DATA_MAP.md's own rule (no customer names/codes in project documentation, repository is public).
   Raw pulls with identifiers are cached under `output/data/` (gitignored, never committed).
 
+**METRICS.md Sec.22 (robust_minmax) added — DONE (2026-09-24).** Documentation only: no database
+access, no code changes, no node status changes. Defines `robust_minmax` (robust_ensemble,
+per-item Min/Max per ensemble member, range_ratio, robust/sensitive item split at range_ratio ≤/>
+1.25 with 1.10/1.50 sensitivity counts also required, and the section 16/19 trade-off curve feeding
+the D2 service-level decision) ahead of Max-Min actually being computed with it, per CONVENTIONS.md.
+
+**Part 1 — PEM101 ensemble counts confirmed from the record, not computed here.** The record gives
+**one** number for PEM101, not two: **59 of 4,130** grid combinations (`stock_definition="current"`)
+within tolerance (`not_late` ±3pp, stock value ±15%) **on both the calibration and validation
+periods jointly** — STATUS.md's own Phase J3 entry above ("**PEM101: PARTIALLY CALIBRATED.** 59/
+4,130 combinations fit both periods within tolerance..."); `output/summary/phaseJ3_report.md` line
+46 ("PEM101 | **Partially calibrated** — 59/4,130 combos fit both periods at realistic stock");
+`output/summary/phaseJ3_2_calibration_summary.json` (`"division":"PEM101","stock_definition":
+"current","n_passing":59,"n_total":4130`). **No source anywhere in the record separately states a
+calibration-period-ONLY count** (i.e., before the validation-period filter is applied) — the
+Modeler's own grid-search code (`src/investigations/phaseJ3_run_calibration.py`) computes
+`n_passing` as combinations meeting BOTH windows' tolerance at once, and every narrative report
+(STATUS.md, the Phase J3 report, the independent Validator's check) cites only that joint figure.
+Per this task's own instruction (do not compute anything), no calibration-only count is derived
+here from the underlying grid CSV — this is reported as a gap in the record, not filled. Two other
+`stock_definition` variants exist in the same JSON for PEM101 (`fg_prefixed_only`: 21/4,130;
+`all_stockholding_except_qa_fmto_fmts`: 59/4,130, identical to `current`) — noted for completeness;
+`current` is the variant every narrative report headlines.
+
 **Phase F — Measure the value**: compare against the team's current method, and estimate what
 would happen with no intervention at all, since on-time delivery has already improved from 57.8%
 to 73.2% with no system in place.

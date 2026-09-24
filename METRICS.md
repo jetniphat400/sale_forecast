@@ -353,3 +353,39 @@ always stated.
 - The allocation share obeys the point-in-time rule: no data after the
   origin.
 - The historical initial stock is unknown; the warm-up absorbs it.
+
+## 22. robust_minmax
+
+    robust_ensemble : the parameter combinations recorded in the
+                      division's section 20 calibration report as within
+                      tolerance on BOTH the calibration and validation
+                      periods. If that set is empty, the calibration-only
+                      set may be used, labelled calibration-only in every
+                      output.
+    per item, for each ensemble member e:
+                      Min_e, Max_e per sections 5 and 16, using e's review
+                      interval, replenishment lead, reorder level,
+                      order-up-to level and usable-stock definition
+    range_ratio     = max_e(Min_e) / min_e(Min_e), over members with
+                      Min_e > 0; items where every Min_e is 0 are reported
+                      separately
+    robust item     : range_ratio ≤ 1.25 — report median Min and median
+                      Max across the ensemble as the recommended values
+    sensitive item  : range_ratio > 1.25 — report the full range; no single
+                      value is recommended, and the parameter whose variation
+                      drives the range is named
+    trade-off curve : for each ensemble member, hold its review interval,
+                      replenishment lead and usable-stock definition fixed,
+                      and vary its reorder level across a grid while keeping
+                      the member's gap between reorder and order-up-to level
+                      constant; simulate per section 16 and record
+                      stock_value and not_late (section 19, unit-weighted)
+                      at each grid point. The curve reported is the
+                      envelope across members: minimum, median and maximum
+                      stock_value at each not_late level.
+
+- The 1.25 threshold is an assumption; also report robust and sensitive
+  counts at 1.10 and 1.50 so the split's own sensitivity is visible.
+- The trade-off curve is the input for the service-level decision D2. It
+  is valid only for divisions with a non-empty robust_ensemble.
+- Placeholder and excluded items receive no Min or Max, as before.
