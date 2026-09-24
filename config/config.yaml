@@ -95,7 +95,7 @@ division: "PEM101"
 # business unit; other channels are out of scope for forecasting.
 revenue_type: "Omni Channel"
 
-# --- Channel scope (METRICS.md Sec.21, added 2026-09-25 for Q23) ------------------------------
+# --- Channel scope (METRICS.md Sec.21, added 2026-09-24 for Q23) ------------------------------
 # channel_scope selects which revenue_type value(s) the pipeline pulls and forecasts against.
 #   omni           : revenue_type = 'Omni Channel' only -- PROJECT DEFAULT AND OFFICIAL
 #                    REQUIREMENT. Omni Channel remains the project default regardless of what

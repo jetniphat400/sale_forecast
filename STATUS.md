@@ -1233,7 +1233,7 @@ their findings without gathering new data.
     CANNOT BE DETERMINED why), only ~25-29% of orders carry any quotation trace, and matched
     quotations precede the PO by a median of just 3 days (confirmed independently from both
     directions). `output/summary/phaseJ2_explorerA_report.md`.
-  - **Explorer B (due dates aligned to delivery) — UNDETERMINED, corrected 2026-09-25 (was:
+  - **Explorer B (due dates aligned to delivery) — UNDETERMINED, corrected 2026-09-23 (was:
     CONTRADICTS, moderate-high confidence — kept below, superseded, not deleted).** The day-0
     delivery spike is real and anomalous (3.8-37.6x what the surrounding spread predicts —
     genuinely not just "naturally fast deliveries") and is NOT specific to `ForecastDelDate`:
@@ -1251,7 +1251,7 @@ their findings without gathering new data.
   - **Explorer C (component stock/fast assembly) — CONTRADICTS as a general explanation,
     moderate-high confidence.** Decisive reverse-direction test: on-hand stock strongly,
     monotonically correlates with FASTER delivery (order-level 30.5% fast at zero stock vs 85.6%
-    at substantial stock) — the opposite of the hypothesis. **Recorded explicitly (2026-09-25): at
+    at substantial stock) — the opposite of the hypothesis. **Recorded explicitly (2026-09-23): at
     the same moderate-high confidence level Explorer C itself established, this finding — items
     holding stock deliver fast 85.6% of the time against 30.5% without — supports stock as the
     driver of timely delivery**, not merely "contradicts Hypothesis C." Both framings describe the
@@ -1283,7 +1283,7 @@ their findings without gathering new data.
   different definition of usable stock than the assumption-labelled "sellable" warehouses (plus
   possibly a distinct batch-production supply channel), and a realistic lead time far shorter than
   60+3+30=93 days for the bulk of order volume (worded change proposed only, not implemented, per
-  task instruction). ~~**Calibration is NOT achievable from data alone.**~~ **CORRECTED 2026-09-25,
+  task instruction). ~~**Calibration is NOT achievable from data alone.**~~ **CORRECTED 2026-09-23,
   kept not deleted: this was premature.** Phase J's calibration replayed the CURRENT min/max
   settings, already established as unfollowed (existing settings are known-unusable — Locked
   Decisions), so it tested an unused policy, not whether Section 16's own mechanics could be fitted
@@ -1301,7 +1301,7 @@ their findings without gathering new data.
 - **Full test suite: 76 passed** (unchanged) plus **6/6** `test_inventory_parity.py`. Sensitive-
   content scan of every new/changed file: zero matches (see commit).
 
-**Phase J3 — Inverse calibration (METRICS.md Sec.20), target node Q10 — DONE (2026-09-25).**
+**Phase J3 — Inverse calibration (METRICS.md Sec.20), target node Q10 — DONE (2026-09-23).**
 Three parallel agents (Validator, Explorer D, Explorer BOM — independent, per `AGENTS.md`: same
 capability, disjoint questions), then a single Modeler (grid search needs all inputs together in
 one view, per the decomposition test), then a separate Validator for the independent check.
@@ -1416,7 +1416,7 @@ one view, per the decomposition test), then a separate Validator for the indepen
   cross-scope accuracy claim.
 - No database access, no code changes. Full test suite unaffected (no code touched).
 
-**Phase Q23 — channel_scope comparison (METRICS.md Sec.21), target node Q23 — DONE (2026-09-25).**
+**Phase Q23 — channel_scope comparison (METRICS.md Sec.21), target node Q23 — DONE (2026-09-24).**
 Four agents: a single Explorer (Part 1, one DB connection, channel-mix crosstab + Cube_CES pull),
 a single Modeler (Parts 2-3, same capability, needs both inputs in one view per the decomposition
 test), a single Analyst in parallel with the Modeler (Part 4, different capability, independent of
@@ -1513,7 +1513,7 @@ Modeler/Analyst/Explorer file read).
 
 **Phase 136 — does PEM103/PEM107's 2026 channel-mix reversal reflect a recording change or a
 business change?, target node Q23 (through it, Q10's PEM107 branch and the G1 forecasts for
-PEM103/PEM107) — DONE (2026-09-25).** Two parallel Explorers (order side, attribute side — per
+PEM103/PEM107) — DONE (2026-09-24).** Two parallel Explorers (order side, attribute side — per
 this task's own instruction; the decomposition test is satisfied since the two angles need
 different data/methods and neither depends on the other's result), then a Synthesizer, then a
 separate independent Validator; plus a source-level bug fix (Part 3) done directly.
