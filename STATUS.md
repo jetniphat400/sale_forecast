@@ -64,33 +64,40 @@ regenerated snapshot of it, not an independent status record kept by hand.**
   locked (D1-D4); Phase F (compare against the team's current method) not started. PEM103/PEM107
   were checked for a channel-mix recording bug that would require correcting the forecast/
   forward-test log before 2026-09-30 scoring — none found. (PROJECT_GRAPH.md, node G1.)
-- **G2 (inventory policy)** — uncalibrated, scope split 2026-09-23; PEM101 robust ensemble built
-  2026-09-24. Now covers PEM101 and PEM107 only; PEM103 moved out (feeds G3 via Q22); PEM104 was
-  never in scope (see DE4). PEM101's METRICS.md §22 robust_minmax ensemble (139 members, all 3
-  usable-stock definitions, 0 collapsed by dedup) is built: all 112 eligible items are SENSITIVE
-  (range_ratio≈8.0, driver `r_months`) at every threshold tested (1.10/1.25/1.50) — zero robust
-  items. The usable-stock-definition choice does not move any item's Min/Max (V2). The stock_value
-  vs. not_late trade-off curve is built and shown on the inventory page with today's point (98.28%
-  not_late, THB 18.25M) marked inside the envelope. The service-level choice, corrected 2026-09-24,
-  is no longer "blocked on a person" — it is now "option to be built": the inventory page will offer
-  selectable not_late targets with their stock consequences shown, so the business chooses directly
-  on the page rather than blocking the pipeline; the selectable-target control itself is not yet
-  built. (PROJECT_GRAPH.md, node G2.)
+- **G2 (inventory policy)** — uncalibrated, scope split 2026-09-23; PEM101 curve target selector
+  built 2026-09-24. Now covers PEM101 and PEM107 only; PEM103 moved out (feeds G3 via Q22); PEM104
+  was never in scope (see DE4). PEM101's METRICS.md §22 robust_minmax ensemble was corrected
+  2026-09-24 (later task, same day): the prior 139-member ensemble double-counted 59 parameter
+  tuples shared between two usable-stock definitions — only 80 are simulation-distinct
+  (DATA_MAP.md §4 Trap 20). Every item still returns the SAME range_ratio (≈8.0), carrying no
+  item-level information, so the robust/sensitive table was REMOVED from the page and replaced by
+  a note that the data cannot identify a reorder level — choosing a not_late target is what sets
+  it. The trade-off curve (locked grid/window/weighting in `config.yaml`'s `trade_off_curve`
+  block) sits close to today's point (median curve at the 98% bin: THB 17.21M, 6.00% below today's
+  THB 18.25M; median curve's not_late at today's stock value: ~98.2%, 0.1pp below today's 98.28%).
+  The service-level choice is no longer "blocked on a person," and as of 2026-09-24 the "option to
+  be built" is now BUILT: the inventory page offers 3 presets plus a free not_late-target slider
+  (Python-precomputed dense grid, page interpolates only, never simulates), showing per-item
+  Min/Max, total stock value with its envelope band, and the change vs today's on-hand.
+  (PROJECT_GRAPH.md, node G2.)
 - **G3 (operations plan)** — blocked on a person. Needs business input on Q19 (assembly/
-  inspection time), Q20 (capacity) and Q21 (MTS/MTO/ETO split) — each blocked on a person; Q21's
-  value meanings were recorded 2026-09-24 (level A: MTO = made to order, MTS = made to stock, ETO =
-  engineering to order), but which value applies per item remains unverified (the field stays
-  order-level, not fixed per item) — Q21 is still blocked on a person for that reason. Q17 (batch
-  cadence/size) is separately in progress, blocked on data (a working `cube_final` connection), not
-  on a person; Q18 (BOM/shared components) is resolved. (PROJECT_GRAPH.md, node G3 and nodes
-  Q17-Q21.)
+  inspection time) and Q20 (capacity) — each blocked on a person. Q21 (MTS/MTO/ETO split) was
+  corrected 2026-09-24 (CONVENTIONS.md error-review rule 7 — do not mark blocked on a person until
+  the data route is exhausted) from "blocked on a person" to "in progress — data route": value
+  meanings are now recorded (level A: MTO = made to order, MTS = made to stock, ETO = engineering
+  to order), and `manufacturing_type`'s own mode/majority-vote per item is an untested data route
+  proposed as the next step, before falling back to business input. Q17 (batch cadence/size):
+  `cube_final`'s itemcode join is now confirmed working (2026-09-24, DATA_MAP.md §4 Trap 7
+  resolved — 75.21% forward match rate), unblocking data access, though batch dates/sizes
+  themselves are not yet extracted from the newly-accessible rows. Q18 (BOM/shared components) is
+  resolved. (PROJECT_GRAPH.md, node G3 and nodes Q17-Q21.)
 - **PEM101** — G1 method locked. G2: partially calibratable (59 of 4,130 grid combinations fit
   both periods within tolerance; no single parameter uniquely identified). Robust ensemble
-  (METRICS.md §22, 2026-09-24): 0 of 112 eligible items robust at range_ratio≤1.25 — every item is
-  sensitive, driven by the reorder level (`r_months`); the usable-stock-definition assumption does
-  not affect this. Trade-off curve ready; a target service level is now an "option to be built" on
-  the inventory page (not blocked on a person, per the 2026-09-24 correction above), not yet built.
-  (PROJECT_GRAPH.md, nodes Q10, G2.)
+  (METRICS.md §22, corrected 2026-09-24): 80 distinct members (not 139); every item still returns
+  the same range_ratio (≈8.0, driver `r_months`), so the range_ratio table carries no item-level
+  information and was replaced by a not_late-target selector — the business now picks a target
+  directly on the inventory page, with per-item Min/Max, stock value and its envelope band, and
+  the change vs today's on-hand shown live. (PROJECT_GRAPH.md, nodes Q10, G2.)
 - **PEM102** — covered only by the project-wide G1 forecasting-method decision (D2, Top-down
   Combination); PROJECT_GRAPH.md carries no division-specific open question for PEM102.
 - **PEM103** — moved out of G2. Q22: answered (level A) — transformers/tendering-pipeline

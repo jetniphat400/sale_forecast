@@ -131,6 +131,27 @@ evidence the table lacks this scope's data — item codes from the prior investi
 (`output/summary/phaseJ2_explorerD_report.md`). **Do not read a future empty pull of this exact
 query as "no data" — re-attempt it.** See §4 Traps.
 
+**RESOLVED, 2026-09-24 (this task, Part 0, `src/investigations/phase23_part0_cubefinal_join.py`, one
+connection attempt): the join key was never broken.** `itemcode` = `cube_Sale_APD.itemcode` (exact
+string match, no case/whitespace/leading-zero transform needed) IS the working key — re-running the
+exact same query that returned zero rows in Phase J2/J3 now returns 28,000 rows, 265 distinct
+itemcodes. **Forward match rate** (in-scope item → ≥1 cube_final row): PEM101 87.50% (112/128),
+PEM103 36.78% (32/87), PEM107 88.24% (120/136), combined 75.21% (264/351). **Reverse match rate**
+(distinct cube_final itemcode → is it in this project's 351-item scope): 264 of 5,092 distinct
+itemcodes table-wide (5.18%) — low and expected, since cube_final tracks every PEM division's
+production, not just this project's scope; cube_final holds 45,358 rows table-wide. **The prior
+zero-row pulls are best explained by a data-timing gap** (these rows had not yet been written at
+pull time, Phase J2/J3, 2026-09-22/23), **not a key-format bug** — format samples (fresh live pulls
+of both tables' itemcode columns) found no case, whitespace or leading-zero mismatch.
+`cube_Sale_APD` also carries a genuine `productID` column (62-column schema,
+`output/summary/phase23_part0_cube_sale_apd_columns.csv`) — not tested as an alternate key, since
+the plain `itemcode` join already works; recorded as an untested alternative for a future task if
+`itemcode` coverage is ever found insufficient. New shared loader: `src/cube_final_pull.py`
+(mirrors `src/cube_ces_pull.py`'s no-pull-time-date-filter pattern); regression test
+`tests/test_cube_final_pull.py` (3/3 pass). Full detail:
+`output/summary/phase23_part0_cubefinal_join_report.md`. **Level V1** (one script, one connection,
+one session).
+
 ### Cube_PO_Exact
 Would be the ideal empirical procurement-lead-time source (po_date to fulfilment_date). **Trust
 note**: had zero rows for any of the 68 original pilot codes (STATUS.md:2013-2015) — **V1**, one
@@ -455,6 +476,20 @@ produced a wrong result, with the correct handling and the report that found it.
    recalled number is not reported as fact). **Level V1** (one diagnostic pass, this task); the
    itemcode-filtered-query question remains **CANNOT BE DETERMINED**, unchanged from above.
 
+   **RESOLVED, 2026-09-24 (a separate, later task, Part 0, `src/investigations/
+   phase23_part0_cubefinal_join.py`, one connection attempt): the itemcode-filtered-query question
+   is now answered.** Re-running the EXACT same `itemcode IN (<351-item scope>)` query that
+   returned zero rows in Phase J2/J3 now returns 28,000 rows (265 distinct itemcodes; forward match
+   rate 75.21% combined, PEM101 87.50%/PEM103 36.78%/PEM107 88.24%). Fresh live-sample format
+   comparison (cube_final vs cube_Sale_APD itemcode, 50 distinct values each) found no case,
+   whitespace or leading-zero mismatch. **The join key was never broken — the prior zero-row pulls
+   are best explained by a data-timing gap** (these rows had not yet been written at the time of
+   the Phase J2/J3 pulls), not a query or format bug. New shared loader `src/cube_final_pull.py`
+   (mirrors the Trap-18 no-pull-time-date-filter pattern) and regression test
+   `tests/test_cube_final_pull.py` (3/3 pass) now exist for any future pull. Full detail:
+   `output/summary/phase23_part0_cubefinal_join_report.md`. **Level V1** (one script, one
+   connection, one session, this later task).
+
 8. **A one-direction "no stock" conclusion (warehouse-named-for-a-division → stock) was wrong for
    two divisions.** Naive reading: if a warehouse code is named for a division and shows no stock,
    that division holds no stock anywhere. Reality: the reverse direction (item → warehouse) found
@@ -596,6 +631,34 @@ produced a wrong result, with the correct handling and the report that found it.
     (the verified `Min_e` formula and the ensemble's own `r_months` range) rather than merely an
     empirical coincidence. **Level V2** (mathematically forced given the two verified facts, not
     just an observation that could differ by chance).
+
+20. **Deduplicating the METRICS.md §22 ensemble on the full parameter+usable-stock-definition
+    identity, instead of on the parameters that actually affect the simulated output, silently
+    double-weighted the median of the trade-off curve at some not_late levels but not others.**
+    Naive reading: the 139-member ensemble's median stock_value at each not_late level is a fair
+    summary, since every member is "one passing combination." Reality: 59 of those 139 members
+    (`current` and `all_stockholding_except_qa_fmto_fmts`) share the exact same (reorder level,
+    order-up-to level, review interval, replenishment lead) tuple and therefore simulate to
+    IDENTICAL not_late/stock_value — only 80 tuples are actually distinct
+    (`output/summary/phase22_validator_report.md` Part 1). Recomputing the curve on the 80 distinct
+    members (METRICS.md §22, amended this task; locked grid/window in `config.yaml`'s
+    `trade_off_curve` block) moved the median at the 97% not_late bin from THB 16,446,841 to THB
+    14,821,790 (−9.9%), but left the 98% bin's median almost unchanged (THB 17,232,437 → THB
+    17,214,828, −0.1%) — the duplicated members happened not to be the 98%-bin's own
+    median-determining points. **Correct handling**: METRICS.md §22 now requires deduplication on
+    only the parameters that affect the quantity being computed, and every output must state which
+    deduplication applied. **Today's operating point** (not_late 98.28%, stock value THB
+    18,247,625.22 — `output/summary/phaseJ3_report.md`, `phaseJ3_validator_stock_value_summary.csv`)
+    **sits close to the corrected median curve at both ends**: the median curve's stock_value at
+    the 98% bin (THB 17,214,828.30) is 6.00% below today's actual holding, and the median curve's
+    interpolated not_late at today's exact stock_value is ~98.2%, 0.1pp below today's actual
+    98.28% — both readings unchanged in substance from the un-deduplicated run, despite the 97%-bin
+    median having moved materially. Independently confirmed by a from-scratch Validator: both bins'
+    min/median/max/count match to 4 decimal places (`output/summary/phase23_validator_report.md`,
+    `phase23_validator_envelope.csv` vs. `phase23_modeler_tradeoff_envelope.csv`). Found: this
+    task, 2026-09-24, `src/investigations/phase23_modeler.py`,
+    `output/summary/phase23_modeler_report.md`. **Level V2** (independent Validator recomputation,
+    exact floating-point match).
 
 ---
 
