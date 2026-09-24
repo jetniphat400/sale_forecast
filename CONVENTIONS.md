@@ -107,6 +107,16 @@
   for Phase 4, not a fact, until a source is checked — see `STATUS.md` §8.4 ("To be derived from
   `Cube_Inventory_Exact` instead of requested," holding cost) for the related Phase 4 holding-cost
   approximation this rate would feed into.
+- **Verify, never recall.** No figure, date, threshold, attribution or earlier finding may be
+  written into a document, report or prompt from memory. Check it against the repository, the
+  database, git history or Get-Date first, and cite what was checked. Facts taken from past chat
+  summaries or earlier reports are level H until re-verified. A conclusion backed by evidence may
+  only be reversed by new evidence, never by a belief that it was wrong. Written after repeated
+  errors from recall: the SBC model assignment, the 136 shared codes, the 73.2 percent benchmark,
+  and 43 documents dated 2026-09-25 while every commit was dated 23 to 24 September.
+- **Dates in documents.** Every date written into a document comes from Get-Date for the present
+  or from git history for past changes. If the two sources disagree, stop and report; do not
+  choose.
 
 ## Project map (added 2026-09-24)
 
