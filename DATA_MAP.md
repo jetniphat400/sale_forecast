@@ -275,7 +275,11 @@ items, not scope-representative.
 **ORDER-level attribute, not a fixed per-item classification**: 100 of 113 items show more than one
 value across their own sales rows (STATUS.md:2329-2332), re-confirmed later (STATUS.md:2852) —
 **V2**. It describes production strategy per order, not a fixed make-vs-buy classification
-(STATUS.md:2332).
+(STATUS.md:2332). **Business-confirmed value meanings, 2026-09-24: MTO = made to order, MTS = made
+to stock, ETO = engineering to order** — **A**. Recorded beside, not in place of, the earlier V2
+finding directly above: this field is set per order, and a single item often carries more than one
+value across its own sales rows, so even with the meanings now confirmed it remains unusable as a
+fixed per-item classification without further derivation (Q21, PROJECT_GRAPH.md).
 
 **warehouse field (sales-order tables)** — **no sales-order-level table checked (cube_Sale_APD,
 Cube_CES, or any other) carries a warehouse field at all** — repeated, independently re-affirmed
@@ -740,6 +744,20 @@ themselves derived from data, but consistent with data already recorded elsewher
   (Omni+Tendering) demand into a stock-based-policy calibration makes PEM103's capital gap WORSE
   (27-37x real stock, vs 5-12x Omni-only, J3) — reinforcing, not weakening, the tender-pipeline
   finding above. See §6 Corrections log, Q23 entry.
+- **Business-confirmed, 2026-09-24: PEM103's tender pipeline has no structured data source; setting
+  one up would be required** — **A**. Job names in order descriptions are a possible route to
+  characterising past tender work, but they exist only after a contract is awarded and cannot show
+  future pipeline. This directly bears on EF1 (external factors — utility budgets, EGP bid
+  announcements, PROJECT_GRAPH.md), which remains blocked on data for the same reason: no table in
+  this project's schema tracks the pipeline itself, only its outcomes once awarded.
+
+**Business-confirmed, 2026-09-24: PEM107's Tendering and Omni Channel work originally shared
+production and stock, and were separated around the middle of 2026.** — **A**. Verification from
+data is pending; recorded here as a hypothesis to verify, not yet checked against any table in this
+file (see PROJECT_GRAPH.md, Q10's PEM107 branch, for where the pending check is tracked). If
+confirmed, this would bear directly on the PEM107 capacity-diversion hypothesis below (a real,
+named separation event landing inside the same 2026 window as the channel-mix reversal and the
+not_late decline), but it is not itself evidence for or against that hypothesis until checked.
 
 **PEM107's Omni/Tendering split also reverses, in the opposite direction, in exactly the year its
 delivery performance drops** — Omni Channel dominated 2025 (71.6% of value) but Tendering dominates
