@@ -1,5 +1,12 @@
 """Phase J3 -- Explorer D -- THE single database connection attempt for this task.
 
+SUPERSEDED, 2026-09-24 (Phase 23, Part 0): this script's inline query below is exactly what was
+re-run to resolve DATA_MAP.md Trap 7 -- the itemcode join it uses IS the working key (75.21%
+forward match rate for the 351-item scope, confirmed with a fresh connection); the prior zero-row
+result here was a data-timing gap, not a bug in this query. Any FUTURE script should use the
+shared, tested helper `src/cube_final_pull.py::pull_cube_final_for_items()` instead of copying the
+inline SQL below -- this file is kept for its historical record and is not itself broken.
+
 Follow-up to Phase J2 Explorer D (STATUS.md ~line 1262-1273; output/summary/phaseJ2_explorerD_report.md;
 DATA_MAP.md Sec.1 cube_final trust note, Sec.4 Trap 7, Sec.5 item 14). That session's cube_final
 pull returned ZERO rows for the 351-item scope -- verified an artifact of the pulling agent being
