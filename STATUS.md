@@ -5435,6 +5435,29 @@ phase, particularly Phase 4. Full methodology, confidence levels and caveats are
   item 8), and no page anywhere showing when its data was pulled or built. METRICS.md §26 now
   defines `data_pulled_at`/`page_built_at`/`model_calibrated_at` and the staleness-notice rule;
   this decision locks that every page adopts it, not just the ones already flagged.
+- **The sales-model backtest is re-run now, and on a monthly cycle thereafter (decided
+  2026-09-25).** This task's own Purpose is to define the monthly refresh policy before any of it
+  is built (METRICS.md §28 `monthly_refresh`, step 4: "re-run the sales-model backtest; record
+  each division's change against the previous run"). Re-running now, rather than only from the
+  next monthly cycle onward, establishes the first comparison baseline the monthly cycle needs in
+  order to report a "change against the previous run" the very first time it executes.
+- **The Trend Pricelist Omni tab (`#omniTab`) is rebuilt by a new generator, on the current
+  445-code visible-sheet scope (decided 2026-09-25).** This closes the scheduled item task 2a
+  added (§10 below, "New item, added task 2a": "write a generator script for `index.html`'s
+  'Trend Pricelist Omni' tab, migrating its embedded item scope from the 448-code (incl. hidden
+  sheets) basis to the current 445-visible-sheet registry (`src/pricelist_reader.py`'s
+  convention)"). The tab is currently hand-maintained, static embedded data with no generator
+  anywhere in the repo (confirmed again this task, `index.html` line 7534's own note) and still
+  reads "448 รหัส" — this decision locks the fix to the PRICELIST RULE's already-adopted
+  445-visible-sheet basis, not a fresh re-litigation of which basis to use.
+- **The monthly run may commit and push automatically, but only when every gate in METRICS.md
+  §28 passes; otherwise it does not push and records why (decided 2026-09-25).** METRICS.md §28
+  `monthly_refresh` step 11 ("commit and push only if steps 8 to 10 all pass") and its
+  change-magnitude gate exist so that an unattended monthly run cannot silently publish a
+  forecast/backtest change large enough to need human review, or push output that fails its own
+  test suite or a sensitive-content scan — this decision locks that boundary before the monthly
+  pipeline is built, consistent with this project's rule that validation failures must be raised
+  loudly, never silently skipped (CONVENTIONS.md, Data Correctness).
 
 ## 5. Open Questions
 
