@@ -239,6 +239,7 @@ def build_page() -> str:
 <div class="wrap">
   <a class="back-link" href="../index.html">&larr; กลับไปหน้าหลัก (Dashboard)</a>
   <h1 id="page-title">แผนสต็อค — Inventory Min/Max Scenario</h1>
+  <p class="scope-note" id="page-timestamps-note"></p>
   <div class="division-panel">
     <label for="division-select"><b>Division:</b></label>
     <select id="division-select" onchange="onDivisionChange()">{division_options}</select>
@@ -532,12 +533,43 @@ function renderCurveTarget(divisionData) {{
   applyCurveTarget(p1.not_late_pct);
 }}
 
+function parseYmdHm(s) {{
+  // Parses 'YYYY-MM-DD HH:MM[:SS]' (this machine's own clock, ICT/UTC+7 -- confirmed this task
+  // via `date`) into a JS Date; returns null if the string doesn't start with that pattern (e.g.
+  // the PEM103/PEM107 '... (live pull, not a frozen file)' suffix is ignored for parsing).
+  const m = /^(\d{{4}})-(\d{{2}})-(\d{{2}}) (\d{{2}}):(\d{{2}})/.exec(s || '');
+  if (!m) return null;
+  return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), Number(m[4]), Number(m[5]));
+}}
+
+function renderPageTimestamps() {{
+  // METRICS.md Sec.26 (page_timestamps) -- page_built_at/model_calibrated_at are constant for
+  // the whole page (one build, one calibration run); data_pulled_at is per-division, set in
+  // onDivisionChange() below since it differs by division (frozen file vs. live pull).
+  const mc = DATA.model_calibrated_at;
+  document.getElementById('page-timestamps-note').innerHTML =
+    '<b>page_built_at:</b> ' + DATA.page_built_at +
+    ' &nbsp;|&nbsp; <b>model_calibrated_at:</b> ' + mc.run_date + ' ICT (UTC+7), ' +
+    'ข้อมูลถึงเดือน ' + mc.last_month_of_data + ' <span style="color:#898781">(' + mc.source + ')</span>';
+}}
+
 function onDivisionChange() {{
   currentDivision = document.getElementById('division-select').value;
   const divisionData = getDivisionData(currentDivision);
   document.getElementById('page-title').textContent = 'แผนสต็อค — Inventory Min/Max Scenario (' + currentDivision + ', ' + divisionData.n_items_label + ')';
   document.getElementById('scope-note').textContent = divisionData.warehouse_scope_note;
-  document.getElementById('snapshot-note').textContent = 'Snapshot pull date: ' + divisionData.snapshot_pull_date;
+  const builtAt = parseYmdHm(DATA.page_built_at);
+  const pulledAt = parseYmdHm(divisionData.snapshot_pull_date);
+  let staleNote = '';
+  if (builtAt && pulledAt) {{
+    const ageDays = (builtAt - pulledAt) / 86400000;
+    if (ageDays > 7) {{
+      staleNote = ' <span class="note-box" style="display:inline;padding:2px 8px;">&#9888; ข้อมูลเก่ากว่า 7 วัน (' +
+        ageDays.toFixed(1) + ' วัน) เทียบกับ page_built_at</span>';
+    }}
+  }}
+  document.getElementById('snapshot-note').innerHTML =
+    '<b>data_pulled_at:</b> ' + divisionData.snapshot_pull_date + ' ICT (UTC+7)' + staleNote;
   renderWarehouseChecklist(divisionData);
   renderNoPolicyTable(divisionData);
   renderCurveTarget(divisionData);
@@ -563,6 +595,7 @@ function onControlChange() {{
   renderMinVsCurrent(result.perItem);
 }}
 
+renderPageTimestamps();
 document.getElementById('division-select').value = DATA.default_division;
 onDivisionChange();
 </script>

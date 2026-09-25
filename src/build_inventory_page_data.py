@@ -214,6 +214,17 @@ def build_data() -> dict:
         "focus_items": ["EEE-F-FC-1040010002", "HS-F-99-02110", "HS-F-99-0213"],
         "days_per_month": 30.44,
         "forecast_horizon_months": FORECAST_HORIZON_MONTHS,
+        # METRICS.md Sec.26 (page_timestamps), added 2026-09-25 (task 2a, Part 2 -- ONLY these two
+        # fields touched on this page this task; Min/Max logic, segmentation, PEM107 alert etc.
+        # are explicitly out of scope, per task instruction, for a separate task 2b).
+        "page_built_at": datetime.now().strftime("%Y-%m-%d %H:%M") + " ICT (UTC+7) -- this build run's own clock",
+        "model_calibrated_at": {
+            "run_date": "2026-09-23",
+            "last_month_of_data": "2026-07",
+            "source": "output/summary/phaseJ3_report.md header ('Date: 2026-09-23') and Part 1 "
+                       "('Phase J bounds by ForecastDelDate in [2024-01, 2026-07]') -- METRICS.md "
+                       "Sec.20 inverse calibration, Phase J3.",
+        },
         "division_order": PILOT_DIVISIONS,
         "default_division": "PEM101",
         "disabled_divisions": DISABLED_DIVISIONS,
