@@ -767,7 +767,30 @@ produced a wrong result, with the correct handling and the report that found it.
     specifically — though the Validator's own figures corroborate the row count/coverage match,
     which is what makes the contamination inference direct rather than speculative).
 
-23. **PENDING VERIFICATION, NOT CONFIRMED — `index.html`'s stock panel reads its "Reserved" column
+23. **CONFIRMED AND RESOLVED, 2026-09-25 (task 2a, Part 5) — `index.html`'s stock panel's
+    "Reserved" column DID read `Cube_Backlog`, and the switch to `Cube_CES Status='Backlog'`
+    (deduplicated on contract+item, METRICS.md §14) found a real, material discrepancy, not a
+    non-issue.** Previously PENDING VERIFICATION (below, kept for the record): the panel read
+    `Cube_Backlog`, the same table Trap 5 found unreliable for a different purpose (over-counting
+    open demand by lagging `Cube_CES` ~14 hours). **This task ran both queries fresh, same session,
+    same 445-item registry, for a direct before/after**: old (`Cube_Backlog`, as-is, no dedup,
+    `sale_company` filtered) = **44,361 units across 144 codes**; new (`Cube_CES Status='Backlog'`,
+    deduplicated on contract+item) = **42,121 units across 142 codes** — a **-5.0%** total change,
+    with **42 of 445 codes' Reserved value changing**, several by large absolute/relative amounts
+    (e.g. `RS-F-99-070005` 2,000→0; `RS-F-99-090003` 2,000→4,000; `HS-F-99-0215` 1,323→603;
+    `EEE-F-FC-1040011000` 2,168→1,471). Full before/after list:
+    `data/inventory.json`'s `backlog.reserved_change_report` (`changed_codes_sample`, top 50 by
+    magnitude) and this task's own run log. **Correct handling, now implemented**:
+    `src/build_inventory_dataset.py`'s `query_backlog_ces()`/`dedup_and_aggregate_ces_backlog()`
+    (replacing `query_backlog()`/`aggregate_backlog()` against `Cube_Backlog` as the WRITTEN
+    figure; the old query is kept only for this one-time before/after comparison, never again as
+    the panel's source). **Level V1** (one script, one session, this task; not yet independently
+    recomputed by a second agent — Part 6's Validator can re-check this figure).
+
+    **Superseded text below (PENDING VERIFICATION, NOT CONFIRMED), kept per AGENTS.md rule 4 —
+    never overwrite a previous conclusion silently:**
+
+    `index.html`'s stock panel reads its "Reserved" column
     from `Cube_Backlog`**, the same table this file's Trap 5 already found reason to distrust for a
     different purpose (over-counting open demand, per METRICS.md §14: `Cube_Backlog` lags
     `Cube_CES` by roughly 14 hours and held 8 pairs already delivered). Naive reading: since
