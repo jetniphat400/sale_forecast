@@ -63,7 +63,17 @@ regenerated snapshot of it, not an independent status record kept by hand.**
 - **G1 (sales forecast)** — in progress. Top-down Combination forecasting method adopted and
   locked (D1-D4); Phase F (compare against the team's current method) not started. PEM103/PEM107
   were checked for a channel-mix recording bug that would require correcting the forecast/
-  forward-test log before 2026-09-30 scoring — none found. (PROJECT_GRAPH.md, node G1.)
+  forward-test log before 2026-09-30 scoring — none found. **Updated 2026-09-25 (forward test /
+  monthly refresh task): `src/run_pipeline.py`'s forward-test stages fixed to call the correct,
+  current scripts (previously pointed at the superseded 128-item log); the forward-test log
+  migrated to METRICS.md Sec.27's `vintage_id` schema (existing rows = vintage 1, confirmed
+  unchanged value-for-value); its consistency check adapted to check each vintage against its own
+  recorded metadata, not the current live config; the sales-model backtest re-run with fresh data
+  (per-division MAE moved at most +0.082%, well inside tolerance) and `forecast/sales_report.html`
+  rebuilt from it; `src/monthly_refresh.py` built and dry-run tested (METRICS.md Sec.28's 11
+  steps) but a real run and its Windows Scheduled Task registration are deliberately deferred to
+  the user. First forward-test scoreable date unchanged: 2026-09-30.** (PROJECT_GRAPH.md, node G1,
+  T1.)
 - **G2 (inventory policy)** — uncalibrated, scope split 2026-09-23; PEM101 curve target selector
   built 2026-09-24. Now covers PEM101 and PEM107 only; PEM103 moved out (feeds G3 via Q22); PEM104
   was never in scope (see DE4). PEM101's METRICS.md §22 robust_minmax ensemble was corrected
@@ -6048,16 +6058,21 @@ after the refresh (SHA-256 `3adb765139b576c508a93bf0e21b3562d48711d4d04b002800eb
 re-verified twice). `forecast/inventory.html`'s remaining, non-§26 fixes (items 4-6, 9-10 above)
 are task 2b's job.
 
-**New item, added this task (documentation-only, 2026-09-25).** Running the test suite
-regenerates tracked HTML in place, changing only `page_built_at` on every run — task 2a observed
-this directly: commits `5c17ea4` and `da5aedd` are both trivial re-builds of
+**DONE (forward test / monthly refresh task, 2026-09-25, commit `ddc150d`).** Running
+the test suite regenerates tracked HTML in place, changing only `page_built_at` on every run —
+task 2a observed this directly: commits `5c17ea4` and `da5aedd` are both trivial re-builds of
 `forecast/sales_report.html` triggered by running the test suite after task 2a's documentation
 commit, with no content change other than the timestamp (`git show --stat` on both commits: 1
 file changed, 2 insertions/2 deletions; `da5aedd`'s own commit message states this explicitly).
 METRICS.md §28's last bullet ("Tests must not modify tracked output files; a test that
 regenerates a page writes to a temporary location") names this as a requirement for the monthly
-run, but fixing the test itself is out of scope for a documentation-only task — scheduled here as
-a real, undone piece of work for the next code task.
+run. **Fixed**: `src/build_report.py`'s `build_report()` gained an optional `output_path`
+parameter (defaults to the real tracked path); the ONLY two tests found (repo-wide search, this
+task) calling it with no override —
+`tests/test_build_report.py::test_report_builds_without_error_from_current_outputs` and
+`tests/test_page_timestamps.py::test_embedded_json_never_contains_literal_nan_for_mase` — now
+pass `tmp_path`. Confirmed: running the full test suite (129 passed) leaves `git status`
+byte-identical before/after (no tracked file touched).
 
 **New item, added this task (documentation-only, 2026-09-25).** PEM103 and PEM107's inventory
 data on `forecast/inventory.html`, pulled live at page-build time, is not persisted anywhere — so
@@ -6068,6 +6083,52 @@ timestamps (no persisted external record exists to check them against; internall
 next code task to address (e.g. persisting the pull timestamp/snapshot so it can be checked
 independently, consistent with this project's raw-vs-processed-data convention,
 CONVENTIONS.md).
+
+## 11. Forward test ready for 30 September + monthly runner (this task, 2026-09-25)
+
+Scope: Part 1 (forward-test log path fixes, vintage migration, adapted consistency check, dry-run
+scoring, synthetic-fixture test), Part 2 (backtest re-run with refreshed data, report rebuild),
+Part 3 (`src/monthly_refresh.py`, METRICS.md §28's 11 steps), Part 4 (run 1 = `--dry-run` only,
+per an explicit user scope decision -- see below), Part 7 (visual check). Full detail, every
+figure and every commit hash: this task's final report (delivered to the user directly; not
+duplicated verbatim here to avoid drift between two copies of the same numbers).
+
+**DONE, commits `87c0d38` (path fixes) `22f8f40` (vintage migration)
+`9ef802c` (consistency check + synthetic test) `ddc150d` (test fixes) `c697703` (backtest re-run +
+report rebuild) `7f7e0fc` (monthly runner):**
+- `src/run_pipeline.py`'s forward-test stages fixed to call `forward_test_all_divisions.py`/
+  `score_forward_test_all_divisions.py` (previously the superseded `_v2` scripts/128-item log).
+- `output/summary/forward_test_log_all_divisions.csv` migrated to METRICS.md §27's `vintage_id`
+  schema (existing 2,340 rows = vintage 1, confirmed unchanged value-for-value against an
+  archived pre-migration copy) via the new `src/migrate_forward_test_vintage.py`.
+- `score_forward_test_all_divisions.verify_consistency()` adapted: checks each vintage against
+  its OWN recorded metadata/row-integrity-hash, never the CURRENT live config.yaml.
+- Dry-run scoring confirms: 0 months scoreable yet, first eligible date **2026-09-30** (unchanged).
+- The sales-model backtest (`src/backtest_all_divisions.py`, `src/transferability_all_divisions.py`)
+  re-run with a fresh 335-item, 5-division pull (2026-09-25 14:11:25) -- per-division Top-down MAE
+  moved at most +0.082% (CI101; all others 0.000%, fit window unchanged since 2026-08 has not yet
+  cleared the leakage margin) -- and `forecast/sales_report.html` rebuilt from the new outputs.
+- **`src/monthly_refresh.py` built**, implementing METRICS.md §28's 11 steps end to end, with the
+  3 change-magnitude thresholds locked in `config.yaml`'s new `monthly_refresh:` block. **Dry-run
+  tested** (run 1, run_id `20260925T141119`) -- all 11 steps exercised; confirmed to append
+  NOTHING to the forward-test log (hash unchanged) and leave `git status` byte-identical
+  before/after.
+- Fixed the two tests (repo-wide search, this task) that regenerated tracked HTML on every pytest
+  run (`build_report.build_report()` gained an `output_path` parameter; both tests now pass
+  `tmp_path`).
+
+**DELIBERATELY NOT DONE, per an explicit user scope decision (not an oversight):**
+- **A real monthly_refresh.py run (run 2)** -- would actually append forward-test vintage 2 and
+  attempt a real git push. The user explicitly excluded this from this task; `monthly_refresh.py`
+  exists and is dry-run proven, but a human must run it for real when ready
+  (`python src/monthly_refresh.py`, no `--dry-run`).
+- **Windows Scheduled Task registration** for the monthly cadence -- not executed; the exact
+  `schtasks` command the user would need to run themselves is in this task's final report.
+
+**DATABASE ACCESS note**: this task made exactly ONE database connection attempt (the 335-item,
+5-division pull inside `src/monthly_refresh.py`'s step 1, exercised during the dry run) --
+per this project's DATABASE ACCESS rule. The already-same-day-fresh 128-item pilot pull (from an
+earlier task today, 11:51) was deliberately reused, not re-pulled, to stay within that budget.
 
 ---
 

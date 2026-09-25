@@ -242,6 +242,56 @@ proof). **Trust note**: unusable regardless — no itemcode column, and no data 
   The `Available` column's formula is unchanged (still `qty − backlog`, still includes non-sellable
   warehouses) — a note beside it now states this plainly.
 
+### Output files, confirmed this session (forward test / monthly refresh task, 2026-09-25)
+
+- **`src/run_pipeline.py`'s forward-test stages now call the correct scripts.** Its
+  `generate_forward_test_log`/`score_forward_test_log` stages previously ran
+  `forward_test_v2.py`/`score_forward_test_v2.py` (the SUPERSEDED 128-item, PEM101-only log,
+  archived to `output/summary/archive/`) — confirmed by direct source read, this task
+  (`src/run_pipeline.py` lines 99-114 before this fix). **Fixed**: now run
+  `forward_test_all_divisions.py`/`score_forward_test_all_divisions.py`, the actual 335-item,
+  5-division production log every dashboard page and PROJECT_GRAPH.md's T1 node use — **V1**
+  (direct source read + fix; not independently re-verified by a second agent this task).
+  `forward_test_all_divisions.py`'s own `__main__` still regenerates the log from scratch
+  (vintage 1 only) when run standalone — this is unchanged, documented behaviour, distinct from
+  `src/monthly_refresh.py`'s proper vintage-append logic (below).
+- **`output/summary/forward_test_log_all_divisions.csv` migrated to METRICS.md Sec.27's
+  `vintage_id` schema** (`src/migrate_forward_test_vintage.py`). Existing rows become vintage 1;
+  row count (2,340) and every pre-existing column's value confirmed **unchanged**, value-for-value,
+  against an archived pre-migration copy (`output/summary/archive/
+  forward_test_log_all_divisions_pre_vintage_migration_2026-09-25.csv`, SHA-256
+  `3adb765139b576c508a93bf0e21b3562d48711d4d04b002800eb5c55e7576a04` — this IS the file DATA_MAP.md
+  previously recorded above as the log's "unchanged" hash, confirming the migration's input was
+  exactly that state). Post-migration file SHA-256: `7ba4a3a45a975e04a52935d62036995e1c02db93d52fc9c24e8028d3182dfa2c`
+  (`tests/test_page_timestamps.py`'s frozen-hash test updated to this value, with the migration
+  documented inline). A `row_integrity_hash` (sha256 over every column except `vintage_id`/
+  `actual_qty`) is now recorded per vintage in `forward_test_log_all_divisions_metadata.json`
+  (restructured from one flat dict to `{vintage_id: {...}}`). **V1** (direct recomputation by the
+  migration script itself, re-verified by re-reading the written file; not cross-checked by a
+  second, independent agent).
+- **`score_forward_test_all_divisions.verify_consistency()` adapted**: now checks each vintage
+  present in the log against its OWN recorded metadata/row_integrity_hash only — never against the
+  CURRENT live `config.yaml`/`config_version()`. Confirmed by a passing dry run
+  (`python src/score_forward_test_all_divisions.py`, this task) that found vintage 1's log,
+  reported 0 target months safe to score yet, and computed the first eligible date as **2026-09-30**
+  (`2026-08` month-end 2026-08-31 + 30-day `leakage_guard.min_margin_days` margin) — **V1** (direct
+  script run, this task).
+- **The sales-model backtest was re-run 2026-09-25** with freshly pulled data (335 items, 5
+  divisions, pulled 2026-09-25 14:11:25) via `src/backtest_all_divisions.py --value-col qty` and
+  `src/transferability_all_divisions.py`. Per-division Top-down MAE/RMSE/Bias/MASE changed by at
+  most +0.082% (CI101; all other divisions 0.000% — the fit window, 2024-01 to 2026-07, did not
+  shift, since 2026-08 has not yet cleared the leakage-guard margin). Previous run's outputs
+  archived to `output/summary/archive/phaseC_step2_{per_division_summary_qty,
+  transferability_per_division}_pre_monthly_refresh_20260925T141119.csv` before being overwritten.
+  `forecast/sales_report.html` rebuilt from the new outputs (commit below) — **V1** (this task's own
+  recomputation; not independently cross-checked by a second agent).
+- **`src/monthly_refresh.py` built and dry-run tested** (METRICS.md Sec.28's 11 steps). Run 1
+  (`--dry-run`, run_id `20260925T141119`) completed all 11 steps; confirmed to append NOTHING to
+  the forward-test log (hash unchanged, still 2,340 rows/vintage 1 only) and to leave `git status`
+  identical before/after. Full log: `output/runs/monthly_refresh_20260925T141119.json` (not
+  tracked — gitignored under `output/`). A real run (run 2) and Windows Scheduled Task registration
+  were deliberately NOT executed this task (explicit user scope decision) — **V1**.
+
 ---
 
 ## 2. Columns with established meaning

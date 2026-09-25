@@ -394,6 +394,23 @@ remains an unconfirmed open point.**
   made; the leakage-guard margin (30 days) makes 2026-08 the first target month, **safe to score
   only from 2026-09-30** (STATUS.md, "Forward-test scoring for the 335-item log"). Feeds G1's own
   validation, independent of Phase F.
+  **UPDATED 2026-09-25 (forward test / monthly refresh task):** `src/run_pipeline.py`'s own
+  forward-test stages, previously pointed at the SUPERSEDED `forward_test_v2.py`/128-item log, now
+  call the correct `forward_test_all_divisions.py`/`score_forward_test_all_divisions.py` scripts.
+  The log was migrated to METRICS.md Sec.27's `vintage_id` schema — existing rows are **vintage
+  1** (row count and every value confirmed unchanged against an archived pre-migration copy).
+  `score_forward_test_all_divisions.verify_consistency()` now checks each vintage against its OWN
+  recorded metadata/row-integrity-hash, never against the CURRENT live config — so a future
+  vintage generated under a later config will not retroactively invalidate vintage 1. A dry run of
+  the scoring script confirms: 0 months scoreable yet, first eligible date **2026-09-30**
+  (unchanged). **`src/monthly_refresh.py` now exists**, implementing METRICS.md Sec.28's 11-step
+  monthly cadence end to end (pull → validate → backtest → new vintage → fill/score → rebuild
+  pages → tests → sensitive-content scan → change-magnitude gate → commit/push) and was
+  **dry-run tested** (`--dry-run`, all 11 steps exercised; confirmed to append nothing to the
+  forward-test log and leave `git status` unchanged). **A real run (actually appending vintage 2
+  and pushing) and registering the Windows Scheduled Task for the monthly cadence are BOTH
+  deliberately deferred to the user** (explicit scope decision, this task) — the runner is built
+  and dry-run proven, but not yet exercised for real or put on an unattended schedule.
 - **T2 — posting-delay snapshot.** `src/snapshot_daily.py`, a Windows Scheduled Task, started
   **2026-09-22**; the leakage-guard margin cannot be revisited until **≥60 days of daily snapshots
   exist and the script's own p99 is known from that data** (STATUS.md, "Prospective posting-delay
