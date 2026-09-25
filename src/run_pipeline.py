@@ -7,8 +7,8 @@ sequence (STATUS.md, Phase B closeout task).
 Every parameter comes from config/config.yaml -- this script hardcodes nothing itself; it
 only decides WHICH existing script runs WHEN. Each stage is one of this project's existing,
 already-tested scripts (src/load_data_full.py, src/aggregate_levels.py,
-src/item_level_reconciliation.py, src/backtest_rekeyed.py, src/forward_test_v2.py,
-src/score_forward_test_v2.py), run in-process as a subprocess of the same Python
+src/item_level_reconciliation.py, src/backtest_rekeyed.py, src/forward_test_all_divisions.py,
+src/score_forward_test_all_divisions.py), run in-process as a subprocess of the same Python
 interpreter this script runs under, so a failure in any stage raises loudly (non-zero
 return code -> RuntimeError with the stage's full stdout/stderr attached) and stops the
 run rather than continuing on partial/invalid state (CONVENTIONS.md: "Validation failures
@@ -96,17 +96,30 @@ STAGES = [
         },
     },
     {
+        # FIXED (task: forward test ready for 30 September): this stage previously ran
+        # forward_test_v2.py / wrote forward_test_log_v2.csv -- the 128-item, PEM101-only,
+        # SUPERSEDED log (its own docstring says it is superseded by forward_test_all_divisions.py).
+        # forward_test_log_all_divisions.csv (335 items, 5 divisions) is the actual production
+        # forward-test log every dashboard page and PROJECT_GRAPH.md's T1 node use -- this
+        # pipeline never touched it at all until this fix. NOTE: forward_test_all_divisions.py's
+        # __main__ REGENERATES the log from scratch (vintage 1 only) every time it runs -- it does
+        # NOT append a new vintage. That is expected/unchanged behaviour for this from-scratch
+        # pipeline stage (useful for a dev/rebuild-everything run); appending a new vintage on top
+        # of the existing log without disturbing earlier vintages is src/monthly_refresh.py's job
+        # (METRICS.md Sec.27/28), not this stage's.
         "label": "generate_forward_test_log",
-        "script": "forward_test_v2.py",
+        "script": "forward_test_all_divisions.py",
         "outputs": {
-            "forward_test_log": "forward_test_log_v2.csv",
+            "forward_test_log": "forward_test_log_all_divisions.csv",
         },
     },
     {
+        # FIXED (same task): previously ran score_forward_test_v2.py / expected
+        # forward_test_scored_v2.csv -- now the all-divisions scorer/output.
         "label": "score_forward_test_log",
-        "script": "score_forward_test_v2.py",
+        "script": "score_forward_test_all_divisions.py",
         "outputs": {
-            "forward_test_scored": "forward_test_scored_v2.csv",
+            "forward_test_scored": "forward_test_scored_all_divisions.csv",
         },
         # This stage legitimately produces nothing scoreable yet if no target month has cleared
         # the leakage-guard margin -- that is expected, not a pipeline failure.
