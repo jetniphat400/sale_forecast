@@ -1,0 +1,141 @@
+_month,revenue_type,n,table
+2025-01,Omni Channel,150,cube_Sale_APD
+2025-01,Tendering,6,cube_Sale_APD
+2025-02,Omni Channel,145,cube_Sale_APD
+2025-02,Tendering,2,cube_Sale_APD
+2025-03,Omni Channel,177,cube_Sale_APD
+2025-03,Tendering,3,cube_Sale_APD
+2025-04,Omni Channel,164,cube_Sale_APD
+2025-04,Tendering,1,cube_Sale_APD
+2025-05,Omni Channel,154,cube_Sale_APD
+2025-05,Tendering,1,cube_Sale_APD
+2025-06,Omni Channel,152,cube_Sale_APD
+2025-06,Tendering,1,cube_Sale_APD
+2025-07,Omni Channel,153,cube_Sale_APD
+2025-07,Tendering,25,cube_Sale_APD
+2025-08,Omni Channel,200,cube_Sale_APD
+2025-08,Tendering,6,cube_Sale_APD
+2025-09,Omni Channel,160,cube_Sale_APD
+2025-10,Omni Channel,182,cube_Sale_APD
+2025-10,Tendering,2,cube_Sale_APD
+2025-11,Omni Channel,212,cube_Sale_APD
+2025-11,Tendering,1,cube_Sale_APD
+2025-12,Omni Channel,248,cube_Sale_APD
+2025-12,Tendering,7,cube_Sale_APD
+2025-12,Total Customer Solution,1,cube_Sale_APD
+2026-01,Omni Channel,118,cube_Sale_APD
+2026-01,Tendering,2,cube_Sale_APD
+2026-02,Omni Channel,121,cube_Sale_APD
+2026-02,Tendering,2,cube_Sale_APD
+2026-02,Total Customer Solution,1,cube_Sale_APD
+2026-03,Omni Channel,178,cube_Sale_APD
+2026-03,Tendering,5,cube_Sale_APD
+2026-03,Total Customer Solution,1,cube_Sale_APD
+2026-04,Omni Channel,192,cube_Sale_APD
+2026-04,Tendering,4,cube_Sale_APD
+2026-05,Omni Channel,119,cube_Sale_APD
+2026-05,Total Customer Solution,2,cube_Sale_APD
+2026-06,Omni Channel,154,cube_Sale_APD
+2026-06,Tendering,4,cube_Sale_APD
+2026-06,Total Customer Solution,1,cube_Sale_APD
+2026-07,Omni Channel,159,cube_Sale_APD
+2026-07,Tendering,4,cube_Sale_APD
+2026-08,Omni Channel,200,cube_Sale_APD
+2026-08,Tendering,6,cube_Sale_APD
+2026-09,Omni Channel,166,cube_Sale_APD
+2026-09,Tendering,16,cube_Sale_APD
+2026-10,Omni Channel,53,cube_Sale_APD
+2026-10,Tendering,5,cube_Sale_APD
+2026-11,Omni Channel,9,cube_Sale_APD
+2026-11,Tendering,2,cube_Sale_APD
+2026-12,Omni Channel,8,cube_Sale_APD
+2027-01,Omni Channel,1,cube_Sale_APD
+2027-02,Omni Channel,1,cube_Sale_APD
+2027-03,Omni Channel,1,cube_Sale_APD
+2025-01,Omni Channel,230,Cube_CES
+2025-01,Tendering,6,Cube_CES
+2025-01,Total Customer Solution,1,Cube_CES
+2025-02,Omni Channel,223,Cube_CES
+2025-02,Tendering,2,Cube_CES
+2025-03,Omni Channel,287,Cube_CES
+2025-03,Tendering,3,Cube_CES
+2025-04,Omni Channel,248,Cube_CES
+2025-04,Tendering,1,Cube_CES
+2025-05,Omni Channel,223,Cube_CES
+2025-05,Tendering,1,Cube_CES
+2025-06,Omni Channel,229,Cube_CES
+2025-06,Tendering,1,Cube_CES
+2025-07,Omni Channel,224,Cube_CES
+2025-07,Tendering,25,Cube_CES
+2025-08,Omni Channel,309,Cube_CES
+2025-08,Tendering,7,Cube_CES
+2025-09,Omni Channel,287,Cube_CES
+2025-09,Total Customer Solution,1,Cube_CES
+2025-09,,4,Cube_CES
+2025-10,Omni Channel,256,Cube_CES
+2025-10,Tendering,2,Cube_CES
+2025-10,Total Customer Solution,1,Cube_CES
+2025-11,Omni Channel,273,Cube_CES
+2025-11,Tendering,1,Cube_CES
+2025-11,Total Customer Solution,1,Cube_CES
+2025-12,Omni Channel,384,Cube_CES
+2025-12,Tendering,8,Cube_CES
+2025-12,Total Customer Solution,1,Cube_CES
+2026-01,Omni Channel,185,Cube_CES
+2026-01,Tendering,2,Cube_CES
+2026-02,Omni Channel,186,Cube_CES
+2026-02,Tendering,2,Cube_CES
+2026-02,Total Customer Solution,1,Cube_CES
+2026-03,Omni Channel,303,Cube_CES
+2026-03,Tendering,5,Cube_CES
+2026-03,Total Customer Solution,7,Cube_CES
+2026-04,Omni Channel,264,Cube_CES
+2026-04,Tendering,4,Cube_CES
+2026-04,,1,Cube_CES
+2026-05,Omni Channel,197,Cube_CES
+2026-05,Total Customer Solution,2,Cube_CES
+2026-06,Omni Channel,204,Cube_CES
+2026-06,Tendering,4,Cube_CES
+2026-06,Total Customer Solution,1,Cube_CES
+2026-07,Omni Channel,243,Cube_CES
+2026-07,Tendering,4,Cube_CES
+2026-07,Total Customer Solution,2,Cube_CES
+2026-08,Omni Channel,299,Cube_CES
+2026-08,Tendering,11,Cube_CES
+2026-08,,14,Cube_CES
+2026-09,Omni Channel,281,Cube_CES
+2026-09,Tendering,17,Cube_CES
+2026-09,,4,Cube_CES
+2026-10,Omni Channel,112,Cube_CES
+2026-10,Tendering,5,Cube_CES
+2026-10,Total Customer Solution,1,Cube_CES
+2026-11,Omni Channel,9,Cube_CES
+2026-11,Tendering,2,Cube_CES
+2026-11,Total Customer Solution,7,Cube_CES
+2026-12,Omni Channel,8,Cube_CES
+2026-12,Tendering,7,Cube_CES
+2027-01,Omni Channel,1,Cube_CES
+2027-02,Omni Channel,1,Cube_CES
+2027-03,Omni Channel,1,Cube_CES
+2027-03,Tendering,1,Cube_CES
+2025-01,N/A (no channel field),178,cube_final
+2025-02,N/A (no channel field),164,cube_final
+2025-03,N/A (no channel field),215,cube_final
+2025-04,N/A (no channel field),177,cube_final
+2025-05,N/A (no channel field),168,cube_final
+2025-06,N/A (no channel field),175,cube_final
+2025-07,N/A (no channel field),187,cube_final
+2025-08,N/A (no channel field),220,cube_final
+2025-09,N/A (no channel field),205,cube_final
+2025-10,N/A (no channel field),197,cube_final
+2025-11,N/A (no channel field),267,cube_final
+2025-12,N/A (no channel field),220,cube_final
+2026-01,N/A (no channel field),154,cube_final
+2026-02,N/A (no channel field),148,cube_final
+2026-03,N/A (no channel field),194,cube_final
+2026-04,N/A (no channel field),187,cube_final
+2026-05,N/A (no channel field),152,cube_final
+2026-06,N/A (no channel field),150,cube_final
+2026-07,N/A (no channel field),173,cube_final
+2026-08,N/A (no channel field),233,cube_final
+2026-09,N/A (no channel field),117,cube_final

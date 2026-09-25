@@ -1,0 +1,200 @@
+column,channel,value,apr2026_share,jun2026_share,apr2026_n,jun2026_n,abs_pp_change
+cube_Sale_APD.division,ALL,PEM107,97.45,95.6,196,159,1.85
+cube_Sale_APD.division,ALL,PPS,0.0,1.26,196,159,1.26
+cube_Sale_APD.division,ALL,PTS,1.02,0.0,196,159,1.02
+cube_Sale_APD.division,ALL,PCE101,0.51,1.26,196,159,0.75
+cube_Sale_APD.division,ALL,PEMCSA,0.0,0.63,196,159,0.63
+cube_Sale_APD.division,ALL,PEM102,1.02,1.26,196,159,0.24
+cube_Sale_APD.division,Omni Channel,PEM107,98.44,97.4,192,154,1.03
+cube_Sale_APD.division,Omni Channel,PEMCSA,0.0,0.65,192,154,0.65
+cube_Sale_APD.division,Omni Channel,PEM102,1.04,1.3,192,154,0.26
+cube_Sale_APD.division,Omni Channel,PCE101,0.52,0.65,192,154,0.13
+cube_Sale_APD.division,Tendering,PPS,0.0,50.0,4,4,50.0
+cube_Sale_APD.division,Tendering,PTS,50.0,0.0,4,4,50.0
+cube_Sale_APD.division,Tendering,PEM107,50.0,50.0,4,4,0.0
+cube_Sale_APD.division,Total Customer Solution,PCE101,0.0,100.0,0,1,100.0
+cube_Sale_APD.status,ALL,Actual,100.0,100.0,196,159,0.0
+cube_Sale_APD.status,Omni Channel,Actual,100.0,100.0,192,154,0.0
+cube_Sale_APD.status,Tendering,Actual,100.0,100.0,4,4,0.0
+cube_Sale_APD.status,Total Customer Solution,Actual,0.0,100.0,0,1,100.0
+cube_Sale_APD.manufacturing_type,ALL,MTO,11.22,21.38,196,159,10.16
+cube_Sale_APD.manufacturing_type,ALL,MTS,88.78,78.62,196,159,10.16
+cube_Sale_APD.manufacturing_type,Omni Channel,MTO,9.38,19.48,192,154,10.11
+cube_Sale_APD.manufacturing_type,Omni Channel,MTS,90.62,80.52,192,154,10.11
+cube_Sale_APD.manufacturing_type,Tendering,MTO,100.0,100.0,4,4,0.0
+cube_Sale_APD.manufacturing_type,Total Customer Solution,MTS,0.0,100.0,0,1,100.0
+cube_Sale_APD.typeOfSale,ALL,Sale,100.0,100.0,196,159,0.0
+cube_Sale_APD.typeOfSale,Omni Channel,Sale,100.0,100.0,192,154,0.0
+cube_Sale_APD.typeOfSale,Tendering,Sale,100.0,100.0,4,4,0.0
+cube_Sale_APD.typeOfSale,Total Customer Solution,Sale,0.0,100.0,0,1,100.0
+cube_Sale_APD.jobcode_prefix,ALL,CT,52.04,48.43,196,159,3.61
+cube_Sale_APD.jobcode_prefix,ALL,RS,1.02,4.4,196,159,3.38
+cube_Sale_APD.jobcode_prefix,ALL,,1.02,0.0,196,159,1.02
+cube_Sale_APD.jobcode_prefix,ALL,VT,41.33,42.14,196,159,0.81
+cube_Sale_APD.jobcode_prefix,ALL,J,0.51,1.26,196,159,0.75
+cube_Sale_APD.jobcode_prefix,ALL,CTR,3.06,2.52,196,159,0.55
+cube_Sale_APD.jobcode_prefix,ALL,SS,1.02,1.26,196,159,0.24
+cube_Sale_APD.jobcode_prefix,Omni Channel,RS,0.52,3.9,192,154,3.38
+cube_Sale_APD.jobcode_prefix,Omni Channel,CT,52.6,49.35,192,154,3.25
+cube_Sale_APD.jobcode_prefix,Omni Channel,VT,42.19,43.51,192,154,1.32
+cube_Sale_APD.jobcode_prefix,Omni Channel,,1.04,0.0,192,154,1.04
+cube_Sale_APD.jobcode_prefix,Omni Channel,CTR,2.08,1.3,192,154,0.78
+cube_Sale_APD.jobcode_prefix,Omni Channel,SS,1.04,1.3,192,154,0.26
+cube_Sale_APD.jobcode_prefix,Omni Channel,J,0.52,0.65,192,154,0.13
+cube_Sale_APD.jobcode_prefix,Tendering,RS,25.0,25.0,4,4,0.0
+cube_Sale_APD.jobcode_prefix,Tendering,CTR,50.0,50.0,4,4,0.0
+cube_Sale_APD.jobcode_prefix,Tendering,CT,25.0,25.0,4,4,0.0
+cube_Sale_APD.jobcode_prefix,Total Customer Solution,J,0.0,100.0,0,1,100.0
+cube_Sale_APD.revenue_type,ALL,Omni Channel,97.96,96.86,196,159,1.1
+cube_Sale_APD.revenue_type,ALL,Total Customer Solution,0.0,0.63,196,159,0.63
+cube_Sale_APD.revenue_type,ALL,Tendering,2.04,2.52,196,159,0.47
+Cube_CES.Status,ALL,Actual,73.23,76.08,269,209,2.84
+Cube_CES.Status,ALL,P2,24.91,22.97,269,209,1.94
+Cube_CES.Status,ALL,P3,0.74,0.0,269,209,0.74
+Cube_CES.Status,ALL,MPS,1.12,0.96,269,209,0.16
+Cube_CES.Status,Omni Channel,Actual,73.11,75.49,264,204,2.38
+Cube_CES.Status,Omni Channel,P2,25.0,23.53,264,204,1.47
+Cube_CES.Status,Omni Channel,P3,0.76,0.0,264,204,0.76
+Cube_CES.Status,Omni Channel,MPS,1.14,0.98,264,204,0.16
+Cube_CES.Status,Tendering,Actual,100.0,100.0,4,4,0.0
+Cube_CES.Status,Total Customer Solution,Actual,0.0,100.0,0,1,100.0
+Cube_CES.SaleDivision,ALL,PEM105,98.14,94.74,269,209,3.4
+Cube_CES.SaleDivision,ALL,PEM107,0.0,2.87,269,209,2.87
+Cube_CES.SaleDivision,ALL,PPS,0.0,0.96,269,209,0.96
+Cube_CES.SaleDivision,ALL,PEM103,0.74,0.0,269,209,0.74
+Cube_CES.SaleDivision,ALL,PTS,0.74,0.0,269,209,0.74
+Cube_CES.SaleDivision,ALL,PCE101,0.37,0.96,269,209,0.59
+Cube_CES.SaleDivision,ALL,PEMCSA,0.0,0.48,269,209,0.48
+Cube_CES.SaleDivision,Omni Channel,PEM105,99.62,97.06,264,204,2.56
+Cube_CES.SaleDivision,Omni Channel,PEM107,0.0,1.96,264,204,1.96
+Cube_CES.SaleDivision,Omni Channel,PEMCSA,0.0,0.49,264,204,0.49
+Cube_CES.SaleDivision,Omni Channel,PCE101,0.38,0.49,264,204,0.11
+Cube_CES.SaleDivision,Tendering,PEM107,0.0,50.0,4,4,50.0
+Cube_CES.SaleDivision,Tendering,PPS,0.0,50.0,4,4,50.0
+Cube_CES.SaleDivision,Tendering,PTS,50.0,0.0,4,4,50.0
+Cube_CES.SaleDivision,Tendering,PEM103,50.0,0.0,4,4,50.0
+Cube_CES.SaleDivision,Total Customer Solution,PCE101,0.0,100.0,0,1,100.0
+Cube_CES.ManuDivision,ALL,PEM107,97.03,95.69,269,209,1.33
+Cube_CES.ManuDivision,ALL,PPS,0.0,0.96,269,209,0.96
+Cube_CES.ManuDivision,ALL,PTS,0.74,0.0,269,209,0.74
+Cube_CES.ManuDivision,ALL,PCE101,0.37,0.96,269,209,0.59
+Cube_CES.ManuDivision,ALL,PEMCSA,0.0,0.48,269,209,0.48
+Cube_CES.ManuDivision,ALL,PEM102,1.49,1.91,269,209,0.43
+Cube_CES.ManuDivision,ALL,,0.37,0.0,269,209,0.37
+Cube_CES.ManuDivision,Omni Channel,PEM107,98.11,97.06,264,204,1.05
+Cube_CES.ManuDivision,Omni Channel,PEMCSA,0.0,0.49,264,204,0.49
+Cube_CES.ManuDivision,Omni Channel,PEM102,1.52,1.96,264,204,0.45
+Cube_CES.ManuDivision,Omni Channel,PCE101,0.38,0.49,264,204,0.11
+Cube_CES.ManuDivision,Tendering,PPS,0.0,50.0,4,4,50.0
+Cube_CES.ManuDivision,Tendering,PTS,50.0,0.0,4,4,50.0
+Cube_CES.ManuDivision,Tendering,PEM107,50.0,50.0,4,4,0.0
+Cube_CES.ManuDivision,Total Customer Solution,PCE101,0.0,100.0,0,1,100.0
+Cube_CES.Company,ALL,PPS,0.0,0.96,269,209,0.96
+Cube_CES.Company,ALL,PEM,98.51,97.61,269,209,0.91
+Cube_CES.Company,ALL,PTS,0.74,0.0,269,209,0.74
+Cube_CES.Company,ALL,PCE,0.37,0.96,269,209,0.59
+Cube_CES.Company,ALL,PEMC,0.0,0.48,269,209,0.48
+Cube_CES.Company,ALL,,0.37,0.0,269,209,0.37
+Cube_CES.Company,Omni Channel,PEM,99.62,99.02,264,204,0.6
+Cube_CES.Company,Omni Channel,PEMC,0.0,0.49,264,204,0.49
+Cube_CES.Company,Omni Channel,PCE,0.38,0.49,264,204,0.11
+Cube_CES.Company,Tendering,PPS,0.0,50.0,4,4,50.0
+Cube_CES.Company,Tendering,PTS,50.0,0.0,4,4,50.0
+Cube_CES.Company,Tendering,PEM,50.0,50.0,4,4,0.0
+Cube_CES.Company,Total Customer Solution,PCE,0.0,100.0,0,1,100.0
+Cube_CES.ProductType,ALL,Voltage Transformer Type VOG,36.06,30.14,269,209,5.92
+Cube_CES.ProductType,ALL,Voltage Transformer Type VOL,5.58,10.05,269,209,4.47
+Cube_CES.ProductType,ALL,Current Transformer Type COL,52.42,49.76,269,209,2.66
+Cube_CES.ProductType,ALL,Spare Part and Raw Material (PEM102),1.12,2.39,269,209,1.28
+Cube_CES.ProductType,ALL,Current Transformer Type CExL,0.37,1.44,269,209,1.06
+Cube_CES.ProductType,ALL,Current Transformer Type LExM,0.37,0.96,269,209,0.59
+Cube_CES.ProductType,ALL,Voltage Transformer Type VEG,0.37,0.96,269,209,0.59
+Cube_CES.ProductType,ALL,Voltage Transformer Type VEL,0.0,0.48,269,209,0.48
+Cube_CES.ProductType,ALL,Current Transformer TYPE LEM (Dry Type),0.0,0.48,269,209,0.48
+Cube_CES.ProductType,ALL,Voltage Transformer (Oil Type),0.0,0.48,269,209,0.48
+Cube_CES.ProductType,ALL,LBS SPARE PARTS,0.37,0.0,269,209,0.37
+Cube_CES.ProductType,ALL,Voltage Transformer Type VExL,0.37,0.0,269,209,0.37
+Cube_CES.ProductType,ALL,Voltage Transformer TYPE VExL (Dry Type),0.37,0.0,269,209,0.37
+Cube_CES.ProductType,ALL,Current Transformer Type LDB,2.6,2.87,269,209,0.27
+Cube_CES.ProductType,Omni Channel,Voltage Transformer Type VOG,36.36,30.88,264,204,5.48
+Cube_CES.ProductType,Omni Channel,Voltage Transformer Type VOL,5.68,10.29,264,204,4.61
+Cube_CES.ProductType,Omni Channel,Current Transformer Type COL,52.65,50.0,264,204,2.65
+Cube_CES.ProductType,Omni Channel,Spare Part and Raw Material (PEM102),1.14,2.45,264,204,1.31
+Cube_CES.ProductType,Omni Channel,Current Transformer Type CExL,0.38,1.47,264,204,1.09
+Cube_CES.ProductType,Omni Channel,Current Transformer Type LDB,2.65,1.96,264,204,0.69
+Cube_CES.ProductType,Omni Channel,Current Transformer Type LExM,0.38,0.98,264,204,0.6
+Cube_CES.ProductType,Omni Channel,Voltage Transformer Type VEG,0.38,0.98,264,204,0.6
+Cube_CES.ProductType,Omni Channel,Voltage Transformer Type VEL,0.0,0.49,264,204,0.49
+Cube_CES.ProductType,Omni Channel,Current Transformer TYPE LEM (Dry Type),0.0,0.49,264,204,0.49
+Cube_CES.ProductType,Omni Channel,LBS SPARE PARTS,0.38,0.0,264,204,0.38
+Cube_CES.ProductType,Tendering,Current Transformer Type LDB,0.0,50.0,4,4,50.0
+Cube_CES.ProductType,Tendering,Voltage Transformer TYPE VExL (Dry Type),25.0,0.0,4,4,25.0
+Cube_CES.ProductType,Tendering,Voltage Transformer Type VExL,25.0,0.0,4,4,25.0
+Cube_CES.ProductType,Tendering,Current Transformer Type COL,50.0,50.0,4,4,0.0
+Cube_CES.ProductType,Total Customer Solution,Voltage Transformer (Oil Type),0.0,100.0,0,1,100.0
+Cube_CES.PrdTypeID,ALL,PT3075,36.06,30.14,269,209,5.92
+Cube_CES.PrdTypeID,ALL,PT3076,5.58,10.05,269,209,4.47
+Cube_CES.PrdTypeID,ALL,PT3073,52.42,49.76,269,209,2.66
+Cube_CES.PrdTypeID,ALL,PT3028,1.12,2.39,269,209,1.28
+Cube_CES.PrdTypeID,ALL,PT3063,0.37,1.44,269,209,1.06
+Cube_CES.PrdTypeID,ALL,PT3069,0.37,0.96,269,209,0.59
+Cube_CES.PrdTypeID,ALL,PT3067,0.37,0.96,269,209,0.59
+Cube_CES.PrdTypeID,ALL,PT026,0.0,0.48,269,209,0.48
+Cube_CES.PrdTypeID,ALL,PT082,0.0,0.48,269,209,0.48
+Cube_CES.PrdTypeID,ALL,PT3070,0.0,0.48,269,209,0.48
+Cube_CES.PrdTypeID,ALL,PT2933,0.37,0.0,269,209,0.37
+Cube_CES.PrdTypeID,ALL,PT3072,0.37,0.0,269,209,0.37
+Cube_CES.PrdTypeID,ALL,PT230,0.37,0.0,269,209,0.37
+Cube_CES.PrdTypeID,ALL,PT3065,2.6,2.87,269,209,0.27
+Cube_CES.PrdTypeID,Omni Channel,PT3075,36.36,30.88,264,204,5.48
+Cube_CES.PrdTypeID,Omni Channel,PT3076,5.68,10.29,264,204,4.61
+Cube_CES.PrdTypeID,Omni Channel,PT3073,52.65,50.0,264,204,2.65
+Cube_CES.PrdTypeID,Omni Channel,PT3028,1.14,2.45,264,204,1.31
+Cube_CES.PrdTypeID,Omni Channel,PT3063,0.38,1.47,264,204,1.09
+Cube_CES.PrdTypeID,Omni Channel,PT3065,2.65,1.96,264,204,0.69
+Cube_CES.PrdTypeID,Omni Channel,PT3069,0.38,0.98,264,204,0.6
+Cube_CES.PrdTypeID,Omni Channel,PT3067,0.38,0.98,264,204,0.6
+Cube_CES.PrdTypeID,Omni Channel,PT082,0.0,0.49,264,204,0.49
+Cube_CES.PrdTypeID,Omni Channel,PT3070,0.0,0.49,264,204,0.49
+Cube_CES.PrdTypeID,Omni Channel,PT2933,0.38,0.0,264,204,0.38
+Cube_CES.PrdTypeID,Tendering,PT3065,0.0,50.0,4,4,50.0
+Cube_CES.PrdTypeID,Tendering,PT3072,25.0,0.0,4,4,25.0
+Cube_CES.PrdTypeID,Tendering,PT230,25.0,0.0,4,4,25.0
+Cube_CES.PrdTypeID,Tendering,PT3073,50.0,50.0,4,4,0.0
+Cube_CES.PrdTypeID,Total Customer Solution,PT026,0.0,100.0,0,1,100.0
+Cube_CES.OLMJobCode_prefix,ALL,,27.51,23.92,269,209,3.59
+Cube_CES.OLMJobCode_prefix,ALL,RS,0.74,3.35,269,209,2.61
+Cube_CES.OLMJobCode_prefix,ALL,VT,30.11,32.06,269,209,1.95
+Cube_CES.OLMJobCode_prefix,ALL,CT,38.29,36.84,269,209,1.45
+Cube_CES.OLMJobCode_prefix,ALL,J,0.37,0.96,269,209,0.59
+Cube_CES.OLMJobCode_prefix,ALL,CTR,2.23,1.91,269,209,0.32
+Cube_CES.OLMJobCode_prefix,ALL,SS,0.74,0.96,269,209,0.21
+Cube_CES.OLMJobCode_prefix,Omni Channel,,27.65,24.51,264,204,3.14
+Cube_CES.OLMJobCode_prefix,Omni Channel,RS,0.38,2.94,264,204,2.56
+Cube_CES.OLMJobCode_prefix,Omni Channel,VT,30.68,32.84,264,204,2.16
+Cube_CES.OLMJobCode_prefix,Omni Channel,CT,38.64,37.25,264,204,1.38
+Cube_CES.OLMJobCode_prefix,Omni Channel,CTR,1.52,0.98,264,204,0.53
+Cube_CES.OLMJobCode_prefix,Omni Channel,SS,0.76,0.98,264,204,0.22
+Cube_CES.OLMJobCode_prefix,Omni Channel,J,0.38,0.49,264,204,0.11
+Cube_CES.OLMJobCode_prefix,Tendering,RS,25.0,25.0,4,4,0.0
+Cube_CES.OLMJobCode_prefix,Tendering,CTR,50.0,50.0,4,4,0.0
+Cube_CES.OLMJobCode_prefix,Tendering,CT,25.0,25.0,4,4,0.0
+Cube_CES.OLMJobCode_prefix,Total Customer Solution,J,0.0,100.0,0,1,100.0
+Cube_CES.RevenueType,ALL,Omni Channel,98.14,97.61,269,209,0.53
+Cube_CES.RevenueType,ALL,Total Customer Solution,0.0,0.48,269,209,0.48
+Cube_CES.RevenueType,ALL,Tendering,1.49,1.91,269,209,0.43
+Cube_CES.RevenueType,ALL,,0.37,0.0,269,209,0.37
+cube_final.division,ALL,107,0.0,99.33,187,150,99.33
+cube_final.division,ALL,103,100.0,0.67,187,150,99.33
+cube_final.transfer_type,ALL,โอนปกติ,100.0,100.0,187,150,0.0
+cube_final.fg_check_status,ALL,Pass,99.47,100.0,187,150,0.53
+cube_final.fg_check_status,ALL,Fail,0.53,0.0,187,150,0.53
+cube_final.fg_final_status,ALL,Pass,4.28,1.33,187,150,2.94
+cube_final.fg_final_status,ALL,,95.72,98.67,187,150,2.94
+cube_final.company,ALL,PEM,100.0,100.0,187,150,0.0
+cube_final.job_qty_bucket,ALL,21-50,35.83,27.33,187,150,8.5
+cube_final.job_qty_bucket,ALL,51-100,31.55,36.0,187,150,4.45
+cube_final.job_qty_bucket,ALL,1-5,6.95,9.33,187,150,2.38
+cube_final.job_qty_bucket,ALL,6-20,24.6,25.33,187,150,0.73
+cube_final.job_qty_bucket,ALL,501+,0.0,0.67,187,150,0.67
+cube_final.job_qty_bucket,ALL,101-500,1.07,1.33,187,150,0.26

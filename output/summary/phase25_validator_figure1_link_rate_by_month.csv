@@ -1,0 +1,9 @@
+month,revenue_type,n_contracts,n_linked,link_rate_by_count_pct,qty_total,qty_linked,link_rate_by_qty_pct
+2024-09,Omni Channel,229,227,99.13,2982.0,2976.0,99.8
+2024-09,Tendering,12,1,8.33,4308.0,3900.0,90.53
+2024-10,Omni Channel,172,163,94.77,1044.0,558.0,53.45
+2024-10,Tendering,13,1,7.69,2319.0,6.0,0.26
+2024-11,Omni Channel,236,235,99.58,1034.0,1032.0,99.81
+2024-11,Tendering,12,12,100.0,15527.0,15527.0,100.0
+2024-12,Omni Channel,118,111,94.07,932.0,350.0,37.55
+2024-12,Tendering,0,0,,0.0,0.0,

@@ -1,0 +1,35 @@
+cube_Sale_APD.jobcode, split at createDate 2024-10-01:
+  BEFORE: 1487 rows, 1576 tokens
+    token length distribution: {3: 1, 7: 1, 8: 1552, 10: 1, 14: 21}
+    prefix (first 2 chars) distribution: {'CT': 797, 'VT': 608, 'RS': 169, 'Ha': 1, 'LB': 1}
+    rows with >1 token (comma-separated): 0.0545
+    n_tokens per row distribution: {1: 1406, 2: 74, 3: 6, 4: 1}
+    sample values: ['VT230234', 'RS190335', 'CT240217', 'RS240151', 'CT240123', 'CT240131', 'VT240157', 'RS240070']
+  AFTER: 4113 rows, 4281 tokens
+    token length distribution: {3: 7, 6: 16, 7: 1, 8: 4150, 9: 2, 10: 1, 14: 94, 17: 9, 30: 1}
+    prefix (first 2 chars) distribution: {'CT': 2212, 'VT': 1725, 'RS': 294, 'SS': 19, 'J2': 16, 'LB': 8, 'FO': 2, 'SR': 2, 'DB': 2, 'SL': 1}
+    rows with >1 token (comma-separated): 0.0350
+    n_tokens per row distribution: {1: 3969, 2: 127, 3: 10, 4: 7}
+    sample values: ['CT250246', 'RS250369', 'CT260097', 'CT250002', 'VT260006', 'RS250350', 'VT260050', 'CT240213']
+
+Cube_CES.OLMJobCode, split at CtrDate 2024-10-01:
+  BEFORE: 13760 rows, 14650 tokens
+    token length distribution: {4: 1, 7: 20, 8: 14200, 9: 15, 10: 181, 11: 3, 12: 19, 14: 211}
+    prefix (first 2 chars) distribution: {'CT': 6931, 'VT': 4451, 'RM': 1626, 'RS': 1560, 'SP': 28, 'Ha': 21, 'RD': 16, 'SE': 6, 'St': 2, 'DE': 2, '[C': 1, 'J5': 1, 'RE': 1, 'OE': 1, 'CR': 1, 'V2': 1, 'LB': 1}
+    rows with >1 token (comma-separated): 0.0600
+    sample values: ['RM230280', 'CT16/151', 'RM221391', 'VT180066', 'CT14/102', 'CT240107', 'CT230003', 'VT14/024']
+  AFTER: 4125 rows, 4309 tokens
+    token length distribution: {6: 16, 7: 1, 8: 4185, 9: 2, 10: 1, 14: 94, 17: 9, 35: 1}
+    prefix (first 2 chars) distribution: {'CT': 2235, 'VT': 1729, 'RS': 295, 'SS': 19, 'J2': 16, 'LB': 8, 'SR': 2, 'FO': 2, 'DB': 2, 'SL': 1}
+    rows with >1 token (comma-separated): 0.0356
+    sample values: ['CT250126', 'CT240254,CT250268', 'VT260050', 'CT240235', 'CT260158', 'CT250186', 'CT250320', 'VT250097']
+
+cube_final.jobno, split at final_date 2024-10-01 (for reference):
+  BEFORE: 4157 rows
+    token length distribution: {8: 4157}
+    prefix (first 2 chars) distribution: {'CT': 2094, 'VT': 1607, 'RS': 456}
+    sample values: ['CT240064', 'RS240134', 'CT230228', 'VT230071', 'CT230167', 'VT230231', 'VT230087', 'CT220391']
+  AFTER: 4566 rows
+    token length distribution: {7: 1, 8: 4565}
+    prefix (first 2 chars) distribution: {'CT': 2181, 'VT': 1957, 'RS': 409, 'CV': 15, 'CR': 3, 'CC': 1}
+    sample values: ['CT240328', 'CT260106', 'VT250171', 'CT260123', 'VT240122', 'VT250086', 'CT240216', 'CT250320']

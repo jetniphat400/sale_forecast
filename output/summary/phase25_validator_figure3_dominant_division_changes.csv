@@ -1,0 +1,4 @@
+month,dominant_division,n,n_total,share_pct,prev_dominant,changed_from_prev
+2025-01,102,178,178,100.0,,True
+2025-06,103,175,175,100.0,102,True
+2026-05,107,145,152,95.39,103,True

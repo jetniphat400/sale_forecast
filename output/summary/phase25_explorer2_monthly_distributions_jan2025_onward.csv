@@ -1,0 +1,2190 @@
+_month,channel,value,share,column
+2025-01,Omni Channel,PEM107,0.9333333333333333,cube_Sale_APD.division
+2025-01,Omni Channel,PEM102-OLD,0.04,cube_Sale_APD.division
+2025-01,Omni Channel,PPD101,0.02666666666666667,cube_Sale_APD.division
+2025-01,Tendering,PEM107,0.6666666666666666,cube_Sale_APD.division
+2025-01,Tendering,PTS,0.3333333333333333,cube_Sale_APD.division
+2025-02,Omni Channel,PEM107,1.0,cube_Sale_APD.division
+2025-02,Tendering,PEM107,0.5,cube_Sale_APD.division
+2025-02,Tendering,PTS,0.5,cube_Sale_APD.division
+2025-03,Omni Channel,PEM107,0.9548022598870056,cube_Sale_APD.division
+2025-03,Omni Channel,PPD101,0.04519774011299435,cube_Sale_APD.division
+2025-03,Tendering,PTS,0.6666666666666666,cube_Sale_APD.division
+2025-03,Tendering,PEM107,0.3333333333333333,cube_Sale_APD.division
+2025-04,Omni Channel,PEM107,1.0,cube_Sale_APD.division
+2025-04,Tendering,PEM107,1.0,cube_Sale_APD.division
+2025-05,Omni Channel,PEM107,0.9675324675324676,cube_Sale_APD.division
+2025-05,Omni Channel,PPD101,0.01948051948051948,cube_Sale_APD.division
+2025-05,Omni Channel,PDEMO,0.012987012987012988,cube_Sale_APD.division
+2025-05,Tendering,PEM107,1.0,cube_Sale_APD.division
+2025-06,Omni Channel,PEM107,0.9407894736842105,cube_Sale_APD.division
+2025-06,Omni Channel,PDEMO,0.05263157894736842,cube_Sale_APD.division
+2025-06,Omni Channel,PPD101,0.006578947368421052,cube_Sale_APD.division
+2025-06,Tendering,PEM107,1.0,cube_Sale_APD.division
+2025-07,Omni Channel,PEM107,0.9934640522875817,cube_Sale_APD.division
+2025-07,Omni Channel,PCE101,0.006535947712418301,cube_Sale_APD.division
+2025-07,Tendering,PEM107,0.48,cube_Sale_APD.division
+2025-07,Tendering,PPS,0.4,cube_Sale_APD.division
+2025-07,Tendering,PTS,0.12,cube_Sale_APD.division
+2025-08,Omni Channel,PEM107,0.955,cube_Sale_APD.division
+2025-08,Omni Channel,PDEMO,0.04,cube_Sale_APD.division
+2025-08,Omni Channel,PPD101,0.005,cube_Sale_APD.division
+2025-08,Tendering,PTS,0.8333333333333334,cube_Sale_APD.division
+2025-08,Tendering,PPS,0.16666666666666666,cube_Sale_APD.division
+2025-09,Omni Channel,PEM107,1.0,cube_Sale_APD.division
+2025-10,Omni Channel,PEM107,0.9560439560439561,cube_Sale_APD.division
+2025-10,Omni Channel,PDEMO,0.02197802197802198,cube_Sale_APD.division
+2025-10,Omni Channel,PEM102,0.01098901098901099,cube_Sale_APD.division
+2025-10,Omni Channel,PPD101,0.005494505494505495,cube_Sale_APD.division
+2025-10,Omni Channel,PTS,0.005494505494505495,cube_Sale_APD.division
+2025-10,Tendering,PTS,1.0,cube_Sale_APD.division
+2025-11,Omni Channel,PEM107,0.9764150943396226,cube_Sale_APD.division
+2025-11,Omni Channel,PDEMO,0.009433962264150943,cube_Sale_APD.division
+2025-11,Omni Channel,PEM102,0.009433962264150943,cube_Sale_APD.division
+2025-11,Omni Channel,PPD101,0.0047169811320754715,cube_Sale_APD.division
+2025-11,Tendering,PTS,1.0,cube_Sale_APD.division
+2025-12,Omni Channel,PEM107,0.9838709677419355,cube_Sale_APD.division
+2025-12,Omni Channel,PEM102,0.012096774193548387,cube_Sale_APD.division
+2025-12,Omni Channel,PDEMO,0.004032258064516129,cube_Sale_APD.division
+2025-12,Tendering,PTS,1.0,cube_Sale_APD.division
+2025-12,Total Customer Solution,PCE101,1.0,cube_Sale_APD.division
+2026-01,Omni Channel,PEM107,0.9830508474576272,cube_Sale_APD.division
+2026-01,Omni Channel,PDEMO,0.00847457627118644,cube_Sale_APD.division
+2026-01,Omni Channel,PTS,0.00847457627118644,cube_Sale_APD.division
+2026-01,Tendering,PEM107,0.5,cube_Sale_APD.division
+2026-01,Tendering,PTS,0.5,cube_Sale_APD.division
+2026-02,Omni Channel,PEM107,0.9917355371900827,cube_Sale_APD.division
+2026-02,Omni Channel,PDEMO,0.008264462809917356,cube_Sale_APD.division
+2026-02,Tendering,PEM107,0.5,cube_Sale_APD.division
+2026-02,Tendering,PTS,0.5,cube_Sale_APD.division
+2026-02,Total Customer Solution,PCE101,1.0,cube_Sale_APD.division
+2026-03,Omni Channel,PEM107,0.9831460674157303,cube_Sale_APD.division
+2026-03,Omni Channel,PCE101,0.011235955056179775,cube_Sale_APD.division
+2026-03,Omni Channel,PEM102,0.0056179775280898875,cube_Sale_APD.division
+2026-03,Tendering,PEM107,0.6,cube_Sale_APD.division
+2026-03,Tendering,PTS,0.4,cube_Sale_APD.division
+2026-03,Total Customer Solution,PCE101,1.0,cube_Sale_APD.division
+2026-04,Omni Channel,PEM107,0.984375,cube_Sale_APD.division
+2026-04,Omni Channel,PEM102,0.010416666666666666,cube_Sale_APD.division
+2026-04,Omni Channel,PCE101,0.005208333333333333,cube_Sale_APD.division
+2026-04,Tendering,PEM107,0.5,cube_Sale_APD.division
+2026-04,Tendering,PTS,0.5,cube_Sale_APD.division
+2026-05,Omni Channel,PEM107,0.9915966386554622,cube_Sale_APD.division
+2026-05,Omni Channel,PCE101,0.008403361344537815,cube_Sale_APD.division
+2026-05,Total Customer Solution,PCE101,1.0,cube_Sale_APD.division
+2026-06,Omni Channel,PEM107,0.974025974025974,cube_Sale_APD.division
+2026-06,Omni Channel,PEM102,0.012987012987012988,cube_Sale_APD.division
+2026-06,Omni Channel,PCE101,0.006493506493506494,cube_Sale_APD.division
+2026-06,Omni Channel,PEMCSA,0.006493506493506494,cube_Sale_APD.division
+2026-06,Tendering,PEM107,0.5,cube_Sale_APD.division
+2026-06,Tendering,PPS,0.5,cube_Sale_APD.division
+2026-06,Total Customer Solution,PCE101,1.0,cube_Sale_APD.division
+2026-07,Omni Channel,PEM107,0.9937106918238994,cube_Sale_APD.division
+2026-07,Omni Channel,PEM102,0.006289308176100629,cube_Sale_APD.division
+2026-07,Tendering,PEM107,0.5,cube_Sale_APD.division
+2026-07,Tendering,PPS,0.5,cube_Sale_APD.division
+2026-08,Omni Channel,PEM107,0.98,cube_Sale_APD.division
+2026-08,Omni Channel,PEM102,0.015,cube_Sale_APD.division
+2026-08,Omni Channel,PCE101,0.005,cube_Sale_APD.division
+2026-08,Tendering,PEM107,0.5,cube_Sale_APD.division
+2026-08,Tendering,PPS,0.3333333333333333,cube_Sale_APD.division
+2026-08,Tendering,PSS,0.16666666666666666,cube_Sale_APD.division
+2026-09,Omni Channel,PEM107,0.963855421686747,cube_Sale_APD.division
+2026-09,Omni Channel,PEM102,0.030120481927710843,cube_Sale_APD.division
+2026-09,Omni Channel,PCE101,0.006024096385542169,cube_Sale_APD.division
+2026-09,Tendering,PEM107,0.4375,cube_Sale_APD.division
+2026-09,Tendering,PPS,0.3125,cube_Sale_APD.division
+2026-09,Tendering,PSS,0.125,cube_Sale_APD.division
+2026-09,Tendering,PTS,0.125,cube_Sale_APD.division
+2026-10,Omni Channel,PEM107,0.9433962264150944,cube_Sale_APD.division
+2026-10,Omni Channel,PEM102,0.03773584905660377,cube_Sale_APD.division
+2026-10,Omni Channel,PCE101,0.018867924528301886,cube_Sale_APD.division
+2026-10,Tendering,PEM107,0.4,cube_Sale_APD.division
+2026-10,Tendering,PPS,0.2,cube_Sale_APD.division
+2026-10,Tendering,PSS,0.2,cube_Sale_APD.division
+2026-10,Tendering,PTS,0.2,cube_Sale_APD.division
+2026-11,Omni Channel,PEM107,0.8888888888888888,cube_Sale_APD.division
+2026-11,Omni Channel,PCE101,0.1111111111111111,cube_Sale_APD.division
+2026-11,Tendering,PEM107,0.5,cube_Sale_APD.division
+2026-11,Tendering,PPS,0.5,cube_Sale_APD.division
+2026-12,Omni Channel,PEM107,1.0,cube_Sale_APD.division
+2027-01,Omni Channel,PEM107,1.0,cube_Sale_APD.division
+2027-02,Omni Channel,PEM107,1.0,cube_Sale_APD.division
+2027-03,Omni Channel,PEM107,1.0,cube_Sale_APD.division
+2025-01,Omni Channel,Actual,1.0,cube_Sale_APD.status
+2025-01,Tendering,Actual,1.0,cube_Sale_APD.status
+2025-02,Omni Channel,Actual,1.0,cube_Sale_APD.status
+2025-02,Tendering,Actual,1.0,cube_Sale_APD.status
+2025-03,Omni Channel,Actual,1.0,cube_Sale_APD.status
+2025-03,Tendering,Actual,1.0,cube_Sale_APD.status
+2025-04,Omni Channel,Actual,1.0,cube_Sale_APD.status
+2025-04,Tendering,Actual,1.0,cube_Sale_APD.status
+2025-05,Omni Channel,Actual,1.0,cube_Sale_APD.status
+2025-05,Tendering,Actual,1.0,cube_Sale_APD.status
+2025-06,Omni Channel,Actual,1.0,cube_Sale_APD.status
+2025-06,Tendering,Actual,1.0,cube_Sale_APD.status
+2025-07,Omni Channel,Actual,1.0,cube_Sale_APD.status
+2025-07,Tendering,Actual,1.0,cube_Sale_APD.status
+2025-08,Omni Channel,Actual,1.0,cube_Sale_APD.status
+2025-08,Tendering,Actual,1.0,cube_Sale_APD.status
+2025-09,Omni Channel,Actual,1.0,cube_Sale_APD.status
+2025-10,Omni Channel,Actual,1.0,cube_Sale_APD.status
+2025-10,Tendering,Actual,1.0,cube_Sale_APD.status
+2025-11,Omni Channel,Actual,1.0,cube_Sale_APD.status
+2025-11,Tendering,Actual,1.0,cube_Sale_APD.status
+2025-12,Omni Channel,Actual,1.0,cube_Sale_APD.status
+2025-12,Tendering,Actual,1.0,cube_Sale_APD.status
+2025-12,Total Customer Solution,Actual,1.0,cube_Sale_APD.status
+2026-01,Omni Channel,Actual,1.0,cube_Sale_APD.status
+2026-01,Tendering,Actual,1.0,cube_Sale_APD.status
+2026-02,Omni Channel,Actual,1.0,cube_Sale_APD.status
+2026-02,Tendering,Actual,1.0,cube_Sale_APD.status
+2026-02,Total Customer Solution,Actual,1.0,cube_Sale_APD.status
+2026-03,Omni Channel,Actual,1.0,cube_Sale_APD.status
+2026-03,Tendering,Actual,1.0,cube_Sale_APD.status
+2026-03,Total Customer Solution,Actual,1.0,cube_Sale_APD.status
+2026-04,Omni Channel,Actual,1.0,cube_Sale_APD.status
+2026-04,Tendering,Actual,1.0,cube_Sale_APD.status
+2026-05,Omni Channel,Actual,1.0,cube_Sale_APD.status
+2026-05,Total Customer Solution,Actual,1.0,cube_Sale_APD.status
+2026-06,Omni Channel,Actual,1.0,cube_Sale_APD.status
+2026-06,Tendering,Actual,1.0,cube_Sale_APD.status
+2026-06,Total Customer Solution,Actual,1.0,cube_Sale_APD.status
+2026-07,Omni Channel,Actual,1.0,cube_Sale_APD.status
+2026-07,Tendering,Actual,1.0,cube_Sale_APD.status
+2026-08,Omni Channel,Actual,0.995,cube_Sale_APD.status
+2026-08,Omni Channel,MPS,0.005,cube_Sale_APD.status
+2026-08,Tendering,Actual,1.0,cube_Sale_APD.status
+2026-09,Omni Channel,Actual,0.6746987951807228,cube_Sale_APD.status
+2026-09,Omni Channel,MPS,0.3253012048192771,cube_Sale_APD.status
+2026-09,Tendering,Actual,1.0,cube_Sale_APD.status
+2026-10,Omni Channel,MPS,1.0,cube_Sale_APD.status
+2026-10,Tendering,MPS,1.0,cube_Sale_APD.status
+2026-11,Omni Channel,MPS,1.0,cube_Sale_APD.status
+2026-11,Tendering,MPS,1.0,cube_Sale_APD.status
+2026-12,Omni Channel,Actual,0.75,cube_Sale_APD.status
+2026-12,Omni Channel,MPS,0.25,cube_Sale_APD.status
+2027-01,Omni Channel,MPS,1.0,cube_Sale_APD.status
+2027-02,Omni Channel,MPS,1.0,cube_Sale_APD.status
+2027-03,Omni Channel,MPS,1.0,cube_Sale_APD.status
+2025-01,Omni Channel,MTS,0.8533333333333334,cube_Sale_APD.manufacturing_type
+2025-01,Omni Channel,MTO,0.14666666666666667,cube_Sale_APD.manufacturing_type
+2025-01,Tendering,MTO,1.0,cube_Sale_APD.manufacturing_type
+2025-02,Omni Channel,MTS,0.8137931034482758,cube_Sale_APD.manufacturing_type
+2025-02,Omni Channel,MTO,0.1793103448275862,cube_Sale_APD.manufacturing_type
+2025-02,Omni Channel,,0.006896551724137931,cube_Sale_APD.manufacturing_type
+2025-02,Tendering,MTO,1.0,cube_Sale_APD.manufacturing_type
+2025-03,Omni Channel,MTS,0.6892655367231638,cube_Sale_APD.manufacturing_type
+2025-03,Omni Channel,MTO,0.3107344632768362,cube_Sale_APD.manufacturing_type
+2025-03,Tendering,MTO,1.0,cube_Sale_APD.manufacturing_type
+2025-04,Omni Channel,MTS,0.8597560975609756,cube_Sale_APD.manufacturing_type
+2025-04,Omni Channel,MTO,0.1402439024390244,cube_Sale_APD.manufacturing_type
+2025-04,Tendering,MTO,1.0,cube_Sale_APD.manufacturing_type
+2025-05,Omni Channel,MTS,0.7662337662337663,cube_Sale_APD.manufacturing_type
+2025-05,Omni Channel,MTO,0.2077922077922078,cube_Sale_APD.manufacturing_type
+2025-05,Omni Channel,,0.025974025974025976,cube_Sale_APD.manufacturing_type
+2025-05,Tendering,MTO,1.0,cube_Sale_APD.manufacturing_type
+2025-06,Omni Channel,MTS,0.743421052631579,cube_Sale_APD.manufacturing_type
+2025-06,Omni Channel,MTO,0.25,cube_Sale_APD.manufacturing_type
+2025-06,Omni Channel,,0.006578947368421052,cube_Sale_APD.manufacturing_type
+2025-06,Tendering,MTO,1.0,cube_Sale_APD.manufacturing_type
+2025-07,Omni Channel,MTS,0.869281045751634,cube_Sale_APD.manufacturing_type
+2025-07,Omni Channel,MTO,0.13071895424836602,cube_Sale_APD.manufacturing_type
+2025-07,Tendering,MTO,1.0,cube_Sale_APD.manufacturing_type
+2025-08,Omni Channel,MTS,0.865,cube_Sale_APD.manufacturing_type
+2025-08,Omni Channel,MTO,0.13,cube_Sale_APD.manufacturing_type
+2025-08,Omni Channel,,0.005,cube_Sale_APD.manufacturing_type
+2025-08,Tendering,MTO,1.0,cube_Sale_APD.manufacturing_type
+2025-09,Omni Channel,MTS,0.83125,cube_Sale_APD.manufacturing_type
+2025-09,Omni Channel,MTO,0.16875,cube_Sale_APD.manufacturing_type
+2025-10,Omni Channel,MTS,0.8296703296703297,cube_Sale_APD.manufacturing_type
+2025-10,Omni Channel,MTO,0.16483516483516483,cube_Sale_APD.manufacturing_type
+2025-10,Omni Channel,,0.005494505494505495,cube_Sale_APD.manufacturing_type
+2025-10,Tendering,MTO,1.0,cube_Sale_APD.manufacturing_type
+2025-11,Omni Channel,MTS,0.8726415094339622,cube_Sale_APD.manufacturing_type
+2025-11,Omni Channel,MTO,0.12264150943396226,cube_Sale_APD.manufacturing_type
+2025-11,Omni Channel,,0.0047169811320754715,cube_Sale_APD.manufacturing_type
+2025-11,Tendering,MTO,1.0,cube_Sale_APD.manufacturing_type
+2025-12,Omni Channel,MTS,0.8346774193548387,cube_Sale_APD.manufacturing_type
+2025-12,Omni Channel,MTO,0.16532258064516128,cube_Sale_APD.manufacturing_type
+2025-12,Tendering,MTO,0.8571428571428571,cube_Sale_APD.manufacturing_type
+2025-12,Tendering,MTS,0.14285714285714285,cube_Sale_APD.manufacturing_type
+2025-12,Total Customer Solution,MTS,1.0,cube_Sale_APD.manufacturing_type
+2026-01,Omni Channel,MTS,0.864406779661017,cube_Sale_APD.manufacturing_type
+2026-01,Omni Channel,MTO,0.13559322033898305,cube_Sale_APD.manufacturing_type
+2026-01,Tendering,MTO,1.0,cube_Sale_APD.manufacturing_type
+2026-02,Omni Channel,MTS,0.768595041322314,cube_Sale_APD.manufacturing_type
+2026-02,Omni Channel,MTO,0.23140495867768596,cube_Sale_APD.manufacturing_type
+2026-02,Tendering,MTO,1.0,cube_Sale_APD.manufacturing_type
+2026-02,Total Customer Solution,MTS,1.0,cube_Sale_APD.manufacturing_type
+2026-03,Omni Channel,MTS,0.8426966292134831,cube_Sale_APD.manufacturing_type
+2026-03,Omni Channel,MTO,0.15730337078651685,cube_Sale_APD.manufacturing_type
+2026-03,Tendering,MTO,1.0,cube_Sale_APD.manufacturing_type
+2026-03,Total Customer Solution,MTS,1.0,cube_Sale_APD.manufacturing_type
+2026-04,Omni Channel,MTS,0.90625,cube_Sale_APD.manufacturing_type
+2026-04,Omni Channel,MTO,0.09375,cube_Sale_APD.manufacturing_type
+2026-04,Tendering,MTO,1.0,cube_Sale_APD.manufacturing_type
+2026-05,Omni Channel,MTS,0.8403361344537815,cube_Sale_APD.manufacturing_type
+2026-05,Omni Channel,MTO,0.15966386554621848,cube_Sale_APD.manufacturing_type
+2026-05,Total Customer Solution,MTO,1.0,cube_Sale_APD.manufacturing_type
+2026-06,Omni Channel,MTS,0.8051948051948052,cube_Sale_APD.manufacturing_type
+2026-06,Omni Channel,MTO,0.19480519480519481,cube_Sale_APD.manufacturing_type
+2026-06,Tendering,MTO,1.0,cube_Sale_APD.manufacturing_type
+2026-06,Total Customer Solution,MTS,1.0,cube_Sale_APD.manufacturing_type
+2026-07,Omni Channel,MTS,0.9056603773584906,cube_Sale_APD.manufacturing_type
+2026-07,Omni Channel,MTO,0.09433962264150944,cube_Sale_APD.manufacturing_type
+2026-07,Tendering,MTO,1.0,cube_Sale_APD.manufacturing_type
+2026-08,Omni Channel,MTS,0.93,cube_Sale_APD.manufacturing_type
+2026-08,Omni Channel,MTO,0.07,cube_Sale_APD.manufacturing_type
+2026-08,Tendering,MTO,1.0,cube_Sale_APD.manufacturing_type
+2026-09,Omni Channel,MTS,0.7590361445783133,cube_Sale_APD.manufacturing_type
+2026-09,Omni Channel,MTO,0.24096385542168675,cube_Sale_APD.manufacturing_type
+2026-09,Tendering,MTO,0.625,cube_Sale_APD.manufacturing_type
+2026-09,Tendering,,0.375,cube_Sale_APD.manufacturing_type
+2026-10,Omni Channel,MTS,0.5849056603773585,cube_Sale_APD.manufacturing_type
+2026-10,Omni Channel,MTO,0.41509433962264153,cube_Sale_APD.manufacturing_type
+2026-10,Tendering,MTO,0.8,cube_Sale_APD.manufacturing_type
+2026-10,Tendering,,0.2,cube_Sale_APD.manufacturing_type
+2026-11,Omni Channel,MTO,1.0,cube_Sale_APD.manufacturing_type
+2026-11,Tendering,MTO,0.5,cube_Sale_APD.manufacturing_type
+2026-11,Tendering,,0.5,cube_Sale_APD.manufacturing_type
+2026-12,Omni Channel,MTS,0.75,cube_Sale_APD.manufacturing_type
+2026-12,Omni Channel,MTO,0.25,cube_Sale_APD.manufacturing_type
+2027-01,Omni Channel,MTO,1.0,cube_Sale_APD.manufacturing_type
+2027-02,Omni Channel,MTO,1.0,cube_Sale_APD.manufacturing_type
+2027-03,Omni Channel,MTO,1.0,cube_Sale_APD.manufacturing_type
+2025-01,Omni Channel,Sale,1.0,cube_Sale_APD.typeOfSale
+2025-01,Tendering,Sale,1.0,cube_Sale_APD.typeOfSale
+2025-02,Omni Channel,Sale,1.0,cube_Sale_APD.typeOfSale
+2025-02,Tendering,Sale,1.0,cube_Sale_APD.typeOfSale
+2025-03,Omni Channel,Sale,1.0,cube_Sale_APD.typeOfSale
+2025-03,Tendering,Sale,1.0,cube_Sale_APD.typeOfSale
+2025-04,Omni Channel,Sale,1.0,cube_Sale_APD.typeOfSale
+2025-04,Tendering,Sale,1.0,cube_Sale_APD.typeOfSale
+2025-05,Omni Channel,Sale,1.0,cube_Sale_APD.typeOfSale
+2025-05,Tendering,Sale,1.0,cube_Sale_APD.typeOfSale
+2025-06,Omni Channel,Sale,1.0,cube_Sale_APD.typeOfSale
+2025-06,Tendering,Sale,1.0,cube_Sale_APD.typeOfSale
+2025-07,Omni Channel,Sale,1.0,cube_Sale_APD.typeOfSale
+2025-07,Tendering,Sale,1.0,cube_Sale_APD.typeOfSale
+2025-08,Omni Channel,Sale,1.0,cube_Sale_APD.typeOfSale
+2025-08,Tendering,Sale,1.0,cube_Sale_APD.typeOfSale
+2025-09,Omni Channel,Sale,1.0,cube_Sale_APD.typeOfSale
+2025-10,Omni Channel,Sale,1.0,cube_Sale_APD.typeOfSale
+2025-10,Tendering,Sale,1.0,cube_Sale_APD.typeOfSale
+2025-11,Omni Channel,Sale,1.0,cube_Sale_APD.typeOfSale
+2025-11,Tendering,Sale,1.0,cube_Sale_APD.typeOfSale
+2025-12,Omni Channel,Sale,1.0,cube_Sale_APD.typeOfSale
+2025-12,Tendering,Sale,1.0,cube_Sale_APD.typeOfSale
+2025-12,Total Customer Solution,Sale,1.0,cube_Sale_APD.typeOfSale
+2026-01,Omni Channel,Sale,1.0,cube_Sale_APD.typeOfSale
+2026-01,Tendering,Sale,1.0,cube_Sale_APD.typeOfSale
+2026-02,Omni Channel,Sale,1.0,cube_Sale_APD.typeOfSale
+2026-02,Tendering,Sale,1.0,cube_Sale_APD.typeOfSale
+2026-02,Total Customer Solution,Sale,1.0,cube_Sale_APD.typeOfSale
+2026-03,Omni Channel,Sale,1.0,cube_Sale_APD.typeOfSale
+2026-03,Tendering,Sale,1.0,cube_Sale_APD.typeOfSale
+2026-03,Total Customer Solution,Sale,1.0,cube_Sale_APD.typeOfSale
+2026-04,Omni Channel,Sale,1.0,cube_Sale_APD.typeOfSale
+2026-04,Tendering,Sale,1.0,cube_Sale_APD.typeOfSale
+2026-05,Omni Channel,Sale,1.0,cube_Sale_APD.typeOfSale
+2026-05,Total Customer Solution,Sale,1.0,cube_Sale_APD.typeOfSale
+2026-06,Omni Channel,Sale,1.0,cube_Sale_APD.typeOfSale
+2026-06,Tendering,Sale,1.0,cube_Sale_APD.typeOfSale
+2026-06,Total Customer Solution,Sale,1.0,cube_Sale_APD.typeOfSale
+2026-07,Omni Channel,Sale,1.0,cube_Sale_APD.typeOfSale
+2026-07,Tendering,Sale,1.0,cube_Sale_APD.typeOfSale
+2026-08,Omni Channel,Sale,1.0,cube_Sale_APD.typeOfSale
+2026-08,Tendering,Sale,1.0,cube_Sale_APD.typeOfSale
+2026-09,Omni Channel,Sale,1.0,cube_Sale_APD.typeOfSale
+2026-09,Tendering,Sale,1.0,cube_Sale_APD.typeOfSale
+2026-10,Omni Channel,Sale,1.0,cube_Sale_APD.typeOfSale
+2026-10,Tendering,Sale,1.0,cube_Sale_APD.typeOfSale
+2026-11,Omni Channel,Sale,1.0,cube_Sale_APD.typeOfSale
+2026-11,Tendering,Sale,1.0,cube_Sale_APD.typeOfSale
+2026-12,Omni Channel,Sale,1.0,cube_Sale_APD.typeOfSale
+2027-01,Omni Channel,Sale,1.0,cube_Sale_APD.typeOfSale
+2027-02,Omni Channel,Sale,1.0,cube_Sale_APD.typeOfSale
+2027-03,Omni Channel,Sale,1.0,cube_Sale_APD.typeOfSale
+2025-01,Omni Channel,CT,0.46,cube_Sale_APD.jobcode_prefix
+2025-01,Omni Channel,VT,0.38666666666666666,cube_Sale_APD.jobcode_prefix
+2025-01,Omni Channel,RS,0.12666666666666668,cube_Sale_APD.jobcode_prefix
+2025-01,Omni Channel,,0.02666666666666667,cube_Sale_APD.jobcode_prefix
+2025-01,Tendering,CTR,0.3333333333333333,cube_Sale_APD.jobcode_prefix
+2025-01,Tendering,VT,0.3333333333333333,cube_Sale_APD.jobcode_prefix
+2025-01,Tendering,CT,0.16666666666666666,cube_Sale_APD.jobcode_prefix
+2025-01,Tendering,RS,0.16666666666666666,cube_Sale_APD.jobcode_prefix
+2025-02,Omni Channel,CT,0.4827586206896552,cube_Sale_APD.jobcode_prefix
+2025-02,Omni Channel,VT,0.43448275862068964,cube_Sale_APD.jobcode_prefix
+2025-02,Omni Channel,RS,0.08275862068965517,cube_Sale_APD.jobcode_prefix
+2025-02,Tendering,CTR,0.5,cube_Sale_APD.jobcode_prefix
+2025-02,Tendering,RS,0.5,cube_Sale_APD.jobcode_prefix
+2025-03,Omni Channel,CT,0.4124293785310734,cube_Sale_APD.jobcode_prefix
+2025-03,Omni Channel,VT,0.327683615819209,cube_Sale_APD.jobcode_prefix
+2025-03,Omni Channel,RS,0.21468926553672316,cube_Sale_APD.jobcode_prefix
+2025-03,Omni Channel,,0.04519774011299435,cube_Sale_APD.jobcode_prefix
+2025-03,Tendering,CTR,0.6666666666666666,cube_Sale_APD.jobcode_prefix
+2025-03,Tendering,RS,0.3333333333333333,cube_Sale_APD.jobcode_prefix
+2025-04,Omni Channel,CT,0.47560975609756095,cube_Sale_APD.jobcode_prefix
+2025-04,Omni Channel,VT,0.40853658536585363,cube_Sale_APD.jobcode_prefix
+2025-04,Omni Channel,RS,0.10365853658536585,cube_Sale_APD.jobcode_prefix
+2025-04,Omni Channel,,0.012195121951219513,cube_Sale_APD.jobcode_prefix
+2025-04,Tendering,RS,1.0,cube_Sale_APD.jobcode_prefix
+2025-05,Omni Channel,CT,0.4935064935064935,cube_Sale_APD.jobcode_prefix
+2025-05,Omni Channel,VT,0.37662337662337664,cube_Sale_APD.jobcode_prefix
+2025-05,Omni Channel,RS,0.09740259740259741,cube_Sale_APD.jobcode_prefix
+2025-05,Omni Channel,,0.032467532467532464,cube_Sale_APD.jobcode_prefix
+2025-05,Tendering,RS,1.0,cube_Sale_APD.jobcode_prefix
+2025-06,Omni Channel,CT,0.4934210526315789,cube_Sale_APD.jobcode_prefix
+2025-06,Omni Channel,VT,0.34868421052631576,cube_Sale_APD.jobcode_prefix
+2025-06,Omni Channel,RS,0.09210526315789473,cube_Sale_APD.jobcode_prefix
+2025-06,Omni Channel,,0.05921052631578947,cube_Sale_APD.jobcode_prefix
+2025-06,Omni Channel,LB,0.006578947368421052,cube_Sale_APD.jobcode_prefix
+2025-06,Tendering,RS,1.0,cube_Sale_APD.jobcode_prefix
+2025-07,Omni Channel,CT,0.45098039215686275,cube_Sale_APD.jobcode_prefix
+2025-07,Omni Channel,VT,0.45098039215686275,cube_Sale_APD.jobcode_prefix
+2025-07,Omni Channel,RS,0.0718954248366013,cube_Sale_APD.jobcode_prefix
+2025-07,Omni Channel,LB,0.013071895424836602,cube_Sale_APD.jobcode_prefix
+2025-07,Omni Channel,J,0.006535947712418301,cube_Sale_APD.jobcode_prefix
+2025-07,Omni Channel,,0.006535947712418301,cube_Sale_APD.jobcode_prefix
+2025-07,Tendering,CTR,0.52,cube_Sale_APD.jobcode_prefix
+2025-07,Tendering,CT,0.4,cube_Sale_APD.jobcode_prefix
+2025-07,Tendering,VT,0.08,cube_Sale_APD.jobcode_prefix
+2025-08,Omni Channel,CT,0.46,cube_Sale_APD.jobcode_prefix
+2025-08,Omni Channel,VT,0.46,cube_Sale_APD.jobcode_prefix
+2025-08,Omni Channel,,0.045,cube_Sale_APD.jobcode_prefix
+2025-08,Omni Channel,RS,0.03,cube_Sale_APD.jobcode_prefix
+2025-08,Omni Channel,LB,0.005,cube_Sale_APD.jobcode_prefix
+2025-08,Tendering,CTR,1.0,cube_Sale_APD.jobcode_prefix
+2025-09,Omni Channel,CT,0.55,cube_Sale_APD.jobcode_prefix
+2025-09,Omni Channel,VT,0.36875,cube_Sale_APD.jobcode_prefix
+2025-09,Omni Channel,RS,0.08125,cube_Sale_APD.jobcode_prefix
+2025-10,Omni Channel,CT,0.521978021978022,cube_Sale_APD.jobcode_prefix
+2025-10,Omni Channel,VT,0.3791208791208791,cube_Sale_APD.jobcode_prefix
+2025-10,Omni Channel,RS,0.03296703296703297,cube_Sale_APD.jobcode_prefix
+2025-10,Omni Channel,,0.027472527472527472,cube_Sale_APD.jobcode_prefix
+2025-10,Omni Channel,CTR,0.01098901098901099,cube_Sale_APD.jobcode_prefix
+2025-10,Omni Channel,DB,0.01098901098901099,cube_Sale_APD.jobcode_prefix
+2025-10,Omni Channel,SR,0.01098901098901099,cube_Sale_APD.jobcode_prefix
+2025-10,Omni Channel,SS,0.005494505494505495,cube_Sale_APD.jobcode_prefix
+2025-10,Tendering,CTR,1.0,cube_Sale_APD.jobcode_prefix
+2025-11,Omni Channel,CT,0.5141509433962265,cube_Sale_APD.jobcode_prefix
+2025-11,Omni Channel,VT,0.419811320754717,cube_Sale_APD.jobcode_prefix
+2025-11,Omni Channel,RS,0.03773584905660377,cube_Sale_APD.jobcode_prefix
+2025-11,Omni Channel,,0.018867924528301886,cube_Sale_APD.jobcode_prefix
+2025-11,Omni Channel,SS,0.009433962264150943,cube_Sale_APD.jobcode_prefix
+2025-11,Tendering,CTR,1.0,cube_Sale_APD.jobcode_prefix
+2025-12,Omni Channel,CT,0.45564516129032256,cube_Sale_APD.jobcode_prefix
+2025-12,Omni Channel,VT,0.45161290322580644,cube_Sale_APD.jobcode_prefix
+2025-12,Omni Channel,RS,0.07258064516129033,cube_Sale_APD.jobcode_prefix
+2025-12,Omni Channel,SS,0.012096774193548387,cube_Sale_APD.jobcode_prefix
+2025-12,Omni Channel,CTR,0.004032258064516129,cube_Sale_APD.jobcode_prefix
+2025-12,Omni Channel,,0.004032258064516129,cube_Sale_APD.jobcode_prefix
+2025-12,Tendering,CTR,1.0,cube_Sale_APD.jobcode_prefix
+2025-12,Total Customer Solution,J,1.0,cube_Sale_APD.jobcode_prefix
+2026-01,Omni Channel,CT,0.4661016949152542,cube_Sale_APD.jobcode_prefix
+2026-01,Omni Channel,VT,0.4576271186440678,cube_Sale_APD.jobcode_prefix
+2026-01,Omni Channel,RS,0.0423728813559322,cube_Sale_APD.jobcode_prefix
+2026-01,Omni Channel,CTR,0.01694915254237288,cube_Sale_APD.jobcode_prefix
+2026-01,Omni Channel,,0.01694915254237288,cube_Sale_APD.jobcode_prefix
+2026-01,Tendering,CTR,0.5,cube_Sale_APD.jobcode_prefix
+2026-01,Tendering,RS,0.5,cube_Sale_APD.jobcode_prefix
+2026-02,Omni Channel,CT,0.45454545454545453,cube_Sale_APD.jobcode_prefix
+2026-02,Omni Channel,VT,0.4380165289256198,cube_Sale_APD.jobcode_prefix
+2026-02,Omni Channel,RS,0.09090909090909091,cube_Sale_APD.jobcode_prefix
+2026-02,Omni Channel,CTR,0.008264462809917356,cube_Sale_APD.jobcode_prefix
+2026-02,Omni Channel,,0.008264462809917356,cube_Sale_APD.jobcode_prefix
+2026-02,Tendering,CTR,0.5,cube_Sale_APD.jobcode_prefix
+2026-02,Tendering,RS,0.5,cube_Sale_APD.jobcode_prefix
+2026-02,Total Customer Solution,J,1.0,cube_Sale_APD.jobcode_prefix
+2026-03,Omni Channel,CT,0.5224719101123596,cube_Sale_APD.jobcode_prefix
+2026-03,Omni Channel,VT,0.43258426966292135,cube_Sale_APD.jobcode_prefix
+2026-03,Omni Channel,RS,0.02247191011235955,cube_Sale_APD.jobcode_prefix
+2026-03,Omni Channel,J,0.011235955056179775,cube_Sale_APD.jobcode_prefix
+2026-03,Omni Channel,SS,0.0056179775280898875,cube_Sale_APD.jobcode_prefix
+2026-03,Omni Channel,,0.0056179775280898875,cube_Sale_APD.jobcode_prefix
+2026-03,Tendering,CTR,0.4,cube_Sale_APD.jobcode_prefix
+2026-03,Tendering,CT,0.2,cube_Sale_APD.jobcode_prefix
+2026-03,Tendering,RS,0.2,cube_Sale_APD.jobcode_prefix
+2026-03,Tendering,VT,0.2,cube_Sale_APD.jobcode_prefix
+2026-03,Total Customer Solution,J,1.0,cube_Sale_APD.jobcode_prefix
+2026-04,Omni Channel,CT,0.5260416666666666,cube_Sale_APD.jobcode_prefix
+2026-04,Omni Channel,VT,0.421875,cube_Sale_APD.jobcode_prefix
+2026-04,Omni Channel,CTR,0.020833333333333332,cube_Sale_APD.jobcode_prefix
+2026-04,Omni Channel,SS,0.010416666666666666,cube_Sale_APD.jobcode_prefix
+2026-04,Omni Channel,,0.010416666666666666,cube_Sale_APD.jobcode_prefix
+2026-04,Omni Channel,J,0.005208333333333333,cube_Sale_APD.jobcode_prefix
+2026-04,Omni Channel,RS,0.005208333333333333,cube_Sale_APD.jobcode_prefix
+2026-04,Tendering,CTR,0.5,cube_Sale_APD.jobcode_prefix
+2026-04,Tendering,CT,0.25,cube_Sale_APD.jobcode_prefix
+2026-04,Tendering,RS,0.25,cube_Sale_APD.jobcode_prefix
+2026-05,Omni Channel,CT,0.4789915966386555,cube_Sale_APD.jobcode_prefix
+2026-05,Omni Channel,VT,0.4117647058823529,cube_Sale_APD.jobcode_prefix
+2026-05,Omni Channel,RS,0.09243697478991597,cube_Sale_APD.jobcode_prefix
+2026-05,Omni Channel,J,0.008403361344537815,cube_Sale_APD.jobcode_prefix
+2026-05,Omni Channel,LB,0.008403361344537815,cube_Sale_APD.jobcode_prefix
+2026-05,Total Customer Solution,J,1.0,cube_Sale_APD.jobcode_prefix
+2026-06,Omni Channel,CT,0.4935064935064935,cube_Sale_APD.jobcode_prefix
+2026-06,Omni Channel,VT,0.43506493506493504,cube_Sale_APD.jobcode_prefix
+2026-06,Omni Channel,RS,0.03896103896103896,cube_Sale_APD.jobcode_prefix
+2026-06,Omni Channel,CTR,0.012987012987012988,cube_Sale_APD.jobcode_prefix
+2026-06,Omni Channel,SS,0.012987012987012988,cube_Sale_APD.jobcode_prefix
+2026-06,Omni Channel,J,0.006493506493506494,cube_Sale_APD.jobcode_prefix
+2026-06,Tendering,CTR,0.5,cube_Sale_APD.jobcode_prefix
+2026-06,Tendering,CT,0.25,cube_Sale_APD.jobcode_prefix
+2026-06,Tendering,RS,0.25,cube_Sale_APD.jobcode_prefix
+2026-06,Total Customer Solution,J,1.0,cube_Sale_APD.jobcode_prefix
+2026-07,Omni Channel,CT,0.5157232704402516,cube_Sale_APD.jobcode_prefix
+2026-07,Omni Channel,VT,0.4088050314465409,cube_Sale_APD.jobcode_prefix
+2026-07,Omni Channel,RS,0.050314465408805034,cube_Sale_APD.jobcode_prefix
+2026-07,Omni Channel,,0.012578616352201259,cube_Sale_APD.jobcode_prefix
+2026-07,Omni Channel,CTR,0.006289308176100629,cube_Sale_APD.jobcode_prefix
+2026-07,Omni Channel,SS,0.006289308176100629,cube_Sale_APD.jobcode_prefix
+2026-07,Tendering,CTR,0.5,cube_Sale_APD.jobcode_prefix
+2026-07,Tendering,CT,0.25,cube_Sale_APD.jobcode_prefix
+2026-07,Tendering,RS,0.25,cube_Sale_APD.jobcode_prefix
+2026-08,Omni Channel,CT,0.52,cube_Sale_APD.jobcode_prefix
+2026-08,Omni Channel,VT,0.435,cube_Sale_APD.jobcode_prefix
+2026-08,Omni Channel,CTR,0.015,cube_Sale_APD.jobcode_prefix
+2026-08,Omni Channel,RS,0.015,cube_Sale_APD.jobcode_prefix
+2026-08,Omni Channel,J,0.005,cube_Sale_APD.jobcode_prefix
+2026-08,Omni Channel,LB,0.005,cube_Sale_APD.jobcode_prefix
+2026-08,Omni Channel,SS,0.005,cube_Sale_APD.jobcode_prefix
+2026-08,Tendering,CTR,0.5,cube_Sale_APD.jobcode_prefix
+2026-08,Tendering,RS,0.3333333333333333,cube_Sale_APD.jobcode_prefix
+2026-08,Tendering,CT,0.16666666666666666,cube_Sale_APD.jobcode_prefix
+2026-09,Omni Channel,CT,0.4819277108433735,cube_Sale_APD.jobcode_prefix
+2026-09,Omni Channel,VT,0.37349397590361444,cube_Sale_APD.jobcode_prefix
+2026-09,Omni Channel,RS,0.0783132530120482,cube_Sale_APD.jobcode_prefix
+2026-09,Omni Channel,SS,0.030120481927710843,cube_Sale_APD.jobcode_prefix
+2026-09,Omni Channel,CTR,0.018072289156626505,cube_Sale_APD.jobcode_prefix
+2026-09,Omni Channel,LB,0.012048192771084338,cube_Sale_APD.jobcode_prefix
+2026-09,Omni Channel,J,0.006024096385542169,cube_Sale_APD.jobcode_prefix
+2026-09,Tendering,CTR,0.5,cube_Sale_APD.jobcode_prefix
+2026-09,Tendering,VT,0.25,cube_Sale_APD.jobcode_prefix
+2026-09,Tendering,RS,0.1875,cube_Sale_APD.jobcode_prefix
+2026-09,Tendering,,0.0625,cube_Sale_APD.jobcode_prefix
+2026-10,Omni Channel,CT,0.49056603773584906,cube_Sale_APD.jobcode_prefix
+2026-10,Omni Channel,VT,0.3584905660377358,cube_Sale_APD.jobcode_prefix
+2026-10,Omni Channel,RS,0.09433962264150944,cube_Sale_APD.jobcode_prefix
+2026-10,Omni Channel,CTR,0.018867924528301886,cube_Sale_APD.jobcode_prefix
+2026-10,Omni Channel,J,0.018867924528301886,cube_Sale_APD.jobcode_prefix
+2026-10,Omni Channel,SS,0.018867924528301886,cube_Sale_APD.jobcode_prefix
+2026-10,Tendering,CTR,0.6,cube_Sale_APD.jobcode_prefix
+2026-10,Tendering,RS,0.2,cube_Sale_APD.jobcode_prefix
+2026-10,Tendering,VT,0.2,cube_Sale_APD.jobcode_prefix
+2026-11,Omni Channel,RS,0.4444444444444444,cube_Sale_APD.jobcode_prefix
+2026-11,Omni Channel,CT,0.2222222222222222,cube_Sale_APD.jobcode_prefix
+2026-11,Omni Channel,VT,0.2222222222222222,cube_Sale_APD.jobcode_prefix
+2026-11,Omni Channel,J,0.1111111111111111,cube_Sale_APD.jobcode_prefix
+2026-11,Tendering,CTR,0.5,cube_Sale_APD.jobcode_prefix
+2026-11,Tendering,VT,0.5,cube_Sale_APD.jobcode_prefix
+2026-12,Omni Channel,CT,0.5,cube_Sale_APD.jobcode_prefix
+2026-12,Omni Channel,VT,0.375,cube_Sale_APD.jobcode_prefix
+2026-12,Omni Channel,RS,0.125,cube_Sale_APD.jobcode_prefix
+2027-01,Omni Channel,VT,1.0,cube_Sale_APD.jobcode_prefix
+2027-02,Omni Channel,CTR,1.0,cube_Sale_APD.jobcode_prefix
+2027-03,Omni Channel,CTR,1.0,cube_Sale_APD.jobcode_prefix
+2025-01,ALL,Omni Channel,0.9615384615384616,cube_Sale_APD.revenue_type
+2025-01,ALL,Tendering,0.038461538461538464,cube_Sale_APD.revenue_type
+2025-02,ALL,Omni Channel,0.9863945578231292,cube_Sale_APD.revenue_type
+2025-02,ALL,Tendering,0.013605442176870748,cube_Sale_APD.revenue_type
+2025-03,ALL,Omni Channel,0.9833333333333333,cube_Sale_APD.revenue_type
+2025-03,ALL,Tendering,0.016666666666666666,cube_Sale_APD.revenue_type
+2025-04,ALL,Omni Channel,0.9939393939393939,cube_Sale_APD.revenue_type
+2025-04,ALL,Tendering,0.006060606060606061,cube_Sale_APD.revenue_type
+2025-05,ALL,Omni Channel,0.9935483870967742,cube_Sale_APD.revenue_type
+2025-05,ALL,Tendering,0.0064516129032258064,cube_Sale_APD.revenue_type
+2025-06,ALL,Omni Channel,0.9934640522875817,cube_Sale_APD.revenue_type
+2025-06,ALL,Tendering,0.006535947712418301,cube_Sale_APD.revenue_type
+2025-07,ALL,Omni Channel,0.8595505617977528,cube_Sale_APD.revenue_type
+2025-07,ALL,Tendering,0.1404494382022472,cube_Sale_APD.revenue_type
+2025-08,ALL,Omni Channel,0.970873786407767,cube_Sale_APD.revenue_type
+2025-08,ALL,Tendering,0.02912621359223301,cube_Sale_APD.revenue_type
+2025-09,ALL,Omni Channel,1.0,cube_Sale_APD.revenue_type
+2025-10,ALL,Omni Channel,0.9891304347826086,cube_Sale_APD.revenue_type
+2025-10,ALL,Tendering,0.010869565217391304,cube_Sale_APD.revenue_type
+2025-11,ALL,Omni Channel,0.9953051643192489,cube_Sale_APD.revenue_type
+2025-11,ALL,Tendering,0.004694835680751174,cube_Sale_APD.revenue_type
+2025-12,ALL,Omni Channel,0.96875,cube_Sale_APD.revenue_type
+2025-12,ALL,Tendering,0.02734375,cube_Sale_APD.revenue_type
+2025-12,ALL,Total Customer Solution,0.00390625,cube_Sale_APD.revenue_type
+2026-01,ALL,Omni Channel,0.9833333333333333,cube_Sale_APD.revenue_type
+2026-01,ALL,Tendering,0.016666666666666666,cube_Sale_APD.revenue_type
+2026-02,ALL,Omni Channel,0.9758064516129032,cube_Sale_APD.revenue_type
+2026-02,ALL,Tendering,0.016129032258064516,cube_Sale_APD.revenue_type
+2026-02,ALL,Total Customer Solution,0.008064516129032258,cube_Sale_APD.revenue_type
+2026-03,ALL,Omni Channel,0.967391304347826,cube_Sale_APD.revenue_type
+2026-03,ALL,Tendering,0.02717391304347826,cube_Sale_APD.revenue_type
+2026-03,ALL,Total Customer Solution,0.005434782608695652,cube_Sale_APD.revenue_type
+2026-04,ALL,Omni Channel,0.9795918367346939,cube_Sale_APD.revenue_type
+2026-04,ALL,Tendering,0.02040816326530612,cube_Sale_APD.revenue_type
+2026-05,ALL,Omni Channel,0.9834710743801653,cube_Sale_APD.revenue_type
+2026-05,ALL,Total Customer Solution,0.01652892561983471,cube_Sale_APD.revenue_type
+2026-06,ALL,Omni Channel,0.9685534591194969,cube_Sale_APD.revenue_type
+2026-06,ALL,Tendering,0.025157232704402517,cube_Sale_APD.revenue_type
+2026-06,ALL,Total Customer Solution,0.006289308176100629,cube_Sale_APD.revenue_type
+2026-07,ALL,Omni Channel,0.9754601226993865,cube_Sale_APD.revenue_type
+2026-07,ALL,Tendering,0.024539877300613498,cube_Sale_APD.revenue_type
+2026-08,ALL,Omni Channel,0.970873786407767,cube_Sale_APD.revenue_type
+2026-08,ALL,Tendering,0.02912621359223301,cube_Sale_APD.revenue_type
+2026-09,ALL,Omni Channel,0.9120879120879121,cube_Sale_APD.revenue_type
+2026-09,ALL,Tendering,0.08791208791208792,cube_Sale_APD.revenue_type
+2026-10,ALL,Omni Channel,0.9137931034482759,cube_Sale_APD.revenue_type
+2026-10,ALL,Tendering,0.08620689655172414,cube_Sale_APD.revenue_type
+2026-11,ALL,Omni Channel,0.8181818181818182,cube_Sale_APD.revenue_type
+2026-11,ALL,Tendering,0.18181818181818182,cube_Sale_APD.revenue_type
+2026-12,ALL,Omni Channel,1.0,cube_Sale_APD.revenue_type
+2027-01,ALL,Omni Channel,1.0,cube_Sale_APD.revenue_type
+2027-02,ALL,Omni Channel,1.0,cube_Sale_APD.revenue_type
+2027-03,ALL,Omni Channel,1.0,cube_Sale_APD.revenue_type
+2025-01,Omni Channel,Actual,0.6521739130434783,Cube_CES.Status
+2025-01,Omni Channel,P2,0.3173913043478261,Cube_CES.Status
+2025-01,Omni Channel,MPS,0.02608695652173913,Cube_CES.Status
+2025-01,Omni Channel,,0.004347826086956522,Cube_CES.Status
+2025-01,Tendering,Actual,1.0,Cube_CES.Status
+2025-01,Total Customer Solution,P2,1.0,Cube_CES.Status
+2025-02,Omni Channel,Actual,0.6591928251121076,Cube_CES.Status
+2025-02,Omni Channel,P2,0.32286995515695066,Cube_CES.Status
+2025-02,Omni Channel,MPS,0.017937219730941704,Cube_CES.Status
+2025-02,Tendering,Actual,1.0,Cube_CES.Status
+2025-03,Omni Channel,Actual,0.6202090592334495,Cube_CES.Status
+2025-03,Omni Channel,P2,0.37630662020905925,Cube_CES.Status
+2025-03,Omni Channel,MPS,0.003484320557491289,Cube_CES.Status
+2025-03,Tendering,Actual,1.0,Cube_CES.Status
+2025-04,Omni Channel,Actual,0.6612903225806451,Cube_CES.Status
+2025-04,Omni Channel,P2,0.3225806451612903,Cube_CES.Status
+2025-04,Omni Channel,MPS,0.016129032258064516,Cube_CES.Status
+2025-04,Tendering,Actual,1.0,Cube_CES.Status
+2025-05,Omni Channel,Actual,0.6860986547085202,Cube_CES.Status
+2025-05,Omni Channel,P2,0.3094170403587444,Cube_CES.Status
+2025-05,Omni Channel,,0.004484304932735426,Cube_CES.Status
+2025-05,Tendering,Actual,1.0,Cube_CES.Status
+2025-06,Omni Channel,Actual,0.6375545851528385,Cube_CES.Status
+2025-06,Omni Channel,P2,0.35807860262008734,Cube_CES.Status
+2025-06,Omni Channel,MPS,0.004366812227074236,Cube_CES.Status
+2025-06,Tendering,Actual,1.0,Cube_CES.Status
+2025-07,Omni Channel,Actual,0.6875,Cube_CES.Status
+2025-07,Omni Channel,P2,0.3080357142857143,Cube_CES.Status
+2025-07,Omni Channel,MPS,0.004464285714285714,Cube_CES.Status
+2025-07,Tendering,Actual,1.0,Cube_CES.Status
+2025-08,Omni Channel,Actual,0.6407766990291263,Cube_CES.Status
+2025-08,Omni Channel,P2,0.343042071197411,Cube_CES.Status
+2025-08,Omni Channel,MPS,0.012944983818770227,Cube_CES.Status
+2025-08,Omni Channel,,0.003236245954692557,Cube_CES.Status
+2025-08,Tendering,Actual,0.8571428571428571,Cube_CES.Status
+2025-08,Tendering,T2,0.14285714285714285,Cube_CES.Status
+2025-09,Omni Channel,Actual,0.5609756097560976,Cube_CES.Status
+2025-09,Omni Channel,P2,0.43205574912891986,Cube_CES.Status
+2025-09,Omni Channel,MPS,0.003484320557491289,Cube_CES.Status
+2025-09,Omni Channel,,0.003484320557491289,Cube_CES.Status
+2025-09,Total Customer Solution,P2,1.0,Cube_CES.Status
+2025-10,Omni Channel,Actual,0.7109375,Cube_CES.Status
+2025-10,Omni Channel,P2,0.2890625,Cube_CES.Status
+2025-10,Tendering,Actual,1.0,Cube_CES.Status
+2025-10,Total Customer Solution,P2,1.0,Cube_CES.Status
+2025-11,Omni Channel,Actual,0.7948717948717948,Cube_CES.Status
+2025-11,Omni Channel,P2,0.1978021978021978,Cube_CES.Status
+2025-11,Omni Channel,MPS,0.007326007326007326,Cube_CES.Status
+2025-11,Tendering,Actual,1.0,Cube_CES.Status
+2025-11,Total Customer Solution,P2,1.0,Cube_CES.Status
+2025-12,Omni Channel,Actual,0.6458333333333334,Cube_CES.Status
+2025-12,Omni Channel,P2,0.3463541666666667,Cube_CES.Status
+2025-12,Omni Channel,MPS,0.0078125,Cube_CES.Status
+2025-12,Tendering,Actual,0.875,Cube_CES.Status
+2025-12,Tendering,T2,0.125,Cube_CES.Status
+2025-12,Total Customer Solution,Actual,1.0,Cube_CES.Status
+2026-01,Omni Channel,Actual,0.6378378378378379,Cube_CES.Status
+2026-01,Omni Channel,P2,0.3567567567567568,Cube_CES.Status
+2026-01,Omni Channel,MPS,0.005405405405405406,Cube_CES.Status
+2026-01,Tendering,Actual,1.0,Cube_CES.Status
+2026-02,Omni Channel,Actual,0.6505376344086021,Cube_CES.Status
+2026-02,Omni Channel,P2,0.3064516129032258,Cube_CES.Status
+2026-02,Omni Channel,,0.026881720430107527,Cube_CES.Status
+2026-02,Omni Channel,P3,0.010752688172043012,Cube_CES.Status
+2026-02,Omni Channel,MPS,0.005376344086021506,Cube_CES.Status
+2026-02,Tendering,Actual,1.0,Cube_CES.Status
+2026-02,Total Customer Solution,Actual,1.0,Cube_CES.Status
+2026-03,Omni Channel,Actual,0.5874587458745875,Cube_CES.Status
+2026-03,Omni Channel,P2,0.39603960396039606,Cube_CES.Status
+2026-03,Omni Channel,MPS,0.013201320132013201,Cube_CES.Status
+2026-03,Omni Channel,,0.0033003300330033004,Cube_CES.Status
+2026-03,Tendering,Actual,1.0,Cube_CES.Status
+2026-03,Total Customer Solution,P2,0.8571428571428571,Cube_CES.Status
+2026-03,Total Customer Solution,Actual,0.14285714285714285,Cube_CES.Status
+2026-04,Omni Channel,Actual,0.7310606060606061,Cube_CES.Status
+2026-04,Omni Channel,P2,0.25,Cube_CES.Status
+2026-04,Omni Channel,MPS,0.011363636363636364,Cube_CES.Status
+2026-04,Omni Channel,P3,0.007575757575757576,Cube_CES.Status
+2026-04,Tendering,Actual,1.0,Cube_CES.Status
+2026-05,Omni Channel,Actual,0.6040609137055838,Cube_CES.Status
+2026-05,Omni Channel,P2,0.39086294416243655,Cube_CES.Status
+2026-05,Omni Channel,MPS,0.005076142131979695,Cube_CES.Status
+2026-05,Total Customer Solution,Actual,1.0,Cube_CES.Status
+2026-06,Omni Channel,Actual,0.7549019607843137,Cube_CES.Status
+2026-06,Omni Channel,P2,0.23529411764705882,Cube_CES.Status
+2026-06,Omni Channel,MPS,0.00980392156862745,Cube_CES.Status
+2026-06,Tendering,Actual,1.0,Cube_CES.Status
+2026-06,Total Customer Solution,Actual,1.0,Cube_CES.Status
+2026-07,Omni Channel,Actual,0.6625514403292181,Cube_CES.Status
+2026-07,Omni Channel,P2,0.29218106995884774,Cube_CES.Status
+2026-07,Omni Channel,MPS,0.024691358024691357,Cube_CES.Status
+2026-07,Omni Channel,,0.0205761316872428,Cube_CES.Status
+2026-07,Tendering,Actual,1.0,Cube_CES.Status
+2026-07,Total Customer Solution,P2,1.0,Cube_CES.Status
+2026-08,Omni Channel,Actual,0.6655518394648829,Cube_CES.Status
+2026-08,Omni Channel,P2,0.3010033444816054,Cube_CES.Status
+2026-08,Omni Channel,MPS,0.023411371237458192,Cube_CES.Status
+2026-08,Omni Channel,,0.006688963210702341,Cube_CES.Status
+2026-08,Omni Channel,Backlog,0.0033444816053511705,Cube_CES.Status
+2026-08,Tendering,Actual,0.5454545454545454,Cube_CES.Status
+2026-08,Tendering,F,0.45454545454545453,Cube_CES.Status
+2026-09,Omni Channel,Actual,0.398576512455516,Cube_CES.Status
+2026-09,Omni Channel,P2,0.3665480427046263,Cube_CES.Status
+2026-09,Omni Channel,Backlog,0.2277580071174377,Cube_CES.Status
+2026-09,Omni Channel,MPS,0.0071174377224199285,Cube_CES.Status
+2026-09,Tendering,Actual,0.8823529411764706,Cube_CES.Status
+2026-09,Tendering,Backlog,0.058823529411764705,Cube_CES.Status
+2026-09,Tendering,,0.058823529411764705,Cube_CES.Status
+2026-10,Omni Channel,P2,0.6160714285714286,Cube_CES.Status
+2026-10,Omni Channel,Backlog,0.38392857142857145,Cube_CES.Status
+2026-10,Tendering,Backlog,1.0,Cube_CES.Status
+2026-10,Total Customer Solution,P1,1.0,Cube_CES.Status
+2026-11,Omni Channel,Backlog,1.0,Cube_CES.Status
+2026-11,Tendering,Backlog,1.0,Cube_CES.Status
+2026-11,Total Customer Solution,P2,1.0,Cube_CES.Status
+2026-12,Omni Channel,Actual,0.75,Cube_CES.Status
+2026-12,Omni Channel,Backlog,0.25,Cube_CES.Status
+2026-12,Tendering,F,0.8571428571428571,Cube_CES.Status
+2026-12,Tendering,P2,0.14285714285714285,Cube_CES.Status
+2027-01,Omni Channel,Backlog,1.0,Cube_CES.Status
+2027-02,Omni Channel,Backlog,1.0,Cube_CES.Status
+2027-03,Omni Channel,Backlog,1.0,Cube_CES.Status
+2027-03,Tendering,P2,1.0,Cube_CES.Status
+2025-01,Omni Channel,PEM105,0.9173913043478261,Cube_CES.SaleDivision
+2025-01,Omni Channel,PEM103,0.06521739130434782,Cube_CES.SaleDivision
+2025-01,Omni Channel,PPD101,0.017391304347826087,Cube_CES.SaleDivision
+2025-01,Tendering,PEM103,0.6666666666666666,Cube_CES.SaleDivision
+2025-01,Tendering,PTS,0.3333333333333333,Cube_CES.SaleDivision
+2025-01,Total Customer Solution,PEM105,1.0,Cube_CES.SaleDivision
+2025-02,Omni Channel,PEM105,0.9461883408071748,Cube_CES.SaleDivision
+2025-02,Omni Channel,PEM103,0.04932735426008968,Cube_CES.SaleDivision
+2025-02,Omni Channel,PEM104,0.004484304932735426,Cube_CES.SaleDivision
+2025-02,Tendering,PEM103,0.5,Cube_CES.SaleDivision
+2025-02,Tendering,PTS,0.5,Cube_CES.SaleDivision
+2025-03,Omni Channel,PEM105,0.8397212543554007,Cube_CES.SaleDivision
+2025-03,Omni Channel,PEM103,0.1289198606271777,Cube_CES.SaleDivision
+2025-03,Omni Channel,PPD101,0.027874564459930314,Cube_CES.SaleDivision
+2025-03,Omni Channel,PEM102,0.003484320557491289,Cube_CES.SaleDivision
+2025-03,Tendering,PTS,0.6666666666666666,Cube_CES.SaleDivision
+2025-03,Tendering,PEM103,0.3333333333333333,Cube_CES.SaleDivision
+2025-04,Omni Channel,PEM105,0.9435483870967742,Cube_CES.SaleDivision
+2025-04,Omni Channel,PEM103,0.056451612903225805,Cube_CES.SaleDivision
+2025-04,Tendering,PEM103,1.0,Cube_CES.SaleDivision
+2025-05,Omni Channel,PEM105,0.9237668161434978,Cube_CES.SaleDivision
+2025-05,Omni Channel,PEM103,0.05829596412556054,Cube_CES.SaleDivision
+2025-05,Omni Channel,PPD101,0.013452914798206279,Cube_CES.SaleDivision
+2025-05,Omni Channel,PEM102,0.004484304932735426,Cube_CES.SaleDivision
+2025-05,Tendering,PEM103,1.0,Cube_CES.SaleDivision
+2025-06,Omni Channel,PEM105,0.9170305676855895,Cube_CES.SaleDivision
+2025-06,Omni Channel,PEM103,0.06986899563318777,Cube_CES.SaleDivision
+2025-06,Omni Channel,PDE101,0.004366812227074236,Cube_CES.SaleDivision
+2025-06,Omni Channel,PEM102,0.004366812227074236,Cube_CES.SaleDivision
+2025-06,Omni Channel,PPD101,0.004366812227074236,Cube_CES.SaleDivision
+2025-06,Tendering,PEM103,1.0,Cube_CES.SaleDivision
+2025-07,Omni Channel,PEM105,0.9598214285714286,Cube_CES.SaleDivision
+2025-07,Omni Channel,PEM103,0.026785714285714284,Cube_CES.SaleDivision
+2025-07,Omni Channel,PDEMO,0.008928571428571428,Cube_CES.SaleDivision
+2025-07,Omni Channel,PCE101,0.004464285714285714,Cube_CES.SaleDivision
+2025-07,Tendering,PEM103,0.48,Cube_CES.SaleDivision
+2025-07,Tendering,PPS,0.4,Cube_CES.SaleDivision
+2025-07,Tendering,PTS,0.12,Cube_CES.SaleDivision
+2025-08,Omni Channel,PEM105,0.970873786407767,Cube_CES.SaleDivision
+2025-08,Omni Channel,PDE101,0.012944983818770227,Cube_CES.SaleDivision
+2025-08,Omni Channel,PEM103,0.012944983818770227,Cube_CES.SaleDivision
+2025-08,Omni Channel,PPD101,0.003236245954692557,Cube_CES.SaleDivision
+2025-08,Tendering,PTS,0.7142857142857143,Cube_CES.SaleDivision
+2025-08,Tendering,PEM103-DSM,0.14285714285714285,Cube_CES.SaleDivision
+2025-08,Tendering,PPS,0.14285714285714285,Cube_CES.SaleDivision
+2025-09,Omni Channel,PEM105,0.9407665505226481,Cube_CES.SaleDivision
+2025-09,Omni Channel,PEM103,0.059233449477351915,Cube_CES.SaleDivision
+2025-09,Total Customer Solution,PEM103,1.0,Cube_CES.SaleDivision
+2025-10,Omni Channel,PEM105,0.96875,Cube_CES.SaleDivision
+2025-10,Omni Channel,PDE101,0.015625,Cube_CES.SaleDivision
+2025-10,Omni Channel,PEM103,0.0078125,Cube_CES.SaleDivision
+2025-10,Omni Channel,PPD101,0.00390625,Cube_CES.SaleDivision
+2025-10,Omni Channel,PTS,0.00390625,Cube_CES.SaleDivision
+2025-10,Tendering,PTS,1.0,Cube_CES.SaleDivision
+2025-10,Total Customer Solution,PEM105,1.0,Cube_CES.SaleDivision
+2025-11,Omni Channel,PEM105,0.9633699633699634,Cube_CES.SaleDivision
+2025-11,Omni Channel,PEM103,0.018315018315018316,Cube_CES.SaleDivision
+2025-11,Omni Channel,CI101,0.01098901098901099,Cube_CES.SaleDivision
+2025-11,Omni Channel,PDE101,0.003663003663003663,Cube_CES.SaleDivision
+2025-11,Omni Channel,PPD101,0.003663003663003663,Cube_CES.SaleDivision
+2025-11,Tendering,PTS,1.0,Cube_CES.SaleDivision
+2025-11,Total Customer Solution,PEM105,1.0,Cube_CES.SaleDivision
+2025-12,Omni Channel,PEM105,0.9739583333333334,Cube_CES.SaleDivision
+2025-12,Omni Channel,PEM103,0.0234375,Cube_CES.SaleDivision
+2025-12,Omni Channel,PDE101,0.0026041666666666665,Cube_CES.SaleDivision
+2025-12,Tendering,PTS,0.875,Cube_CES.SaleDivision
+2025-12,Tendering,PEM103-DSM,0.125,Cube_CES.SaleDivision
+2025-12,Total Customer Solution,PCE101,1.0,Cube_CES.SaleDivision
+2026-01,Omni Channel,PEM105,0.9837837837837838,Cube_CES.SaleDivision
+2026-01,Omni Channel,PDE101,0.005405405405405406,Cube_CES.SaleDivision
+2026-01,Omni Channel,PEM103,0.005405405405405406,Cube_CES.SaleDivision
+2026-01,Omni Channel,PTS,0.005405405405405406,Cube_CES.SaleDivision
+2026-01,Tendering,PEM103,0.5,Cube_CES.SaleDivision
+2026-01,Tendering,PTS,0.5,Cube_CES.SaleDivision
+2026-02,Omni Channel,PEM105,0.9516129032258065,Cube_CES.SaleDivision
+2026-02,Omni Channel,PEM103,0.043010752688172046,Cube_CES.SaleDivision
+2026-02,Omni Channel,PDE101,0.005376344086021506,Cube_CES.SaleDivision
+2026-02,Tendering,PEM103,0.5,Cube_CES.SaleDivision
+2026-02,Tendering,PTS,0.5,Cube_CES.SaleDivision
+2026-02,Total Customer Solution,PCE101,1.0,Cube_CES.SaleDivision
+2026-03,Omni Channel,PEM105,0.9933993399339934,Cube_CES.SaleDivision
+2026-03,Omni Channel,PCE101,0.006600660066006601,Cube_CES.SaleDivision
+2026-03,Tendering,PEM103,0.6,Cube_CES.SaleDivision
+2026-03,Tendering,PTS,0.4,Cube_CES.SaleDivision
+2026-03,Total Customer Solution,PEM105,0.8571428571428571,Cube_CES.SaleDivision
+2026-03,Total Customer Solution,PCE101,0.14285714285714285,Cube_CES.SaleDivision
+2026-04,Omni Channel,PEM105,0.9962121212121212,Cube_CES.SaleDivision
+2026-04,Omni Channel,PCE101,0.003787878787878788,Cube_CES.SaleDivision
+2026-04,Tendering,PEM103,0.5,Cube_CES.SaleDivision
+2026-04,Tendering,PTS,0.5,Cube_CES.SaleDivision
+2026-05,Omni Channel,PEM105,0.9543147208121827,Cube_CES.SaleDivision
+2026-05,Omni Channel,PEM103,0.04060913705583756,Cube_CES.SaleDivision
+2026-05,Omni Channel,PCE101,0.005076142131979695,Cube_CES.SaleDivision
+2026-05,Total Customer Solution,PCE101,1.0,Cube_CES.SaleDivision
+2026-06,Omni Channel,PEM105,0.9705882352941176,Cube_CES.SaleDivision
+2026-06,Omni Channel,PEM107,0.0196078431372549,Cube_CES.SaleDivision
+2026-06,Omni Channel,PCE101,0.004901960784313725,Cube_CES.SaleDivision
+2026-06,Omni Channel,PEMCSA,0.004901960784313725,Cube_CES.SaleDivision
+2026-06,Tendering,PEM107,0.5,Cube_CES.SaleDivision
+2026-06,Tendering,PPS,0.5,Cube_CES.SaleDivision
+2026-06,Total Customer Solution,PCE101,1.0,Cube_CES.SaleDivision
+2026-07,Omni Channel,PEM105,0.9835390946502057,Cube_CES.SaleDivision
+2026-07,Omni Channel,PEM107,0.01646090534979424,Cube_CES.SaleDivision
+2026-07,Tendering,PEM107,0.5,Cube_CES.SaleDivision
+2026-07,Tendering,PPS,0.5,Cube_CES.SaleDivision
+2026-07,Total Customer Solution,PEM105,1.0,Cube_CES.SaleDivision
+2026-08,Omni Channel,PEM105,0.9866220735785953,Cube_CES.SaleDivision
+2026-08,Omni Channel,PEM107,0.010033444816053512,Cube_CES.SaleDivision
+2026-08,Omni Channel,PCE101,0.0033444816053511705,Cube_CES.SaleDivision
+2026-08,Tendering,PEM107,0.7272727272727273,Cube_CES.SaleDivision
+2026-08,Tendering,PPS,0.18181818181818182,Cube_CES.SaleDivision
+2026-08,Tendering,PSS,0.09090909090909091,Cube_CES.SaleDivision
+2026-09,Omni Channel,PEM105,0.9644128113879004,Cube_CES.SaleDivision
+2026-09,Omni Channel,PEM107,0.02491103202846975,Cube_CES.SaleDivision
+2026-09,Omni Channel,PCE101,0.010676156583629894,Cube_CES.SaleDivision
+2026-09,Tendering,PEM107,0.4117647058823529,Cube_CES.SaleDivision
+2026-09,Tendering,PPS,0.35294117647058826,Cube_CES.SaleDivision
+2026-09,Tendering,PSS,0.11764705882352941,Cube_CES.SaleDivision
+2026-09,Tendering,PTS,0.11764705882352941,Cube_CES.SaleDivision
+2026-10,Omni Channel,PEM105,0.9910714285714286,Cube_CES.SaleDivision
+2026-10,Omni Channel,PCE101,0.008928571428571428,Cube_CES.SaleDivision
+2026-10,Tendering,PEM107,0.4,Cube_CES.SaleDivision
+2026-10,Tendering,PPS,0.2,Cube_CES.SaleDivision
+2026-10,Tendering,PSS,0.2,Cube_CES.SaleDivision
+2026-10,Tendering,PTS,0.2,Cube_CES.SaleDivision
+2026-10,Total Customer Solution,PCE101,1.0,Cube_CES.SaleDivision
+2026-11,Omni Channel,PEM105,0.8888888888888888,Cube_CES.SaleDivision
+2026-11,Omni Channel,PCE101,0.1111111111111111,Cube_CES.SaleDivision
+2026-11,Tendering,PEM107,0.5,Cube_CES.SaleDivision
+2026-11,Tendering,PPS,0.5,Cube_CES.SaleDivision
+2026-11,Total Customer Solution,PCE101,1.0,Cube_CES.SaleDivision
+2026-12,Omni Channel,PEM105,1.0,Cube_CES.SaleDivision
+2026-12,Tendering,PEM107,0.8571428571428571,Cube_CES.SaleDivision
+2026-12,Tendering,PEM102,0.14285714285714285,Cube_CES.SaleDivision
+2027-01,Omni Channel,PEM105,1.0,Cube_CES.SaleDivision
+2027-02,Omni Channel,PEM105,1.0,Cube_CES.SaleDivision
+2027-03,Omni Channel,PEM105,1.0,Cube_CES.SaleDivision
+2027-03,Tendering,PEM102,1.0,Cube_CES.SaleDivision
+2025-01,Omni Channel,PEM107,0.9391304347826087,Cube_CES.ManuDivision
+2025-01,Omni Channel,PEM102-OLD,0.02608695652173913,Cube_CES.ManuDivision
+2025-01,Omni Channel,PEM103,0.017391304347826087,Cube_CES.ManuDivision
+2025-01,Omni Channel,PPD101,0.017391304347826087,Cube_CES.ManuDivision
+2025-01,Tendering,PEM107,0.6666666666666666,Cube_CES.ManuDivision
+2025-01,Tendering,PTS,0.3333333333333333,Cube_CES.ManuDivision
+2025-01,Total Customer Solution,PEM107,1.0,Cube_CES.ManuDivision
+2025-02,Omni Channel,PEM107,1.0,Cube_CES.ManuDivision
+2025-02,Tendering,PEM107,0.5,Cube_CES.ManuDivision
+2025-02,Tendering,PTS,0.5,Cube_CES.ManuDivision
+2025-03,Omni Channel,PEM107,0.9686411149825784,Cube_CES.ManuDivision
+2025-03,Omni Channel,PPD101,0.027874564459930314,Cube_CES.ManuDivision
+2025-03,Omni Channel,PEM102-OLD,0.003484320557491289,Cube_CES.ManuDivision
+2025-03,Tendering,PTS,0.6666666666666666,Cube_CES.ManuDivision
+2025-03,Tendering,PEM107,0.3333333333333333,Cube_CES.ManuDivision
+2025-04,Omni Channel,PEM107,0.9798387096774194,Cube_CES.ManuDivision
+2025-04,Omni Channel,PEM103,0.020161290322580645,Cube_CES.ManuDivision
+2025-04,Tendering,PEM107,1.0,Cube_CES.ManuDivision
+2025-05,Omni Channel,PEM107,0.9730941704035875,Cube_CES.ManuDivision
+2025-05,Omni Channel,PEM102-OLD,0.013452914798206279,Cube_CES.ManuDivision
+2025-05,Omni Channel,PPD101,0.013452914798206279,Cube_CES.ManuDivision
+2025-05,Tendering,PEM107,1.0,Cube_CES.ManuDivision
+2025-06,Omni Channel,PEM107,0.9213973799126638,Cube_CES.ManuDivision
+2025-06,Omni Channel,PEM102-OLD,0.06986899563318777,Cube_CES.ManuDivision
+2025-06,Omni Channel,PDEMO,0.004366812227074236,Cube_CES.ManuDivision
+2025-06,Omni Channel,PPD101,0.004366812227074236,Cube_CES.ManuDivision
+2025-06,Tendering,PEM107,1.0,Cube_CES.ManuDivision
+2025-07,Omni Channel,PEM107,0.9776785714285714,Cube_CES.ManuDivision
+2025-07,Omni Channel,PDEMO,0.008928571428571428,Cube_CES.ManuDivision
+2025-07,Omni Channel,PEM102-OLD,0.008928571428571428,Cube_CES.ManuDivision
+2025-07,Omni Channel,PCE101,0.004464285714285714,Cube_CES.ManuDivision
+2025-07,Tendering,PEM107,0.48,Cube_CES.ManuDivision
+2025-07,Tendering,PPS,0.4,Cube_CES.ManuDivision
+2025-07,Tendering,PTS,0.12,Cube_CES.ManuDivision
+2025-08,Omni Channel,PEM107,0.9838187702265372,Cube_CES.ManuDivision
+2025-08,Omni Channel,PDEMO,0.012944983818770227,Cube_CES.ManuDivision
+2025-08,Omni Channel,PPD101,0.003236245954692557,Cube_CES.ManuDivision
+2025-08,Tendering,PTS,0.7142857142857143,Cube_CES.ManuDivision
+2025-08,Tendering,PEM107,0.14285714285714285,Cube_CES.ManuDivision
+2025-08,Tendering,PPS,0.14285714285714285,Cube_CES.ManuDivision
+2025-09,Omni Channel,PEM107,0.9825783972125436,Cube_CES.ManuDivision
+2025-09,Omni Channel,PEM102-OLD,0.013937282229965157,Cube_CES.ManuDivision
+2025-09,Omni Channel,PEM105,0.003484320557491289,Cube_CES.ManuDivision
+2025-09,Total Customer Solution,PEM107,1.0,Cube_CES.ManuDivision
+2025-10,Omni Channel,PEM107,0.9609375,Cube_CES.ManuDivision
+2025-10,Omni Channel,PDEMO,0.015625,Cube_CES.ManuDivision
+2025-10,Omni Channel,PEM102,0.01171875,Cube_CES.ManuDivision
+2025-10,Omni Channel,PEM102-OLD,0.00390625,Cube_CES.ManuDivision
+2025-10,Omni Channel,PPD101,0.00390625,Cube_CES.ManuDivision
+2025-10,Omni Channel,PTS,0.00390625,Cube_CES.ManuDivision
+2025-10,Tendering,PTS,1.0,Cube_CES.ManuDivision
+2025-10,Total Customer Solution,PEM107,1.0,Cube_CES.ManuDivision
+2025-11,Omni Channel,PEM107,0.9597069597069597,Cube_CES.ManuDivision
+2025-11,Omni Channel,PEM102-OLD,0.02197802197802198,Cube_CES.ManuDivision
+2025-11,Omni Channel,PEM102,0.01098901098901099,Cube_CES.ManuDivision
+2025-11,Omni Channel,PDEMO,0.003663003663003663,Cube_CES.ManuDivision
+2025-11,Omni Channel,PPD101,0.003663003663003663,Cube_CES.ManuDivision
+2025-11,Tendering,PTS,1.0,Cube_CES.ManuDivision
+2025-11,Total Customer Solution,PEM107,1.0,Cube_CES.ManuDivision
+2025-12,Omni Channel,PEM107,0.9895833333333334,Cube_CES.ManuDivision
+2025-12,Omni Channel,PEM102,0.0078125,Cube_CES.ManuDivision
+2025-12,Omni Channel,PDEMO,0.0026041666666666665,Cube_CES.ManuDivision
+2025-12,Tendering,PTS,0.875,Cube_CES.ManuDivision
+2025-12,Tendering,PEM107,0.125,Cube_CES.ManuDivision
+2025-12,Total Customer Solution,PCE101,1.0,Cube_CES.ManuDivision
+2026-01,Omni Channel,PEM107,0.9891891891891892,Cube_CES.ManuDivision
+2026-01,Omni Channel,PDEMO,0.005405405405405406,Cube_CES.ManuDivision
+2026-01,Omni Channel,PTS,0.005405405405405406,Cube_CES.ManuDivision
+2026-01,Tendering,PEM107,0.5,Cube_CES.ManuDivision
+2026-01,Tendering,PTS,0.5,Cube_CES.ManuDivision
+2026-02,Omni Channel,PEM107,0.9946236559139785,Cube_CES.ManuDivision
+2026-02,Omni Channel,PDEMO,0.005376344086021506,Cube_CES.ManuDivision
+2026-02,Tendering,PEM107,0.5,Cube_CES.ManuDivision
+2026-02,Tendering,PTS,0.5,Cube_CES.ManuDivision
+2026-02,Total Customer Solution,PCE101,1.0,Cube_CES.ManuDivision
+2026-03,Omni Channel,PEM107,0.9900990099009901,Cube_CES.ManuDivision
+2026-03,Omni Channel,PCE101,0.006600660066006601,Cube_CES.ManuDivision
+2026-03,Omni Channel,PEM102,0.0033003300330033004,Cube_CES.ManuDivision
+2026-03,Tendering,PEM107,0.6,Cube_CES.ManuDivision
+2026-03,Tendering,PTS,0.4,Cube_CES.ManuDivision
+2026-03,Total Customer Solution,PEM107,0.8571428571428571,Cube_CES.ManuDivision
+2026-03,Total Customer Solution,PCE101,0.14285714285714285,Cube_CES.ManuDivision
+2026-04,Omni Channel,PEM107,0.9810606060606061,Cube_CES.ManuDivision
+2026-04,Omni Channel,PEM102,0.015151515151515152,Cube_CES.ManuDivision
+2026-04,Omni Channel,PCE101,0.003787878787878788,Cube_CES.ManuDivision
+2026-04,Tendering,PEM107,0.5,Cube_CES.ManuDivision
+2026-04,Tendering,PTS,0.5,Cube_CES.ManuDivision
+2026-05,Omni Channel,PEM107,0.9949238578680203,Cube_CES.ManuDivision
+2026-05,Omni Channel,PCE101,0.005076142131979695,Cube_CES.ManuDivision
+2026-05,Total Customer Solution,PCE101,1.0,Cube_CES.ManuDivision
+2026-06,Omni Channel,PEM107,0.9705882352941176,Cube_CES.ManuDivision
+2026-06,Omni Channel,PEM102,0.0196078431372549,Cube_CES.ManuDivision
+2026-06,Omni Channel,PCE101,0.004901960784313725,Cube_CES.ManuDivision
+2026-06,Omni Channel,PEMCSA,0.004901960784313725,Cube_CES.ManuDivision
+2026-06,Tendering,PEM107,0.5,Cube_CES.ManuDivision
+2026-06,Tendering,PPS,0.5,Cube_CES.ManuDivision
+2026-06,Total Customer Solution,PCE101,1.0,Cube_CES.ManuDivision
+2026-07,Omni Channel,PEM107,0.9794238683127572,Cube_CES.ManuDivision
+2026-07,Omni Channel,PEM102,0.01646090534979424,Cube_CES.ManuDivision
+2026-07,Omni Channel,PEM103,0.00411522633744856,Cube_CES.ManuDivision
+2026-07,Tendering,PEM107,0.5,Cube_CES.ManuDivision
+2026-07,Tendering,PPS,0.5,Cube_CES.ManuDivision
+2026-07,Total Customer Solution,PEM107,1.0,Cube_CES.ManuDivision
+2026-08,Omni Channel,PEM107,0.9866220735785953,Cube_CES.ManuDivision
+2026-08,Omni Channel,PEM102,0.010033444816053512,Cube_CES.ManuDivision
+2026-08,Omni Channel,PCE101,0.0033444816053511705,Cube_CES.ManuDivision
+2026-08,Tendering,PEM107,0.7272727272727273,Cube_CES.ManuDivision
+2026-08,Tendering,PPS,0.18181818181818182,Cube_CES.ManuDivision
+2026-08,Tendering,PSS,0.09090909090909091,Cube_CES.ManuDivision
+2026-09,Omni Channel,PEM107,0.9679715302491103,Cube_CES.ManuDivision
+2026-09,Omni Channel,PEM102,0.017793594306049824,Cube_CES.ManuDivision
+2026-09,Omni Channel,PCE101,0.010676156583629894,Cube_CES.ManuDivision
+2026-09,Omni Channel,PEM102-OLD,0.0035587188612099642,Cube_CES.ManuDivision
+2026-09,Tendering,PEM107,0.4117647058823529,Cube_CES.ManuDivision
+2026-09,Tendering,PPS,0.35294117647058826,Cube_CES.ManuDivision
+2026-09,Tendering,PSS,0.11764705882352941,Cube_CES.ManuDivision
+2026-09,Tendering,PTS,0.11764705882352941,Cube_CES.ManuDivision
+2026-10,Omni Channel,PEM107,0.9642857142857143,Cube_CES.ManuDivision
+2026-10,Omni Channel,PEM102,0.026785714285714284,Cube_CES.ManuDivision
+2026-10,Omni Channel,PCE101,0.008928571428571428,Cube_CES.ManuDivision
+2026-10,Tendering,PEM107,0.4,Cube_CES.ManuDivision
+2026-10,Tendering,PPS,0.2,Cube_CES.ManuDivision
+2026-10,Tendering,PSS,0.2,Cube_CES.ManuDivision
+2026-10,Tendering,PTS,0.2,Cube_CES.ManuDivision
+2026-10,Total Customer Solution,PCE101,1.0,Cube_CES.ManuDivision
+2026-11,Omni Channel,PEM107,0.8888888888888888,Cube_CES.ManuDivision
+2026-11,Omni Channel,PCE101,0.1111111111111111,Cube_CES.ManuDivision
+2026-11,Tendering,PEM107,0.5,Cube_CES.ManuDivision
+2026-11,Tendering,PPS,0.5,Cube_CES.ManuDivision
+2026-11,Total Customer Solution,PCE101,1.0,Cube_CES.ManuDivision
+2026-12,Omni Channel,PEM107,1.0,Cube_CES.ManuDivision
+2026-12,Tendering,PEM107,0.8571428571428571,Cube_CES.ManuDivision
+2026-12,Tendering,PEM102,0.14285714285714285,Cube_CES.ManuDivision
+2027-01,Omni Channel,PEM107,1.0,Cube_CES.ManuDivision
+2027-02,Omni Channel,PEM107,1.0,Cube_CES.ManuDivision
+2027-03,Omni Channel,PEM107,1.0,Cube_CES.ManuDivision
+2027-03,Tendering,PEM102,1.0,Cube_CES.ManuDivision
+2025-01,Omni Channel,PEM,0.9826086956521739,Cube_CES.Company
+2025-01,Omni Channel,PPD,0.017391304347826087,Cube_CES.Company
+2025-01,Tendering,PEM,0.6666666666666666,Cube_CES.Company
+2025-01,Tendering,PTS,0.3333333333333333,Cube_CES.Company
+2025-01,Total Customer Solution,PEM,1.0,Cube_CES.Company
+2025-02,Omni Channel,PEM,1.0,Cube_CES.Company
+2025-02,Tendering,PEM,0.5,Cube_CES.Company
+2025-02,Tendering,PTS,0.5,Cube_CES.Company
+2025-03,Omni Channel,PEM,0.9721254355400697,Cube_CES.Company
+2025-03,Omni Channel,PPD,0.027874564459930314,Cube_CES.Company
+2025-03,Tendering,PTS,0.6666666666666666,Cube_CES.Company
+2025-03,Tendering,PEM,0.3333333333333333,Cube_CES.Company
+2025-04,Omni Channel,PEM,1.0,Cube_CES.Company
+2025-04,Tendering,PEM,1.0,Cube_CES.Company
+2025-05,Omni Channel,PEM,0.9865470852017937,Cube_CES.Company
+2025-05,Omni Channel,PPD,0.013452914798206279,Cube_CES.Company
+2025-05,Tendering,PEM,1.0,Cube_CES.Company
+2025-06,Omni Channel,PEM,0.9912663755458515,Cube_CES.Company
+2025-06,Omni Channel,PDE,0.004366812227074236,Cube_CES.Company
+2025-06,Omni Channel,PPD,0.004366812227074236,Cube_CES.Company
+2025-06,Tendering,PEM,1.0,Cube_CES.Company
+2025-07,Omni Channel,PEM,0.9866071428571429,Cube_CES.Company
+2025-07,Omni Channel,PDE,0.008928571428571428,Cube_CES.Company
+2025-07,Omni Channel,PCE,0.004464285714285714,Cube_CES.Company
+2025-07,Tendering,PEM,0.48,Cube_CES.Company
+2025-07,Tendering,PPS,0.4,Cube_CES.Company
+2025-07,Tendering,PTS,0.12,Cube_CES.Company
+2025-08,Omni Channel,PEM,0.9838187702265372,Cube_CES.Company
+2025-08,Omni Channel,PDE,0.012944983818770227,Cube_CES.Company
+2025-08,Omni Channel,PPD,0.003236245954692557,Cube_CES.Company
+2025-08,Tendering,PTS,0.7142857142857143,Cube_CES.Company
+2025-08,Tendering,PEM,0.14285714285714285,Cube_CES.Company
+2025-08,Tendering,PPS,0.14285714285714285,Cube_CES.Company
+2025-09,Omni Channel,PEM,1.0,Cube_CES.Company
+2025-09,Total Customer Solution,PEM,1.0,Cube_CES.Company
+2025-10,Omni Channel,PEM,0.9765625,Cube_CES.Company
+2025-10,Omni Channel,PDE,0.015625,Cube_CES.Company
+2025-10,Omni Channel,PPD,0.00390625,Cube_CES.Company
+2025-10,Omni Channel,PTS,0.00390625,Cube_CES.Company
+2025-10,Tendering,PTS,1.0,Cube_CES.Company
+2025-10,Total Customer Solution,PEM,1.0,Cube_CES.Company
+2025-11,Omni Channel,PEM,0.9926739926739927,Cube_CES.Company
+2025-11,Omni Channel,PDE,0.003663003663003663,Cube_CES.Company
+2025-11,Omni Channel,PPD,0.003663003663003663,Cube_CES.Company
+2025-11,Tendering,PTS,1.0,Cube_CES.Company
+2025-11,Total Customer Solution,PEM,1.0,Cube_CES.Company
+2025-12,Omni Channel,PEM,0.9973958333333334,Cube_CES.Company
+2025-12,Omni Channel,PDE,0.0026041666666666665,Cube_CES.Company
+2025-12,Tendering,PTS,0.875,Cube_CES.Company
+2025-12,Tendering,PEM,0.125,Cube_CES.Company
+2025-12,Total Customer Solution,PCE,1.0,Cube_CES.Company
+2026-01,Omni Channel,PEM,0.9891891891891892,Cube_CES.Company
+2026-01,Omni Channel,PDE,0.005405405405405406,Cube_CES.Company
+2026-01,Omni Channel,PTS,0.005405405405405406,Cube_CES.Company
+2026-01,Tendering,PEM,0.5,Cube_CES.Company
+2026-01,Tendering,PTS,0.5,Cube_CES.Company
+2026-02,Omni Channel,PEM,0.9946236559139785,Cube_CES.Company
+2026-02,Omni Channel,PDE,0.005376344086021506,Cube_CES.Company
+2026-02,Tendering,PEM,0.5,Cube_CES.Company
+2026-02,Tendering,PTS,0.5,Cube_CES.Company
+2026-02,Total Customer Solution,PCE,1.0,Cube_CES.Company
+2026-03,Omni Channel,PEM,0.9933993399339934,Cube_CES.Company
+2026-03,Omni Channel,PCE,0.006600660066006601,Cube_CES.Company
+2026-03,Tendering,PEM,0.6,Cube_CES.Company
+2026-03,Tendering,PTS,0.4,Cube_CES.Company
+2026-03,Total Customer Solution,PEM,0.8571428571428571,Cube_CES.Company
+2026-03,Total Customer Solution,PCE,0.14285714285714285,Cube_CES.Company
+2026-04,Omni Channel,PEM,0.9962121212121212,Cube_CES.Company
+2026-04,Omni Channel,PCE,0.003787878787878788,Cube_CES.Company
+2026-04,Tendering,PEM,0.5,Cube_CES.Company
+2026-04,Tendering,PTS,0.5,Cube_CES.Company
+2026-05,Omni Channel,PEM,0.9949238578680203,Cube_CES.Company
+2026-05,Omni Channel,PCE,0.005076142131979695,Cube_CES.Company
+2026-05,Total Customer Solution,PCE,1.0,Cube_CES.Company
+2026-06,Omni Channel,PEM,0.9901960784313726,Cube_CES.Company
+2026-06,Omni Channel,PCE,0.004901960784313725,Cube_CES.Company
+2026-06,Omni Channel,PEMC,0.004901960784313725,Cube_CES.Company
+2026-06,Tendering,PEM,0.5,Cube_CES.Company
+2026-06,Tendering,PPS,0.5,Cube_CES.Company
+2026-06,Total Customer Solution,PCE,1.0,Cube_CES.Company
+2026-07,Omni Channel,PEM,1.0,Cube_CES.Company
+2026-07,Tendering,PEM,0.5,Cube_CES.Company
+2026-07,Tendering,PPS,0.5,Cube_CES.Company
+2026-07,Total Customer Solution,PEM,1.0,Cube_CES.Company
+2026-08,Omni Channel,PEM,0.9966555183946488,Cube_CES.Company
+2026-08,Omni Channel,PCE,0.0033444816053511705,Cube_CES.Company
+2026-08,Tendering,PEM,0.7272727272727273,Cube_CES.Company
+2026-08,Tendering,PPS,0.18181818181818182,Cube_CES.Company
+2026-08,Tendering,PSS,0.09090909090909091,Cube_CES.Company
+2026-09,Omni Channel,PEM,0.9893238434163701,Cube_CES.Company
+2026-09,Omni Channel,PCE,0.010676156583629894,Cube_CES.Company
+2026-09,Tendering,PEM,0.4117647058823529,Cube_CES.Company
+2026-09,Tendering,PPS,0.35294117647058826,Cube_CES.Company
+2026-09,Tendering,PSS,0.11764705882352941,Cube_CES.Company
+2026-09,Tendering,PTS,0.11764705882352941,Cube_CES.Company
+2026-10,Omni Channel,PEM,0.9910714285714286,Cube_CES.Company
+2026-10,Omni Channel,PCE,0.008928571428571428,Cube_CES.Company
+2026-10,Tendering,PEM,0.4,Cube_CES.Company
+2026-10,Tendering,PPS,0.2,Cube_CES.Company
+2026-10,Tendering,PSS,0.2,Cube_CES.Company
+2026-10,Tendering,PTS,0.2,Cube_CES.Company
+2026-10,Total Customer Solution,PCE,1.0,Cube_CES.Company
+2026-11,Omni Channel,PEM,0.8888888888888888,Cube_CES.Company
+2026-11,Omni Channel,PCE,0.1111111111111111,Cube_CES.Company
+2026-11,Tendering,PEM,0.5,Cube_CES.Company
+2026-11,Tendering,PPS,0.5,Cube_CES.Company
+2026-11,Total Customer Solution,PCE,1.0,Cube_CES.Company
+2026-12,Omni Channel,PEM,1.0,Cube_CES.Company
+2026-12,Tendering,PEM,1.0,Cube_CES.Company
+2027-01,Omni Channel,PEM,1.0,Cube_CES.Company
+2027-02,Omni Channel,PEM,1.0,Cube_CES.Company
+2027-03,Omni Channel,PEM,1.0,Cube_CES.Company
+2027-03,Tendering,PEM,1.0,Cube_CES.Company
+2025-01,Omni Channel,Current Transformer Type COL,0.43043478260869567,Cube_CES.ProductType
+2025-01,Omni Channel,Voltage Transformer Type VOL,0.1826086956521739,Cube_CES.ProductType
+2025-01,Omni Channel,Voltage Transformer Type VOG,0.17391304347826086,Cube_CES.ProductType
+2025-01,Omni Channel,Current Transformer Type LDB,0.05652173913043478,Cube_CES.ProductType
+2025-01,Omni Channel,Current Transformer Type LExM,0.05217391304347826,Cube_CES.ProductType
+2025-01,Omni Channel,Current Transformer Type CExL,0.021739130434782608,Cube_CES.ProductType
+2025-01,Omni Channel,Current Transformer TYPE LExM (Dry Type),0.017391304347826087,Cube_CES.ProductType
+2025-01,Omni Channel,Current Transformer TYPE COL (Oil Type),0.013043478260869565,Cube_CES.ProductType
+2025-01,Omni Channel,Current Transformer TYPE LDB (Dry Type),0.013043478260869565,Cube_CES.ProductType
+2025-01,Omni Channel,Voltage Transformer (Oil Type),0.013043478260869565,Cube_CES.ProductType
+2025-01,Omni Channel,Current Transformer Type CEL,0.008695652173913044,Cube_CES.ProductType
+2025-01,Omni Channel,Current Transformer TYPE CExL (Dry Type),0.004347826086956522,Cube_CES.ProductType
+2025-01,Omni Channel,Current Transformer Type CDB,0.004347826086956522,Cube_CES.ProductType
+2025-01,Omni Channel,Voltage Transformer Type VEG,0.004347826086956522,Cube_CES.ProductType
+2025-01,Omni Channel,Voltage Transformer Type VExL,0.004347826086956522,Cube_CES.ProductType
+2025-01,Tendering,Current Transformer TYPE COL (Oil Type),0.16666666666666666,Cube_CES.ProductType
+2025-01,Tendering,Current Transformer Type COL,0.16666666666666666,Cube_CES.ProductType
+2025-01,Tendering,Current Transformer Type LDB,0.16666666666666666,Cube_CES.ProductType
+2025-01,Tendering,Voltage Transformer (Oil Type),0.16666666666666666,Cube_CES.ProductType
+2025-01,Tendering,Voltage Transformer Type VOG,0.16666666666666666,Cube_CES.ProductType
+2025-01,Tendering,Voltage Transformer Type VOL,0.16666666666666666,Cube_CES.ProductType
+2025-01,Total Customer Solution,Voltage Transformer Type VOG,1.0,Cube_CES.ProductType
+2025-02,Omni Channel,Current Transformer Type COL,0.4663677130044843,Cube_CES.ProductType
+2025-02,Omni Channel,Voltage Transformer Type VOG,0.35874439461883406,Cube_CES.ProductType
+2025-02,Omni Channel,Voltage Transformer Type VOL,0.08968609865470852,Cube_CES.ProductType
+2025-02,Omni Channel,Current Transformer Type CExL,0.026905829596412557,Cube_CES.ProductType
+2025-02,Omni Channel,Current Transformer Type LDB,0.017937219730941704,Cube_CES.ProductType
+2025-02,Omni Channel,Current Transformer Type LExM,0.017937219730941704,Cube_CES.ProductType
+2025-02,Omni Channel,Voltage Transformer Type VEG,0.008968609865470852,Cube_CES.ProductType
+2025-02,Omni Channel,Current Transformer Type CEL,0.004484304932735426,Cube_CES.ProductType
+2025-02,Omni Channel,Voltage Transformer Type VEL,0.004484304932735426,Cube_CES.ProductType
+2025-02,Omni Channel,Voltage Transformer Type VExL,0.004484304932735426,Cube_CES.ProductType
+2025-02,Tendering,Current Transformer Type LDB,0.5,Cube_CES.ProductType
+2025-02,Tendering,Voltage Transformer Type VOG,0.5,Cube_CES.ProductType
+2025-03,Omni Channel,Current Transformer Type COL,0.4425087108013937,Cube_CES.ProductType
+2025-03,Omni Channel,Voltage Transformer Type VOG,0.2857142857142857,Cube_CES.ProductType
+2025-03,Omni Channel,Current Transformer Type LDB,0.07317073170731707,Cube_CES.ProductType
+2025-03,Omni Channel,Voltage Transformer Type VOL,0.07317073170731707,Cube_CES.ProductType
+2025-03,Omni Channel,Current Transformer Type CExL,0.041811846689895474,Cube_CES.ProductType
+2025-03,Omni Channel,Current Transformer Type LExM,0.03484320557491289,Cube_CES.ProductType
+2025-03,Omni Channel,Current Transformer Type CEL,0.020905923344947737,Cube_CES.ProductType
+2025-03,Omni Channel,Current Transformer TYPE LDB (Dry Type),0.010452961672473868,Cube_CES.ProductType
+2025-03,Omni Channel,Voltage Transformer Type VEG,0.010452961672473868,Cube_CES.ProductType
+2025-03,Omni Channel,Voltage Transformer (Oil Type),0.006968641114982578,Cube_CES.ProductType
+2025-03,Tendering,Voltage Transformer Type VOG,0.6666666666666666,Cube_CES.ProductType
+2025-03,Tendering,Current Transformer Type LDB,0.3333333333333333,Cube_CES.ProductType
+2025-04,Omni Channel,Current Transformer Type COL,0.4435483870967742,Cube_CES.ProductType
+2025-04,Omni Channel,Voltage Transformer Type VOG,0.2782258064516129,Cube_CES.ProductType
+2025-04,Omni Channel,Voltage Transformer Type VOL,0.11290322580645161,Cube_CES.ProductType
+2025-04,Omni Channel,Current Transformer Type LExM,0.04838709677419355,Cube_CES.ProductType
+2025-04,Omni Channel,Current Transformer Type CExL,0.03225806451612903,Cube_CES.ProductType
+2025-04,Omni Channel,Current Transformer Type LDB,0.024193548387096774,Cube_CES.ProductType
+2025-04,Omni Channel,Current Transformer TYPE LExM (Dry Type),0.020161290322580645,Cube_CES.ProductType
+2025-04,Omni Channel,Current Transformer Type CEL,0.016129032258064516,Cube_CES.ProductType
+2025-04,Omni Channel,Voltage Transformer Type VEG,0.012096774193548387,Cube_CES.ProductType
+2025-04,Omni Channel,Voltage Transformer Type VExL,0.008064516129032258,Cube_CES.ProductType
+2025-04,Omni Channel,Current Transformer Type CDB,0.004032258064516129,Cube_CES.ProductType
+2025-04,Tendering,Current Transformer Type LDB,1.0,Cube_CES.ProductType
+2025-05,Omni Channel,Current Transformer Type COL,0.47085201793721976,Cube_CES.ProductType
+2025-05,Omni Channel,Voltage Transformer Type VOG,0.25112107623318386,Cube_CES.ProductType
+2025-05,Omni Channel,Voltage Transformer Type VOL,0.11659192825112108,Cube_CES.ProductType
+2025-05,Omni Channel,Current Transformer Type CExL,0.07623318385650224,Cube_CES.ProductType
+2025-05,Omni Channel,Current Transformer Type CEL,0.04932735426008968,Cube_CES.ProductType
+2025-05,Omni Channel,Current Transformer Type LDB,0.013452914798206279,Cube_CES.ProductType
+2025-05,Omni Channel,Voltage Transformer (Oil Type),0.013452914798206279,Cube_CES.ProductType
+2025-05,Omni Channel,Current Transformer TYPE COL (Oil Type),0.004484304932735426,Cube_CES.ProductType
+2025-05,Omni Channel,Voltage Transformer Type VExL,0.004484304932735426,Cube_CES.ProductType
+2025-05,Tendering,Current Transformer Type LDB,1.0,Cube_CES.ProductType
+2025-06,Omni Channel,Current Transformer Type COL,0.5109170305676856,Cube_CES.ProductType
+2025-06,Omni Channel,Voltage Transformer Type VOG,0.2183406113537118,Cube_CES.ProductType
+2025-06,Omni Channel,Voltage Transformer Type VOL,0.12663755458515283,Cube_CES.ProductType
+2025-06,Omni Channel,Current Transformer TYPE COL (Oil Type),0.0611353711790393,Cube_CES.ProductType
+2025-06,Omni Channel,Current Transformer Type LDB,0.03056768558951965,Cube_CES.ProductType
+2025-06,Omni Channel,Current Transformer Type CExL,0.013100436681222707,Cube_CES.ProductType
+2025-06,Omni Channel,Current Transformer Type LExM,0.013100436681222707,Cube_CES.ProductType
+2025-06,Omni Channel,Voltage Transformer (Oil Type),0.013100436681222707,Cube_CES.ProductType
+2025-06,Omni Channel,Current Transformer Type CEL,0.008733624454148471,Cube_CES.ProductType
+2025-06,Omni Channel,Current Transformer Type CDB,0.004366812227074236,Cube_CES.ProductType
+2025-06,Tendering,Current Transformer Type LDB,1.0,Cube_CES.ProductType
+2025-07,Omni Channel,Current Transformer Type COL,0.46875,Cube_CES.ProductType
+2025-07,Omni Channel,Voltage Transformer Type VOG,0.33482142857142855,Cube_CES.ProductType
+2025-07,Omni Channel,Voltage Transformer Type VOL,0.10714285714285714,Cube_CES.ProductType
+2025-07,Omni Channel,Current Transformer Type LDB,0.026785714285714284,Cube_CES.ProductType
+2025-07,Omni Channel,Current Transformer Type CEL,0.022321428571428572,Cube_CES.ProductType
+2025-07,Omni Channel,Current Transformer Type CDB,0.008928571428571428,Cube_CES.ProductType
+2025-07,Omni Channel,Current Transformer Type LExM,0.008928571428571428,Cube_CES.ProductType
+2025-07,Omni Channel,Voltage Transformer (Oil Type),0.008928571428571428,Cube_CES.ProductType
+2025-07,Omni Channel,Current Transformer TYPE COL (Oil Type),0.004464285714285714,Cube_CES.ProductType
+2025-07,Omni Channel,Current Transformer Type CExL,0.004464285714285714,Cube_CES.ProductType
+2025-07,Omni Channel,Voltage Transformer Type VEG,0.004464285714285714,Cube_CES.ProductType
+2025-07,Tendering,Current Transformer Type COL,0.84,Cube_CES.ProductType
+2025-07,Tendering,Voltage Transformer Type VOL,0.16,Cube_CES.ProductType
+2025-08,Omni Channel,Current Transformer Type COL,0.5145631067961165,Cube_CES.ProductType
+2025-08,Omni Channel,Voltage Transformer Type VOG,0.3333333333333333,Cube_CES.ProductType
+2025-08,Omni Channel,Voltage Transformer Type VOL,0.10679611650485436,Cube_CES.ProductType
+2025-08,Omni Channel,Current Transformer Type CEL,0.016181229773462782,Cube_CES.ProductType
+2025-08,Omni Channel,Current Transformer Type LDB,0.009708737864077669,Cube_CES.ProductType
+2025-08,Omni Channel,Voltage Transformer Type VEG,0.009708737864077669,Cube_CES.ProductType
+2025-08,Omni Channel,Current Transformer Type CExL,0.003236245954692557,Cube_CES.ProductType
+2025-08,Omni Channel,Voltage Transformer (Oil Type),0.003236245954692557,Cube_CES.ProductType
+2025-08,Omni Channel,Voltage Transformer Type VExL,0.003236245954692557,Cube_CES.ProductType
+2025-08,Tendering,Current Transformer Type COL,0.7142857142857143,Cube_CES.ProductType
+2025-08,Tendering,Current Transformer Type CExL,0.14285714285714285,Cube_CES.ProductType
+2025-08,Tendering,Voltage Transformer Type VOL,0.14285714285714285,Cube_CES.ProductType
+2025-09,Omni Channel,Current Transformer Type COL,0.5679442508710801,Cube_CES.ProductType
+2025-09,Omni Channel,Voltage Transformer Type VOG,0.23344947735191637,Cube_CES.ProductType
+2025-09,Omni Channel,Voltage Transformer Type VOL,0.11149825783972125,Cube_CES.ProductType
+2025-09,Omni Channel,Current Transformer Type LDB,0.04878048780487805,Cube_CES.ProductType
+2025-09,Omni Channel,Current Transformer Type CExL,0.013937282229965157,Cube_CES.ProductType
+2025-09,Omni Channel,Current Transformer TYPE COL (Oil Type),0.006968641114982578,Cube_CES.ProductType
+2025-09,Omni Channel,Voltage Transformer (Oil Type),0.006968641114982578,Cube_CES.ProductType
+2025-09,Omni Channel,Current Transformer Type CDB,0.003484320557491289,Cube_CES.ProductType
+2025-09,Omni Channel,Raw Material,0.003484320557491289,Cube_CES.ProductType
+2025-09,Omni Channel,Voltage Transformer Type VEG,0.003484320557491289,Cube_CES.ProductType
+2025-09,Total Customer Solution,Voltage Transformer Type VOG,1.0,Cube_CES.ProductType
+2025-10,Omni Channel,Current Transformer Type COL,0.546875,Cube_CES.ProductType
+2025-10,Omni Channel,Voltage Transformer Type VOG,0.25,Cube_CES.ProductType
+2025-10,Omni Channel,Voltage Transformer Type VOL,0.12890625,Cube_CES.ProductType
+2025-10,Omni Channel,Current Transformer Type LExM,0.0234375,Cube_CES.ProductType
+2025-10,Omni Channel,Current Transformer Type CEL,0.01171875,Cube_CES.ProductType
+2025-10,Omni Channel,Current Transformer Type LDB,0.01171875,Cube_CES.ProductType
+2025-10,Omni Channel,Spare Part and Raw Material (PEM102),0.0078125,Cube_CES.ProductType
+2025-10,Omni Channel,Current Transformer TYPE CEL (Dry Type),0.00390625,Cube_CES.ProductType
+2025-10,Omni Channel,Current Transformer Type CDB,0.00390625,Cube_CES.ProductType
+2025-10,Omni Channel,LBS SPARE PARTS,0.00390625,Cube_CES.ProductType
+2025-10,Omni Channel,Voltage Transformer (Oil Type),0.00390625,Cube_CES.ProductType
+2025-10,Omni Channel,Voltage Transformer Type VEG,0.00390625,Cube_CES.ProductType
+2025-10,Tendering,Spare Part and Raw Material (PEM102),1.0,Cube_CES.ProductType
+2025-10,Total Customer Solution,Voltage Transformer Type VOG,1.0,Cube_CES.ProductType
+2025-11,Omni Channel,Current Transformer Type COL,0.5128205128205128,Cube_CES.ProductType
+2025-11,Omni Channel,Voltage Transformer Type VOG,0.326007326007326,Cube_CES.ProductType
+2025-11,Omni Channel,Voltage Transformer Type VOL,0.09157509157509157,Cube_CES.ProductType
+2025-11,Omni Channel,Voltage Transformer (Oil Type),0.014652014652014652,Cube_CES.ProductType
+2025-11,Omni Channel,Current Transformer TYPE COL (Oil Type),0.01098901098901099,Cube_CES.ProductType
+2025-11,Omni Channel,Current Transformer Type CEL,0.01098901098901099,Cube_CES.ProductType
+2025-11,Omni Channel,Current Transformer Type LExM,0.01098901098901099,Cube_CES.ProductType
+2025-11,Omni Channel,Current Transformer Type LDB,0.007326007326007326,Cube_CES.ProductType
+2025-11,Omni Channel,Spare Part and Raw Material (PEM102),0.007326007326007326,Cube_CES.ProductType
+2025-11,Omni Channel,Current Transformer Type CExL,0.003663003663003663,Cube_CES.ProductType
+2025-11,Omni Channel,LBS SPARE PARTS,0.003663003663003663,Cube_CES.ProductType
+2025-11,Tendering,Voltage Transformer Type VOG,1.0,Cube_CES.ProductType
+2025-11,Total Customer Solution,Current Transformer Type CEL,1.0,Cube_CES.ProductType
+2025-12,Omni Channel,Current Transformer Type COL,0.5598958333333334,Cube_CES.ProductType
+2025-12,Omni Channel,Voltage Transformer Type VOG,0.22916666666666666,Cube_CES.ProductType
+2025-12,Omni Channel,Voltage Transformer Type VOL,0.15104166666666666,Cube_CES.ProductType
+2025-12,Omni Channel,Current Transformer Type CExL,0.020833333333333332,Cube_CES.ProductType
+2025-12,Omni Channel,Current Transformer Type LDB,0.013020833333333334,Cube_CES.ProductType
+2025-12,Omni Channel,Current Transformer Type CEL,0.010416666666666666,Cube_CES.ProductType
+2025-12,Omni Channel,Spare Part and Raw Material (PEM102),0.0078125,Cube_CES.ProductType
+2025-12,Omni Channel,Current Transformer Type LExM,0.005208333333333333,Cube_CES.ProductType
+2025-12,Omni Channel,Voltage Transformer Type VExL,0.0026041666666666665,Cube_CES.ProductType
+2025-12,Tendering,Current Transformer Type COL,0.5,Cube_CES.ProductType
+2025-12,Tendering,Current Transformer Type LDB,0.125,Cube_CES.ProductType
+2025-12,Tendering,Spare Part and Raw Material (PEM102),0.125,Cube_CES.ProductType
+2025-12,Tendering,Voltage Transformer Type VEL,0.125,Cube_CES.ProductType
+2025-12,Tendering,Voltage Transformer Type VOG,0.125,Cube_CES.ProductType
+2025-12,Total Customer Solution,Voltage Transformer Type VOL,1.0,Cube_CES.ProductType
+2026-01,Omni Channel,Current Transformer Type COL,0.5081081081081081,Cube_CES.ProductType
+2026-01,Omni Channel,Voltage Transformer Type VOG,0.34594594594594597,Cube_CES.ProductType
+2026-01,Omni Channel,Voltage Transformer Type VOL,0.10810810810810811,Cube_CES.ProductType
+2026-01,Omni Channel,Current Transformer Type LDB,0.010810810810810811,Cube_CES.ProductType
+2026-01,Omni Channel,Current Transformer Type LExM,0.010810810810810811,Cube_CES.ProductType
+2026-01,Omni Channel,Current Transformer Type CDB,0.005405405405405406,Cube_CES.ProductType
+2026-01,Omni Channel,Current Transformer Type CExL,0.005405405405405406,Cube_CES.ProductType
+2026-01,Omni Channel,Voltage Transformer Type VExL,0.005405405405405406,Cube_CES.ProductType
+2026-01,Tendering,Voltage Transformer TYPE VExL (Dry Type),0.5,Cube_CES.ProductType
+2026-01,Tendering,Voltage Transformer Type VExL,0.5,Cube_CES.ProductType
+2026-02,Omni Channel,Current Transformer Type COL,0.5161290322580645,Cube_CES.ProductType
+2026-02,Omni Channel,Voltage Transformer Type VOG,0.3279569892473118,Cube_CES.ProductType
+2026-02,Omni Channel,Voltage Transformer Type VOL,0.08602150537634409,Cube_CES.ProductType
+2026-02,Omni Channel,Current Transformer Type CExL,0.03763440860215054,Cube_CES.ProductType
+2026-02,Omni Channel,Current Transformer Type LDB,0.026881720430107527,Cube_CES.ProductType
+2026-02,Omni Channel,Current Transformer Type CDB,0.005376344086021506,Cube_CES.ProductType
+2026-02,Tendering,Voltage Transformer TYPE VExL (Dry Type),0.5,Cube_CES.ProductType
+2026-02,Tendering,Voltage Transformer Type VExL,0.5,Cube_CES.ProductType
+2026-02,Total Customer Solution,Voltage Transformer Type VOL,1.0,Cube_CES.ProductType
+2026-03,Omni Channel,Current Transformer Type COL,0.5379537953795379,Cube_CES.ProductType
+2026-03,Omni Channel,Voltage Transformer Type VOG,0.3696369636963696,Cube_CES.ProductType
+2026-03,Omni Channel,Voltage Transformer Type VOL,0.052805280528052806,Cube_CES.ProductType
+2026-03,Omni Channel,Current Transformer Type LDB,0.013201320132013201,Cube_CES.ProductType
+2026-03,Omni Channel,Current Transformer Type CExL,0.006600660066006601,Cube_CES.ProductType
+2026-03,Omni Channel,Voltage Transformer Type VExL,0.006600660066006601,Cube_CES.ProductType
+2026-03,Omni Channel,Current Transformer TYPE LExM (Dry Type),0.0033003300330033004,Cube_CES.ProductType
+2026-03,Omni Channel,Current Transformer Type CEL,0.0033003300330033004,Cube_CES.ProductType
+2026-03,Omni Channel,Current Transformer Type LExM,0.0033003300330033004,Cube_CES.ProductType
+2026-03,Omni Channel,Spare Part and Raw Material (PEM102),0.0033003300330033004,Cube_CES.ProductType
+2026-03,Tendering,Current Transformer Type COL,0.4,Cube_CES.ProductType
+2026-03,Tendering,Voltage Transformer TYPE VExL (Dry Type),0.2,Cube_CES.ProductType
+2026-03,Tendering,Voltage Transformer Type VExL,0.2,Cube_CES.ProductType
+2026-03,Tendering,Voltage Transformer Type VOG,0.2,Cube_CES.ProductType
+2026-03,Total Customer Solution,Current Transformer Type COL,0.42857142857142855,Cube_CES.ProductType
+2026-03,Total Customer Solution,Voltage Transformer Type VOG,0.42857142857142855,Cube_CES.ProductType
+2026-03,Total Customer Solution,Voltage Transformer Type VOL,0.14285714285714285,Cube_CES.ProductType
+2026-04,Omni Channel,Current Transformer Type COL,0.5265151515151515,Cube_CES.ProductType
+2026-04,Omni Channel,Voltage Transformer Type VOG,0.36363636363636365,Cube_CES.ProductType
+2026-04,Omni Channel,Voltage Transformer Type VOL,0.056818181818181816,Cube_CES.ProductType
+2026-04,Omni Channel,Current Transformer Type LDB,0.026515151515151516,Cube_CES.ProductType
+2026-04,Omni Channel,Spare Part and Raw Material (PEM102),0.011363636363636364,Cube_CES.ProductType
+2026-04,Omni Channel,Current Transformer Type CExL,0.003787878787878788,Cube_CES.ProductType
+2026-04,Omni Channel,Current Transformer Type LExM,0.003787878787878788,Cube_CES.ProductType
+2026-04,Omni Channel,LBS SPARE PARTS,0.003787878787878788,Cube_CES.ProductType
+2026-04,Omni Channel,Voltage Transformer Type VEG,0.003787878787878788,Cube_CES.ProductType
+2026-04,Tendering,Current Transformer Type COL,0.5,Cube_CES.ProductType
+2026-04,Tendering,Voltage Transformer TYPE VExL (Dry Type),0.25,Cube_CES.ProductType
+2026-04,Tendering,Voltage Transformer Type VExL,0.25,Cube_CES.ProductType
+2026-05,Omni Channel,Current Transformer Type COL,0.5177664974619289,Cube_CES.ProductType
+2026-05,Omni Channel,Voltage Transformer Type VOG,0.3350253807106599,Cube_CES.ProductType
+2026-05,Omni Channel,Voltage Transformer Type VOL,0.07106598984771574,Cube_CES.ProductType
+2026-05,Omni Channel,Current Transformer Type CExL,0.04060913705583756,Cube_CES.ProductType
+2026-05,Omni Channel,Current Transformer Type CEL,0.01015228426395939,Cube_CES.ProductType
+2026-05,Omni Channel,Voltage Transformer Type VEG,0.01015228426395939,Cube_CES.ProductType
+2026-05,Omni Channel,Current Transformer Type LDB,0.005076142131979695,Cube_CES.ProductType
+2026-05,Omni Channel,Current Transformer Type LExM,0.005076142131979695,Cube_CES.ProductType
+2026-05,Omni Channel,Voltage Transformer Type VExL,0.005076142131979695,Cube_CES.ProductType
+2026-05,Total Customer Solution,Voltage Transformer Type VOG,1.0,Cube_CES.ProductType
+2026-06,Omni Channel,Current Transformer Type COL,0.5,Cube_CES.ProductType
+2026-06,Omni Channel,Voltage Transformer Type VOG,0.3088235294117647,Cube_CES.ProductType
+2026-06,Omni Channel,Voltage Transformer Type VOL,0.10294117647058823,Cube_CES.ProductType
+2026-06,Omni Channel,Spare Part and Raw Material (PEM102),0.024509803921568627,Cube_CES.ProductType
+2026-06,Omni Channel,Current Transformer Type LDB,0.0196078431372549,Cube_CES.ProductType
+2026-06,Omni Channel,Current Transformer Type CExL,0.014705882352941176,Cube_CES.ProductType
+2026-06,Omni Channel,Current Transformer Type LExM,0.00980392156862745,Cube_CES.ProductType
+2026-06,Omni Channel,Voltage Transformer Type VEG,0.00980392156862745,Cube_CES.ProductType
+2026-06,Omni Channel,Current Transformer TYPE LEM (Dry Type),0.004901960784313725,Cube_CES.ProductType
+2026-06,Omni Channel,Voltage Transformer Type VEL,0.004901960784313725,Cube_CES.ProductType
+2026-06,Tendering,Current Transformer Type COL,0.5,Cube_CES.ProductType
+2026-06,Tendering,Current Transformer Type LDB,0.5,Cube_CES.ProductType
+2026-06,Total Customer Solution,Voltage Transformer (Oil Type),1.0,Cube_CES.ProductType
+2026-07,Omni Channel,Current Transformer Type COL,0.5308641975308642,Cube_CES.ProductType
+2026-07,Omni Channel,Voltage Transformer Type VOG,0.3333333333333333,Cube_CES.ProductType
+2026-07,Omni Channel,Voltage Transformer Type VOL,0.04526748971193416,Cube_CES.ProductType
+2026-07,Omni Channel,Current Transformer Type CExL,0.01646090534979424,Cube_CES.ProductType
+2026-07,Omni Channel,Current Transformer Type LDB,0.01646090534979424,Cube_CES.ProductType
+2026-07,Omni Channel,Spare Part and Raw Material (PEM102),0.01646090534979424,Cube_CES.ProductType
+2026-07,Omni Channel,Current Transformer Type LExM,0.012345679012345678,Cube_CES.ProductType
+2026-07,Omni Channel,Voltage Transformer Type VEG,0.012345679012345678,Cube_CES.ProductType
+2026-07,Omni Channel,Voltage Transformer Type VEL,0.00823045267489712,Cube_CES.ProductType
+2026-07,Omni Channel,Current Transformer TYPE CExL (Dry Type),0.00411522633744856,Cube_CES.ProductType
+2026-07,Omni Channel,Current Transformer Type CEL,0.00411522633744856,Cube_CES.ProductType
+2026-07,Tendering,Current Transformer Type COL,0.5,Cube_CES.ProductType
+2026-07,Tendering,Current Transformer Type LDB,0.5,Cube_CES.ProductType
+2026-07,Total Customer Solution,Current Transformer Type COL,0.5,Cube_CES.ProductType
+2026-07,Total Customer Solution,Voltage Transformer Type VOG,0.5,Cube_CES.ProductType
+2026-08,Omni Channel,Current Transformer Type COL,0.49498327759197325,Cube_CES.ProductType
+2026-08,Omni Channel,Voltage Transformer Type VOG,0.43812709030100333,Cube_CES.ProductType
+2026-08,Omni Channel,Voltage Transformer Type VOL,0.043478260869565216,Cube_CES.ProductType
+2026-08,Omni Channel,Spare Part and Raw Material (PEM102),0.010033444816053512,Cube_CES.ProductType
+2026-08,Omni Channel,Current Transformer Type CExL,0.006688963210702341,Cube_CES.ProductType
+2026-08,Omni Channel,Voltage Transformer Type VEG,0.0033444816053511705,Cube_CES.ProductType
+2026-08,Omni Channel,Voltage Transformer Type VEL,0.0033444816053511705,Cube_CES.ProductType
+2026-08,Tendering,Current Transformer Type CEL,0.45454545454545453,Cube_CES.ProductType
+2026-08,Tendering,Current Transformer Type COL,0.18181818181818182,Cube_CES.ProductType
+2026-08,Tendering,Current Transformer Type LDB,0.18181818181818182,Cube_CES.ProductType
+2026-08,Tendering,Current Transformer TYPE CExL (Dry Type),0.09090909090909091,Cube_CES.ProductType
+2026-08,Tendering,Current Transformer Type CExL,0.09090909090909091,Cube_CES.ProductType
+2026-09,Omni Channel,Current Transformer Type COL,0.498220640569395,Cube_CES.ProductType
+2026-09,Omni Channel,Voltage Transformer Type VOG,0.31316725978647686,Cube_CES.ProductType
+2026-09,Omni Channel,Voltage Transformer Type VOL,0.099644128113879,Cube_CES.ProductType
+2026-09,Omni Channel,Current Transformer Type CExL,0.02491103202846975,Cube_CES.ProductType
+2026-09,Omni Channel,Current Transformer Type LDB,0.021352313167259787,Cube_CES.ProductType
+2026-09,Omni Channel,Spare Part and Raw Material (PEM102),0.021352313167259787,Cube_CES.ProductType
+2026-09,Omni Channel,Current Transformer Type CEL,0.014234875444839857,Cube_CES.ProductType
+2026-09,Omni Channel,Voltage Transformer (Oil Type),0.0035587188612099642,Cube_CES.ProductType
+2026-09,Omni Channel,Voltage Transformer Type VEG,0.0035587188612099642,Cube_CES.ProductType
+2026-09,Tendering,Current Transformer Type COL,0.35294117647058826,Cube_CES.ProductType
+2026-09,Tendering,Current Transformer Type LDB,0.11764705882352941,Cube_CES.ProductType
+2026-09,Tendering,Current Transformer Type LExM,0.11764705882352941,Cube_CES.ProductType
+2026-09,Tendering,Spare Part and Raw Material (PEM102),0.11764705882352941,Cube_CES.ProductType
+2026-09,Tendering,Voltage Transformer Type VOL,0.11764705882352941,Cube_CES.ProductType
+2026-09,Tendering,Current Transformer TYPE CExL (Dry Type),0.058823529411764705,Cube_CES.ProductType
+2026-09,Tendering,Current Transformer TYPE LExM (Dry Type),0.058823529411764705,Cube_CES.ProductType
+2026-09,Tendering,Current Transformer Type CExL,0.058823529411764705,Cube_CES.ProductType
+2026-10,Omni Channel,Current Transformer Type COL,0.49107142857142855,Cube_CES.ProductType
+2026-10,Omni Channel,Voltage Transformer Type VOG,0.2767857142857143,Cube_CES.ProductType
+2026-10,Omni Channel,Voltage Transformer Type VOL,0.09821428571428571,Cube_CES.ProductType
+2026-10,Omni Channel,Current Transformer Type LExM,0.044642857142857144,Cube_CES.ProductType
+2026-10,Omni Channel,Current Transformer Type LDB,0.03571428571428571,Cube_CES.ProductType
+2026-10,Omni Channel,Spare Part and Raw Material (PEM102),0.03571428571428571,Cube_CES.ProductType
+2026-10,Omni Channel,Current Transformer Type CDB,0.008928571428571428,Cube_CES.ProductType
+2026-10,Omni Channel,Current Transformer Type CEL,0.008928571428571428,Cube_CES.ProductType
+2026-10,Tendering,Current Transformer Type LExM,0.4,Cube_CES.ProductType
+2026-10,Tendering,Voltage Transformer Type VOL,0.4,Cube_CES.ProductType
+2026-10,Tendering,Spare Part and Raw Material (PEM102),0.2,Cube_CES.ProductType
+2026-10,Total Customer Solution,Spare Part and Raw Material (PEM102),1.0,Cube_CES.ProductType
+2026-11,Omni Channel,Current Transformer Type LDB,0.4444444444444444,Cube_CES.ProductType
+2026-11,Omni Channel,Current Transformer Type COL,0.2222222222222222,Cube_CES.ProductType
+2026-11,Omni Channel,Spare Part and Raw Material (PEM102),0.1111111111111111,Cube_CES.ProductType
+2026-11,Omni Channel,Voltage Transformer Type VOG,0.1111111111111111,Cube_CES.ProductType
+2026-11,Omni Channel,Voltage Transformer Type VOL,0.1111111111111111,Cube_CES.ProductType
+2026-11,Tendering,Voltage Transformer Type VOL,1.0,Cube_CES.ProductType
+2026-11,Total Customer Solution,Spare Part and Raw Material (PEM102),0.5714285714285714,Cube_CES.ProductType
+2026-11,Total Customer Solution,Current Transformer TYPE COL (Oil Type),0.14285714285714285,Cube_CES.ProductType
+2026-11,Total Customer Solution,Current Transformer Type COL,0.14285714285714285,Cube_CES.ProductType
+2026-11,Total Customer Solution,Voltage Transformer Type VOG,0.14285714285714285,Cube_CES.ProductType
+2026-12,Omni Channel,Current Transformer Type COL,0.5,Cube_CES.ProductType
+2026-12,Omni Channel,Voltage Transformer Type VOG,0.25,Cube_CES.ProductType
+2026-12,Omni Channel,Current Transformer Type LDB,0.125,Cube_CES.ProductType
+2026-12,Omni Channel,Voltage Transformer Type VOL,0.125,Cube_CES.ProductType
+2026-12,Tendering,Current Transformer Type CExL,0.2857142857142857,Cube_CES.ProductType
+2026-12,Tendering,Current Transformer Type CEL,0.14285714285714285,Cube_CES.ProductType
+2026-12,Tendering,Current Transformer Type LExM,0.14285714285714285,Cube_CES.ProductType
+2026-12,Tendering,Spare Part and Raw Material (PEM102),0.14285714285714285,Cube_CES.ProductType
+2026-12,Tendering,Voltage Transformer Type VEL,0.14285714285714285,Cube_CES.ProductType
+2026-12,Tendering,Voltage Transformer Type VExL,0.14285714285714285,Cube_CES.ProductType
+2027-01,Omni Channel,Voltage Transformer Type VOG,1.0,Cube_CES.ProductType
+2027-02,Omni Channel,Voltage Transformer Type VOG,1.0,Cube_CES.ProductType
+2027-03,Omni Channel,Voltage Transformer Type VOG,1.0,Cube_CES.ProductType
+2027-03,Tendering,Spare Part and Raw Material (PEM102),1.0,Cube_CES.ProductType
+2025-01,Omni Channel,PT3073,0.43043478260869567,Cube_CES.PrdTypeID
+2025-01,Omni Channel,PT3076,0.1826086956521739,Cube_CES.PrdTypeID
+2025-01,Omni Channel,PT3075,0.17391304347826086,Cube_CES.PrdTypeID
+2025-01,Omni Channel,PT3065,0.05652173913043478,Cube_CES.PrdTypeID
+2025-01,Omni Channel,PT3067,0.05217391304347826,Cube_CES.PrdTypeID
+2025-01,Omni Channel,PT3063,0.021739130434782608,Cube_CES.PrdTypeID
+2025-01,Omni Channel,PT200,0.017391304347826087,Cube_CES.PrdTypeID
+2025-01,Omni Channel,PT005,0.013043478260869565,Cube_CES.PrdTypeID
+2025-01,Omni Channel,PT010,0.013043478260869565,Cube_CES.PrdTypeID
+2025-01,Omni Channel,PT026,0.013043478260869565,Cube_CES.PrdTypeID
+2025-01,Omni Channel,PT3061,0.008695652173913044,Cube_CES.PrdTypeID
+2025-01,Omni Channel,PT229,0.004347826086956522,Cube_CES.PrdTypeID
+2025-01,Omni Channel,PT3060,0.004347826086956522,Cube_CES.PrdTypeID
+2025-01,Omni Channel,PT3069,0.004347826086956522,Cube_CES.PrdTypeID
+2025-01,Omni Channel,PT3072,0.004347826086956522,Cube_CES.PrdTypeID
+2025-01,Tendering,PT005,0.16666666666666666,Cube_CES.PrdTypeID
+2025-01,Tendering,PT026,0.16666666666666666,Cube_CES.PrdTypeID
+2025-01,Tendering,PT3065,0.16666666666666666,Cube_CES.PrdTypeID
+2025-01,Tendering,PT3073,0.16666666666666666,Cube_CES.PrdTypeID
+2025-01,Tendering,PT3075,0.16666666666666666,Cube_CES.PrdTypeID
+2025-01,Tendering,PT3076,0.16666666666666666,Cube_CES.PrdTypeID
+2025-01,Total Customer Solution,PT3075,1.0,Cube_CES.PrdTypeID
+2025-02,Omni Channel,PT3073,0.4663677130044843,Cube_CES.PrdTypeID
+2025-02,Omni Channel,PT3075,0.35874439461883406,Cube_CES.PrdTypeID
+2025-02,Omni Channel,PT3076,0.08968609865470852,Cube_CES.PrdTypeID
+2025-02,Omni Channel,PT3063,0.026905829596412557,Cube_CES.PrdTypeID
+2025-02,Omni Channel,PT3065,0.017937219730941704,Cube_CES.PrdTypeID
+2025-02,Omni Channel,PT3067,0.017937219730941704,Cube_CES.PrdTypeID
+2025-02,Omni Channel,PT3069,0.008968609865470852,Cube_CES.PrdTypeID
+2025-02,Omni Channel,PT3061,0.004484304932735426,Cube_CES.PrdTypeID
+2025-02,Omni Channel,PT3070,0.004484304932735426,Cube_CES.PrdTypeID
+2025-02,Omni Channel,PT3072,0.004484304932735426,Cube_CES.PrdTypeID
+2025-02,Tendering,PT3065,0.5,Cube_CES.PrdTypeID
+2025-02,Tendering,PT3075,0.5,Cube_CES.PrdTypeID
+2025-03,Omni Channel,PT3073,0.4425087108013937,Cube_CES.PrdTypeID
+2025-03,Omni Channel,PT3075,0.2857142857142857,Cube_CES.PrdTypeID
+2025-03,Omni Channel,PT3065,0.07317073170731707,Cube_CES.PrdTypeID
+2025-03,Omni Channel,PT3076,0.07317073170731707,Cube_CES.PrdTypeID
+2025-03,Omni Channel,PT3063,0.041811846689895474,Cube_CES.PrdTypeID
+2025-03,Omni Channel,PT3067,0.03484320557491289,Cube_CES.PrdTypeID
+2025-03,Omni Channel,PT3061,0.020905923344947737,Cube_CES.PrdTypeID
+2025-03,Omni Channel,PT010,0.010452961672473868,Cube_CES.PrdTypeID
+2025-03,Omni Channel,PT3069,0.010452961672473868,Cube_CES.PrdTypeID
+2025-03,Omni Channel,PT026,0.006968641114982578,Cube_CES.PrdTypeID
+2025-03,Tendering,PT3075,0.6666666666666666,Cube_CES.PrdTypeID
+2025-03,Tendering,PT3065,0.3333333333333333,Cube_CES.PrdTypeID
+2025-04,Omni Channel,PT3073,0.4435483870967742,Cube_CES.PrdTypeID
+2025-04,Omni Channel,PT3075,0.2782258064516129,Cube_CES.PrdTypeID
+2025-04,Omni Channel,PT3076,0.11290322580645161,Cube_CES.PrdTypeID
+2025-04,Omni Channel,PT3067,0.04838709677419355,Cube_CES.PrdTypeID
+2025-04,Omni Channel,PT3063,0.03225806451612903,Cube_CES.PrdTypeID
+2025-04,Omni Channel,PT3065,0.024193548387096774,Cube_CES.PrdTypeID
+2025-04,Omni Channel,PT200,0.020161290322580645,Cube_CES.PrdTypeID
+2025-04,Omni Channel,PT3061,0.016129032258064516,Cube_CES.PrdTypeID
+2025-04,Omni Channel,PT3069,0.012096774193548387,Cube_CES.PrdTypeID
+2025-04,Omni Channel,PT3072,0.008064516129032258,Cube_CES.PrdTypeID
+2025-04,Omni Channel,PT3060,0.004032258064516129,Cube_CES.PrdTypeID
+2025-04,Tendering,PT3065,1.0,Cube_CES.PrdTypeID
+2025-05,Omni Channel,PT3073,0.47085201793721976,Cube_CES.PrdTypeID
+2025-05,Omni Channel,PT3075,0.25112107623318386,Cube_CES.PrdTypeID
+2025-05,Omni Channel,PT3076,0.11659192825112108,Cube_CES.PrdTypeID
+2025-05,Omni Channel,PT3063,0.07623318385650224,Cube_CES.PrdTypeID
+2025-05,Omni Channel,PT3061,0.04932735426008968,Cube_CES.PrdTypeID
+2025-05,Omni Channel,PT026,0.013452914798206279,Cube_CES.PrdTypeID
+2025-05,Omni Channel,PT3065,0.013452914798206279,Cube_CES.PrdTypeID
+2025-05,Omni Channel,PT005,0.004484304932735426,Cube_CES.PrdTypeID
+2025-05,Omni Channel,PT3072,0.004484304932735426,Cube_CES.PrdTypeID
+2025-05,Tendering,PT3065,1.0,Cube_CES.PrdTypeID
+2025-06,Omni Channel,PT3073,0.5109170305676856,Cube_CES.PrdTypeID
+2025-06,Omni Channel,PT3075,0.2183406113537118,Cube_CES.PrdTypeID
+2025-06,Omni Channel,PT3076,0.12663755458515283,Cube_CES.PrdTypeID
+2025-06,Omni Channel,PT005,0.0611353711790393,Cube_CES.PrdTypeID
+2025-06,Omni Channel,PT3065,0.03056768558951965,Cube_CES.PrdTypeID
+2025-06,Omni Channel,PT026,0.013100436681222707,Cube_CES.PrdTypeID
+2025-06,Omni Channel,PT3063,0.013100436681222707,Cube_CES.PrdTypeID
+2025-06,Omni Channel,PT3067,0.013100436681222707,Cube_CES.PrdTypeID
+2025-06,Omni Channel,PT3061,0.008733624454148471,Cube_CES.PrdTypeID
+2025-06,Omni Channel,PT3060,0.004366812227074236,Cube_CES.PrdTypeID
+2025-06,Tendering,PT3065,1.0,Cube_CES.PrdTypeID
+2025-07,Omni Channel,PT3073,0.46875,Cube_CES.PrdTypeID
+2025-07,Omni Channel,PT3075,0.33482142857142855,Cube_CES.PrdTypeID
+2025-07,Omni Channel,PT3076,0.10714285714285714,Cube_CES.PrdTypeID
+2025-07,Omni Channel,PT3065,0.026785714285714284,Cube_CES.PrdTypeID
+2025-07,Omni Channel,PT3061,0.022321428571428572,Cube_CES.PrdTypeID
+2025-07,Omni Channel,PT026,0.008928571428571428,Cube_CES.PrdTypeID
+2025-07,Omni Channel,PT3060,0.008928571428571428,Cube_CES.PrdTypeID
+2025-07,Omni Channel,PT3067,0.008928571428571428,Cube_CES.PrdTypeID
+2025-07,Omni Channel,PT005,0.004464285714285714,Cube_CES.PrdTypeID
+2025-07,Omni Channel,PT3063,0.004464285714285714,Cube_CES.PrdTypeID
+2025-07,Omni Channel,PT3069,0.004464285714285714,Cube_CES.PrdTypeID
+2025-07,Tendering,PT3073,0.84,Cube_CES.PrdTypeID
+2025-07,Tendering,PT3076,0.16,Cube_CES.PrdTypeID
+2025-08,Omni Channel,PT3073,0.5145631067961165,Cube_CES.PrdTypeID
+2025-08,Omni Channel,PT3075,0.3333333333333333,Cube_CES.PrdTypeID
+2025-08,Omni Channel,PT3076,0.10679611650485436,Cube_CES.PrdTypeID
+2025-08,Omni Channel,PT3061,0.016181229773462782,Cube_CES.PrdTypeID
+2025-08,Omni Channel,PT3065,0.009708737864077669,Cube_CES.PrdTypeID
+2025-08,Omni Channel,PT3069,0.009708737864077669,Cube_CES.PrdTypeID
+2025-08,Omni Channel,PT026,0.003236245954692557,Cube_CES.PrdTypeID
+2025-08,Omni Channel,PT3063,0.003236245954692557,Cube_CES.PrdTypeID
+2025-08,Omni Channel,PT3072,0.003236245954692557,Cube_CES.PrdTypeID
+2025-08,Tendering,PT3073,0.7142857142857143,Cube_CES.PrdTypeID
+2025-08,Tendering,PT3063,0.14285714285714285,Cube_CES.PrdTypeID
+2025-08,Tendering,PT3076,0.14285714285714285,Cube_CES.PrdTypeID
+2025-09,Omni Channel,PT3073,0.5679442508710801,Cube_CES.PrdTypeID
+2025-09,Omni Channel,PT3075,0.23344947735191637,Cube_CES.PrdTypeID
+2025-09,Omni Channel,PT3076,0.11149825783972125,Cube_CES.PrdTypeID
+2025-09,Omni Channel,PT3065,0.04878048780487805,Cube_CES.PrdTypeID
+2025-09,Omni Channel,PT3063,0.013937282229965157,Cube_CES.PrdTypeID
+2025-09,Omni Channel,PT005,0.006968641114982578,Cube_CES.PrdTypeID
+2025-09,Omni Channel,PT026,0.006968641114982578,Cube_CES.PrdTypeID
+2025-09,Omni Channel,PT2603,0.003484320557491289,Cube_CES.PrdTypeID
+2025-09,Omni Channel,PT3060,0.003484320557491289,Cube_CES.PrdTypeID
+2025-09,Omni Channel,PT3069,0.003484320557491289,Cube_CES.PrdTypeID
+2025-09,Total Customer Solution,PT3075,1.0,Cube_CES.PrdTypeID
+2025-10,Omni Channel,PT3073,0.546875,Cube_CES.PrdTypeID
+2025-10,Omni Channel,PT3075,0.25,Cube_CES.PrdTypeID
+2025-10,Omni Channel,PT3076,0.12890625,Cube_CES.PrdTypeID
+2025-10,Omni Channel,PT3067,0.0234375,Cube_CES.PrdTypeID
+2025-10,Omni Channel,PT3061,0.01171875,Cube_CES.PrdTypeID
+2025-10,Omni Channel,PT3065,0.01171875,Cube_CES.PrdTypeID
+2025-10,Omni Channel,PT3028,0.0078125,Cube_CES.PrdTypeID
+2025-10,Omni Channel,PT006,0.00390625,Cube_CES.PrdTypeID
+2025-10,Omni Channel,PT026,0.00390625,Cube_CES.PrdTypeID
+2025-10,Omni Channel,PT2933,0.00390625,Cube_CES.PrdTypeID
+2025-10,Omni Channel,PT3060,0.00390625,Cube_CES.PrdTypeID
+2025-10,Omni Channel,PT3069,0.00390625,Cube_CES.PrdTypeID
+2025-10,Tendering,PT3028,1.0,Cube_CES.PrdTypeID
+2025-10,Total Customer Solution,PT3075,1.0,Cube_CES.PrdTypeID
+2025-11,Omni Channel,PT3073,0.5128205128205128,Cube_CES.PrdTypeID
+2025-11,Omni Channel,PT3075,0.326007326007326,Cube_CES.PrdTypeID
+2025-11,Omni Channel,PT3076,0.09157509157509157,Cube_CES.PrdTypeID
+2025-11,Omni Channel,PT026,0.014652014652014652,Cube_CES.PrdTypeID
+2025-11,Omni Channel,PT005,0.01098901098901099,Cube_CES.PrdTypeID
+2025-11,Omni Channel,PT3061,0.01098901098901099,Cube_CES.PrdTypeID
+2025-11,Omni Channel,PT3067,0.01098901098901099,Cube_CES.PrdTypeID
+2025-11,Omni Channel,PT3028,0.007326007326007326,Cube_CES.PrdTypeID
+2025-11,Omni Channel,PT3065,0.007326007326007326,Cube_CES.PrdTypeID
+2025-11,Omni Channel,PT2933,0.003663003663003663,Cube_CES.PrdTypeID
+2025-11,Omni Channel,PT3063,0.003663003663003663,Cube_CES.PrdTypeID
+2025-11,Tendering,PT3075,1.0,Cube_CES.PrdTypeID
+2025-11,Total Customer Solution,PT3061,1.0,Cube_CES.PrdTypeID
+2025-12,Omni Channel,PT3073,0.5598958333333334,Cube_CES.PrdTypeID
+2025-12,Omni Channel,PT3075,0.22916666666666666,Cube_CES.PrdTypeID
+2025-12,Omni Channel,PT3076,0.15104166666666666,Cube_CES.PrdTypeID
+2025-12,Omni Channel,PT3063,0.020833333333333332,Cube_CES.PrdTypeID
+2025-12,Omni Channel,PT3065,0.013020833333333334,Cube_CES.PrdTypeID
+2025-12,Omni Channel,PT3061,0.010416666666666666,Cube_CES.PrdTypeID
+2025-12,Omni Channel,PT3028,0.0078125,Cube_CES.PrdTypeID
+2025-12,Omni Channel,PT3067,0.005208333333333333,Cube_CES.PrdTypeID
+2025-12,Omni Channel,PT3072,0.0026041666666666665,Cube_CES.PrdTypeID
+2025-12,Tendering,PT3073,0.5,Cube_CES.PrdTypeID
+2025-12,Tendering,PT3028,0.125,Cube_CES.PrdTypeID
+2025-12,Tendering,PT3065,0.125,Cube_CES.PrdTypeID
+2025-12,Tendering,PT3070,0.125,Cube_CES.PrdTypeID
+2025-12,Tendering,PT3075,0.125,Cube_CES.PrdTypeID
+2025-12,Total Customer Solution,PT3076,1.0,Cube_CES.PrdTypeID
+2026-01,Omni Channel,PT3073,0.5081081081081081,Cube_CES.PrdTypeID
+2026-01,Omni Channel,PT3075,0.34594594594594597,Cube_CES.PrdTypeID
+2026-01,Omni Channel,PT3076,0.10810810810810811,Cube_CES.PrdTypeID
+2026-01,Omni Channel,PT3065,0.010810810810810811,Cube_CES.PrdTypeID
+2026-01,Omni Channel,PT3067,0.010810810810810811,Cube_CES.PrdTypeID
+2026-01,Omni Channel,PT3060,0.005405405405405406,Cube_CES.PrdTypeID
+2026-01,Omni Channel,PT3063,0.005405405405405406,Cube_CES.PrdTypeID
+2026-01,Omni Channel,PT3072,0.005405405405405406,Cube_CES.PrdTypeID
+2026-01,Tendering,PT230,0.5,Cube_CES.PrdTypeID
+2026-01,Tendering,PT3072,0.5,Cube_CES.PrdTypeID
+2026-02,Omni Channel,PT3073,0.5161290322580645,Cube_CES.PrdTypeID
+2026-02,Omni Channel,PT3075,0.3279569892473118,Cube_CES.PrdTypeID
+2026-02,Omni Channel,PT3076,0.08602150537634409,Cube_CES.PrdTypeID
+2026-02,Omni Channel,PT3063,0.03763440860215054,Cube_CES.PrdTypeID
+2026-02,Omni Channel,PT3065,0.026881720430107527,Cube_CES.PrdTypeID
+2026-02,Omni Channel,PT3060,0.005376344086021506,Cube_CES.PrdTypeID
+2026-02,Tendering,PT230,0.5,Cube_CES.PrdTypeID
+2026-02,Tendering,PT3072,0.5,Cube_CES.PrdTypeID
+2026-02,Total Customer Solution,PT3076,1.0,Cube_CES.PrdTypeID
+2026-03,Omni Channel,PT3073,0.5379537953795379,Cube_CES.PrdTypeID
+2026-03,Omni Channel,PT3075,0.3696369636963696,Cube_CES.PrdTypeID
+2026-03,Omni Channel,PT3076,0.052805280528052806,Cube_CES.PrdTypeID
+2026-03,Omni Channel,PT3065,0.013201320132013201,Cube_CES.PrdTypeID
+2026-03,Omni Channel,PT3063,0.006600660066006601,Cube_CES.PrdTypeID
+2026-03,Omni Channel,PT3072,0.006600660066006601,Cube_CES.PrdTypeID
+2026-03,Omni Channel,PT200,0.0033003300330033004,Cube_CES.PrdTypeID
+2026-03,Omni Channel,PT3028,0.0033003300330033004,Cube_CES.PrdTypeID
+2026-03,Omni Channel,PT3061,0.0033003300330033004,Cube_CES.PrdTypeID
+2026-03,Omni Channel,PT3067,0.0033003300330033004,Cube_CES.PrdTypeID
+2026-03,Tendering,PT3073,0.4,Cube_CES.PrdTypeID
+2026-03,Tendering,PT230,0.2,Cube_CES.PrdTypeID
+2026-03,Tendering,PT3072,0.2,Cube_CES.PrdTypeID
+2026-03,Tendering,PT3075,0.2,Cube_CES.PrdTypeID
+2026-03,Total Customer Solution,PT3073,0.42857142857142855,Cube_CES.PrdTypeID
+2026-03,Total Customer Solution,PT3075,0.42857142857142855,Cube_CES.PrdTypeID
+2026-03,Total Customer Solution,PT3076,0.14285714285714285,Cube_CES.PrdTypeID
+2026-04,Omni Channel,PT3073,0.5265151515151515,Cube_CES.PrdTypeID
+2026-04,Omni Channel,PT3075,0.36363636363636365,Cube_CES.PrdTypeID
+2026-04,Omni Channel,PT3076,0.056818181818181816,Cube_CES.PrdTypeID
+2026-04,Omni Channel,PT3065,0.026515151515151516,Cube_CES.PrdTypeID
+2026-04,Omni Channel,PT3028,0.011363636363636364,Cube_CES.PrdTypeID
+2026-04,Omni Channel,PT2933,0.003787878787878788,Cube_CES.PrdTypeID
+2026-04,Omni Channel,PT3063,0.003787878787878788,Cube_CES.PrdTypeID
+2026-04,Omni Channel,PT3067,0.003787878787878788,Cube_CES.PrdTypeID
+2026-04,Omni Channel,PT3069,0.003787878787878788,Cube_CES.PrdTypeID
+2026-04,Tendering,PT3073,0.5,Cube_CES.PrdTypeID
+2026-04,Tendering,PT230,0.25,Cube_CES.PrdTypeID
+2026-04,Tendering,PT3072,0.25,Cube_CES.PrdTypeID
+2026-05,Omni Channel,PT3073,0.5177664974619289,Cube_CES.PrdTypeID
+2026-05,Omni Channel,PT3075,0.3350253807106599,Cube_CES.PrdTypeID
+2026-05,Omni Channel,PT3076,0.07106598984771574,Cube_CES.PrdTypeID
+2026-05,Omni Channel,PT3063,0.04060913705583756,Cube_CES.PrdTypeID
+2026-05,Omni Channel,PT3061,0.01015228426395939,Cube_CES.PrdTypeID
+2026-05,Omni Channel,PT3069,0.01015228426395939,Cube_CES.PrdTypeID
+2026-05,Omni Channel,PT3065,0.005076142131979695,Cube_CES.PrdTypeID
+2026-05,Omni Channel,PT3067,0.005076142131979695,Cube_CES.PrdTypeID
+2026-05,Omni Channel,PT3072,0.005076142131979695,Cube_CES.PrdTypeID
+2026-05,Total Customer Solution,PT3075,1.0,Cube_CES.PrdTypeID
+2026-06,Omni Channel,PT3073,0.5,Cube_CES.PrdTypeID
+2026-06,Omni Channel,PT3075,0.3088235294117647,Cube_CES.PrdTypeID
+2026-06,Omni Channel,PT3076,0.10294117647058823,Cube_CES.PrdTypeID
+2026-06,Omni Channel,PT3028,0.024509803921568627,Cube_CES.PrdTypeID
+2026-06,Omni Channel,PT3065,0.0196078431372549,Cube_CES.PrdTypeID
+2026-06,Omni Channel,PT3063,0.014705882352941176,Cube_CES.PrdTypeID
+2026-06,Omni Channel,PT3067,0.00980392156862745,Cube_CES.PrdTypeID
+2026-06,Omni Channel,PT3069,0.00980392156862745,Cube_CES.PrdTypeID
+2026-06,Omni Channel,PT082,0.004901960784313725,Cube_CES.PrdTypeID
+2026-06,Omni Channel,PT3070,0.004901960784313725,Cube_CES.PrdTypeID
+2026-06,Tendering,PT3065,0.5,Cube_CES.PrdTypeID
+2026-06,Tendering,PT3073,0.5,Cube_CES.PrdTypeID
+2026-06,Total Customer Solution,PT026,1.0,Cube_CES.PrdTypeID
+2026-07,Omni Channel,PT3073,0.5308641975308642,Cube_CES.PrdTypeID
+2026-07,Omni Channel,PT3075,0.3333333333333333,Cube_CES.PrdTypeID
+2026-07,Omni Channel,PT3076,0.04526748971193416,Cube_CES.PrdTypeID
+2026-07,Omni Channel,PT3028,0.01646090534979424,Cube_CES.PrdTypeID
+2026-07,Omni Channel,PT3063,0.01646090534979424,Cube_CES.PrdTypeID
+2026-07,Omni Channel,PT3065,0.01646090534979424,Cube_CES.PrdTypeID
+2026-07,Omni Channel,PT3067,0.012345679012345678,Cube_CES.PrdTypeID
+2026-07,Omni Channel,PT3069,0.012345679012345678,Cube_CES.PrdTypeID
+2026-07,Omni Channel,PT3070,0.00823045267489712,Cube_CES.PrdTypeID
+2026-07,Omni Channel,PT229,0.00411522633744856,Cube_CES.PrdTypeID
+2026-07,Omni Channel,PT3061,0.00411522633744856,Cube_CES.PrdTypeID
+2026-07,Tendering,PT3065,0.5,Cube_CES.PrdTypeID
+2026-07,Tendering,PT3073,0.5,Cube_CES.PrdTypeID
+2026-07,Total Customer Solution,PT3073,0.5,Cube_CES.PrdTypeID
+2026-07,Total Customer Solution,PT3075,0.5,Cube_CES.PrdTypeID
+2026-08,Omni Channel,PT3073,0.49498327759197325,Cube_CES.PrdTypeID
+2026-08,Omni Channel,PT3075,0.43812709030100333,Cube_CES.PrdTypeID
+2026-08,Omni Channel,PT3076,0.043478260869565216,Cube_CES.PrdTypeID
+2026-08,Omni Channel,PT3028,0.010033444816053512,Cube_CES.PrdTypeID
+2026-08,Omni Channel,PT3063,0.006688963210702341,Cube_CES.PrdTypeID
+2026-08,Omni Channel,PT3069,0.0033444816053511705,Cube_CES.PrdTypeID
+2026-08,Omni Channel,PT3070,0.0033444816053511705,Cube_CES.PrdTypeID
+2026-08,Tendering,PT3061,0.45454545454545453,Cube_CES.PrdTypeID
+2026-08,Tendering,PT3065,0.18181818181818182,Cube_CES.PrdTypeID
+2026-08,Tendering,PT3073,0.18181818181818182,Cube_CES.PrdTypeID
+2026-08,Tendering,PT229,0.09090909090909091,Cube_CES.PrdTypeID
+2026-08,Tendering,PT3063,0.09090909090909091,Cube_CES.PrdTypeID
+2026-09,Omni Channel,PT3073,0.498220640569395,Cube_CES.PrdTypeID
+2026-09,Omni Channel,PT3075,0.31316725978647686,Cube_CES.PrdTypeID
+2026-09,Omni Channel,PT3076,0.099644128113879,Cube_CES.PrdTypeID
+2026-09,Omni Channel,PT3063,0.02491103202846975,Cube_CES.PrdTypeID
+2026-09,Omni Channel,PT3028,0.021352313167259787,Cube_CES.PrdTypeID
+2026-09,Omni Channel,PT3065,0.021352313167259787,Cube_CES.PrdTypeID
+2026-09,Omni Channel,PT3061,0.014234875444839857,Cube_CES.PrdTypeID
+2026-09,Omni Channel,PT026,0.0035587188612099642,Cube_CES.PrdTypeID
+2026-09,Omni Channel,PT3069,0.0035587188612099642,Cube_CES.PrdTypeID
+2026-09,Tendering,PT3073,0.35294117647058826,Cube_CES.PrdTypeID
+2026-09,Tendering,PT3028,0.11764705882352941,Cube_CES.PrdTypeID
+2026-09,Tendering,PT3065,0.11764705882352941,Cube_CES.PrdTypeID
+2026-09,Tendering,PT3067,0.11764705882352941,Cube_CES.PrdTypeID
+2026-09,Tendering,PT3076,0.11764705882352941,Cube_CES.PrdTypeID
+2026-09,Tendering,PT200,0.058823529411764705,Cube_CES.PrdTypeID
+2026-09,Tendering,PT229,0.058823529411764705,Cube_CES.PrdTypeID
+2026-09,Tendering,PT3063,0.058823529411764705,Cube_CES.PrdTypeID
+2026-10,Omni Channel,PT3073,0.49107142857142855,Cube_CES.PrdTypeID
+2026-10,Omni Channel,PT3075,0.2767857142857143,Cube_CES.PrdTypeID
+2026-10,Omni Channel,PT3076,0.09821428571428571,Cube_CES.PrdTypeID
+2026-10,Omni Channel,PT3067,0.044642857142857144,Cube_CES.PrdTypeID
+2026-10,Omni Channel,PT3028,0.03571428571428571,Cube_CES.PrdTypeID
+2026-10,Omni Channel,PT3065,0.03571428571428571,Cube_CES.PrdTypeID
+2026-10,Omni Channel,PT3060,0.008928571428571428,Cube_CES.PrdTypeID
+2026-10,Omni Channel,PT3061,0.008928571428571428,Cube_CES.PrdTypeID
+2026-10,Tendering,PT3067,0.4,Cube_CES.PrdTypeID
+2026-10,Tendering,PT3076,0.4,Cube_CES.PrdTypeID
+2026-10,Tendering,PT3028,0.2,Cube_CES.PrdTypeID
+2026-10,Total Customer Solution,PT3028,1.0,Cube_CES.PrdTypeID
+2026-11,Omni Channel,PT3065,0.4444444444444444,Cube_CES.PrdTypeID
+2026-11,Omni Channel,PT3073,0.2222222222222222,Cube_CES.PrdTypeID
+2026-11,Omni Channel,PT3028,0.1111111111111111,Cube_CES.PrdTypeID
+2026-11,Omni Channel,PT3075,0.1111111111111111,Cube_CES.PrdTypeID
+2026-11,Omni Channel,PT3076,0.1111111111111111,Cube_CES.PrdTypeID
+2026-11,Tendering,PT3076,1.0,Cube_CES.PrdTypeID
+2026-11,Total Customer Solution,PT3028,0.5714285714285714,Cube_CES.PrdTypeID
+2026-11,Total Customer Solution,PT005,0.14285714285714285,Cube_CES.PrdTypeID
+2026-11,Total Customer Solution,PT3073,0.14285714285714285,Cube_CES.PrdTypeID
+2026-11,Total Customer Solution,PT3075,0.14285714285714285,Cube_CES.PrdTypeID
+2026-12,Omni Channel,PT3073,0.5,Cube_CES.PrdTypeID
+2026-12,Omni Channel,PT3075,0.25,Cube_CES.PrdTypeID
+2026-12,Omni Channel,PT3065,0.125,Cube_CES.PrdTypeID
+2026-12,Omni Channel,PT3076,0.125,Cube_CES.PrdTypeID
+2026-12,Tendering,PT3063,0.2857142857142857,Cube_CES.PrdTypeID
+2026-12,Tendering,PT3028,0.14285714285714285,Cube_CES.PrdTypeID
+2026-12,Tendering,PT3061,0.14285714285714285,Cube_CES.PrdTypeID
+2026-12,Tendering,PT3067,0.14285714285714285,Cube_CES.PrdTypeID
+2026-12,Tendering,PT3070,0.14285714285714285,Cube_CES.PrdTypeID
+2026-12,Tendering,PT3072,0.14285714285714285,Cube_CES.PrdTypeID
+2027-01,Omni Channel,PT3075,1.0,Cube_CES.PrdTypeID
+2027-02,Omni Channel,PT3075,1.0,Cube_CES.PrdTypeID
+2027-03,Omni Channel,PT3075,1.0,Cube_CES.PrdTypeID
+2027-03,Tendering,PT3028,1.0,Cube_CES.PrdTypeID
+2025-01,Omni Channel,,0.3652173913043478,Cube_CES.OLMJobCode_prefix
+2025-01,Omni Channel,CT,0.3,Cube_CES.OLMJobCode_prefix
+2025-01,Omni Channel,VT,0.25217391304347825,Cube_CES.OLMJobCode_prefix
+2025-01,Omni Channel,RS,0.08260869565217391,Cube_CES.OLMJobCode_prefix
+2025-01,Tendering,CTR,0.3333333333333333,Cube_CES.OLMJobCode_prefix
+2025-01,Tendering,VT,0.3333333333333333,Cube_CES.OLMJobCode_prefix
+2025-01,Tendering,CT,0.16666666666666666,Cube_CES.OLMJobCode_prefix
+2025-01,Tendering,RS,0.16666666666666666,Cube_CES.OLMJobCode_prefix
+2025-01,Total Customer Solution,,1.0,Cube_CES.OLMJobCode_prefix
+2025-02,Omni Channel,,0.34080717488789236,Cube_CES.OLMJobCode_prefix
+2025-02,Omni Channel,CT,0.3183856502242152,Cube_CES.OLMJobCode_prefix
+2025-02,Omni Channel,VT,0.28699551569506726,Cube_CES.OLMJobCode_prefix
+2025-02,Omni Channel,RS,0.053811659192825115,Cube_CES.OLMJobCode_prefix
+2025-02,Tendering,CTR,0.5,Cube_CES.OLMJobCode_prefix
+2025-02,Tendering,RS,0.5,Cube_CES.OLMJobCode_prefix
+2025-03,Omni Channel,,0.4076655052264808,Cube_CES.OLMJobCode_prefix
+2025-03,Omni Channel,CT,0.25435540069686413,Cube_CES.OLMJobCode_prefix
+2025-03,Omni Channel,VT,0.20557491289198607,Cube_CES.OLMJobCode_prefix
+2025-03,Omni Channel,RS,0.13240418118466898,Cube_CES.OLMJobCode_prefix
+2025-03,Tendering,CTR,0.6666666666666666,Cube_CES.OLMJobCode_prefix
+2025-03,Tendering,RS,0.3333333333333333,Cube_CES.OLMJobCode_prefix
+2025-04,Omni Channel,,0.3467741935483871,Cube_CES.OLMJobCode_prefix
+2025-04,Omni Channel,CT,0.31451612903225806,Cube_CES.OLMJobCode_prefix
+2025-04,Omni Channel,VT,0.2701612903225806,Cube_CES.OLMJobCode_prefix
+2025-04,Omni Channel,RS,0.06854838709677419,Cube_CES.OLMJobCode_prefix
+2025-04,Tendering,RS,1.0,Cube_CES.OLMJobCode_prefix
+2025-05,Omni Channel,CT,0.34080717488789236,Cube_CES.OLMJobCode_prefix
+2025-05,Omni Channel,,0.3273542600896861,Cube_CES.OLMJobCode_prefix
+2025-05,Omni Channel,VT,0.2645739910313901,Cube_CES.OLMJobCode_prefix
+2025-05,Omni Channel,RS,0.06726457399103139,Cube_CES.OLMJobCode_prefix
+2025-05,Tendering,RS,1.0,Cube_CES.OLMJobCode_prefix
+2025-06,Omni Channel,,0.37117903930131,Cube_CES.OLMJobCode_prefix
+2025-06,Omni Channel,CT,0.3318777292576419,Cube_CES.OLMJobCode_prefix
+2025-06,Omni Channel,VT,0.2314410480349345,Cube_CES.OLMJobCode_prefix
+2025-06,Omni Channel,RS,0.0611353711790393,Cube_CES.OLMJobCode_prefix
+2025-06,Omni Channel,LB,0.004366812227074236,Cube_CES.OLMJobCode_prefix
+2025-06,Tendering,RS,1.0,Cube_CES.OLMJobCode_prefix
+2025-07,Omni Channel,,0.3169642857142857,Cube_CES.OLMJobCode_prefix
+2025-07,Omni Channel,VT,0.3125,Cube_CES.OLMJobCode_prefix
+2025-07,Omni Channel,CT,0.3080357142857143,Cube_CES.OLMJobCode_prefix
+2025-07,Omni Channel,RS,0.049107142857142856,Cube_CES.OLMJobCode_prefix
+2025-07,Omni Channel,LB,0.008928571428571428,Cube_CES.OLMJobCode_prefix
+2025-07,Omni Channel,J,0.004464285714285714,Cube_CES.OLMJobCode_prefix
+2025-07,Tendering,CTR,0.52,Cube_CES.OLMJobCode_prefix
+2025-07,Tendering,CT,0.4,Cube_CES.OLMJobCode_prefix
+2025-07,Tendering,VT,0.08,Cube_CES.OLMJobCode_prefix
+2025-08,Omni Channel,,0.37540453074433655,Cube_CES.OLMJobCode_prefix
+2025-08,Omni Channel,CT,0.30097087378640774,Cube_CES.OLMJobCode_prefix
+2025-08,Omni Channel,VT,0.30097087378640774,Cube_CES.OLMJobCode_prefix
+2025-08,Omni Channel,RS,0.019417475728155338,Cube_CES.OLMJobCode_prefix
+2025-08,Omni Channel,LB,0.003236245954692557,Cube_CES.OLMJobCode_prefix
+2025-08,Tendering,CTR,0.8571428571428571,Cube_CES.OLMJobCode_prefix
+2025-08,Tendering,,0.14285714285714285,Cube_CES.OLMJobCode_prefix
+2025-09,Omni Channel,,0.43902439024390244,Cube_CES.OLMJobCode_prefix
+2025-09,Omni Channel,CT,0.30662020905923343,Cube_CES.OLMJobCode_prefix
+2025-09,Omni Channel,VT,0.20557491289198607,Cube_CES.OLMJobCode_prefix
+2025-09,Omni Channel,RS,0.04878048780487805,Cube_CES.OLMJobCode_prefix
+2025-09,Total Customer Solution,,1.0,Cube_CES.OLMJobCode_prefix
+2025-10,Omni Channel,CT,0.37109375,Cube_CES.OLMJobCode_prefix
+2025-10,Omni Channel,,0.30859375,Cube_CES.OLMJobCode_prefix
+2025-10,Omni Channel,VT,0.26953125,Cube_CES.OLMJobCode_prefix
+2025-10,Omni Channel,RS,0.0234375,Cube_CES.OLMJobCode_prefix
+2025-10,Omni Channel,CTR,0.0078125,Cube_CES.OLMJobCode_prefix
+2025-10,Omni Channel,DB,0.0078125,Cube_CES.OLMJobCode_prefix
+2025-10,Omni Channel,SR,0.0078125,Cube_CES.OLMJobCode_prefix
+2025-10,Omni Channel,SS,0.00390625,Cube_CES.OLMJobCode_prefix
+2025-10,Tendering,CTR,1.0,Cube_CES.OLMJobCode_prefix
+2025-10,Total Customer Solution,,1.0,Cube_CES.OLMJobCode_prefix
+2025-11,Omni Channel,CT,0.41025641025641024,Cube_CES.OLMJobCode_prefix
+2025-11,Omni Channel,VT,0.336996336996337,Cube_CES.OLMJobCode_prefix
+2025-11,Omni Channel,,0.21611721611721613,Cube_CES.OLMJobCode_prefix
+2025-11,Omni Channel,RS,0.029304029304029304,Cube_CES.OLMJobCode_prefix
+2025-11,Omni Channel,SS,0.007326007326007326,Cube_CES.OLMJobCode_prefix
+2025-11,Tendering,CTR,1.0,Cube_CES.OLMJobCode_prefix
+2025-11,Total Customer Solution,,1.0,Cube_CES.OLMJobCode_prefix
+2025-12,Omni Channel,,0.3567708333333333,Cube_CES.OLMJobCode_prefix
+2025-12,Omni Channel,CT,0.2942708333333333,Cube_CES.OLMJobCode_prefix
+2025-12,Omni Channel,VT,0.2916666666666667,Cube_CES.OLMJobCode_prefix
+2025-12,Omni Channel,RS,0.046875,Cube_CES.OLMJobCode_prefix
+2025-12,Omni Channel,SS,0.0078125,Cube_CES.OLMJobCode_prefix
+2025-12,Omni Channel,CTR,0.0026041666666666665,Cube_CES.OLMJobCode_prefix
+2025-12,Tendering,CTR,0.875,Cube_CES.OLMJobCode_prefix
+2025-12,Tendering,,0.125,Cube_CES.OLMJobCode_prefix
+2025-12,Total Customer Solution,J,1.0,Cube_CES.OLMJobCode_prefix
+2026-01,Omni Channel,,0.372972972972973,Cube_CES.OLMJobCode_prefix
+2026-01,Omni Channel,CT,0.2972972972972973,Cube_CES.OLMJobCode_prefix
+2026-01,Omni Channel,VT,0.2918918918918919,Cube_CES.OLMJobCode_prefix
+2026-01,Omni Channel,RS,0.02702702702702703,Cube_CES.OLMJobCode_prefix
+2026-01,Omni Channel,CTR,0.010810810810810811,Cube_CES.OLMJobCode_prefix
+2026-01,Tendering,CTR,0.5,Cube_CES.OLMJobCode_prefix
+2026-01,Tendering,RS,0.5,Cube_CES.OLMJobCode_prefix
+2026-02,Omni Channel,,0.3548387096774194,Cube_CES.OLMJobCode_prefix
+2026-02,Omni Channel,CT,0.2956989247311828,Cube_CES.OLMJobCode_prefix
+2026-02,Omni Channel,VT,0.2849462365591398,Cube_CES.OLMJobCode_prefix
+2026-02,Omni Channel,RS,0.05913978494623656,Cube_CES.OLMJobCode_prefix
+2026-02,Omni Channel,CTR,0.005376344086021506,Cube_CES.OLMJobCode_prefix
+2026-02,Tendering,CTR,0.5,Cube_CES.OLMJobCode_prefix
+2026-02,Tendering,RS,0.5,Cube_CES.OLMJobCode_prefix
+2026-02,Total Customer Solution,J,1.0,Cube_CES.OLMJobCode_prefix
+2026-03,Omni Channel,,0.4158415841584158,Cube_CES.OLMJobCode_prefix
+2026-03,Omni Channel,CT,0.3069306930693069,Cube_CES.OLMJobCode_prefix
+2026-03,Omni Channel,VT,0.25412541254125415,Cube_CES.OLMJobCode_prefix
+2026-03,Omni Channel,RS,0.013201320132013201,Cube_CES.OLMJobCode_prefix
+2026-03,Omni Channel,J,0.006600660066006601,Cube_CES.OLMJobCode_prefix
+2026-03,Omni Channel,SS,0.0033003300330033004,Cube_CES.OLMJobCode_prefix
+2026-03,Tendering,CTR,0.4,Cube_CES.OLMJobCode_prefix
+2026-03,Tendering,CT,0.2,Cube_CES.OLMJobCode_prefix
+2026-03,Tendering,RS,0.2,Cube_CES.OLMJobCode_prefix
+2026-03,Tendering,VT,0.2,Cube_CES.OLMJobCode_prefix
+2026-03,Total Customer Solution,,0.8571428571428571,Cube_CES.OLMJobCode_prefix
+2026-03,Total Customer Solution,J,0.14285714285714285,Cube_CES.OLMJobCode_prefix
+2026-04,Omni Channel,CT,0.38636363636363635,Cube_CES.OLMJobCode_prefix
+2026-04,Omni Channel,VT,0.3068181818181818,Cube_CES.OLMJobCode_prefix
+2026-04,Omni Channel,,0.2765151515151515,Cube_CES.OLMJobCode_prefix
+2026-04,Omni Channel,CTR,0.015151515151515152,Cube_CES.OLMJobCode_prefix
+2026-04,Omni Channel,SS,0.007575757575757576,Cube_CES.OLMJobCode_prefix
+2026-04,Omni Channel,J,0.003787878787878788,Cube_CES.OLMJobCode_prefix
+2026-04,Omni Channel,RS,0.003787878787878788,Cube_CES.OLMJobCode_prefix
+2026-04,Tendering,CTR,0.5,Cube_CES.OLMJobCode_prefix
+2026-04,Tendering,CT,0.25,Cube_CES.OLMJobCode_prefix
+2026-04,Tendering,RS,0.25,Cube_CES.OLMJobCode_prefix
+2026-05,Omni Channel,,0.39593908629441626,Cube_CES.OLMJobCode_prefix
+2026-05,Omni Channel,CT,0.2893401015228426,Cube_CES.OLMJobCode_prefix
+2026-05,Omni Channel,VT,0.24873096446700507,Cube_CES.OLMJobCode_prefix
+2026-05,Omni Channel,RS,0.05583756345177665,Cube_CES.OLMJobCode_prefix
+2026-05,Omni Channel,J,0.005076142131979695,Cube_CES.OLMJobCode_prefix
+2026-05,Omni Channel,LB,0.005076142131979695,Cube_CES.OLMJobCode_prefix
+2026-05,Total Customer Solution,J,1.0,Cube_CES.OLMJobCode_prefix
+2026-06,Omni Channel,CT,0.37254901960784315,Cube_CES.OLMJobCode_prefix
+2026-06,Omni Channel,VT,0.3284313725490196,Cube_CES.OLMJobCode_prefix
+2026-06,Omni Channel,,0.24509803921568626,Cube_CES.OLMJobCode_prefix
+2026-06,Omni Channel,RS,0.029411764705882353,Cube_CES.OLMJobCode_prefix
+2026-06,Omni Channel,CTR,0.00980392156862745,Cube_CES.OLMJobCode_prefix
+2026-06,Omni Channel,SS,0.00980392156862745,Cube_CES.OLMJobCode_prefix
+2026-06,Omni Channel,J,0.004901960784313725,Cube_CES.OLMJobCode_prefix
+2026-06,Tendering,CTR,0.5,Cube_CES.OLMJobCode_prefix
+2026-06,Tendering,CT,0.25,Cube_CES.OLMJobCode_prefix
+2026-06,Tendering,RS,0.25,Cube_CES.OLMJobCode_prefix
+2026-06,Total Customer Solution,J,1.0,Cube_CES.OLMJobCode_prefix
+2026-07,Omni Channel,CT,0.345679012345679,Cube_CES.OLMJobCode_prefix
+2026-07,Omni Channel,,0.345679012345679,Cube_CES.OLMJobCode_prefix
+2026-07,Omni Channel,VT,0.2674897119341564,Cube_CES.OLMJobCode_prefix
+2026-07,Omni Channel,RS,0.03292181069958848,Cube_CES.OLMJobCode_prefix
+2026-07,Omni Channel,CTR,0.00411522633744856,Cube_CES.OLMJobCode_prefix
+2026-07,Omni Channel,SS,0.00411522633744856,Cube_CES.OLMJobCode_prefix
+2026-07,Tendering,CTR,0.5,Cube_CES.OLMJobCode_prefix
+2026-07,Tendering,CT,0.25,Cube_CES.OLMJobCode_prefix
+2026-07,Tendering,RS,0.25,Cube_CES.OLMJobCode_prefix
+2026-07,Total Customer Solution,,1.0,Cube_CES.OLMJobCode_prefix
+2026-08,Omni Channel,CT,0.34782608695652173,Cube_CES.OLMJobCode_prefix
+2026-08,Omni Channel,,0.3311036789297659,Cube_CES.OLMJobCode_prefix
+2026-08,Omni Channel,VT,0.2909698996655518,Cube_CES.OLMJobCode_prefix
+2026-08,Omni Channel,CTR,0.010033444816053512,Cube_CES.OLMJobCode_prefix
+2026-08,Omni Channel,RS,0.010033444816053512,Cube_CES.OLMJobCode_prefix
+2026-08,Omni Channel,J,0.0033444816053511705,Cube_CES.OLMJobCode_prefix
+2026-08,Omni Channel,LB,0.0033444816053511705,Cube_CES.OLMJobCode_prefix
+2026-08,Omni Channel,SS,0.0033444816053511705,Cube_CES.OLMJobCode_prefix
+2026-08,Tendering,,0.45454545454545453,Cube_CES.OLMJobCode_prefix
+2026-08,Tendering,CTR,0.2727272727272727,Cube_CES.OLMJobCode_prefix
+2026-08,Tendering,RS,0.18181818181818182,Cube_CES.OLMJobCode_prefix
+2026-08,Tendering,CT,0.09090909090909091,Cube_CES.OLMJobCode_prefix
+2026-09,Omni Channel,,0.3736654804270463,Cube_CES.OLMJobCode_prefix
+2026-09,Omni Channel,CT,0.302491103202847,Cube_CES.OLMJobCode_prefix
+2026-09,Omni Channel,VT,0.23843416370106763,Cube_CES.OLMJobCode_prefix
+2026-09,Omni Channel,RS,0.046263345195729534,Cube_CES.OLMJobCode_prefix
+2026-09,Omni Channel,SS,0.017793594306049824,Cube_CES.OLMJobCode_prefix
+2026-09,Omni Channel,CTR,0.010676156583629894,Cube_CES.OLMJobCode_prefix
+2026-09,Omni Channel,LB,0.0071174377224199285,Cube_CES.OLMJobCode_prefix
+2026-09,Omni Channel,J,0.0035587188612099642,Cube_CES.OLMJobCode_prefix
+2026-09,Tendering,CTR,0.47058823529411764,Cube_CES.OLMJobCode_prefix
+2026-09,Tendering,VT,0.23529411764705882,Cube_CES.OLMJobCode_prefix
+2026-09,Tendering,RS,0.17647058823529413,Cube_CES.OLMJobCode_prefix
+2026-09,Tendering,,0.11764705882352941,Cube_CES.OLMJobCode_prefix
+2026-10,Omni Channel,,0.6160714285714286,Cube_CES.OLMJobCode_prefix
+2026-10,Omni Channel,CT,0.1875,Cube_CES.OLMJobCode_prefix
+2026-10,Omni Channel,VT,0.125,Cube_CES.OLMJobCode_prefix
+2026-10,Omni Channel,RS,0.044642857142857144,Cube_CES.OLMJobCode_prefix
+2026-10,Omni Channel,CTR,0.008928571428571428,Cube_CES.OLMJobCode_prefix
+2026-10,Omni Channel,J,0.008928571428571428,Cube_CES.OLMJobCode_prefix
+2026-10,Omni Channel,SS,0.008928571428571428,Cube_CES.OLMJobCode_prefix
+2026-10,Tendering,CTR,0.6,Cube_CES.OLMJobCode_prefix
+2026-10,Tendering,RS,0.2,Cube_CES.OLMJobCode_prefix
+2026-10,Tendering,VT,0.2,Cube_CES.OLMJobCode_prefix
+2026-10,Total Customer Solution,,1.0,Cube_CES.OLMJobCode_prefix
+2026-11,Omni Channel,RS,0.4444444444444444,Cube_CES.OLMJobCode_prefix
+2026-11,Omni Channel,CT,0.2222222222222222,Cube_CES.OLMJobCode_prefix
+2026-11,Omni Channel,VT,0.2222222222222222,Cube_CES.OLMJobCode_prefix
+2026-11,Omni Channel,J,0.1111111111111111,Cube_CES.OLMJobCode_prefix
+2026-11,Tendering,CTR,0.5,Cube_CES.OLMJobCode_prefix
+2026-11,Tendering,VT,0.5,Cube_CES.OLMJobCode_prefix
+2026-11,Total Customer Solution,,1.0,Cube_CES.OLMJobCode_prefix
+2026-12,Omni Channel,CT,0.5,Cube_CES.OLMJobCode_prefix
+2026-12,Omni Channel,VT,0.375,Cube_CES.OLMJobCode_prefix
+2026-12,Omni Channel,RS,0.125,Cube_CES.OLMJobCode_prefix
+2026-12,Tendering,,1.0,Cube_CES.OLMJobCode_prefix
+2027-01,Omni Channel,VT,1.0,Cube_CES.OLMJobCode_prefix
+2027-02,Omni Channel,CTR,1.0,Cube_CES.OLMJobCode_prefix
+2027-03,Omni Channel,CTR,1.0,Cube_CES.OLMJobCode_prefix
+2027-03,Tendering,,1.0,Cube_CES.OLMJobCode_prefix
+2025-01,ALL,Omni Channel,0.9704641350210971,Cube_CES.RevenueType
+2025-01,ALL,Tendering,0.02531645569620253,Cube_CES.RevenueType
+2025-01,ALL,Total Customer Solution,0.004219409282700422,Cube_CES.RevenueType
+2025-02,ALL,Omni Channel,0.9911111111111112,Cube_CES.RevenueType
+2025-02,ALL,Tendering,0.008888888888888889,Cube_CES.RevenueType
+2025-03,ALL,Omni Channel,0.9896551724137931,Cube_CES.RevenueType
+2025-03,ALL,Tendering,0.010344827586206896,Cube_CES.RevenueType
+2025-04,ALL,Omni Channel,0.9959839357429718,Cube_CES.RevenueType
+2025-04,ALL,Tendering,0.004016064257028112,Cube_CES.RevenueType
+2025-05,ALL,Omni Channel,0.9955357142857143,Cube_CES.RevenueType
+2025-05,ALL,Tendering,0.004464285714285714,Cube_CES.RevenueType
+2025-06,ALL,Omni Channel,0.9956521739130435,Cube_CES.RevenueType
+2025-06,ALL,Tendering,0.004347826086956522,Cube_CES.RevenueType
+2025-07,ALL,Omni Channel,0.8995983935742972,Cube_CES.RevenueType
+2025-07,ALL,Tendering,0.10040160642570281,Cube_CES.RevenueType
+2025-08,ALL,Omni Channel,0.9778481012658228,Cube_CES.RevenueType
+2025-08,ALL,Tendering,0.022151898734177215,Cube_CES.RevenueType
+2025-09,ALL,Omni Channel,0.9828767123287672,Cube_CES.RevenueType
+2025-09,ALL,,0.0136986301369863,Cube_CES.RevenueType
+2025-09,ALL,Total Customer Solution,0.003424657534246575,Cube_CES.RevenueType
+2025-10,ALL,Omni Channel,0.9884169884169884,Cube_CES.RevenueType
+2025-10,ALL,Tendering,0.007722007722007722,Cube_CES.RevenueType
+2025-10,ALL,Total Customer Solution,0.003861003861003861,Cube_CES.RevenueType
+2025-11,ALL,Omni Channel,0.9927272727272727,Cube_CES.RevenueType
+2025-11,ALL,Tendering,0.0036363636363636364,Cube_CES.RevenueType
+2025-11,ALL,Total Customer Solution,0.0036363636363636364,Cube_CES.RevenueType
+2025-12,ALL,Omni Channel,0.9770992366412213,Cube_CES.RevenueType
+2025-12,ALL,Tendering,0.020356234096692113,Cube_CES.RevenueType
+2025-12,ALL,Total Customer Solution,0.002544529262086514,Cube_CES.RevenueType
+2026-01,ALL,Omni Channel,0.9893048128342246,Cube_CES.RevenueType
+2026-01,ALL,Tendering,0.0106951871657754,Cube_CES.RevenueType
+2026-02,ALL,Omni Channel,0.9841269841269841,Cube_CES.RevenueType
+2026-02,ALL,Tendering,0.010582010582010581,Cube_CES.RevenueType
+2026-02,ALL,Total Customer Solution,0.005291005291005291,Cube_CES.RevenueType
+2026-03,ALL,Omni Channel,0.9619047619047619,Cube_CES.RevenueType
+2026-03,ALL,Total Customer Solution,0.022222222222222223,Cube_CES.RevenueType
+2026-03,ALL,Tendering,0.015873015873015872,Cube_CES.RevenueType
+2026-04,ALL,Omni Channel,0.9814126394052045,Cube_CES.RevenueType
+2026-04,ALL,Tendering,0.01486988847583643,Cube_CES.RevenueType
+2026-04,ALL,,0.0037174721189591076,Cube_CES.RevenueType
+2026-05,ALL,Omni Channel,0.9899497487437185,Cube_CES.RevenueType
+2026-05,ALL,Total Customer Solution,0.010050251256281407,Cube_CES.RevenueType
+2026-06,ALL,Omni Channel,0.9760765550239234,Cube_CES.RevenueType
+2026-06,ALL,Tendering,0.019138755980861243,Cube_CES.RevenueType
+2026-06,ALL,Total Customer Solution,0.004784688995215311,Cube_CES.RevenueType
+2026-07,ALL,Omni Channel,0.9759036144578314,Cube_CES.RevenueType
+2026-07,ALL,Tendering,0.01606425702811245,Cube_CES.RevenueType
+2026-07,ALL,Total Customer Solution,0.008032128514056224,Cube_CES.RevenueType
+2026-08,ALL,Omni Channel,0.9228395061728395,Cube_CES.RevenueType
+2026-08,ALL,,0.043209876543209874,Cube_CES.RevenueType
+2026-08,ALL,Tendering,0.033950617283950615,Cube_CES.RevenueType
+2026-09,ALL,Omni Channel,0.9304635761589404,Cube_CES.RevenueType
+2026-09,ALL,Tendering,0.056291390728476824,Cube_CES.RevenueType
+2026-09,ALL,,0.013245033112582781,Cube_CES.RevenueType
+2026-10,ALL,Omni Channel,0.9491525423728814,Cube_CES.RevenueType
+2026-10,ALL,Tendering,0.0423728813559322,Cube_CES.RevenueType
+2026-10,ALL,Total Customer Solution,0.00847457627118644,Cube_CES.RevenueType
+2026-11,ALL,Omni Channel,0.5,Cube_CES.RevenueType
+2026-11,ALL,Total Customer Solution,0.3888888888888889,Cube_CES.RevenueType
+2026-11,ALL,Tendering,0.1111111111111111,Cube_CES.RevenueType
+2026-12,ALL,Omni Channel,0.5333333333333333,Cube_CES.RevenueType
+2026-12,ALL,Tendering,0.4666666666666667,Cube_CES.RevenueType
+2027-01,ALL,Omni Channel,1.0,Cube_CES.RevenueType
+2027-02,ALL,Omni Channel,1.0,Cube_CES.RevenueType
+2027-03,ALL,Omni Channel,0.5,Cube_CES.RevenueType
+2027-03,ALL,Tendering,0.5,Cube_CES.RevenueType
+2025-01,ALL,102,1.0,cube_final.division
+2025-02,ALL,102,1.0,cube_final.division
+2025-03,ALL,102,0.9953488372093023,cube_final.division
+2025-03,ALL,106,0.004651162790697674,cube_final.division
+2025-04,ALL,102,1.0,cube_final.division
+2025-05,ALL,102,0.7321428571428571,cube_final.division
+2025-05,ALL,103,0.26785714285714285,cube_final.division
+2025-06,ALL,103,1.0,cube_final.division
+2025-07,ALL,103,1.0,cube_final.division
+2025-08,ALL,103,1.0,cube_final.division
+2025-09,ALL,103,1.0,cube_final.division
+2025-10,ALL,103,1.0,cube_final.division
+2025-11,ALL,103,1.0,cube_final.division
+2025-12,ALL,103,1.0,cube_final.division
+2026-01,ALL,103,1.0,cube_final.division
+2026-02,ALL,103,1.0,cube_final.division
+2026-03,ALL,103,1.0,cube_final.division
+2026-04,ALL,103,1.0,cube_final.division
+2026-05,ALL,107,0.9539473684210527,cube_final.division
+2026-05,ALL,103,0.046052631578947366,cube_final.division
+2026-06,ALL,107,0.9933333333333333,cube_final.division
+2026-06,ALL,103,0.006666666666666667,cube_final.division
+2026-07,ALL,107,1.0,cube_final.division
+2026-08,ALL,107,1.0,cube_final.division
+2026-09,ALL,107,1.0,cube_final.division
+2025-01,ALL,โอนปกติ,0.9943820224719101,cube_final.transfer_type
+2025-01,ALL,โอนเพื่อตัดขาย,0.0056179775280898875,cube_final.transfer_type
+2025-02,ALL,โอนปกติ,0.9939024390243902,cube_final.transfer_type
+2025-02,ALL,โอนเพื่อตัดขาย,0.006097560975609756,cube_final.transfer_type
+2025-03,ALL,โอนปกติ,1.0,cube_final.transfer_type
+2025-04,ALL,โอนปกติ,1.0,cube_final.transfer_type
+2025-05,ALL,โอนปกติ,1.0,cube_final.transfer_type
+2025-06,ALL,โอนปกติ,1.0,cube_final.transfer_type
+2025-07,ALL,โอนปกติ,0.9946524064171123,cube_final.transfer_type
+2025-07,ALL,โอนเพื่อ Stock,0.0053475935828877,cube_final.transfer_type
+2025-08,ALL,โอนปกติ,1.0,cube_final.transfer_type
+2025-09,ALL,โอนปกติ,0.9951219512195122,cube_final.transfer_type
+2025-09,ALL,โอนเพื่อตัดขาย,0.004878048780487805,cube_final.transfer_type
+2025-10,ALL,โอนปกติ,1.0,cube_final.transfer_type
+2025-11,ALL,โอนปกติ,1.0,cube_final.transfer_type
+2025-12,ALL,โอนปกติ,1.0,cube_final.transfer_type
+2026-01,ALL,โอนปกติ,1.0,cube_final.transfer_type
+2026-02,ALL,โอนปกติ,1.0,cube_final.transfer_type
+2026-03,ALL,โอนปกติ,1.0,cube_final.transfer_type
+2026-04,ALL,โอนปกติ,1.0,cube_final.transfer_type
+2026-05,ALL,โอนปกติ,0.993421052631579,cube_final.transfer_type
+2026-05,ALL,โอนเพื่อตัดขาย,0.006578947368421052,cube_final.transfer_type
+2026-06,ALL,โอนปกติ,1.0,cube_final.transfer_type
+2026-07,ALL,โอนปกติ,1.0,cube_final.transfer_type
+2026-08,ALL,โอนปกติ,1.0,cube_final.transfer_type
+2026-09,ALL,โอนปกติ,1.0,cube_final.transfer_type
+2025-01,ALL,Pass,1.0,cube_final.fg_check_status
+2025-02,ALL,Pass,1.0,cube_final.fg_check_status
+2025-03,ALL,Pass,1.0,cube_final.fg_check_status
+2025-04,ALL,Pass,1.0,cube_final.fg_check_status
+2025-05,ALL,Pass,1.0,cube_final.fg_check_status
+2025-06,ALL,Pass,1.0,cube_final.fg_check_status
+2025-07,ALL,Pass,1.0,cube_final.fg_check_status
+2025-08,ALL,Pass,1.0,cube_final.fg_check_status
+2025-09,ALL,Pass,1.0,cube_final.fg_check_status
+2025-10,ALL,Pass,1.0,cube_final.fg_check_status
+2025-11,ALL,Pass,1.0,cube_final.fg_check_status
+2025-12,ALL,Pass,1.0,cube_final.fg_check_status
+2026-01,ALL,Pass,1.0,cube_final.fg_check_status
+2026-02,ALL,Pass,1.0,cube_final.fg_check_status
+2026-03,ALL,Pass,0.9948453608247423,cube_final.fg_check_status
+2026-03,ALL,,0.005154639175257732,cube_final.fg_check_status
+2026-04,ALL,Pass,0.9946524064171123,cube_final.fg_check_status
+2026-04,ALL,Fail,0.0053475935828877,cube_final.fg_check_status
+2026-05,ALL,Pass,1.0,cube_final.fg_check_status
+2026-06,ALL,Pass,1.0,cube_final.fg_check_status
+2026-07,ALL,Pass,1.0,cube_final.fg_check_status
+2026-08,ALL,Pass,1.0,cube_final.fg_check_status
+2026-09,ALL,Pass,0.9829059829059829,cube_final.fg_check_status
+2026-09,ALL,,0.017094017094017096,cube_final.fg_check_status
+2025-01,ALL,Pass,0.9887640449438202,cube_final.fg_final_status
+2025-01,ALL,,0.011235955056179775,cube_final.fg_final_status
+2025-02,ALL,Pass,1.0,cube_final.fg_final_status
+2025-03,ALL,Pass,1.0,cube_final.fg_final_status
+2025-04,ALL,Pass,0.9943502824858758,cube_final.fg_final_status
+2025-04,ALL,,0.005649717514124294,cube_final.fg_final_status
+2025-05,ALL,Pass,0.9940476190476191,cube_final.fg_final_status
+2025-05,ALL,,0.005952380952380952,cube_final.fg_final_status
+2025-06,ALL,Pass,1.0,cube_final.fg_final_status
+2025-07,ALL,Pass,0.9786096256684492,cube_final.fg_final_status
+2025-07,ALL,,0.0213903743315508,cube_final.fg_final_status
+2025-08,ALL,Pass,0.5636363636363636,cube_final.fg_final_status
+2025-08,ALL,,0.43636363636363634,cube_final.fg_final_status
+2025-09,ALL,,0.9560975609756097,cube_final.fg_final_status
+2025-09,ALL,Pass,0.04390243902439024,cube_final.fg_final_status
+2025-10,ALL,,0.9086294416243654,cube_final.fg_final_status
+2025-10,ALL,Pass,0.09137055837563451,cube_final.fg_final_status
+2025-11,ALL,,0.9925093632958801,cube_final.fg_final_status
+2025-11,ALL,Pass,0.00749063670411985,cube_final.fg_final_status
+2025-12,ALL,,0.9681818181818181,cube_final.fg_final_status
+2025-12,ALL,Pass,0.031818181818181815,cube_final.fg_final_status
+2026-01,ALL,,0.9805194805194806,cube_final.fg_final_status
+2026-01,ALL,Pass,0.01948051948051948,cube_final.fg_final_status
+2026-02,ALL,,0.9662162162162162,cube_final.fg_final_status
+2026-02,ALL,Pass,0.033783783783783786,cube_final.fg_final_status
+2026-03,ALL,,0.9742268041237113,cube_final.fg_final_status
+2026-03,ALL,Pass,0.02577319587628866,cube_final.fg_final_status
+2026-04,ALL,,0.9572192513368984,cube_final.fg_final_status
+2026-04,ALL,Pass,0.0427807486631016,cube_final.fg_final_status
+2026-05,ALL,,0.9605263157894737,cube_final.fg_final_status
+2026-05,ALL,Pass,0.039473684210526314,cube_final.fg_final_status
+2026-06,ALL,,0.9866666666666667,cube_final.fg_final_status
+2026-06,ALL,Pass,0.013333333333333334,cube_final.fg_final_status
+2026-07,ALL,,1.0,cube_final.fg_final_status
+2026-08,ALL,,1.0,cube_final.fg_final_status
+2026-09,ALL,,1.0,cube_final.fg_final_status
+2025-01,ALL,PEM,1.0,cube_final.company
+2025-02,ALL,PEM,1.0,cube_final.company
+2025-03,ALL,PEM,1.0,cube_final.company
+2025-04,ALL,PEM,1.0,cube_final.company
+2025-05,ALL,PEM,1.0,cube_final.company
+2025-06,ALL,PEM,1.0,cube_final.company
+2025-07,ALL,PEM,1.0,cube_final.company
+2025-08,ALL,PEM,1.0,cube_final.company
+2025-09,ALL,PEM,1.0,cube_final.company
+2025-10,ALL,PEM,1.0,cube_final.company
+2025-11,ALL,PEM,1.0,cube_final.company
+2025-12,ALL,PEM,1.0,cube_final.company
+2026-01,ALL,PEM,1.0,cube_final.company
+2026-02,ALL,PEM,1.0,cube_final.company
+2026-03,ALL,PEM,1.0,cube_final.company
+2026-04,ALL,PEM,1.0,cube_final.company
+2026-05,ALL,PEM,1.0,cube_final.company
+2026-06,ALL,PEM,1.0,cube_final.company
+2026-07,ALL,PEM,1.0,cube_final.company
+2026-08,ALL,PEM,1.0,cube_final.company
+2026-09,ALL,PEM,1.0,cube_final.company
+2025-01,ALL,21-50,0.5,cube_final.job_qty_bucket
+2025-01,ALL,6-20,0.3539325842696629,cube_final.job_qty_bucket
+2025-01,ALL,1-5,0.10112359550561797,cube_final.job_qty_bucket
+2025-01,ALL,101-500,0.02247191011235955,cube_final.job_qty_bucket
+2025-01,ALL,51-100,0.011235955056179775,cube_final.job_qty_bucket
+2025-01,ALL,501+,0.011235955056179775,cube_final.job_qty_bucket
+2025-02,ALL,21-50,0.4634146341463415,cube_final.job_qty_bucket
+2025-02,ALL,6-20,0.34146341463414637,cube_final.job_qty_bucket
+2025-02,ALL,1-5,0.11585365853658537,cube_final.job_qty_bucket
+2025-02,ALL,101-500,0.054878048780487805,cube_final.job_qty_bucket
+2025-02,ALL,51-100,0.018292682926829267,cube_final.job_qty_bucket
+2025-02,ALL,501+,0.006097560975609756,cube_final.job_qty_bucket
+2025-03,ALL,6-20,0.4372093023255814,cube_final.job_qty_bucket
+2025-03,ALL,21-50,0.4186046511627907,cube_final.job_qty_bucket
+2025-03,ALL,1-5,0.09767441860465116,cube_final.job_qty_bucket
+2025-03,ALL,51-100,0.018604651162790697,cube_final.job_qty_bucket
+2025-03,ALL,101-500,0.013953488372093023,cube_final.job_qty_bucket
+2025-03,ALL,501+,0.013953488372093023,cube_final.job_qty_bucket
+2025-04,ALL,6-20,0.5310734463276836,cube_final.job_qty_bucket
+2025-04,ALL,21-50,0.3559322033898305,cube_final.job_qty_bucket
+2025-04,ALL,1-5,0.096045197740113,cube_final.job_qty_bucket
+2025-04,ALL,101-500,0.011299435028248588,cube_final.job_qty_bucket
+2025-04,ALL,501+,0.005649717514124294,cube_final.job_qty_bucket
+2025-04,ALL,51-100,0.0,cube_final.job_qty_bucket
+2025-05,ALL,6-20,0.48214285714285715,cube_final.job_qty_bucket
+2025-05,ALL,21-50,0.34523809523809523,cube_final.job_qty_bucket
+2025-05,ALL,1-5,0.10714285714285714,cube_final.job_qty_bucket
+2025-05,ALL,51-100,0.02976190476190476,cube_final.job_qty_bucket
+2025-05,ALL,101-500,0.017857142857142856,cube_final.job_qty_bucket
+2025-05,ALL,501+,0.017857142857142856,cube_final.job_qty_bucket
+2025-06,ALL,6-20,0.5085714285714286,cube_final.job_qty_bucket
+2025-06,ALL,21-50,0.2742857142857143,cube_final.job_qty_bucket
+2025-06,ALL,1-5,0.14285714285714285,cube_final.job_qty_bucket
+2025-06,ALL,101-500,0.06285714285714286,cube_final.job_qty_bucket
+2025-06,ALL,51-100,0.011428571428571429,cube_final.job_qty_bucket
+2025-06,ALL,501+,0.0,cube_final.job_qty_bucket
+2025-07,ALL,21-50,0.48128342245989303,cube_final.job_qty_bucket
+2025-07,ALL,6-20,0.32620320855614976,cube_final.job_qty_bucket
+2025-07,ALL,1-5,0.10160427807486631,cube_final.job_qty_bucket
+2025-07,ALL,101-500,0.08021390374331551,cube_final.job_qty_bucket
+2025-07,ALL,51-100,0.0053475935828877,cube_final.job_qty_bucket
+2025-07,ALL,501+,0.0053475935828877,cube_final.job_qty_bucket
+2025-08,ALL,21-50,0.4,cube_final.job_qty_bucket
+2025-08,ALL,51-100,0.25,cube_final.job_qty_bucket
+2025-08,ALL,6-20,0.17272727272727273,cube_final.job_qty_bucket
+2025-08,ALL,101-500,0.11363636363636363,cube_final.job_qty_bucket
+2025-08,ALL,1-5,0.05909090909090909,cube_final.job_qty_bucket
+2025-08,ALL,501+,0.004545454545454545,cube_final.job_qty_bucket
+2025-09,ALL,21-50,0.32195121951219513,cube_final.job_qty_bucket
+2025-09,ALL,6-20,0.24390243902439024,cube_final.job_qty_bucket
+2025-09,ALL,51-100,0.23414634146341465,cube_final.job_qty_bucket
+2025-09,ALL,101-500,0.11219512195121951,cube_final.job_qty_bucket
+2025-09,ALL,1-5,0.08780487804878048,cube_final.job_qty_bucket
+2025-09,ALL,501+,0.0,cube_final.job_qty_bucket
+2025-10,ALL,21-50,0.3350253807106599,cube_final.job_qty_bucket
+2025-10,ALL,6-20,0.29441624365482233,cube_final.job_qty_bucket
+2025-10,ALL,51-100,0.15228426395939088,cube_final.job_qty_bucket
+2025-10,ALL,1-5,0.1319796954314721,cube_final.job_qty_bucket
+2025-10,ALL,101-500,0.08629441624365482,cube_final.job_qty_bucket
+2025-10,ALL,501+,0.0,cube_final.job_qty_bucket
+2025-11,ALL,51-100,0.31086142322097376,cube_final.job_qty_bucket
+2025-11,ALL,21-50,0.299625468164794,cube_final.job_qty_bucket
+2025-11,ALL,6-20,0.2808988764044944,cube_final.job_qty_bucket
+2025-11,ALL,1-5,0.08614232209737828,cube_final.job_qty_bucket
+2025-11,ALL,101-500,0.02247191011235955,cube_final.job_qty_bucket
+2025-11,ALL,501+,0.0,cube_final.job_qty_bucket
+2025-12,ALL,21-50,0.39545454545454545,cube_final.job_qty_bucket
+2025-12,ALL,6-20,0.38636363636363635,cube_final.job_qty_bucket
+2025-12,ALL,1-5,0.13636363636363635,cube_final.job_qty_bucket
+2025-12,ALL,51-100,0.05454545454545454,cube_final.job_qty_bucket
+2025-12,ALL,101-500,0.022727272727272728,cube_final.job_qty_bucket
+2025-12,ALL,501+,0.004545454545454545,cube_final.job_qty_bucket
+2026-01,ALL,6-20,0.4155844155844156,cube_final.job_qty_bucket
+2026-01,ALL,21-50,0.2922077922077922,cube_final.job_qty_bucket
+2026-01,ALL,51-100,0.17532467532467533,cube_final.job_qty_bucket
+2026-01,ALL,1-5,0.1038961038961039,cube_final.job_qty_bucket
+2026-01,ALL,101-500,0.006493506493506494,cube_final.job_qty_bucket
+2026-01,ALL,501+,0.006493506493506494,cube_final.job_qty_bucket
+2026-02,ALL,6-20,0.3581081081081081,cube_final.job_qty_bucket
+2026-02,ALL,51-100,0.2702702702702703,cube_final.job_qty_bucket
+2026-02,ALL,21-50,0.20270270270270271,cube_final.job_qty_bucket
+2026-02,ALL,1-5,0.14189189189189189,cube_final.job_qty_bucket
+2026-02,ALL,101-500,0.02027027027027027,cube_final.job_qty_bucket
+2026-02,ALL,501+,0.006756756756756757,cube_final.job_qty_bucket
+2026-03,ALL,51-100,0.31958762886597936,cube_final.job_qty_bucket
+2026-03,ALL,6-20,0.26804123711340205,cube_final.job_qty_bucket
+2026-03,ALL,21-50,0.25773195876288657,cube_final.job_qty_bucket
+2026-03,ALL,1-5,0.12371134020618557,cube_final.job_qty_bucket
+2026-03,ALL,101-500,0.02577319587628866,cube_final.job_qty_bucket
+2026-03,ALL,501+,0.005154639175257732,cube_final.job_qty_bucket
+2026-04,ALL,21-50,0.3582887700534759,cube_final.job_qty_bucket
+2026-04,ALL,51-100,0.3155080213903743,cube_final.job_qty_bucket
+2026-04,ALL,6-20,0.24598930481283424,cube_final.job_qty_bucket
+2026-04,ALL,1-5,0.06951871657754011,cube_final.job_qty_bucket
+2026-04,ALL,101-500,0.0106951871657754,cube_final.job_qty_bucket
+2026-04,ALL,501+,0.0,cube_final.job_qty_bucket
+2026-05,ALL,51-100,0.32894736842105265,cube_final.job_qty_bucket
+2026-05,ALL,6-20,0.28289473684210525,cube_final.job_qty_bucket
+2026-05,ALL,21-50,0.27631578947368424,cube_final.job_qty_bucket
+2026-05,ALL,1-5,0.1118421052631579,cube_final.job_qty_bucket
+2026-05,ALL,101-500,0.0,cube_final.job_qty_bucket
+2026-05,ALL,501+,0.0,cube_final.job_qty_bucket
+2026-06,ALL,51-100,0.36,cube_final.job_qty_bucket
+2026-06,ALL,21-50,0.2733333333333333,cube_final.job_qty_bucket
+2026-06,ALL,6-20,0.25333333333333335,cube_final.job_qty_bucket
+2026-06,ALL,1-5,0.09333333333333334,cube_final.job_qty_bucket
+2026-06,ALL,101-500,0.013333333333333334,cube_final.job_qty_bucket
+2026-06,ALL,501+,0.006666666666666667,cube_final.job_qty_bucket
+2026-07,ALL,51-100,0.4277456647398844,cube_final.job_qty_bucket
+2026-07,ALL,6-20,0.2832369942196532,cube_final.job_qty_bucket
+2026-07,ALL,21-50,0.2254335260115607,cube_final.job_qty_bucket
+2026-07,ALL,1-5,0.046242774566473986,cube_final.job_qty_bucket
+2026-07,ALL,101-500,0.011560693641618497,cube_final.job_qty_bucket
+2026-07,ALL,501+,0.005780346820809248,cube_final.job_qty_bucket
+2026-08,ALL,51-100,0.3905579399141631,cube_final.job_qty_bucket
+2026-08,ALL,21-50,0.2875536480686695,cube_final.job_qty_bucket
+2026-08,ALL,6-20,0.2317596566523605,cube_final.job_qty_bucket
+2026-08,ALL,1-5,0.06866952789699571,cube_final.job_qty_bucket
+2026-08,ALL,101-500,0.012875536480686695,cube_final.job_qty_bucket
+2026-08,ALL,501+,0.008583690987124463,cube_final.job_qty_bucket
+2026-09,ALL,6-20,0.3076923076923077,cube_final.job_qty_bucket
+2026-09,ALL,51-100,0.27350427350427353,cube_final.job_qty_bucket
+2026-09,ALL,21-50,0.23931623931623933,cube_final.job_qty_bucket
+2026-09,ALL,1-5,0.11965811965811966,cube_final.job_qty_bucket
+2026-09,ALL,101-500,0.042735042735042736,cube_final.job_qty_bucket
+2026-09,ALL,501+,0.017094017094017096,cube_final.job_qty_bucket

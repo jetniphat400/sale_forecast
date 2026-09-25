@@ -1,0 +1,6 @@
+cube_final.jobno non-null values: 8723
+cube_final.jobno values containing a comma: 0
+Cube_CES.OLMJobCode non-null values: 17885
+Cube_CES.OLMJobCode values containing a comma: 973
+(contractid, itemcode) pairs with >1 distinct revenue_type: 0 of 5428
+cube_Sale_APD rows dropped for null contractid: 0 of 5687
