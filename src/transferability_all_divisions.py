@@ -119,6 +119,10 @@ if __name__ == "__main__":
         MAE=("MAE", "mean"), RMSE=("RMSE", "mean"), Bias=("Bias", "mean"), MASE=("MASE", "mean"),
         n_scored=("MAE", "size"),
         first_test_month=("first_test_month", "min"), last_test_month=("last_test_month", "max"))
+    # snapshot_pull_date recorded so a consuming page can show WHEN the data was pulled, never a
+    # file mtime proxy (task 2cfix2, Part 3) -- same pull that produced
+    # processed_all_divisions_monthly_qty.csv, read above.
+    per_division["snapshot_pull_date"] = pull_date
     per_division.to_csv(os.path.join(SUMMARY_DIR, "phaseC_step2_transferability_per_division.csv"), index=False)
 
     # ---- Verdict per division: does Top-down hold its advantage over Direct, and over Naive? ----

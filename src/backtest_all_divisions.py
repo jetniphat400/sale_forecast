@@ -113,6 +113,10 @@ if __name__ == "__main__":
     ro = run_rolling_origin(series, models, pull_date, min_margin_days)
     ro["division"] = ro["key"].str.split("::").str[0]
     ro["name"] = ro["key"].str.split("::").str[1]
+    # snapshot_pull_date recorded so a consuming page (src/build_report.py) can show WHEN the
+    # data was pulled, never a file mtime proxy (task 2cfix2, Part 3) -- same pull that produced
+    # processed_all_divisions_monthly_{value_col}.csv, read above.
+    ro["snapshot_pull_date"] = pull_date
     ro.to_csv(os.path.join(SUMMARY_DIR, f"phaseC_step2_rolling_origin_{value_col}.csv"), index=False)
 
     val_df, test_df = run_train_val_test(series, models, pull_date, min_margin_days)
@@ -144,6 +148,8 @@ if __name__ == "__main__":
         rolling_origin_last_test_month=("last_test_month", "max"))
     n_items_per_division = scope.groupby("division", as_index=False).size().rename(columns={"size": "n_items"})
     per_division_summary = per_division_summary.merge(n_items_per_division, on="division", how="left")
+    # snapshot_pull_date, same reasoning as the rolling-origin file above (task 2cfix2, Part 3).
+    per_division_summary["snapshot_pull_date"] = pull_date
     per_division_summary.to_csv(os.path.join(SUMMARY_DIR, f"phaseC_step2_per_division_summary_{value_col}.csv"), index=False)
 
     # ---- Rolling-origin winner stability (Type level) ----

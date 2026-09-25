@@ -91,7 +91,14 @@ if __name__ == "__main__":
     item_codes = sorted(scope["code"].unique())
     item_type_map = scope.set_index("code")[["category", "type"]]
 
+    # Recorded at the moment of the live DB pull below -- Cube_CES has no snapshot_pull_date
+    # column of its own, so this script records its own pull time explicitly (task 2cfix2, Part 3:
+    # consuming pages must read a real pull-time field, never a file mtime proxy). Persisted into
+    # the raw CSV so src/investigations/task2a_delivery_notlate_by_year.py (which reuses this same
+    # raw pull, no new DB call) can read it forward instead of computing its own.
+    snapshot_pull_date = pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S")
     raw = pull_raw(item_codes)
+    raw["snapshot_pull_date"] = snapshot_pull_date
     raw.to_csv(os.path.join(DATA_DIR, "raw_cube_ces_delivery_128items.csv"), index=False)
 
     df = raw.copy()
@@ -158,7 +165,9 @@ if __name__ == "__main__":
         pct_late=("status_vs_plan", lambda s: 100 * (s == "late").mean()),
         median_delay=("delay_vs_plan", "median"), mean_delay=("delay_vs_plan", "mean"),
     )
-    by_year.to_csv(os.path.join(SUMMARY_DIR, "delivery_by_year.csv"))
+    by_year_out = by_year.copy()
+    by_year_out["snapshot_pull_date"] = snapshot_pull_date
+    by_year_out.to_csv(os.path.join(SUMMARY_DIR, "delivery_by_year.csv"))
 
     # ================= BREAKDOWN: SPIKE MONTHS (recomputed on Cube_CES's own qty, same 3x-median rule) =================
     ces_qty = df.copy()

@@ -210,6 +210,72 @@ def test_embedded_json_never_contains_literal_nan_for_mase(tmp_path):
     json.loads(report_json_text)
 
 
+# ---------------------------------------------------------------------------------------------
+# (6) per-section data_pulled_at is read from a recorded pull time, never a file mtime (2cfix2)
+# ---------------------------------------------------------------------------------------------
+
+def test_build_report_gather_freshness_never_uses_file_mtime():
+    """Static source check (task 2cfix2, Part 3): gather_freshness() must never read a source
+    file's modification time (os.path.getmtime) for any per-section data_pulled_at value -- every
+    section must be read from a recorded snapshot_pull_date column instead. A prior version of
+    this function used os.path.getmtime for 6 sections (STATUS.md Sec.10/12, task 2cfix's own
+    Validator finding a real staged-vs-tracked timing gap this caused)."""
+    src_path = os.path.join(PROJECT_ROOT, "src", "build_report.py")
+    with open(src_path, "r", encoding="utf-8") as f:
+        src = f.read()
+    m = re.search(r"def gather_freshness\(\).*?(?=\ndef )", src, re.DOTALL)
+    assert m, "gather_freshness() not found in src/build_report.py"
+    body = m.group(0)
+    assert "os.path.getmtime(" not in body, (
+        "gather_freshness() calls os.path.getmtime -- a displayed data_pulled_at section would "
+        "be read from a file modification time instead of a recorded pull time (METRICS.md "
+        "Sec.26 requires the latter)."
+    )
+    # Belt-and-braces: the whole file must contain no getmtime CALL at all (the function this
+    # project used to route through for exactly this purpose, _file_mtime_str, is gone entirely;
+    # this checks the actual call pattern, not the bare word, since this file's own comments now
+    # document that history and legitimately mention the word).
+    assert "os.path.getmtime(" not in src, "src/build_report.py still calls os.path.getmtime somewhere."
+    assert "_file_mtime_str" not in src
+
+
+def test_all_six_previously_mtime_based_sources_have_snapshot_pull_date_column():
+    """Data-level check on the 6 committed source files STATUS.md/this task's brief named as
+    file-mtime-based ('... -- file mtime' labels): each must now carry a real snapshot_pull_date
+    column build_report.py can read (src/build_report.py's _source_pull_date()), not merely be
+    fixed in the generator's source without the column actually landing in the committed file."""
+    six_files = [
+        "phaseC_step2_per_division_summary_qty.csv",
+        "phaseC_step2_rolling_origin_qty.csv",
+        "leadtime_notice_buckets_overall.csv",
+        "focus_items_test_all.csv",
+        "delivery_by_year.csv",
+        "delivery_not_late_by_year.csv",
+    ]
+    for rel_path in six_files:
+        path = os.path.join(SUMMARY_DIR, rel_path)
+        assert os.path.exists(path), f"{path} does not exist"
+        df = pd.read_csv(path, nrows=1)
+        assert "snapshot_pull_date" in df.columns, (
+            f"{rel_path} has no snapshot_pull_date column -- re-run its generating script "
+            f"(task 2cfix2, Part 3)."
+        )
+
+
+def test_rendered_freshness_table_never_shows_file_mtime_label(tmp_path):
+    """Behavioural check: a freshly built report's rendered freshness table must not contain the
+    literal '-- file mtime' label any of the 6 sections used to show (task 2cfix2, Part 3).
+    Writes to tmp_path, never the tracked page (METRICS.md Sec.28: tests must not modify tracked
+    output files)."""
+    out_path = build_report.build_report(output_path=os.path.join(str(tmp_path), "sales_report.html"))
+    with open(out_path, "r", encoding="utf-8") as f:
+        html_text = f.read()
+    assert "file mtime" not in html_text, (
+        "Rendered report still shows a '-- file mtime' freshness label -- a section is still "
+        "reading a file modification time instead of a recorded pull time."
+    )
+
+
 def test_mase_or_undefined_converts_nan_to_none():
     df = pd.DataFrame({"division": ["X"], "MAE": [1.0], "RMSE": [1.0], "Bias": [0.0],
                         "MASE": [float("nan")], "n_scored": [5]})

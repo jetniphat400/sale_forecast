@@ -45,6 +45,19 @@ def main() -> pd.DataFrame:
     for c in ["CtrDate", "ForecastDelDate", "ActualDelDate"]:
         raw[c] = pd.to_datetime(raw[c], errors="coerce")
 
+    # snapshot_pull_date: read forward from the raw pull's OWN recorded pull time (task 2cfix2,
+    # Part 3 -- consuming pages must read a real pull-time field, never a file mtime proxy).
+    # delivery_performance.py records this column on every pull since this task; a raw file
+    # generated before that fix won't have it -- fail loudly rather than silently fall back to a
+    # file mtime (CONVENTIONS.md: validation failures must be raised loudly).
+    if "snapshot_pull_date" not in raw.columns:
+        raise ValueError(
+            f"{RAW_PATH} has no snapshot_pull_date column -- it was pulled by an older version of "
+            "src/investigations/delivery_performance.py. Re-run that script first (it now records "
+            "its own pull time into this raw file) before running this script."
+        )
+    snapshot_pull_date = str(raw["snapshot_pull_date"].iloc[0])
+
     # Same "assessable" definition as delivery_performance.py: completed (Actual) deliveries
     # with a real ActualDelDate. Backlog rows are not yet delivered and cannot be scored.
     assessable = raw[(raw["Status"] == "Actual") & raw["ActualDelDate"].notna()].copy()
@@ -67,6 +80,7 @@ def main() -> pd.DataFrame:
             "total_qty_assessable": total_qty,
         })
     out = pd.DataFrame(rows).sort_values("year")
+    out["snapshot_pull_date"] = snapshot_pull_date
     out.to_csv(OUT_PATH, index=False)
     logger.info("Wrote %s (%d years, source rows: %d assessable of %d raw)",
                 OUT_PATH, len(out), len(assessable), len(raw))

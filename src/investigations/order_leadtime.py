@@ -126,7 +126,13 @@ if __name__ == "__main__":
     item_codes = sorted(scope["code"].unique())
     item_type_map = scope.set_index("code")[["category", "type"]]
 
+    # Recorded at the moment of the live DB pull below -- this table has no snapshot_pull_date
+    # column of its own (unlike output/data/processed_all_divisions_monthly_qty.csv's), so this
+    # script records its own pull time explicitly (task 2cfix2, Part 3: consuming pages must read
+    # a real pull-time field, never a file mtime proxy).
+    snapshot_pull_date = pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S")
     raw = pull_raw(item_codes)
+    raw["snapshot_pull_date"] = snapshot_pull_date
     raw.to_csv(os.path.join(DATA_DIR, "raw_order_leadtime_128items.csv"), index=False)
 
     clean, all_with_null = validate_and_clean(raw)
@@ -143,6 +149,7 @@ if __name__ == "__main__":
     pd.DataFrame([overall_stats]).to_csv(os.path.join(SUMMARY_DIR, "leadtime_overall_distribution.csv"), index=False)
 
     overall_buckets = bucket_shares(positive["notice_days"])
+    overall_buckets["snapshot_pull_date"] = snapshot_pull_date
     overall_buckets.to_csv(os.path.join(SUMMARY_DIR, "leadtime_notice_buckets_overall.csv"), index=False)
 
     # ================= BY PRODUCT TYPE =================

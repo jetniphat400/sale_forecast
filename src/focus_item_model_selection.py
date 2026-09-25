@@ -271,7 +271,12 @@ if __name__ == "__main__":
 
     pd.concat(all_ro, ignore_index=True).to_csv(os.path.join(SUMMARY_DIR, "focus_items_rolling_origin_all.csv"), index=False)
     pd.concat(all_val, ignore_index=True).to_csv(os.path.join(SUMMARY_DIR, "focus_items_val_all.csv"), index=False)
-    pd.concat(all_test, ignore_index=True).to_csv(os.path.join(SUMMARY_DIR, "focus_items_test_all.csv"), index=False)
+    focus_items_test_all_df = pd.concat(all_test, ignore_index=True)
+    # snapshot_pull_date recorded so a consuming page (src/build_report.py) can show WHEN the
+    # data was pulled, never a file mtime proxy (task 2cfix2, Part 3) -- same pull that produced
+    # processed_all_divisions_monthly_qty.csv, read above.
+    focus_items_test_all_df["snapshot_pull_date"] = pull_date
+    focus_items_test_all_df.to_csv(os.path.join(SUMMARY_DIR, "focus_items_test_all.csv"), index=False)
     pd.concat(all_bias, ignore_index=True).to_csv(os.path.join(SUMMARY_DIR, "focus_items_bias_sign_all.csv"), index=False)
     pd.concat(all_winners, ignore_index=True).to_csv(os.path.join(SUMMARY_DIR, "focus_items_winner_per_origin_all.csv"), index=False)
     pd.concat(all_sig, ignore_index=True).to_csv(os.path.join(SUMMARY_DIR, "focus_items_significance_vs_topdown_all.csv"), index=False)

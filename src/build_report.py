@@ -273,14 +273,29 @@ def gather_forecast_vs_actual() -> pd.DataFrame:
     return df
 
 
-def _file_mtime_str(rel_path: str) -> str:
-    """Filesystem last-modified time for a source file with no own snapshot_pull_date column --
-    used as the 'source table's load timestamp' proxy per METRICS.md Sec.26, never a typed
-    value. This machine's clock is ICT (confirmed via `date`, this task)."""
+def _source_pull_date(rel_path: str, column: str = "snapshot_pull_date") -> str:
+    """The recorded pull time for a source file, read from its own `column` -- METRICS.md
+    Sec.26's 'source table's load timestamp' proxy. FIXED (task 2cfix2, Part 3): this used to be
+    a file MODIFICATION TIME (os.path.getmtime), which reflects when the file was last WRITTEN TO
+    DISK on this machine, not when the underlying data was actually queried from the database --
+    task 2cfix's own Validator found a real case where these diverge (a dry run's staged-vs-
+    tracked timing gap, STATUS.md Sec.12). All 6 files this function is called on now carry their
+    own snapshot_pull_date column, written by their generating script at the moment of its DB
+    pull (or, for files derived from output/data/processed_all_divisions_monthly_qty.csv, copied
+    forward from THAT file's own snapshot_pull_date) -- never a file mtime proxy, for any of
+    them, any more. This machine's clock is ICT (confirmed via `date`, task 2a)."""
     abs_path = os.path.join(SUMMARY_DIR, rel_path)
     if not os.path.exists(abs_path):
         raise ReportSourceError(f"Cannot compute freshness: {abs_path} does not exist.")
-    return datetime.fromtimestamp(os.path.getmtime(abs_path)).strftime("%Y-%m-%d %H:%M")
+    df = pd.read_csv(abs_path, usecols=lambda c: c == column)
+    if column not in df.columns or df.empty:
+        raise ReportSourceError(
+            f"{abs_path} has no '{column}' column -- cannot compute freshness from a recorded "
+            f"pull time. Re-run the script that generates this file (it must now write this "
+            f"column -- task 2cfix2, Part 3)."
+        )
+    value = str(df[column].iloc[0])
+    return pd.Timestamp(value).strftime("%Y-%m-%d %H:%M")
 
 
 def gather_usable_range_end(config: dict) -> str:
@@ -313,19 +328,19 @@ def gather_freshness() -> dict:
         "หลัก (forecast/actual, scope, ช่วงข้อมูล) -- snapshot_pull_date":
             main_pull,
         "ตารางผลลัพธ์ต่อฝ่าย (phaseC_step2_transferability_per_division.csv / "
-        "phaseC_step2_per_division_summary_qty.csv) -- file mtime":
-            _file_mtime_str("phaseC_step2_per_division_summary_qty.csv"),
-        "Rolling-origin chart (phaseC_step2_rolling_origin_qty.csv) -- file mtime":
-            _file_mtime_str("phaseC_step2_rolling_origin_qty.csv"),
-        "Notice-period chart (leadtime_notice_buckets_overall.csv) -- file mtime":
-            _file_mtime_str("leadtime_notice_buckets_overall.csv"),
-        "โมเดลพื้นฐาน chart (focus_items_test_all.csv) -- file mtime":
-            _file_mtime_str("focus_items_test_all.csv"),
-        "On-time exact (delivery_by_year.csv) -- file mtime":
-            _file_mtime_str("delivery_by_year.csv"),
-        "Not-late (delivery_not_late_by_year.csv) -- file mtime, itself computed from a "
-        "Cube_CES pull; see the on-time chart's own note for that pull's date":
-            _file_mtime_str("delivery_not_late_by_year.csv"),
+        "phaseC_step2_per_division_summary_qty.csv) -- snapshot_pull_date":
+            _source_pull_date("phaseC_step2_per_division_summary_qty.csv"),
+        "Rolling-origin chart (phaseC_step2_rolling_origin_qty.csv) -- snapshot_pull_date":
+            _source_pull_date("phaseC_step2_rolling_origin_qty.csv"),
+        "Notice-period chart (leadtime_notice_buckets_overall.csv) -- snapshot_pull_date":
+            _source_pull_date("leadtime_notice_buckets_overall.csv"),
+        "โมเดลพื้นฐาน chart (focus_items_test_all.csv) -- snapshot_pull_date":
+            _source_pull_date("focus_items_test_all.csv"),
+        "On-time exact (delivery_by_year.csv) -- snapshot_pull_date":
+            _source_pull_date("delivery_by_year.csv"),
+        "Not-late (delivery_not_late_by_year.csv) -- snapshot_pull_date, itself read forward "
+        "from the same Cube_CES pull as the on-time chart above (no new DB call)":
+            _source_pull_date("delivery_not_late_by_year.csv"),
     }
     data_pulled_at_min = min(sections.values())
     return {"sections": sections, "data_pulled_at_min": data_pulled_at_min}
@@ -499,7 +514,7 @@ def render_page(config: dict) -> str:
         (เก่าที่สุดในหน้านี้, ดูรายละเอียดต่อส่วนด้านล่าง) &nbsp;|&nbsp; <b>page_built_at:</b> {page_built_at} {ICT_LABEL}
         &nbsp;<!-- source: src/build_report.py gather_freshness()/datetime.now(), this build run --></summary>
       <table class="report-table" style="margin-top:8px">
-        <thead><tr><th>ส่วนของหน้า / แหล่งข้อมูล</th><th>data_pulled_at (หรือ file mtime)</th><th>สถานะ (ประเมินแยกทีละส่วน)</th></tr></thead>
+        <thead><tr><th>ส่วนของหน้า / แหล่งข้อมูล</th><th>data_pulled_at (snapshot_pull_date)</th><th>สถานะ (ประเมินแยกทีละส่วน)</th></tr></thead>
         <tbody>{freshness_rows}</tbody>
       </table>
     </details>
