@@ -10,9 +10,15 @@ source_table: "[salewarehouse].[dbo].[cube_Sale_APD]"
 
 # --- Date range to pull/analyze -------------------------------------
 # Format: YYYY-MM-DD
+# `end` was REMOVED 2026-09-25 (task 2a, Part 4; CONVENTIONS.md "Page timestamps"):
+# it was a hand-maintained value read ONLY by src/build_report.py to display sales_report.html's
+# "Usable range" end date, and had gone stale (STATUS.md Sec.10 item 3 / manual_factsheet.md Part
+# 5 item 3). Nothing else in src/*.py read this key (repo-wide grep, this task) -- `start` below
+# remains real project-wide filtering, unaffected. The page now derives its displayed end date at
+# build time from the last year_month actually present in
+# output/data/processed_full_category_sales_monthly_forecastDate.csv, never from a typed value.
 date_range:
   start: "2024-01-01"
-  end: "2026-08-28"   # today's date; update as needed
 
 # --- Reference files -------------------------------------------------
 # Path to the price list file (relative to the project root).

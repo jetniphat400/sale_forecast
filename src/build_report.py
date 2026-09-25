@@ -30,6 +30,7 @@ import json
 import logging
 import os
 import sys
+from datetime import datetime
 
 import pandas as pd
 import yaml
@@ -40,8 +41,16 @@ logger = logging.getLogger("build_report")
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CONFIG_PATH = os.path.join(PROJECT_ROOT, "config", "config.yaml")
 SUMMARY_DIR = os.path.join(PROJECT_ROOT, "output", "summary")
+DATA_DIR = os.path.join(PROJECT_ROOT, "output", "data")
 FORECAST_DIR = os.path.join(PROJECT_ROOT, "forecast")
 OUT_PATH = os.path.join(FORECAST_DIR, "sales_report.html")
+
+# METRICS.md Sec.26 (page_timestamps): every page shows data_pulled_at/page_built_at in Thai
+# local time, UTC+7. This machine's own clock is already ICT (confirmed this task via
+# `date`/Get-Date, both returning +0700), so datetime.now() needs no timezone conversion --
+# it is labelled ICT directly, never silently assumed.
+ICT_LABEL = "ICT (UTC+7)"
+STALENESS_THRESHOLD_DAYS = 7  # METRICS.md Sec.26
 
 FOCUS_ITEMS = ["EEE-F-FC-1040010002", "HS-F-99-02110", "HS-F-99-0213"]
 BASE_MODELS = ["Naive", "MA3", "MA6", "MA12", "Croston", "SBA"]
@@ -263,9 +272,99 @@ def gather_forecast_vs_actual() -> pd.DataFrame:
     return df
 
 
+def _file_mtime_str(rel_path: str) -> str:
+    """Filesystem last-modified time for a source file with no own snapshot_pull_date column --
+    used as the 'source table's load timestamp' proxy per METRICS.md Sec.26, never a typed
+    value. This machine's clock is ICT (confirmed via `date`, this task)."""
+    abs_path = os.path.join(SUMMARY_DIR, rel_path)
+    if not os.path.exists(abs_path):
+        raise ReportSourceError(f"Cannot compute freshness: {abs_path} does not exist.")
+    return datetime.fromtimestamp(os.path.getmtime(abs_path)).strftime("%Y-%m-%d %H:%M")
+
+
+def gather_usable_range_end(config: dict) -> str:
+    """Last calendar month ACTUALLY PRESENT in the pipeline's own monthly series -- replaces the
+    hand-maintained config.yaml date_range.end (STATUS.md Sec.10 item 3 / manual_factsheet.md
+    Part 5 item 3: that value had gone stale). date_range.start remains config -- it is real
+    project-wide filtering (used by src/load_data_full.py and others), never just display."""
+    path = os.path.join(DATA_DIR, "processed_full_category_sales_monthly_forecastDate.csv")
+    if not os.path.exists(path):
+        raise ReportSourceError(
+            f"Required source file missing: {path} (needed to derive the Usable range end date). "
+            f"Run src/load_data_full.py first."
+        )
+    df = pd.read_csv(path, usecols=["year_month"])
+    if df.empty:
+        raise ReportSourceError(f"{path} has no rows -- cannot derive the usable range end date.")
+    return str(df["year_month"].max())
+
+
+def gather_freshness() -> dict:
+    """data_pulled_at per section, cited to the exact file/column it comes from (never typed),
+    per METRICS.md Sec.26. Multiple source files feed this one page at different ages -- the
+    headline `data_pulled_at` is the OLDEST of them (a page is only as fresh as its stalest
+    input), with every section's own date reported alongside so nothing is hidden."""
+    monthly_path = os.path.join(DATA_DIR, "processed_full_category_sales_monthly_forecastDate.csv")
+    monthly = pd.read_csv(monthly_path, usecols=["snapshot_pull_date"])
+    main_pull = str(monthly["snapshot_pull_date"].iloc[0])
+
+    sections = {
+        "หลัก (forecast/actual, scope, ช่วงข้อมูล) -- snapshot_pull_date":
+            main_pull,
+        "ตารางผลลัพธ์ต่อฝ่าย (phaseC_step2_transferability_per_division.csv / "
+        "phaseC_step2_per_division_summary_qty.csv) -- file mtime":
+            _file_mtime_str("phaseC_step2_per_division_summary_qty.csv"),
+        "Rolling-origin chart (phaseC_step2_rolling_origin_qty.csv) -- file mtime":
+            _file_mtime_str("phaseC_step2_rolling_origin_qty.csv"),
+        "Notice-period chart (leadtime_notice_buckets_overall.csv) -- file mtime":
+            _file_mtime_str("leadtime_notice_buckets_overall.csv"),
+        "โมเดลพื้นฐาน chart (focus_items_test_all.csv) -- file mtime":
+            _file_mtime_str("focus_items_test_all.csv"),
+        "On-time exact (delivery_by_year.csv) -- file mtime":
+            _file_mtime_str("delivery_by_year.csv"),
+        "Not-late (delivery_not_late_by_year.csv) -- file mtime, itself computed from a "
+        "Cube_CES pull; see the on-time chart's own note for that pull's date":
+            _file_mtime_str("delivery_not_late_by_year.csv"),
+    }
+    data_pulled_at_min = min(sections.values())
+    return {"sections": sections, "data_pulled_at_min": data_pulled_at_min}
+
+
+def gather_primary_results() -> pd.DataFrame:
+    """Per-division Top-down rolling-origin figures (MAE/RMSE/Bias/MASE/n_scored) -- item-level,
+    the Top-down method this project actually adopted (STATUS.md Locked Decisions, "Final
+    forecasting method"), NOT the Type-level/Combination-only secondary table below. Source:
+    src/transferability_all_divisions.py (item-level rolling-origin scoring at every one of the
+    project's standard 7 origins), aggregated into
+    output/summary/phaseC_step2_transferability_per_division.csv, documented in
+    output/summary/phaseC_step2_report.md Part 3 (confirmed this task by reading both the
+    generator script and that report)."""
+    df = load_csv("phaseC_step2_transferability_per_division.csv", "Results §6 PRIMARY table (Top-down)")
+    for col in ["division", "approach", "MAE", "RMSE", "Bias", "MASE", "n_scored"]:
+        require_col(df, col, "phaseC_step2_transferability_per_division.csv", "primary results table")
+    topdown = df[df["approach"] == "Top-down"].copy()
+    if topdown.empty:
+        raise ReportSourceError(
+            "phaseC_step2_transferability_per_division.csv has no approach=='Top-down' rows."
+        )
+    return topdown
+
+
+def gather_notlate() -> pd.DataFrame:
+    """not_late (delivered on or before ForecastDelDate, METRICS.md Sec.19), unit-weighted
+    (weighted by ActualQty -- METRICS.md Sec.10 fill_rate is explicitly unit-based, "not
+    order-based", and this figure is meant to be read alongside fill_rate elsewhere in this
+    project). Source: src/investigations/task2a_delivery_notlate_by_year.py, which reuses the
+    SAME already-pulled Cube_CES raw data as the existing on_time_exact chart (no new DB pull)."""
+    df = load_csv("delivery_not_late_by_year.csv", "Business findings §3, not_late trend")
+    for col in ["year", "not_late_pct_unit_weighted", "not_late_pct_row_weighted"]:
+        require_col(df, col, "delivery_not_late_by_year.csv", "not_late trend")
+    return df[df["year"].isin([2023, 2024, 2025, 2026])].sort_values("year")
+
+
 # ============================= EMBEDDED JSON DATA (client-side charts read only this) ========
 
-def embed_report_data(scope_table, biz, model_chart, results, fva) -> dict:
+def embed_report_data(scope_table, biz, model_chart, results, fva, primary_results, notlate) -> dict:
     """Everything the page's client-side JS needs to draw/filter every Plotly chart, built
     directly from the same dataframes the server-rendered text/tables use above -- so the
     embedded JSON and the rendered text are always the same numbers, never two independent
@@ -290,8 +389,9 @@ def embed_report_data(scope_table, biz, model_chart, results, fva) -> dict:
     rolling_records = [{"division": r["division"], "type": r["type"], "model": r["model"],
                          "origin": int(r["origin"]), "MAE": float(r["MAE"])} for r in rolling_records]
 
-    per_division_records = results["per_division"][["division", "MAE", "MASE", "Bias", "n_items"]].to_dict(orient="records")
-    per_division_records = [{"division": r["division"], "MAE": float(r["MAE"]), "MASE": float(r["MASE"]),
+    per_division_records = results["per_division"][["division", "MAE", "RMSE", "Bias", "MASE", "n_items"]].to_dict(orient="records")
+    per_division_records = [{"division": r["division"], "MAE": float(r["MAE"]), "RMSE": float(r["RMSE"]),
+                              "MASE": (None if pd.isna(r["MASE"]) else float(r["MASE"])),
                               "Bias": float(r["Bias"]), "n_items": int(r["n_items"])} for r in per_division_records]
 
     fva_records = fva.to_dict(orient="records")
@@ -304,15 +404,31 @@ def embed_report_data(scope_table, biz, model_chart, results, fva) -> dict:
     scope_records = {div: {"forecast": int(row["forecast"]), "placeholder": int(row["placeholder"]),
                             "excluded": int(row["excluded"])} for div, row in scope_table.iterrows()}
 
+    def _mase_or_undefined(v):
+        return None if pd.isna(v) else float(v)
+
+    primary_records = [
+        {"division": r["division"], "MAE": float(r["MAE"]), "RMSE": float(r["RMSE"]),
+         "Bias": float(r["Bias"]), "MASE": _mase_or_undefined(r["MASE"]), "n_scored": int(r["n_scored"])}
+        for _, r in primary_results.iterrows()
+    ]
+
+    notlate_records = {
+        "years": [int(y) for y in notlate["year"]],
+        "values": [float(v) for v in notlate["not_late_pct_unit_weighted"]],
+    }
+
     return {
         "focus_items": FOCUS_ITEMS,
         "base_models": BASE_MODELS,
         "scope_table": scope_records,
         "notice": notice,
         "ontime": ontime,
+        "notlate": notlate_records,
         "model_bar": model_bar,
         "rolling_origin": rolling_records,
         "per_division": per_division_records,
+        "primary_results": primary_records,
         "forecast_vs_actual": fva_records,
     }
 
@@ -326,8 +442,41 @@ def render_page(config: dict) -> str:
     model_chart = gather_model_chart()
     results = gather_results(config)
     fva = gather_forecast_vs_actual()
+    primary_results = gather_primary_results()
+    notlate = gather_notlate()
+    usable_range_end = gather_usable_range_end(config)
+    freshness = gather_freshness()
 
-    report_data = embed_report_data(scope_table, biz, model_chart, results, fva)
+    page_built_at = datetime.now().strftime("%Y-%m-%d %H:%M")
+    data_pulled_at = freshness["data_pulled_at_min"]
+    is_stale = (
+        (datetime.strptime(page_built_at, "%Y-%m-%d %H:%M")
+         - datetime.strptime(data_pulled_at, "%Y-%m-%d %H:%M")).days > STALENESS_THRESHOLD_DAYS
+    )
+    freshness_rows = "".join(
+        f"<tr><td>{html.escape(label)}</td><td>{value}</td></tr>"
+        for label, value in freshness["sections"].items()
+    )
+    staleness_html = (
+        f"""<p class="note-box"><b>⚠ ข้อมูลเก่ากว่า {STALENESS_THRESHOLD_DAYS} วัน:</b>
+        data_pulled_at ที่เก่าที่สุด ({data_pulled_at} {ICT_LABEL}) ห่างจาก page_built_at
+        ({page_built_at} {ICT_LABEL}) เกิน {STALENESS_THRESHOLD_DAYS} วัน — ดูตารางด้านล่างว่า
+        ส่วนใดของหน้านี้ใช้ข้อมูลชุดใด ก่อนอ้างอิงตัวเลขที่อาจไม่ทันปัจจุบัน</p>"""
+        if is_stale else ""
+    )
+    timestamps_html = f"""
+    <details class="note-box" style="margin:10px 0">
+      <summary style="cursor:pointer"><b>data_pulled_at:</b> {data_pulled_at} {ICT_LABEL}
+        (เก่าที่สุด, ดูรายละเอียด) &nbsp;|&nbsp; <b>page_built_at:</b> {page_built_at} {ICT_LABEL}
+        &nbsp;<!-- source: src/build_report.py gather_freshness()/datetime.now(), this build run --></summary>
+      <table class="report-table" style="margin-top:8px">
+        <thead><tr><th>ส่วนของหน้า / แหล่งข้อมูล</th><th>data_pulled_at (หรือ file mtime)</th></tr></thead>
+        <tbody>{freshness_rows}</tbody>
+      </table>
+    </details>
+    {staleness_html}"""
+
+    report_data = embed_report_data(scope_table, biz, model_chart, results, fva, primary_results, notlate)
     report_data_json = json.dumps(report_data, ensure_ascii=False)
 
     forecast_total = int(scope_table["forecast"].sum())
@@ -391,8 +540,22 @@ def render_page(config: dict) -> str:
       <h3>การกระจายของระยะเวลาแจ้งล่วงหน้า (Notice period)</h3>
       {cite('leadtime_notice_buckets_overall.csv', 'min_notice_days / pct_of_orders')}
       <div id="chart-notice" class="plotly-chart"></div>
-      <h3>แนวโน้มการส่งมอบตรงเวลา (On-time delivery trend, 2023-2026)</h3>
+      <h3>สัดส่วนส่งมอบตรงวันครบกำหนดเป๊ะ vs. ส่งไม่ล่าช้า (2023-2026)</h3>
+      <p class="hint">
+        <b>on_time_exact</b> = ส่งมอบตรงวันครบกำหนดพอดี (PlanDelDate), นับตามจำนวนออเดอร์ (row-weighted),
+        ขอบเขต PEM101 128 รายการ — <code>src/investigations/delivery_performance.py:71-75</code>
+        (<code>classify_delay</code>) และบรรทัด 155-161 (<code>by_year</code> aggregation, คอลัมน์
+        <code>pct_on_time</code>) &mdash; METRICS.md §19 ห้ามใช้ตัวเลขนี้เป็น fill-rate benchmark
+        เพียงลำพัง (เหตุการณ์ 73.2% เดิม) จึงแสดง <b>not_late</b> ควบคู่กัน<br>
+        <b>not_late</b> = ส่งมอบตรงหรือก่อนกำหนด (ForecastDelDate), <b>ถ่วงน้ำหนักตามจำนวนหน่วย
+        (unit-weighted, ActualQty)</b> ไม่ใช่ตามจำนวนออเดอร์ — เลือกใช้ unit-weighted เพราะ
+        METRICS.md §10 (fill_rate) นิยามเป็น unit-based ไม่ใช่ order-based โดยตรง และเลขนี้ควรอ่าน
+        คู่กับ fill_rate/service-level ของโครงการ ไม่ใช่สัดส่วนนับออเดอร์
+        (<code>src/investigations/task2a_delivery_notlate_by_year.py</code>, คำนวณจากข้อมูล
+        Cube_CES ชุดเดียวกับ on_time_exact ไม่ได้ดึงข้อมูลใหม่)
+      </p>
       {cite('delivery_by_year.csv', 'year / pct_on_time')}
+      {cite('delivery_not_late_by_year.csv', 'year / not_late_pct_unit_weighted')}
       <div id="chart-ontime" class="plotly-chart"></div>
     </section>"""
 
@@ -403,7 +566,8 @@ def render_page(config: dict) -> str:
       <table class="report-table">
         <tbody>
           <tr><td>แหล่งข้อมูล (Source table)</td><td>{cite_config('source_table')}<code>{html.escape(str(config['source_table']))}</code></td></tr>
-          <tr><td>ช่วงข้อมูลที่ใช้ได้ (Usable range)</td><td>{cite_config('date_range.start')}{cite_config('date_range.end')}{config['date_range']['start']} — {config['date_range']['end']}</td></tr>
+          <tr><td>ช่วงข้อมูลที่ใช้ได้ (Usable range)</td><td>{cite_config('date_range.start')}<!-- source: output/data/processed_full_category_sales_monthly_forecastDate.csv, column year_month (max) -->{config['date_range']['start']} — {usable_range_end}
+            <span class="hint">(เดือนสุดท้ายที่มีข้อมูลจริง คำนวณตอน build — ไม่ใช่ค่าที่พิมพ์ไว้ใน config.yaml อีกต่อไป)</span></td></tr>
           <tr><td>Split lots</td><td>รายการที่ดูเหมือนซ้ำแต่เป็นการแบ่งส่งมอบจริง (split lots) ยังคงเก็บไว้ทั้งหมด ไม่ถูกลบออก (STATUS.md, Locked Decisions)</td></tr>
           <tr><td>MPS retained</td><td>สถานะ MPS (PO ที่รับแล้ว รอส่งมอบ) ถือเป็นยอดขายที่ยืนยันแล้ว (confirmed demand) ต้องไม่ถูกตัดออกจากการพยากรณ์ (STATUS.md, Locked Decisions)</td></tr>
           <tr><td>forecast_date keying</td><td>Series การพยากรณ์ใช้ forecast_date (วันที่ส่งมอบตามสัญญา) เป็น key แบบ frozen snapshot ไม่ query สดทุกครั้ง (STATUS.md, Locked Decisions)</td></tr>
@@ -443,10 +607,33 @@ def render_page(config: dict) -> str:
         <label>ฝ่าย (Division): <select id="filterDivision"><option value="__all__">ทั้งหมด</option>{div_options}</select></label>
         <label>ประเภท (Type): <select id="filterType"><option value="__all__">ทั้งหมด</option></select></label>
       </div>
-      <h3>MAE / MASE / Bias ต่อฝ่าย (Division)</h3>
-      {cite('phaseC_step2_per_division_summary_qty.csv', 'MAE / MASE / Bias / n_items')}
+      <h3>PRIMARY — MAE / RMSE / Bias / MASE ต่อฝ่าย, วิธี Top-down ระดับรายการสินค้า (item-level, rolling-origin)</h3>
+      <p class="hint">
+        นี่คือวิธี <b>Top-down</b> ที่โครงการนำมาใช้จริง (STATUS.md Locked Decisions, "Final
+        forecasting method") — พยากรณ์ที่ระดับ Type แล้วปันส่วนลงระดับรายการสินค้าตามส่วนแบ่งยอด
+        ขายย้อนหลัง คำนวณใหม่ทุก rolling origin (ไม่ใช่ปันส่วนแบบตายตัวครั้งเดียว), ให้คะแนนที่
+        <b>ระดับรายการสินค้าแต่ละชิ้น</b> ทั้ง 7 origins มาตรฐานของโครงการ —
+        <code>src/transferability_all_divisions.py</code>, สรุปที่
+        <code>output/summary/phaseC_step2_transferability_per_division.csv</code>
+        (ดูรายละเอียดวิธีที่ <code>output/summary/phaseC_step2_report.md</code> Part 3)
+      </p>
+      {cite('phaseC_step2_transferability_per_division.csv', 'MAE / RMSE / Bias / MASE / n_scored')}
+      <!-- filtered to rows where approach == 'Top-down' -->
+      <table class="report-table" id="primary-results-table">
+        <thead><tr><th>ฝ่าย</th><th>MAE</th><th>RMSE</th><th>Bias</th><th>MASE</th><th>n_scored (item × origin)</th></tr></thead>
+        <tbody></tbody>
+      </table>
+      <h3>SECONDARY — MAE / RMSE / MASE / Bias ต่อฝ่าย, วิธี Combination ระดับ Type เท่านั้น (ค่าเฉลี่ยข้าม Type และ origin)</h3>
+      <p class="hint">
+        <b>ตารางนี้ไม่ใช่วิธี Top-down ที่โครงการนำมาใช้</b> — เป็นตัวเลขโมเดล
+        <b>Combination เท่านั้น</b> ที่ระดับ <b>Type</b> (ไม่ใช่ระดับรายการสินค้า), เฉลี่ยข้ามทุก
+        Type และทั้ง 7 rolling origins ต่อฝ่าย — <code>src/backtest_all_divisions.py:126-139</code>
+        (ค้นพบ/เปิดเผยครั้งแรก: <code>output/summary/manual_factsheet.md</code> Part 5 ข้อ 2)
+        เก็บไว้เพื่อเทียบเคียง ไม่ใช่ตารางหลักอีกต่อไป
+      </p>
+      {cite('phaseC_step2_per_division_summary_qty.csv', 'MAE / RMSE / Bias / MASE / n_items')}
       <table class="report-table" id="div-results-table">
-        <thead><tr><th>ฝ่าย</th><th>MAE</th><th>MASE</th><th>Bias</th><th>จำนวนสินค้า</th></tr></thead>
+        <thead><tr><th>ฝ่าย</th><th>MAE</th><th>RMSE</th><th>MASE</th><th>Bias</th><th>จำนวนสินค้า</th></tr></thead>
         <tbody></tbody>
       </table>
       <h3>Rolling-origin MAE (Type level) — คลิก legend เพื่อซ่อน/แสดงแต่ละโมเดล</h3>
@@ -563,6 +750,7 @@ def render_page(config: dict) -> str:
   <p style="color:var(--text-secondary);font-size:12px;">
     สร้างโดย src/build_report.py — ทุกตัวเลขมีที่มาระบุไว้ในซอร์สโค้ด HTML (ดู &lt;!-- source: ... --&gt;)
   </p>
+  {timestamps_html}
   {body}
 </div>
 <!-- source: output/summary/*.csv (see gather_* functions in src/build_report.py) and
@@ -600,10 +788,18 @@ function drawNotice() {
 }
 
 function drawOntime() {
-  Plotly.newPlot('chart-ontime', [{
-    x: REPORT_DATA.ontime.years, y: REPORT_DATA.ontime.values, type: 'scatter', mode: 'lines+markers',
-    line: {color: '#2a78d6'}, hovertemplate: '%{x}: %{y:.1f}%<extra></extra>'
-  }], Object.assign({}, LAYOUT_BASE, {yaxis: {title: '% ตรงเวลา'}}), PLOT_CONFIG);
+  Plotly.newPlot('chart-ontime', [
+    {
+      x: REPORT_DATA.ontime.years, y: REPORT_DATA.ontime.values, type: 'scatter', mode: 'lines+markers',
+      name: 'on_time_exact (row-weighted)', line: {color: '#2a78d6'},
+      hovertemplate: '%{x}: %{y:.1f}%<extra>on_time_exact</extra>'
+    },
+    {
+      x: REPORT_DATA.notlate.years, y: REPORT_DATA.notlate.values, type: 'scatter', mode: 'lines+markers',
+      name: 'not_late (unit-weighted)', line: {color: '#1baf7a'},
+      hovertemplate: '%{x}: %{y:.1f}%<extra>not_late</extra>'
+    }
+  ], Object.assign({}, LAYOUT_BASE, {yaxis: {title: '%'}}), PLOT_CONFIG);
 }
 
 function drawModelChart() {
@@ -631,12 +827,25 @@ function populateTypeOptions() {
   if (types.includes(prev)) sel.value = prev;
 }
 
+function fmtMase(v) {
+  return (v === null || v === undefined || Number.isNaN(v)) ? 'MASE_undefined' : v.toFixed(3);
+}
+
 function drawDivTable() {
   const div = currentDivision();
   const rows = REPORT_DATA.per_division.filter(r => div === '__all__' || r.division === div);
   const tbody = document.querySelector('#div-results-table tbody');
   tbody.innerHTML = rows.map(r =>
-    `<tr><td>${r.division}</td><td>${r.MAE.toFixed(1)}</td><td>${r.MASE.toFixed(3)}</td><td>${r.Bias.toFixed(1)}</td><td>${r.n_items}</td></tr>`
+    `<tr><td>${r.division}</td><td>${r.MAE.toFixed(1)}</td><td>${r.RMSE.toFixed(1)}</td><td>${fmtMase(r.MASE)}</td><td>${r.Bias.toFixed(1)}</td><td>${r.n_items}</td></tr>`
+  ).join('');
+}
+
+function drawPrimaryTable() {
+  const div = currentDivision();
+  const rows = REPORT_DATA.primary_results.filter(r => div === '__all__' || r.division === div);
+  const tbody = document.querySelector('#primary-results-table tbody');
+  tbody.innerHTML = rows.map(r =>
+    `<tr><td>${r.division}</td><td>${r.MAE.toFixed(1)}</td><td>${r.RMSE.toFixed(1)}</td><td>${r.Bias.toFixed(1)}</td><td>${fmtMase(r.MASE)}</td><td>${r.n_scored}</td></tr>`
   ).join('');
 }
 
@@ -691,6 +900,7 @@ function drawFvaChart() {
 }
 
 function redrawResultsSection() {
+  drawPrimaryTable();
   drawDivTable();
   drawRollingChart();
   drawFvaChart();
