@@ -5,7 +5,11 @@ ORDER, exactly as specified there:
     2 validate — zero-row guard and data invariants
     3 rebuild the forecast_date-keyed series as a frozen snapshot
     4 re-run the sales-model backtest; record each division's change against the previous run
-    5 append a new forward-test vintage per section 27
+    5 append a new forward-test vintage per section 27 -- ONE VINTAGE PER CALENDAR MONTH (task
+      2cfix2, Part 2): if the log already has a vintage whose forecast_run_date falls in the
+      current calendar month, a real run skips computing/appending a new one (every other step
+      still runs) and records why; --force-new-vintage overrides this for a deliberate same-month
+      re-run
     6 fill actual_qty and score any months that became eligible
     7 rebuild every page with section 26 timestamps
     8 run the full test suite
@@ -134,7 +138,10 @@ def check_tcp_reachable(host: str, port: int, timeout: float = 5.0) -> tuple:
 
 def step1_pull_data(dry_run: bool) -> dict:
     from dotenv import load_dotenv
-    load_dotenv()
+    # Explicit absolute path -- see src/db.py's own identical fix, this task. A bare load_dotenv()
+    # searches from the CURRENT WORKING DIRECTORY, not this file's location; a Scheduled Task
+    # invoking this script from e.g. C:\Windows\system32 would silently fail to find .env.
+    load_dotenv(dotenv_path=os.path.join(PROJECT_ROOT, ".env"))
     db_server_raw = os.getenv("DB_SERVER", "")
     db_host = db_server_raw.split("\\")[0].split(",")[0]
     db_port = 1433  # SQL Server default; DB_SERVER (.env) names a host\instance with no explicit
@@ -371,8 +378,33 @@ def step4_backtest(run_id: str) -> dict:
 
 # ---------------------------------------------------------------------------------------------
 # Step 5: append a new forward-test vintage per section 27 (computed always; WRITTEN only if
-# not dry_run)
+# not dry_run) -- ONE VINTAGE PER CALENDAR MONTH guard (Part 2, task 2cfix2): a second real run
+# in the same calendar month must not silently append vintage 3, vintage 4, etc.
 # ---------------------------------------------------------------------------------------------
+
+def find_existing_vintage_this_month(log_path: str, now: pd.Timestamp) -> dict:
+    """Returns {'vintage_id', 'forecast_run_date'} for the MOST RECENT vintage already recorded
+    in `log_path` whose own `forecast_run_date` falls in the CURRENT calendar month, per `now`
+    (the run's own clock at the time it runs -- never the scheduled date, so a run that happens
+    to execute a day late/early is judged by when it actually runs). Returns None if the log
+    doesn't exist yet or has no such row. Takes an explicit `log_path`/`now` (rather than reading
+    the module-level FORWARD_TEST_LOG_PATH/datetime.now() directly) so tests can exercise this
+    against a synthetic/temporary log file, never the real tracked one (this task's own
+    instruction)."""
+    if not os.path.exists(log_path):
+        return None
+    log = pd.read_csv(log_path, usecols=["vintage_id", "forecast_run_date"])
+    if log.empty:
+        return None
+    run_dates = pd.to_datetime(log["forecast_run_date"])
+    current_month = pd.Period(now, freq="M")
+    same_month_mask = run_dates.dt.to_period("M") == current_month
+    if not same_month_mask.any():
+        return None
+    same_month = log[same_month_mask].assign(_run_date=run_dates[same_month_mask])
+    row = same_month.sort_values(["vintage_id"]).iloc[-1]
+    return {"vintage_id": int(row["vintage_id"]), "forecast_run_date": str(row["_run_date"].date())}
+
 
 def compute_new_vintage() -> dict:
     """Mirrors src/forward_test_all_divisions.py's own generation logic (same imported functions:
@@ -484,20 +516,55 @@ def compute_new_vintage() -> dict:
             "n_rows": len(rows_df), "six_month_item_forecast_total_by_division": six_month_totals_by_division}
 
 
-_LAST_COMPUTED_VINTAGE = {}  # cache so step 6 (dry-run preview) never recomputes step 5's forecasts
+_LAST_COMPUTED_VINTAGE = None  # cache so step 6 (dry-run preview) never recomputes step 5's
+# forecasts -- None means "step 5 computed nothing new this run" (either the guard skipped it, or
+# this run hasn't reached step 5 yet); only ever set to a real computed-vintage dict, never {}.
 
 
-def step5_new_vintage(dry_run: bool) -> dict:
+def step5_new_vintage(dry_run: bool, force_new_vintage: bool = False) -> dict:
+    """Part 2, task 2cfix2: ONE VINTAGE PER CALENDAR MONTH. If the forward-test log already has a
+    vintage whose forecast_run_date falls in the CURRENT calendar month (per this run's own
+    clock -- see find_existing_vintage_this_month()), a real run does NOT compute or append a new
+    vintage; every other monthly_refresh step still runs normally. `force_new_vintage=True`
+    (the --force-new-vintage CLI flag) deliberately overrides the guard for an intentional
+    same-month re-run, and its use is recorded in the returned result (and therefore the run
+    log) either way."""
     global _LAST_COMPUTED_VINTAGE
+    now = pd.Timestamp.now()
+    existing_this_month = find_existing_vintage_this_month(FORWARD_TEST_LOG_PATH, now)
+
+    if existing_this_month is not None and not force_new_vintage:
+        _LAST_COMPUTED_VINTAGE = None
+        return {
+            "skipped": True, "written": False,
+            "reason": (
+                f"one-vintage-per-calendar-month guard: a vintage already exists for "
+                f"{now.strftime('%Y-%m')} (vintage_id={existing_this_month['vintage_id']}, "
+                f"forecast_run_date={existing_this_month['forecast_run_date']}) -- no new "
+                f"vintage computed or appended this run. Pass --force-new-vintage to override "
+                f"for a deliberate same-month re-run."
+            ),
+            "existing_vintage_id_this_month": existing_this_month["vintage_id"],
+            "existing_forecast_run_date_this_month": existing_this_month["forecast_run_date"],
+            "force_new_vintage": False,
+        }
+
     try:
         computed = compute_new_vintage()
     except LeakageGuardError as e:
         raise MonthlyRefreshAbort(f"Step 5 ABORTED: leakage guard refused the new vintage's fit window: {e}")
     _LAST_COMPUTED_VINTAGE = computed
 
-    result = {"vintage_id": computed["vintage_id"], "n_rows_computed": computed["n_rows"],
+    result = {"skipped": False, "vintage_id": computed["vintage_id"], "n_rows_computed": computed["n_rows"],
               "six_month_item_forecast_total_by_division": computed["six_month_item_forecast_total_by_division"],
-              "written": False}
+              "written": False, "force_new_vintage": force_new_vintage}
+    if existing_this_month is not None:
+        # force_new_vintage=True got us here despite a same-month vintage already existing --
+        # record the override explicitly (this task's own instruction: "record its use in the
+        # log when set").
+        result["force_override_used"] = True
+        result["overridden_existing_vintage_id"] = existing_this_month["vintage_id"]
+        result["overridden_existing_forecast_run_date"] = existing_this_month["forecast_run_date"]
     if dry_run:
         result["note"] = "dry-run: vintage computed but NOT appended to the forward-test log."
         return result
@@ -717,14 +784,14 @@ def step11_commit_and_push(dry_run: bool, step8: dict, step9: dict, step10: dict
 # Orchestration
 # ---------------------------------------------------------------------------------------------
 
-def main(dry_run: bool) -> dict:
+def main(dry_run: bool, force_new_vintage: bool = False) -> dict:
     run_id = datetime.now().strftime("%Y%m%dT%H%M%S")
     staged_dir = os.path.join(RUNS_DIR, run_id, "staged")
     os.makedirs(staged_dir, exist_ok=True)
     config = load_config()
 
-    run_log = {"run_id": run_id, "dry_run": dry_run, "started_at": datetime.now().isoformat(timespec="seconds"),
-               "steps": {}}
+    run_log = {"run_id": run_id, "dry_run": dry_run, "force_new_vintage": force_new_vintage,
+               "started_at": datetime.now().isoformat(timespec="seconds"), "steps": {}}
 
     def record(step_name, fn, *args, **kwargs):
         try:
@@ -742,7 +809,7 @@ def main(dry_run: bool) -> dict:
     record("2_validate", step2_validate)
     record("3_frozen_snapshot", step3_frozen_snapshot)
     step4 = record("4_backtest", step4_backtest, run_id)
-    step5 = record("5_new_forward_test_vintage", step5_new_vintage, dry_run)
+    step5 = record("5_new_forward_test_vintage", step5_new_vintage, dry_run, force_new_vintage)
     computed_vintage_for_preview = _LAST_COMPUTED_VINTAGE if dry_run else None
     record("6_fill_and_score", step6_fill_and_score, dry_run, computed_vintage_for_preview)
     record("7_rebuild_pages", step7_rebuild_pages, dry_run, staged_dir)
@@ -769,9 +836,13 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--dry-run", action="store_true",
                          help="Exercise every step's logic without writing/committing/pushing anything tracked.")
+    parser.add_argument("--force-new-vintage", action="store_true",
+                         help="Override the one-vintage-per-calendar-month guard (Part 2, "
+                              "task 2cfix2) for a deliberate second real run in the same month. "
+                              "Its use is recorded in the run log.")
     args = parser.parse_args()
     try:
-        log = main(dry_run=args.dry_run)
+        log = main(dry_run=args.dry_run, force_new_vintage=args.force_new_vintage)
         print(json.dumps(log, indent=2, default=str))
     except MonthlyRefreshAbort as e:
         logger.error("MONTHLY REFRESH ABORTED: %s", e)
