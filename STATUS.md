@@ -5468,6 +5468,16 @@ phase, particularly Phase 4. Full methodology, confidence levels and caveats are
   test suite or a sensitive-content scan — this decision locks that boundary before the monthly
   pipeline is built, consistent with this project's rule that validation failures must be raised
   loudly, never silently skipped (CONVENTIONS.md, Data Correctness).
+- **The monthly run is scheduled for the 5th of each month at 07:00 local time (decided
+  2026-09-25).** This is the agreed cadence for `src/monthly_refresh.py`'s Windows Scheduled Task
+  registration; it applies project-wide to every future monthly run, not to a single occurrence.
+- **Limitation, recorded 2026-09-25: a Windows Scheduled Task registered against the user's own
+  account, with no stored password, runs only while that user is logged on** — an unattended
+  overnight/unattended-desktop run will not fire under that registration mode. The runner also
+  needs both the organisation network (to reach the SQL Server database for step 1's pull) and
+  GitHub (to push in step 11) reachable at run time; `src/monthly_refresh.py` checks both and
+  records `db_reachable`/`github_reachable` per run, holding the affected step rather than failing
+  silently if either is unreachable (`src/monthly_refresh.py` lines 143-151, 640-642).
 
 ## 5. Open Questions
 
@@ -6083,6 +6093,49 @@ timestamps (no persisted external record exists to check them against; internall
 next code task to address (e.g. persisting the pull timestamp/snapshot so it can be checked
 independently, consistent with this project's raw-vs-processed-data convention,
 CONVENTIONS.md).
+
+**New items, added 2026-09-25 (documentation-only task, verifying task 2c's dry run/monthly
+refresh work) — all OPEN:**
+
+- **No dry run has yet passed every gate.** Task 2c's dry run (run_id `20260925T141119`) held at
+  step 11 after a transient test failure at step 8: `test_embedded_json_matches_source_files_exactly`
+  (`tests/test_build_report.py`) failed on a Category/Type-level backtest MAE mismatch
+  (`13.0056952135862` vs `13.018704089095952`, `phaseC_step2_per_division_summary_qty.csv` vs. the
+  page's embedded JSON) — `output/runs/monthly_refresh_20260925T141119.json`, step
+  `8_run_tests.result` (`"passed": false, "returncode": 1`) and step
+  `11_commit_and_push.result.gate_results.step8_tests_passed: false`; also flagged as a "side
+  observation" in `output/summary/task2c_validator_report.md`, Check 3. This was a transient,
+  already-resolved timing artifact within that same task (the full suite passed 129/129 once the
+  task's own later commits rebuilt the page) — but no run has yet exercised the gate end-to-end
+  with every step passing, so this remains open until a dry (or real) run clears steps 8-10
+  cleanly in one pass.
+- **The GitHub reachability check task 2c was asked to implement was not reported on in its final
+  summary — confirmed genuinely unreported in every tracked file, not merely missed by this task.**
+  Checked: `output/summary/task2c_validator_report.md` (no mention), `DATA_MAP.md`'s task-2c-dated
+  entries (no mention), and this file's own Section 11 (no mention) — a repo-wide search for
+  "reachab" (case-insensitive) matches only source code (`src/monthly_refresh.py`, and unrelated
+  files), no `.md` documentation. The check IS implemented in code and DOES run:
+  `src/monthly_refresh.py` lines 143-151 (step 1, records `github_reachable`/
+  `github_reachability_error`, informational) and lines 640-642 (step 11, actually holds the push
+  if GitHub is unreachable) — confirmed present and exercised in the dry run's own log
+  (`output/runs/monthly_refresh_20260925T141119.json`, step `1_pull_data.result`:
+  `"github_reachable": true, "github_reachability_error": null`). So: working code, visible in the
+  raw run-log artifact, but never written up in any narrative documentation file — moot for
+  correctness, open for documentation.
+- **The scheduled-task `schtasks` command task 2c printed used the 1st of the month at 06:00, not
+  the agreed 5th at 07:00 — and must not be used as printed.** Its exact text **could not be
+  located in any repository file this task** — this file's own Section 11 explicitly states "the
+  exact `schtasks` command the user would need to run themselves is in this task's final report"
+  (unchanged by this task), i.e. it was delivered directly to the user and never committed to the
+  repo; a repo-wide case-insensitive search for "schtasks" finds only the unrelated, already-correct
+  daily posting-delay-snapshot registration (Section 4 above, `/sc daily /st 06:00`, a different
+  scheduled task for `src/snapshot_daily.py`) and no monthly-refresh schtasks command anywhere in
+  `DATA_MAP.md`, this file, or `output/summary/task2c_validator_report.md`. Per AGENTS.md's stopping
+  rule and CONVENTIONS.md's "verify, never recall," the wrong command is **not quoted here** because
+  it cannot be verified from any file in this repository — recorded as a gap, not invented.
+  **Whoever holds that final report must not run the command it printed as printed**; the correct
+  registration must target the 5th of the month at 07:00 (Section 4 above, "The monthly run is
+  scheduled for the 5th of each month at 07:00 local time").
 
 ## 11. Forward test ready for 30 September + monthly runner (this task, 2026-09-25)
 
