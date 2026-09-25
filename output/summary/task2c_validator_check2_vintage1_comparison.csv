@@ -1,0 +1,2 @@
+check,n_rows_compared,n_cols_compared,n_diff_cells,n_diff_rows,duplicate_keys_current,duplicate_keys_archive,result
+vintage1_vs_archive_full_comparison,2340,17,0,0,0,0,MATCH

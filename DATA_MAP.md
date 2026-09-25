@@ -266,9 +266,10 @@ proof). **Trust note**: unusable regardless — no itemcode column, and no data 
   (`tests/test_page_timestamps.py`'s frozen-hash test updated to this value, with the migration
   documented inline). A `row_integrity_hash` (sha256 over every column except `vintage_id`/
   `actual_qty`) is now recorded per vintage in `forward_test_log_all_divisions_metadata.json`
-  (restructured from one flat dict to `{vintage_id: {...}}`). **V1** (direct recomputation by the
-  migration script itself, re-verified by re-reading the written file; not cross-checked by a
-  second, independent agent).
+  (restructured from one flat dict to `{vintage_id: {...}}`). **V2** (independently re-verified
+  same day by a from-scratch Validator: a full value-for-value comparison of all 2,340 rows × 17
+  shared columns, aligned on a natural key rather than row order — 0 differing cells, 0 differing
+  rows; `output/summary/task2c_validator_report.md` Check 2).
 - **`score_forward_test_all_divisions.verify_consistency()` adapted**: now checks each vintage
   present in the log against its OWN recorded metadata/row_integrity_hash only — never against the
   CURRENT live `config.yaml`/`config_version()`. Confirmed by a passing dry run
@@ -283,14 +284,30 @@ proof). **Trust note**: unusable regardless — no itemcode column, and no data 
   shift, since 2026-08 has not yet cleared the leakage-guard margin). Previous run's outputs
   archived to `output/summary/archive/phaseC_step2_{per_division_summary_qty,
   transferability_per_division}_pre_monthly_refresh_20260925T141119.csv` before being overwritten.
-  `forecast/sales_report.html` rebuilt from the new outputs (commit below) — **V1** (this task's own
-  recomputation; not independently cross-checked by a second agent).
+  `forecast/sales_report.html` rebuilt from the new outputs (commit below) — **V2** (CI101's
+  Top-down MAE/RMSE/Bias/MASE independently re-derived by a from-scratch Validator directly from
+  the row-level file `phaseC_step2_transferability_item_rolling_origin.csv`, own script, not
+  pandas groupby — exact match to full precision: MAE 10.282871483097, RMSE 12.656487714330, Bias
+  2.770144471813, MASE 0.674942142710; `task2c_validator_report.md` Check 1).
 - **`src/monthly_refresh.py` built and dry-run tested** (METRICS.md Sec.28's 11 steps). Run 1
   (`--dry-run`, run_id `20260925T141119`) completed all 11 steps; confirmed to append NOTHING to
   the forward-test log (hash unchanged, still 2,340 rows/vintage 1 only) and to leave `git status`
   identical before/after. Full log: `output/runs/monthly_refresh_20260925T141119.json` (not
-  tracked — gitignored under `output/`). A real run (run 2) and Windows Scheduled Task registration
-  were deliberately NOT executed this task (explicit user scope decision) — **V1**.
+  tracked — gitignored under `output/`). Step 10's change-magnitude gate figures independently
+  re-derived by the same Validator, from the same old/new archived files: exact match to the run
+  log's own figures (CI101 0.0822%, all other divisions 0.0%, all far under the 20% threshold) —
+  **V2** for step 10's gate figures (`task2c_validator_report.md` Check 3); **V1** for the rest of
+  the run (steps 1-9, 11 not independently re-run). A real run (run 2) and Windows Scheduled Task
+  registration were deliberately NOT executed this task (explicit user scope decision).
+
+  **Transient, already-resolved observation from the Validator's pass, recorded for completeness**:
+  at the exact moment run 1 executed (before this task's Part 2 backtest re-run had rebuilt
+  `forecast/sales_report.html`), step 8's own test run legitimately failed one test
+  (`test_embedded_json_matches_source_files_exactly`, a stale-page-vs-fresh-CSV mismatch) — this
+  correctly gated step 11 (`step8_tests_passed: false` in that run's own log), exactly as METRICS
+  §28 requires. **Not a live defect**: the full suite, re-run after this task's own final commits,
+  passes 129/129 with `git status` clean (re-confirmed independently this same session, after the
+  Validator's pass, before this documentation was written).
 
 ---
 

@@ -1,0 +1,6 @@
+division,run_log_mae_change_pct,mine_topdown_mae_change_pct,mine_direct_mae_change_pct,mine_naive_mae_change_pct,matches_run_log_via,gate_threshold_pct,mine_topdown_passes_gate
+CI101,0.0822490421353276,0.0822490421353276,0.12467732996773381,0.0,Top-down,20.0,True
+PEM101,0.0,0.0,0.0,0.0,Top-down,20.0,True
+PEM102,0.0,0.0,0.0,0.0,Top-down,20.0,True
+PEM103,0.0,0.0,0.0,0.0,Top-down,20.0,True
+PEM107,0.0,0.0,0.0,0.0,Top-down,20.0,True
