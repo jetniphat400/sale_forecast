@@ -321,7 +321,29 @@ with any batch-sharing signal, which was already flat for a year and a half by t
 business's level-A statement and this direct contradiction are recorded, neither chosen —
 recommended next step: ask the business a falsifiable question about the Oct/Nov 2024 timing.
 `output/summary/phase24_explorerA_report.md`, `phase24_validator_report.md`,
-`phase24_synthesis_report.md`. | data, largely resolved; PEM103/PEM107 each now have ONE narrow named business question (see PROJECT_GRAPH.md Part 4/Gate note below) |
+`phase24_synthesis_report.md`.
+
+**PEM107 branch, FURTHER TESTED 2026-09-25 (a later task, same day the business refined the date
+to specifically May 2026): tested whether the Oct/Nov 2024 finding above is itself a linkage
+artifact hiding the true May-2026 separation. Hypothesis FAILS — the linkage is not blind.** Four
+parallel agents (linkage rate/format across the 2024 boundary; every categorical column for a
+May-2026 break; Omni-vs-Tendering behaviour in two periods bracketing May 2026;
+`cube_inventory_tran` warehouse-movement evidence) plus an independent Validator recomputing three
+of their figures without reading their files, all converge: link rate/format stay stable across
+Oct-Dec 2024 (V2, two independent agents match); one field (`cube_final.division`) steps
+`103`→`107` at May/June 2026 but the identical pattern recurs a year earlier with no known cause
+(undermines it as May-2026-specific, level H); no other column and no behavioural measure
+(`not_late`, order-to-delivery, batch-traceability, manufacturing mix) shows a step at May 2026 —
+the real `not_late` disruption starts in June and is volatile, not a discrete shift (V2, Validator
+match on the headline figures); warehouse-movement data is too thin to test (24/136 items, 47 rows,
+all dated 2021-12-14, none in 2025-2026). **Net: no reliable data trace of a May-2026 separation
+exists. Per the task's own instruction for this outcome, the separation is treated as operational,
+not captured by this project's data, and May 2026 is adopted as the split point for future PEM107
+calibration on the business's authority alone (level A) — this does not reverse the Oct/Nov 2024
+batch-sharing finding, which stands as the answer to a different question (when batch-sharing
+itself stopped, not when the business considers the units administratively separated).**
+`output/summary/phase25_explorer{1,2,4}_report.md`, `phase25_analyst3_report.md`,
+`phase25_validator_report.md`; DATA_MAP.md §7. | data, largely resolved; PEM103/PEM107 each now have ONE narrow named business question (see PROJECT_GRAPH.md Part 4/Gate note below) |
 | Q11 | done | (Explorer A) | Q10 | Contradicted — `output/summary/phaseJ2_explorerA_report.md` | — |
 | Q12 | done | (Explorer B) | Q10 | Contradicted — `output/summary/phaseJ2_explorerB_report.md` | — |
 | Q13 | done | (Explorer C) | Q10 | Contradicted as general explanation — `output/summary/phaseJ2_explorerC_report.md` | — |

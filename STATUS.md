@@ -55,7 +55,7 @@ and where it says "Phase 4," that refers to what is now Phases D/E.
 
 ## 2. Phase Status
 
-### Current Status Summary (2026-09-24)
+### Current Status Summary (2026-09-25)
 
 **PROJECT_GRAPH.md is the authoritative source for goal/question/node status; this summary is a
 regenerated snapshot of it, not an independent status record kept by hand.**
@@ -124,9 +124,20 @@ regenerated snapshot of it, not an independent status record kept by hand.**
   CONTRADICTED on timing.** The business's "shared production/stock, separated mid-2026" statement
   (level A) does not match the data: the actual change point is **October/November 2024** (~19-20
   months earlier), entirely outside the analysis window and disconnected from the June 2026
-  `not_late` drop — independently confirmed by a Validator (same change point). Q23: the 2026
-  channel-mix reversal is a business change, not a recording change; the capacity-diversion
-  hypothesis survives, at level H, not proven. (PROJECT_GRAPH.md, nodes Q10, Q23.)
+  `not_late` drop — independently confirmed by a Validator (same change point). **Refined
+  2026-09-25 (a later task): business confirms the date more precisely as May 2026; tested whether
+  the Oct/Nov 2024 finding is itself a linkage artifact hiding that true separation — hypothesis
+  FAILS (linkage rate/format stable across the 2024 boundary, V2, two independent agents match).**
+  One field (`cube_final.division`) steps at May/June 2026 but the identical pattern recurs a year
+  earlier with no known cause (undermines it as May-2026-specific); no other field or behavioural
+  measure (`not_late`, order-to-delivery, batch-traceability, manufacturing mix) shows a step at
+  May 2026 — the real `not_late` disruption starts in June and is volatile, not a discrete shift
+  (V2, Validator match). **No reliable data trace of the May-2026 separation exists; it is treated
+  as operational and adopted as the split point on the business's authority alone (level A) — this
+  does not reverse the Oct/Nov 2024 batch-sharing finding, which answers a different question.**
+  Q23: the 2026 channel-mix reversal is a business change, not a recording change; the
+  capacity-diversion hypothesis survives, at level H, not proven. (PROJECT_GRAPH.md, nodes Q10,
+  Q23.)
 - **CI101** — covered only by the project-wide G1 forecasting-method decision (D2); PROJECT_GRAPH.md
   carries no division-specific open question for CI101.
 

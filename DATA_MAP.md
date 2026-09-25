@@ -884,6 +884,7 @@ itself names it).
 | PEM104's exclusion reason recorded as "insufficient data" (12 transactions across 17 calendar months, too few to fit any forecasting model at any aggregation level) | **SUPERSEDED, kept not deleted.** The underlying reason is that PEM104 is made to order by business model — no stock policy is applicable, and the low, sporadic transaction count is a structural consequence of that business model, not a data-collection gap. "Insufficient data" was a correct symptom, not the cause. | 2026-09-23 | STATUS.md Locked Decisions, "Exclusion — PEM104" (STATUS.md:4817-4824); this task, §7 below |
 | Q23 open: "does the Omni Channel scope explain observed stock/delivery behaviour, or must combined Omni+Tendering be included?" | **ANSWERED, 2026-09-24 (this task, METRICS.md §21, four agents — Explorer/Modeler/Analyst/independent from-scratch Validator).** NO accuracy or calibration case for widening scope: Omni+Tendering forecasts Omni demand no more accurately in any of 3 divisions (worse for PEM107, t=2.43, and PEM103's dominant focus item, t=2.61 — independently reproduced by the Validator, same direction/significance in all 3, MAE within 3%); PEM103's combined-demand calibration gap WIDENS to 27-37x real capital (vs J3's Omni-only 5-12x), reinforcing Q22's tender-pipeline finding rather than a shared-stock one. PEM107's 2026 not_late decline (86.6%→76.5%) DOES coincide with a real, twice-independently-confirmed channel-mix reversal (Tendering value share 28-39%→72.3-72.4%) and a genuine drop in Omni's own not_late (88.6%→76.5%, not a compositional artifact) — supported (not proven), level H. Omni Channel remains the project's default scope. | 2026-09-24 | `output/summary/phaseQ23_{explorer,modeler,analyst,validator}_report.md`; PROJECT_GRAPH.md Q23/Q22 rows; STATUS.md Q23 entry |
 | "Phase 1 reported 136 codes present on both the PEM103 and PEM107 sheets" (premise stated in this task's own instructions; no prior STATUS.md/DATA_MAP.md passage matching this exact claim could be located) | **CHECKED AGAINST THE FILE AS IT CURRENTLY EXISTS, 2026-09-24: ZERO overlap.** An exhaustive, both-direction re-read of every sheet in `reference/pricelist.xlsx` (visible AND hidden `Version1`/differently-spaced-name duplicates) finds no item code shared between any PEM103-named sheet and any PEM107-named sheet. 136 is simply PEM107's own total code count (consistent across its own hidden/visible sheet pair) — not, and apparently never was correctly, an overlap figure; the likely origin is a conflation of "PEM107 has 136 codes" with an overlap claim. Does not rule out the pricelist file having been edited since whenever the original claim was made (no version history available) — a residual limitation, not resolved further. | 2026-09-24 | This task, Explorer 1 (`output/summary/phase136_explorer1_report.md`) |
+| "PEM107's Tendering/Omni production and stock were separated around the middle of 2026" (business-confirmed, level A) | **SUPERSEDED (timing refined, not reversed), 2026-09-25: business confirms the date more precisely as May 2026.** Tested whether the earlier Oct/Nov 2024 data change-point (batch-sharing linkage) was itself an artifact of a blind linkage that hid the true May 2026 separation — hypothesis FAILS (linkage rate/format stable across the 2024 boundary, V2). One field (`cube_final.division`) shows a step landing at May/June 2026, but the identical pattern recurs a year earlier with no known cause (undermining it as May-2026-specific evidence); no other field or behavioural measure shows a step at May 2026. No reliable data trace of the May-2026 separation exists; adopted as the split point on business authority alone (level A), the Oct/Nov 2024 batch-sharing finding stands unchanged (both recorded, per AGENTS.md rule 4/9). | 2026-09-25 | This task: `output/summary/phase25_explorer{1,2,4}_report.md`, `phase25_analyst3_report.md`, `phase25_validator_report.md`; DATA_MAP.md §7 |
 | PEM103/PEM107's 2026 channel-mix reversal (Q23, above): cause not yet investigated at the point Q23 closed | **INVESTIGATED, 2026-09-24 (this task): supports a BUSINESS change, not a recording change, for BOTH divisions — V2, three independent checks converge** (two Explorers, different angles, plus an independent from-scratch Validator): customer channel identity is essentially fixed (0 switchers in PEM103, at most 1 noise-level switcher in PEM107, independently reconfirmed); order size and customer segment directly contradict a same-order-relabeling reading; no clean step-change date exists in either division (lumpy, contract-driven spikes in both years, independently reconfirmed); PEM107's Tendering notice days genuinely grew 40→60 between years. **The business's stated view (level A, recorded 2026-09-23: "most likely a recording-method change") is recorded as stated, alongside this direct data contradiction — both stated, neither chosen** (AGENTS.md rule 4/9). No reconstruction/reassignment rule proposed (not warranted); no G1/forward-test correction needed on these grounds; the PEM107 capacity-diversion hypothesis (Q23) SURVIVES and is strengthened on its "is the surge real" dimension, still level H. | 2026-09-24 | This task: `output/summary/phase136_explorer1_report.md`, `phase136_explorer2_report.md`, `phase136_synthesis_report.md`, `phase136_validator_report.md`; DATA_MAP.md §7 |
 
 ---
@@ -940,6 +941,12 @@ themselves derived from data, but consistent with data already recorded elsewher
 
 **Business-confirmed, 2026-09-24: PEM107's Tendering and Omni Channel work originally shared
 production and stock, and were separated around the middle of 2026.** — **A**.
+
+**SUPERSEDED, 2026-09-25 (this task): the business has now confirmed the separation date more
+precisely as May 2026, not merely "around the middle of 2026."** — **A**. The 2026-09-24 statement
+above is kept, not deleted, per this file's own convention (§ header, level X handling). See the
+new dated block below (after the existing October/November 2024 contradiction) for this task's
+test of whether May 2026 specifically has any data trace.
 
 **CHECKED AGAINST DATA, 2026-09-24 (a later task, same day): the specific "separated around the
 middle of 2026" timing is CONTRADICTED.** Linking `cube_final.jobno` to `Cube_CES.OLMJobCode`
@@ -1062,6 +1069,85 @@ Omni-only series the forecast consumes) is driven by a churning customer populat
 large, tender-adjacent orders — grounds for continued wide uncertainty bands on these two
 divisions' G1 point forecasts, not for treating the 2026-09-30 scoring as provisional. See
 `output/summary/phase136_synthesis_report.md` §4.
+
+**Task, 2026-09-25: is the May-2026-specific separation date (above) an artifact of the
+October/November 2024 linkage test, and does the data show it at all?** Working hypothesis tested
+(level H, not assumed): the late-2024 division reorganisation (which produced the `-OLD` tags)
+might have changed how batches are coded/linked, making the jobcode/OLMJobCode→jobno linkage blind
+to shared batches from that point on — which would mean the 0.00%-dual-channel finding (above)
+could be a measurement artifact hiding a real separation that actually happened in May 2026. Four
+parallel agents (Explorer 1: linkage format/rate; Explorer 2: every categorical column for a
+May-2026 break; Analyst 3: Omni-vs-Tendering behaviour in two periods bracketing May 2026; Explorer
+4: `cube_inventory_tran` warehouse-movement evidence), plus an independent from-scratch Validator
+recomputing three of their figures without reading any of their files.
+
+- **Is the linkage blind after 2024? NO — hypothesis FAILS.** Count-based link rate (contract →
+  ≥1 `cube_final` row via `jobcode`/`OLMJobCode` token match) stays 94-99.6% every month
+  Sep-Dec 2024, both in Explorer 1's aggregate before/after figures (Omni: 97.56%→96.38% count;
+  87.10%→79.80% qty) and the Validator's independent per-month recomputation (Sep 99.13%, Oct
+  94.77%, Nov 99.58%, Dec 94.07% count; qty-based volatile — 99.80%/53.45%/99.81%/37.55% — but no
+  directional collapse, consistent with volatility already documented elsewhere in this series).
+  Token format (length, prefix, separator, tokens-per-contract) is essentially unchanged across
+  the boundary in both agents' independent checks; comma-separated share, if anything, *decreases*
+  slightly after 2024-10, the opposite of what a breaking linkage would predict. **Level V2**
+  (two independent agents, own scripts, matching qualitative and near-matching quantitative
+  result). **This means the earlier October/November 2024 zero-dual-channel-batch finding stands
+  as real, not a linkage artifact.**
+- **Does the data show the May 2026 separation, and through which field?** One field —
+  `cube_final`'s own internal `division` column (a separate internal grouping from the sales-side
+  division taxonomy, DATA_MAP.md Trap 22) — shows a clean step for PEM107-scope items: code `103`
+  dominant through April 2026, a partial May 2026, then `107` dominant from June 2026 on (Explorer
+  2: 65 of 71 boundary-spanning itemcodes flip cleanly, 6 partially, 0 stay; Validator
+  independently confirms the same `102`→`103`→`107` sequence). **But this is undermined by an
+  identical-pattern step exactly one year earlier** (`102`→`103` around May 2025, same partial-May/
+  clean-June shape) **with no known business event attached** — both agents flag this
+  independently. The Validator additionally checked 2023/2024 (no such May transition either year,
+  100% `102` throughout) and noted, without concluding anything from it (AGENTS.md rule 1 — a name
+  is a hypothesis, not evidence), that the three values `102`/`103`/`107` numerically coincide with
+  PEM102/PEM103/PEM107 — worth the business checking, not itself evidence of anything. **No other
+  column checked shows any change at May 2026**: `cube_Sale_APD` (division, status,
+  manufacturing_type, typeOfSale, jobcode prefix, revenue_type), `Cube_CES` (Status, SaleDivision,
+  ManuDivision, Company, ProductType, OLMJobCode prefix, RevenueType), `cube_final` (transfer_type,
+  fg_check_status, fg_final_status, job_qty, company) — all checked, all "no change" (Explorer 2).
+  No sales-order table (confirmed again here) carries a warehouse field. **Level H** for reading
+  the `cube_final.division` step as evidence of the May-2026 business separation specifically
+  (undermined by the annual recurrence); **level V2** for the raw fact that the step exists and
+  recurs annually with no known cause, and for "no other field changes at May 2026" (independently
+  checked twice).
+- **Does PEM107's Omni delivery decline begin at or after May 2026, supporting separation as its
+  cause? NO clean support.** `not_late` (unit-weighted) stays at 84.3% in May 2026 itself and only
+  crashes in June (to 46.0%, matching the already-established figure almost exactly — Analyst 3
+  independently reproduces it), then partially recovers (82.4% in August) and crashes again
+  (37.6%, partial month, September) — volatile, not a discrete regime shift starting at May.
+  Period-level: Omni not_late 89.4% (May 2025-Apr 2026) → 57.2% (May 2026-latest); the Validator's
+  independent recomputation matches almost exactly (89.41%→57.23%, n=751 units in both agents'
+  Period-2 not_late numerator — an exact match). Order-to-delivery interval, batch-traceability
+  (which, if anything, *rises* for Omni: 54.0%→62.2%), and `manufacturing_type` mix all show
+  gradual drift or noise, not a step at May 2026 (Analyst 3). **Level V2** for "no clean step at
+  May 2026" (Analyst 3's figures independently matched by the Validator on the headline not_late
+  numbers).
+- **Warehouse-movement angle: inconclusive, data too thin.** `cube_inventory_tran` covers only
+  24/136 (17.6%) of PEM107's scope items, 47 rows total, every row dated 2021-12-14 — zero rows
+  anywhere in 2025-2026, including the claimed May-2026 window. None of PEM107's four exclusive
+  sellable warehouse codes (FG27/WH22/WH24/FG22) appear at all. Explorer 4 correctly stopped after
+  the coverage check (AGENTS.md rule 3) rather than force a conclusion from 47 unrelated rows.
+  **This neither confirms nor contradicts anything about May 2026** — it is a reported data gap.
+
+**Net conclusion, per the task's own instruction for this exact outcome: no reliable, uniquely
+attributable data trace of a May-2026 separation exists** (the one candidate field's pattern
+recurs annually with no known cause, and no behavioural measure shows a step at May 2026 either).
+**The separation is treated as operational and not captured by this project's data; May 2026 is
+adopted as the split point for any future PEM107 calibration on the business's authority alone,
+level A** — this does not reverse the October/November 2024 finding (that remains the data-fact
+about when dual-channel BATCH SHARING itself stopped, level V2) — the two are read as answering
+different questions (when batch-sharing stopped, vs. when the business considers the units
+formally/administratively separated), not as a resolved single timeline. **Per AGENTS.md rule 4/9,
+both are recorded, neither chosen for the reader; recommended next step: ask the business the same
+falsifiable question already on record (was there a named system/process change around
+October/November 2024, distinct from the May 2026 organisational separation, and if so what was
+it) — this task did not obtain a new answer to that standing question.** Found:
+`output/summary/phase25_explorer{1,2,4}_report.md`, `phase25_analyst3_report.md`,
+`phase25_validator_report.md`.
 
 **PEM104 is made to order** — business-confirmed 2026-09-23. Consistent with data already recorded
 in this file:
