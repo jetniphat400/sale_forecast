@@ -31,8 +31,21 @@ INVENTORY_HTML = os.path.join(PROJECT_ROOT, "forecast", "inventory.html")
 # end and confirming the hash was unchanged before/after. CONVENTIONS.md/METRICS.md Sec.26: "The
 # forward-test log is never refreshed or rewritten; it keeps the cutoff it was generated at" --
 # this hash is therefore a project invariant, not a snapshot that is expected to need updating.
+#
+# UPDATED 2026-09-25 (forward test / monthly refresh task, Part 1.2): this is now the hash AFTER
+# the one-time vintage_id schema migration (src/migrate_forward_test_vintage.py) -- METRICS.md
+# Sec.27's `vintage_id` column was added (existing rows become vintage 1); every pre-existing
+# column's value was verified unchanged, value-for-value, against an archived pre-migration copy
+# (output/summary/archive/forward_test_log_all_divisions_pre_vintage_migration_2026-09-25.csv,
+# whose own SHA-256, 3adb765139b576c508a93bf0e21b3562d48711d4d04b002800eb5c55e7576a04, IS the
+# previous value of this constant -- confirming the migration's input was exactly the frozen file
+# this test previously checked). A schema migration is a deliberate, one-time, reported change to
+# this "frozen" file, not the ordinary "refreshed or rewritten" this rule forbids -- the row
+# CONTENT (forecast_qty et al.) is unchanged; only the new vintage_id column was added. Any FUTURE
+# change to this hash (other than another explicit, reported migration) must still be treated as
+# a regression.
 FROZEN_FORWARD_TEST_LOG_SHA256 = (
-    "3adb765139b576c508a93bf0e21b3562d48711d4d04b002800eb5c55e7576a04"
+    "7ba4a3a45a975e04a52935d62036995e1c02db93d52fc9c24e8028d3182dfa2c"
 )
 
 
@@ -171,12 +184,18 @@ def test_client_js_renders_mase_undefined_not_nan():
     assert "function fmtMase" in text
 
 
-def test_embedded_json_never_contains_literal_nan_for_mase():
+def test_embedded_json_never_contains_literal_nan_for_mase(tmp_path):
     """Builds the report fresh and inspects the embedded #report-data JSON text directly (not
     just the parsed dict, since Python's json.dumps would happily emit the bare token `NaN`,
     which is invalid JSON and would crash the browser's JSON.parse) -- confirms
-    embed_report_data()'s None-for-NaN conversion actually reaches the serialized page."""
-    out_path = build_report.build_report()
+    embed_report_data()'s None-for-NaN conversion actually reaches the serialized page.
+
+    FIXED (forward test / monthly refresh task): previously called build_report.build_report()
+    with no override, writing to the real tracked forecast/sales_report.html on every test run
+    (the SECOND such test found this task, alongside test_build_report.py's -- a repo-wide search
+    for every build_report()/build_inventory_page()-style call with no override found only these
+    two). Now passes tmp_path -- the real tracked file is never touched by running the suite."""
+    out_path = build_report.build_report(output_path=os.path.join(str(tmp_path), "sales_report.html"))
     with open(out_path, "r", encoding="utf-8") as f:
         html_text = f.read()
     m = re.search(r'<script type="application/json" id="report-data">(.*?)</script>', html_text, re.DOTALL)

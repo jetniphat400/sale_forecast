@@ -32,8 +32,13 @@ def _embedded_data():
     return json.loads(m.group(1))
 
 
-def test_report_builds_without_error_from_current_outputs():
-    out_path = run_build_report()
+def test_report_builds_without_error_from_current_outputs(tmp_path):
+    """FIXED (Part 1/Part 3 of the forward test / monthly refresh task): previously called
+    run_build_report() with no override, which wrote directly to the real tracked
+    forecast/sales_report.html on every test run (METRICS.md Sec.28's last bullet; commits
+    5c17ea4/da5aedd were trivial page_built_at-only re-builds caused by exactly this). Now passes
+    a tmp_path -- the real tracked file is never touched by running the test suite."""
+    out_path = run_build_report(output_path=str(tmp_path / "sales_report.html"))
     assert os.path.exists(out_path)
     with open(out_path, "r", encoding="utf-8") as f:
         html_text = f.read()

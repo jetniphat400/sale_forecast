@@ -924,14 +924,29 @@ document.addEventListener('DOMContentLoaded', function () {
 """
 
 
-def build_report() -> str:
+def build_report(output_path: str = None) -> str:
+    """Renders and writes forecast/sales_report.html. `output_path` defaults to the real, TRACKED
+    production path (OUT_PATH) -- pass an explicit override (e.g. a pytest tmp_path, or
+    src/monthly_refresh.py's --dry-run staging path) to render without touching the tracked file.
+
+    FIXED (forward test / monthly refresh task, Part 1/Part 3): previously this function took NO
+    parameters and always wrote OUT_PATH, so tests/test_build_report.py's
+    test_report_builds_without_error_from_current_outputs() and
+    tests/test_page_timestamps.py's test_embedded_json_never_contains_literal_nan_for_mase()
+    (the only two callers found by a repo-wide search of every test for a build_report()/
+    build_inventory_page()-style call with no override) regenerated the real tracked HTML on
+    every pytest run, changing only page_built_at each time (commits 5c17ea4/da5aedd) -- exactly
+    what METRICS.md Sec.28's last bullet ("Tests must not modify tracked output files; a test
+    that regenerates a page writes to a temporary location") forbids. Both tests now pass
+    tmp_path explicitly."""
+    out_path = output_path if output_path is not None else OUT_PATH
     config = load_config()
-    os.makedirs(FORECAST_DIR, exist_ok=True)
+    os.makedirs(os.path.dirname(out_path) or ".", exist_ok=True)
     html_out = render_page(config)
-    with open(OUT_PATH, "w", encoding="utf-8") as f:
+    with open(out_path, "w", encoding="utf-8") as f:
         f.write(html_out)
-    logger.info("Report written: %s (%d bytes)", OUT_PATH, len(html_out.encode("utf-8")))
-    return OUT_PATH
+    logger.info("Report written: %s (%d bytes)", out_path, len(html_out.encode("utf-8")))
+    return out_path
 
 
 if __name__ == "__main__":
