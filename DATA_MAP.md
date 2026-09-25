@@ -1359,3 +1359,74 @@ in this file:
 This changes the stated reason for PEM104's exclusion from stock/inventory-policy work: **made to
 order by business model, with no stock policy applicable** — not "insufficient data" (§6
 Corrections log, above; PROJECT_GRAPH.md, dead end DE4).
+
+## Task 2cfix (2026-09-25) -- backtest config refactor, window disclosure, step-4 wiring
+
+- **Backtest window settings moved to config, refactor verified identity-preserving -- level V2.**
+  `TOTAL_MONTHS`/`HOLDOUT`/`MIN_TRAIN_MONTHS`/`ORIGIN_STEP`/`TRAIN_MONTHS`/`VAL_MONTHS`/
+  `TEST_MONTHS` moved from hardcoded literals in `src/backtest_rekeyed.py` into
+  `config/config.yaml`'s new `backtest:` block (METRICS.md Sec.39: "K, H and the spacing are read
+  from config, not hard-coded"). `src/backtest_rekeyed.py` reads them via its own
+  `load_backtest_settings()` at import time and re-exports the same module-level constant names,
+  so every one of the ~20 files that does `from backtest_rekeyed import HOLDOUT, TOTAL_MONTHS, ...`
+  gets a config-sourced value transitively -- confirmed by direct re-verification this task (not
+  the 9-file list the orchestrator's brief supplied, which undercounted; the real import-site list
+  is larger, see this task's commit for `src/backtest_rekeyed.py`). Two files
+  (`src/phaseE1_common.py`, `src/phaseE2_pilot_recompute.py`) define their OWN separate
+  `TOTAL_MONTHS = 31` for a DIFFERENT purpose (Phase E1/E2's intentionally frozen pilot comparison
+  window, METRICS.md Sec.28's "frozen, never touched by the monthly run" principle) -- deliberately
+  left unchanged, not unified with this live setting. **Identity check**: re-ran
+  `backtest_all_divisions.py --value-col qty` and `transferability_all_divisions.py` after the
+  refactor; every MAE/RMSE/Bias/MASE/n_items/n_scored value in
+  `output/summary/phaseC_step2_per_division_summary_qty.csv` and
+  `phaseC_step2_transferability_per_division.csv` matched task 2c's own most recent run to the
+  last float digit (max abs diff = 0.0 on every column, both files, confirmed by direct pandas
+  comparison this task) -- the refactor changes nothing computed, only where the numbers live.
+- **Rolling-origin backtest window now stated on every output and on the report -- level V2.**
+  `run_rolling_origin`/`run_train_val_test` (`src/backtest_rekeyed.py`) and
+  `run_transferability_rolling_origin` (`src/transferability_all_divisions.py`) now emit
+  `first_test_month`/`last_test_month` per row; `backtest_all_divisions.py`'s per-division/per-type
+  summaries and `transferability_all_divisions.py`'s per-division summary carry the SPAN across all
+  origins pooled (`rolling_origin_first_test_month`/`rolling_origin_last_test_month` /
+  `first_test_month`/`last_test_month`). Current window, confirmed this task by direct query and by
+  a rendered-page screenshot: **2025-02 to 2026-07, 7 origins** (`get_origins(31,6)`).
+  `forecast/sales_report.html` Section 6 now states this explicitly, sourced from
+  `phaseC_step2_transferability_per_division.csv`/`phaseC_step2_per_division_summary_qty.csv`
+  (`src/build_report.py gather_backtest_window()`, which raises loudly if the two tables' windows
+  ever disagree, rather than silently picking one).
+- **CI101 "before" input series -- no survivable before-snapshot, confirmed this task.** Checked
+  (this task): `output/summary/archive/` for any `processed_all_divisions_monthly_qty`-named
+  archive (none exist -- only the two AGGREGATED per-division OUTPUT files from task 2c's own
+  archive, timestamp suffix `pre_monthly_refresh_20260925T141119`, confirmed the only two with
+  that suffix); `output/summary/pipeline_run_log.csv` (only logs the unrelated 128-item pipeline
+  run); `src/snapshot_daily.py` (reads/records posting-delay-relevant fields for a DIFFERENT
+  purpose -- daily posting-delay lag on the 128-item PEM101 scope -- not CI101's raw monthly input
+  series at all, confirmed by reading the script). **No file anywhere in this repository holds a
+  dated "before" copy of `output/data/processed_all_divisions_monthly_qty.csv`'s CI101 rows as
+  they stood before task 2c's re-pull** -- the raw input was overwritten in place with no backup,
+  and no independent source captures the same rows at an earlier date. Per AGENTS.md's stopping
+  rule: checked X (archive dir), Y (pipeline_run_log.csv), Z (snapshot_daily.py) -- none survive;
+  cannot diff. Recorded as a data gap, not forced.
+- **Step 4 (monthly_refresh.py) now also regenerates the order-notice distribution and delivery
+  timeliness by year -- level V1 (confirmed by this task's own dry-run execution, not yet by an
+  independent second agent).** `src/investigations/order_leadtime.py` (own DB pull, cube_Sale_APD,
+  PEM101 128-item scope) refreshes `leadtime_notice_buckets_overall.csv` (previously stale 24
+  days, confirmed by file mtime before this task); `src/investigations/delivery_performance.py`
+  (own DB pull, Cube_CES, same scope) refreshes `delivery_by_year.csv` (on_time_exact, previously
+  7 days stale); `src/investigations/task2a_delivery_notlate_by_year.py` (no new DB call, reuses
+  `delivery_performance.py`'s own raw pull) refreshes `delivery_not_late_by_year.csv`;
+  `src/focus_item_model_selection.py` (no DB call, reuses the 335-item monthly file already
+  pulled by step 1) refreshes `focus_items_test_all.csv` (previously stale 17 days). All four
+  succeeded in this task's dry run (`output/runs/monthly_refresh_20260925T153426.json`, step
+  `4_backtest.result.analysis_inputs_refreshed`, every entry `refreshed: true`). Each call is
+  fault-tolerant by design (failure is recorded, not aborted) -- no input was found this task that
+  the repository genuinely cannot regenerate; every "not refreshed" case that exists on
+  `index.html` (S&OP Plan tab's external file, Trend Pricelist Omni tab's 448-code basis) predates
+  this task and is unchanged by it.
+- **Per-section staleness (METRICS.md Sec.26) now evaluated per section, not from the page's
+  single oldest input -- level V1.** `src/build_report.py`'s `render_page()` computes each
+  section's own age against `page_built_at` independently; a stale section's notice names only
+  that section, never marks the whole page stale. `index.html`'s stock panel (on-hand stock vs.
+  Reserved/backlog, two independently-pulled inputs) now gets two independent staleness checks
+  (`invStalenessNote`, `invBacklogStalenessNote`) instead of one check covering only stock.
+  Confirmed by direct browser screenshot this task (`output/charts/task2cfix_verification/`).

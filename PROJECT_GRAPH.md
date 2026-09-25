@@ -411,7 +411,24 @@ remains an unconfirmed open point.**
   and pushing) and registering the Windows Scheduled Task for the monthly cadence are BOTH
   deliberately deferred to the user** (explicit scope decision, this task) — the runner is built
   and dry-run proven, but not yet exercised for real or put on an unattended schedule.
-- **T2 — posting-delay snapshot.** `src/snapshot_daily.py`, a Windows Scheduled Task, started
+  **UPDATED 2026-09-25 (task 2cfix):** the three open items STATUS.md Sec.10 recorded against
+  this task are now resolved. (1) A dry run now passes every gate end to end (run_id
+  `20260925T153426`: steps 1-11 all `ok`, step 8 129/129 tests passed, step 9 sensitive-content
+  scan passed, step 10 change-magnitude gate passed with zero violations, step 11 correctly
+  reports `would_push_if_real_run: true`) -- the first such clean pass this project has recorded.
+  (2) `git ls-remote origin` confirmed GitHub reachable and authenticated from this machine
+  (returned `HEAD`/`refs/heads/main` at the current commit). (3) The correct `schtasks` command
+  (5th of month, 07:00) is now printed and recorded (this task's final report/STATUS.md Sec.10),
+  checked against `schtasks /Create /?`'s own documented syntax first. Separately, `TOTAL_MONTHS`/
+  `HOLDOUT`/`MIN_TRAIN_MONTHS`/`ORIGIN_STEP`/`TRAIN_MONTHS`/`VAL_MONTHS`/`TEST_MONTHS` moved from
+  hardcoded literals in `src/backtest_rekeyed.py` into `config/config.yaml`'s new `backtest:`
+  block (METRICS.md Sec.39); every backtest output and `forecast/sales_report.html` now states the
+  rolling-origin window's first/last test month (2025-02 to 2026-07, 7 origins, confirmed
+  unchanged by the refactor to the last decimal on every division's MAE/RMSE/Bias/MASE). Step 4
+  now also regenerates the order-notice distribution and delivery-timeliness-by-year inputs
+  (previously up to 24 days stale), and both dashboards show per-section `data_pulled_at` with
+  staleness evaluated per section (METRICS.md Sec.26).
+- **T2 -- posting-delay snapshot.** `src/snapshot_daily.py`, a Windows Scheduled Task, started
   **2026-09-22**; the leakage-guard margin cannot be revisited until **≥60 days of daily snapshots
   exist and the script's own p99 is known from that data** (STATUS.md, "Prospective posting-delay
   measurement: STARTED 2026-09-22") — reaches 60 days around **2026-11-21**. Feeds Q10 (helps

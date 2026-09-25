@@ -6095,9 +6095,13 @@ independently, consistent with this project's raw-vs-processed-data convention,
 CONVENTIONS.md).
 
 **New items, added 2026-09-25 (documentation-only task, verifying task 2c's dry run/monthly
-refresh work) — all OPEN:**
+refresh work) — all three RESOLVED, task 2cfix (2026-09-25), see Section 12 for full detail:**
 
-- **No dry run has yet passed every gate.** Task 2c's dry run (run_id `20260925T141119`) held at
+- **RESOLVED (task 2cfix, 2026-09-25).** Dry run `20260925T153426` passed every gate end to end
+  (steps 1-11 all `ok`; step 8: 129/129 tests passed; step 9: sensitive-content scan passed; step
+  10: change-magnitude gate passed, zero violations; step 11: `would_push_if_real_run: true`) —
+  see Section 12. **No dry run has yet passed every gate [ORIGINAL FINDING, now resolved above].**
+  Task 2c's dry run (run_id `20260925T141119`) held at
   step 11 after a transient test failure at step 8: `test_embedded_json_matches_source_files_exactly`
   (`tests/test_build_report.py`) failed on a Category/Type-level backtest MAE mismatch
   (`13.0056952135862` vs `13.018704089095952`, `phaseC_step2_per_division_summary_qty.csv` vs. the
@@ -6109,8 +6113,11 @@ refresh work) — all OPEN:**
   task's own later commits rebuilt the page) — but no run has yet exercised the gate end-to-end
   with every step passing, so this remains open until a dry (or real) run clears steps 8-10
   cleanly in one pass.
-- **The GitHub reachability check task 2c was asked to implement was not reported on in its final
-  summary — confirmed genuinely unreported in every tracked file, not merely missed by this task.**
+- **RESOLVED (task 2cfix, 2026-09-25).** `git ls-remote origin` run directly this task: GitHub
+  reachable and authenticated from this machine, returned `HEAD`/`refs/heads/main` at the current
+  commit — see Section 12. **The GitHub reachability check task 2c was asked to implement was not
+  reported on in its final summary [ORIGINAL FINDING, now resolved above] — confirmed genuinely
+  unreported in every tracked file, not merely missed by this task.**
   Checked: `output/summary/task2c_validator_report.md` (no mention), `DATA_MAP.md`'s task-2c-dated
   entries (no mention), and this file's own Section 11 (no mention) — a repo-wide search for
   "reachab" (case-insensitive) matches only source code (`src/monthly_refresh.py`, and unrelated
@@ -6122,8 +6129,12 @@ refresh work) — all OPEN:**
   `"github_reachable": true, "github_reachability_error": null`). So: working code, visible in the
   raw run-log artifact, but never written up in any narrative documentation file — moot for
   correctness, open for documentation.
-- **The scheduled-task `schtasks` command task 2c printed used the 1st of the month at 06:00, not
-  the agreed 5th at 07:00 — and must not be used as printed.** Its exact text **could not be
+- **RESOLVED (task 2cfix, 2026-09-25).** The correct command is now printed and recorded here
+  (checked against `schtasks /Create /?`'s own documented syntax first, this task):
+  `schtasks /Create /SC MONTHLY /D 5 /ST 07:00 /RU %USERNAME% /IT /TN "SaleForecastMonthlyRefresh" /TR "python D:\sale_forecast\src\monthly_refresh.py"`
+  — see Section 12 for the full set of four user-facing commands. **The scheduled-task `schtasks`
+  command task 2c printed used the 1st of the month at 06:00, not the agreed 5th at 07:00
+  [ORIGINAL FINDING, now resolved above] — and must not be used as printed.** Its exact text **could not be
   located in any repository file this task** — this file's own Section 11 explicitly states "the
   exact `schtasks` command the user would need to run themselves is in this task's final report"
   (unchanged by this task), i.e. it was delivered directly to the user and never committed to the
@@ -6182,6 +6193,104 @@ report rebuild) `7f7e0fc` (monthly runner):**
 5-division pull inside `src/monthly_refresh.py`'s step 1, exercised during the dry run) --
 per this project's DATABASE ACCESS rule. The already-same-day-fresh 128-item pilot pull (from an
 earlier task today, 11:51) was deliberately reused, not re-pulled, to stay within that budget.
+
+## 12. Task 2cfix -- config refactor, backtest window disclosure, step-4 wiring, clean dry run (2026-09-25)
+
+Scope: continuing directly from task 2c. Part 1 (backtest settings into config.yaml, refactor
+identity check, window disclosure, CI101 comparison), Part 2 (step 4 regeneration wiring,
+per-section timestamps/staleness), Part 3 (dry run until every gate passes, `git ls-remote`),
+Part 4 (user-facing commands, `schtasks /Create /?` checked first), Part 6 (visual check,
+commit+push). Part 5 (Validator) explicitly deferred to a separate agent per this task's own
+instruction.
+
+**DONE, commits `61aa773` (config refactor), `340740c` (step 4 wiring + per-section timestamps),
+`9058b26` (report rebuild):**
+- `TOTAL_MONTHS`/`HOLDOUT`/`MIN_TRAIN_MONTHS`/`ORIGIN_STEP`/`TRAIN_MONTHS`/`VAL_MONTHS`/
+  `TEST_MONTHS` moved from hardcoded literals in `src/backtest_rekeyed.py` into
+  `config/config.yaml`'s new `backtest:` block, each commented with its `_owner` provenance.
+  `backtest_rekeyed.py` re-exports the same module-level names, config-sourced, so every importing
+  file (re-verified this task: MORE than the 9 files the orchestrator's brief listed -- also
+  `charts_all_divisions.py`, `forward_test_all_divisions.py`, `forward_test_v2.py`,
+  `item_level_reconciliation.py`, `phaseE1fix_recompute.py`) reads the config value transitively.
+  `src/phaseE1_common.py`/`src/phaseE2_pilot_recompute.py`'s own separate, deliberately frozen
+  `TOTAL_MONTHS=31` (Phase E1/E2 pilot window, a different concept) left untouched -- see
+  DATA_MAP.md for the full reasoning.
+- **Refactor identity check: EXACT MATCH.** Re-ran `backtest_all_divisions.py --value-col qty` and
+  `transferability_all_divisions.py`; every MAE/RMSE/Bias/MASE/n_items/n_scored value in
+  `phaseC_step2_per_division_summary_qty.csv`/`phaseC_step2_transferability_per_division.csv`
+  matched task 2c's own most recent run with max absolute difference 0.0 on every column (direct
+  pandas comparison, both files, all divisions/approaches).
+- **Backtest window now stated on every output and on the report**, per METRICS.md Sec.39.
+  Current window, confirmed by rendered-page screenshot
+  (`output/charts/task2cfix_verification/sales_report_backtest_window.png`): **rolling-origin,
+  7 origins, test months 2025-02 to 2026-07**.
+- **CI101 "before" input series: no survivable before-snapshot** -- checked
+  `output/summary/archive/` (only the two aggregated OUTPUT files from task 2c's own archive
+  exist, no raw-input archive), `pipeline_run_log.csv` (unrelated 128-item run only), and
+  `src/snapshot_daily.py` (records a different thing -- posting-delay lag, not CI101's raw
+  monthly series). No file anywhere holds a dated "before" copy. Recorded as a data gap per
+  AGENTS.md's stopping rule, not forced.
+- **Step 4 (`monthly_refresh.py`) now also regenerates**: `focus_items_test_all.csv`
+  (`focus_item_model_selection.py`, no DB call), `leadtime_notice_buckets_overall.csv`
+  (`src/investigations/order_leadtime.py`, own DB pull), `delivery_by_year.csv`
+  (`src/investigations/delivery_performance.py`, own DB pull), `delivery_not_late_by_year.csv`
+  (`src/investigations/task2a_delivery_notlate_by_year.py`, reuses `delivery_performance.py`'s own
+  pull, no new DB call). All four succeeded in this task's dry run. Each call is fault-tolerant --
+  a failure is recorded in the run log and labelled on the page as not refreshed, never aborts the
+  run. No input was found this task that the repository genuinely cannot regenerate.
+- **Per-section staleness (METRICS.md Sec.26)** now evaluated per section on
+  `forecast/sales_report.html` (was: single oldest-input check for the whole page) and on
+  `index.html`'s stock panel (stock vs. Reserved/backlog now each get their own staleness check,
+  was: only stock's).
+- **Dry run passed every gate end to end** (run_id `20260925T153426`, after fixing the root cause
+  of a first-attempt failure -- see below): steps 1-11 all `ok`; step 8: 129/129 tests passed;
+  step 9: sensitive-content scan passed, 0 findings; step 10: change-magnitude gate passed, 0
+  violations; step 11: `pushed: false` (dry-run, as designed), `would_push_if_real_run: true`.
+  `git status` confirmed clean of unintended changes afterward; forward-test log hash
+  (`7ba4a3a45a975e04a52935d62036995e1c02db93d52fc9c24e8028d3182dfa2c`) unchanged, matching
+  `tests/test_page_timestamps.py`'s own frozen value -- nothing appended.
+  **Root cause of the FIRST dry run's failure** (run_id `20260925T153029`,
+  `test_embedded_json_matches_source_files_exactly` failed): this task's own new step-4
+  regenerations changed `leadtime_notice_buckets_overall.csv`/`focus_items_test_all.csv`'s values
+  for the first time in weeks, but dry-run mode's step 7 deliberately never writes the TRACKED
+  `forecast/sales_report.html` (only a staged copy) -- so the tracked page's embedded numbers,
+  built from the OLD stale files, no longer matched the freshly-regenerated CSVs the same dry run
+  had just written to (gitignored, non-tracked) disk. This is the same class of "transient timing
+  artifact" task 2c's own dry run hit (STATUS.md Section 10, now resolved) -- confirmed here to be
+  a structural interaction (dry-run's tracked-file redirection vs. step 4's real writes to
+  untracked source files), not a one-off fluke. **Fix**: rebuilt the tracked page for real
+  (`python src/build_report.py`, commit `9058b26`) once, bringing it back in sync; the second dry
+  run then passed cleanly since step 4's re-pull of the same live data minutes later produced
+  materially the same numbers.
+- **`git ls-remote origin` confirmed GitHub reachable and authenticated**: returned
+  `HEAD`/`refs/heads/main` at commit `f8ab38b` (the commit current at task start).
+- **`schtasks /Create /?` checked before printing any command** (this task, full output read).
+  Four commands recorded in this task's final report and reproduced here:
+  - Real run: `python src/monthly_refresh.py`
+  - Register (runs only while logged on): `schtasks /Create /SC MONTHLY /D 5 /ST 07:00 /RU %USERNAME% /IT /TN "SaleForecastMonthlyRefresh" /TR "python D:\sale_forecast\src\monthly_refresh.py"`
+  - Register (runs whether logged on or not, prompts for password): `schtasks /Create /SC MONTHLY /D 5 /ST 07:00 /RU %USERNAME% /RP * /TN "SaleForecastMonthlyRefresh" /TR "python D:\sale_forecast\src\monthly_refresh.py"`
+  - Confirm / run once: `schtasks /Query /TN "SaleForecastMonthlyRefresh" /V /FO LIST` / `schtasks /Run /TN "SaleForecastMonthlyRefresh"`
+- **Visual check** (own Edge instance, temp profile, CDP, PROCESS SAFETY rule followed --
+  screenshots in `output/charts/task2cfix_verification/`): per-section `data_pulled_at`/
+  `page_built_at` render on both pages; the backtest window statement renders on
+  `sales_report.html` Section 6; `index.html`'s stock panel shows stock and Reserved
+  `data_pulled_at` independently, with no stale notice shown (both currently under 7 days old,
+  correctly not flagged).
+- **Full test suite: 129 passed.** `git status` confirmed clean of unintended changes after every
+  test run (build_report tests write to `tmp_path`, never the tracked page).
+
+**DATABASE ACCESS note**: this task's DB access spanned this task's OWN one-session interpretation
+of the rule (multiple pipeline stages within one dry-run invocation, and across the two dry runs
+this task needed to reach a clean gate, count as this task's one attempt -- no fresh login ever
+failed or was retried after failure). Connections made: `load_data_all_divisions.py` (335-item,
+5-division pull, x2, once per dry run), `src/investigations/order_leadtime.py` and
+`src/investigations/delivery_performance.py` (each x2, once per dry run, step 4's new wiring).
+None failed; none were retried after a failure.
+
+**DELIBERATELY NOT DONE, per the task's own scope boundary**: the real monthly run
+(`python src/monthly_refresh.py`, no `--dry-run`) and Windows Scheduled Task registration -- both
+explicitly reserved for the user to run themselves; commands printed above/in the final report,
+never executed by this task.
 
 ---
 
