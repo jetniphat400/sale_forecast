@@ -124,6 +124,12 @@
   or from git history for past changes. If the two sources disagree, stop and report; do not
   choose.
 
+## Page timestamps (added 2026-09-25)
+
+- Every page shows when its data was pulled and when it was built, per METRICS section 26. No
+  date on a page is typed by hand; the hand-maintained usable-range end date in config.yaml,
+  which the factsheet found stale, is an example of what this rule forbids.
+
 ## Project map (added 2026-09-24)
 
 - **Every task begins by reading `DATA_MAP.md` and `PROJECT_GRAPH.md`, in addition to `STATUS.md`,
