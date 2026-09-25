@@ -224,7 +224,8 @@ def gather_model_chart() -> pd.DataFrame:
 
 def gather_results(config: dict) -> dict:
     per_division = load_csv("phaseC_step2_per_division_summary_qty.csv", "Results §6 table")
-    for col in ["division", "MAE", "RMSE", "Bias", "MASE", "n_items"]:
+    for col in ["division", "MAE", "RMSE", "Bias", "MASE", "n_items", "n_origins",
+                "rolling_origin_first_test_month", "rolling_origin_last_test_month"]:
         require_col(per_division, col, "phaseC_step2_per_division_summary_qty.csv", "Results table")
 
     rolling = load_csv("phaseC_step2_rolling_origin_qty.csv", "Results §6 rolling-origin chart")
@@ -340,7 +341,8 @@ def gather_primary_results() -> pd.DataFrame:
     output/summary/phaseC_step2_report.md Part 3 (confirmed this task by reading both the
     generator script and that report)."""
     df = load_csv("phaseC_step2_transferability_per_division.csv", "Results §6 PRIMARY table (Top-down)")
-    for col in ["division", "approach", "MAE", "RMSE", "Bias", "MASE", "n_scored"]:
+    for col in ["division", "approach", "MAE", "RMSE", "Bias", "MASE", "n_scored",
+                "first_test_month", "last_test_month"]:
         require_col(df, col, "phaseC_step2_transferability_per_division.csv", "primary results table")
     topdown = df[df["approach"] == "Top-down"].copy()
     if topdown.empty:
@@ -348,6 +350,25 @@ def gather_primary_results() -> pd.DataFrame:
             "phaseC_step2_transferability_per_division.csv has no approach=='Top-down' rows."
         )
     return topdown
+
+
+def gather_backtest_window(primary_results: pd.DataFrame, per_division: pd.DataFrame) -> dict:
+    """METRICS.md Sec.39: 'every reported figure states the window's first and last test months'.
+    Both the item-level PRIMARY table (transferability_all_divisions.py) and the Type-level
+    SECONDARY table (backtest_all_divisions.py) run the SAME get_origins(TOTAL_MONTHS, HOLDOUT)
+    scheme over the same calendar grid, so every division/approach row is expected to state the
+    identical span -- checked here, not assumed, since a real per-division difference would be a
+    genuine bug (e.g. an item/division with a shorter series)."""
+    first_months = set(primary_results["first_test_month"].unique()) | set(per_division["rolling_origin_first_test_month"].unique())
+    last_months = set(primary_results["last_test_month"].unique()) | set(per_division["rolling_origin_last_test_month"].unique())
+    if len(first_months) != 1 or len(last_months) != 1:
+        raise ReportSourceError(
+            f"Backtest window is not uniform across divisions/tables (first_test_month values: "
+            f"{first_months}, last_test_month values: {last_months}) -- cannot state a single "
+            f"window statement per METRICS.md Sec.39 without investigating this discrepancy first."
+        )
+    n_origins = int(per_division["n_origins"].iloc[0]) if "n_origins" in per_division.columns else None
+    return {"first_test_month": first_months.pop(), "last_test_month": last_months.pop(), "n_origins": n_origins}
 
 
 def gather_notlate() -> pd.DataFrame:
@@ -364,7 +385,7 @@ def gather_notlate() -> pd.DataFrame:
 
 # ============================= EMBEDDED JSON DATA (client-side charts read only this) ========
 
-def embed_report_data(scope_table, biz, model_chart, results, fva, primary_results, notlate) -> dict:
+def embed_report_data(scope_table, biz, model_chart, results, fva, primary_results, notlate, backtest_window) -> dict:
     """Everything the page's client-side JS needs to draw/filter every Plotly chart, built
     directly from the same dataframes the server-rendered text/tables use above -- so the
     embedded JSON and the rendered text are always the same numbers, never two independent
@@ -429,6 +450,7 @@ def embed_report_data(scope_table, biz, model_chart, results, fva, primary_resul
         "rolling_origin": rolling_records,
         "per_division": per_division_records,
         "primary_results": primary_records,
+        "backtest_window": backtest_window,
         "forecast_vs_actual": fva_records,
     }
 
@@ -446,37 +468,44 @@ def render_page(config: dict) -> str:
     notlate = gather_notlate()
     usable_range_end = gather_usable_range_end(config)
     freshness = gather_freshness()
+    backtest_window = gather_backtest_window(primary_results, results["per_division"])
 
     page_built_at = datetime.now().strftime("%Y-%m-%d %H:%M")
+    built_dt = datetime.strptime(page_built_at, "%Y-%m-%d %H:%M")
     data_pulled_at = freshness["data_pulled_at_min"]
-    is_stale = (
-        (datetime.strptime(page_built_at, "%Y-%m-%d %H:%M")
-         - datetime.strptime(data_pulled_at, "%Y-%m-%d %H:%M")).days > STALENESS_THRESHOLD_DAYS
-    )
+
+    # METRICS.md Sec.26 (amended 2026-09-25, per-section staleness): "the staleness notice is
+    # evaluated per section, not from the single oldest input on the page, so one stale section
+    # never marks a whole page stale." Each section's own age against page_built_at is checked
+    # independently -- no single global is_stale flag any more.
+    section_ages = {label: (built_dt - datetime.strptime(pulled_at[:16], "%Y-%m-%d %H:%M")).days
+                     for label, pulled_at in freshness["sections"].items()}
+    stale_sections = [label for label, age in section_ages.items() if age > STALENESS_THRESHOLD_DAYS]
+
     freshness_rows = "".join(
-        f"<tr><td>{html.escape(label)}</td><td>{value}</td></tr>"
+        f"<tr><td>{html.escape(label)}</td><td>{value}</td>"
+        f"<td>{f'⚠ เก่ากว่า {STALENESS_THRESHOLD_DAYS} วัน ({section_ages[label]} วัน)' if label in stale_sections else 'ทันสมัย (ok)'}</td></tr>"
         for label, value in freshness["sections"].items()
     )
     staleness_html = (
-        f"""<p class="note-box"><b>⚠ ข้อมูลเก่ากว่า {STALENESS_THRESHOLD_DAYS} วัน:</b>
-        data_pulled_at ที่เก่าที่สุด ({data_pulled_at} {ICT_LABEL}) ห่างจาก page_built_at
-        ({page_built_at} {ICT_LABEL}) เกิน {STALENESS_THRESHOLD_DAYS} วัน — ดูตารางด้านล่างว่า
-        ส่วนใดของหน้านี้ใช้ข้อมูลชุดใด ก่อนอ้างอิงตัวเลขที่อาจไม่ทันปัจจุบัน</p>"""
-        if is_stale else ""
+        f"""<p class="note-box"><b>⚠ บางส่วนของหน้านี้ใช้ข้อมูลเก่ากว่า {STALENESS_THRESHOLD_DAYS} วัน (ประเมินแยกทีละส่วน):</b>
+        {"; ".join(html.escape(s) for s in stale_sections)} — ส่วนอื่นของหน้านี้ที่ไม่อยู่ในรายการนี้
+        ยังคงใช้ข้อมูลที่ทันสมัย (ไม่ถือว่าทั้งหน้าเก่าเพียงเพราะส่วนใดส่วนหนึ่งเก่า, METRICS.md §26)</p>"""
+        if stale_sections else ""
     )
     timestamps_html = f"""
     <details class="note-box" style="margin:10px 0">
       <summary style="cursor:pointer"><b>data_pulled_at:</b> {data_pulled_at} {ICT_LABEL}
-        (เก่าที่สุด, ดูรายละเอียด) &nbsp;|&nbsp; <b>page_built_at:</b> {page_built_at} {ICT_LABEL}
+        (เก่าที่สุดในหน้านี้, ดูรายละเอียดต่อส่วนด้านล่าง) &nbsp;|&nbsp; <b>page_built_at:</b> {page_built_at} {ICT_LABEL}
         &nbsp;<!-- source: src/build_report.py gather_freshness()/datetime.now(), this build run --></summary>
       <table class="report-table" style="margin-top:8px">
-        <thead><tr><th>ส่วนของหน้า / แหล่งข้อมูล</th><th>data_pulled_at (หรือ file mtime)</th></tr></thead>
+        <thead><tr><th>ส่วนของหน้า / แหล่งข้อมูล</th><th>data_pulled_at (หรือ file mtime)</th><th>สถานะ (ประเมินแยกทีละส่วน)</th></tr></thead>
         <tbody>{freshness_rows}</tbody>
       </table>
     </details>
     {staleness_html}"""
 
-    report_data = embed_report_data(scope_table, biz, model_chart, results, fva, primary_results, notlate)
+    report_data = embed_report_data(scope_table, biz, model_chart, results, fva, primary_results, notlate, backtest_window)
     report_data_json = json.dumps(report_data, ensure_ascii=False)
 
     forecast_total = int(scope_table["forecast"].sum())
@@ -603,6 +632,12 @@ def render_page(config: dict) -> str:
     sec6 = f"""
     <section id="results">
       <h2>6. ผลลัพธ์ (Results)</h2>
+      <p class="hint">
+        {cite('phaseC_step2_transferability_per_division.csv', 'first_test_month / last_test_month')}
+        <b>หน้าต่างทดสอบ backtest (rolling-origin, {backtest_window['n_origins']} origins):</b>
+        เดือนทดสอบตั้งแต่ <b>{backtest_window['first_test_month']}</b> ถึง <b>{backtest_window['last_test_month']}</b>
+        (METRICS.md §39 -- ทุกตัวเลข MAE/RMSE/Bias/MASE ด้านล่างนี้มาจากช่วงหน้าต่างนี้)
+      </p>
       <div class="controls">
         <label>ฝ่าย (Division): <select id="filterDivision"><option value="__all__">ทั้งหมด</option>{div_options}</select></label>
         <label>ประเภท (Type): <select id="filterType"><option value="__all__">ทั้งหมด</option></select></label>

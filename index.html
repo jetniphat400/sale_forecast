@@ -7424,6 +7424,7 @@ tr.section[role="button"]:focus-visible{outline:2px solid var(--series-1);outlin
    <p id="invBacklogLabel" class="desc" style="margin:2px 0 0"></p>
    <p id="invPageTimestampNote" class="scope-note" style="margin:2px 0 0"></p>
    <div id="invStalenessNote" class="note-box" style="display:none;margin:6px 0 0"></div>
+   <div id="invBacklogStalenessNote" class="note-box" style="display:none;margin:6px 0 0"></div>
    <p class="desc" style="margin:2px 0 0">หมายเหตุ: ยอดรวมสต็อคที่แสดงคือผลรวมจากทุกคลังรวมกัน</p>
   </header>
 
@@ -7930,14 +7931,31 @@ function omniShowTab(n){
       + '<b>data_pulled_at</b> (Reserved): ' + invEsc(backlogPulledAt) + ' ICT (UTC+7) &nbsp;|&nbsp; '
       + '<b>page_built_at</b>: ' + INV_PAGE_BUILT_AT + ' ICT (UTC+7) (แก้ไขหน้านี้ครั้งล่าสุด — index.html ไม่มี generator, เป็นไฟล์ที่แก้ไขด้วยมือ)';
 
+    // METRICS.md Sec.26 (amended 2026-09-25, per-section staleness): the stock panel draws on
+    // TWO independently-pulled inputs (on-hand stock, Reserved/backlog) -- each gets its OWN
+    // staleness notice, evaluated against its OWN data_pulled_at, so a stale Reserved pull never
+    // marks the (possibly fresh) stock figures stale, and vice versa.
     const ageDaysStock = (new Date(INV_PAGE_BUILT_AT.replace(' ', 'T')) - new Date(stockPulledAt.replace(' ', 'T'))) / 86400000;
     const staleEl = document.getElementById('invStalenessNote');
     if (ageDaysStock > 7) {
       staleEl.style.display = 'block';
       staleEl.innerHTML = '⚠ <b>ข้อมูลสต็อคเก่ากว่า 7 วัน</b> (' + ageDaysStock.toFixed(1)
-        + ' วัน เทียบกับ page_built_at) — ตัวเลขในหน้านี้อาจไม่ตรงกับสต็อคจริงปัจจุบัน';
+        + ' วัน เทียบกับ page_built_at) — ตัวเลขสต็อคในหน้านี้อาจไม่ตรงกับสต็อคจริงปัจจุบัน';
     } else {
       staleEl.style.display = 'none';
+    }
+
+    const ageDaysBacklog = backlogPulledAt
+      ? (new Date(INV_PAGE_BUILT_AT.replace(' ', 'T')) - new Date(backlogPulledAt.replace(' ', 'T'))) / 86400000
+      : NaN;
+    const backlogStaleEl = document.getElementById('invBacklogStalenessNote');
+    if (!isNaN(ageDaysBacklog) && ageDaysBacklog > 7) {
+      backlogStaleEl.style.display = 'block';
+      backlogStaleEl.innerHTML = '⚠ <b>ข้อมูล Reserved เก่ากว่า 7 วัน</b> (' + ageDaysBacklog.toFixed(1)
+        + ' วัน เทียบกับ page_built_at) — ตัวเลข Reserved ในหน้านี้อาจไม่ตรงกับปัจจุบัน '
+        + '(ประเมินแยกจากความเก่าของข้อมูลสต็อคด้านบน, METRICS.md §26)';
+    } else {
+      backlogStaleEl.style.display = 'none';
     }
 
     const t = data.totals;

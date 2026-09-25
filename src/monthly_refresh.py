@@ -258,6 +258,38 @@ def _archive_if_exists(path: str, run_id: str) -> str:
     return archive_path
 
 
+def _run_regeneration_step(label: str, script_name: str, output_rel_path: str) -> dict:
+    """Runs one analysis-input regeneration script (src/*.py or src/investigations/*.py) as a
+    subprocess, same run_script() pattern as the rest of this runner. NEVER aborts the whole run
+    on failure -- METRICS.md Sec.28's own instruction: 'An input the pipeline cannot regenerate is
+    listed in the run log and labelled on its page as not refreshed', so a failure here is
+    recorded and the (possibly-stale) existing output file is left in place, not treated as a
+    step-4 abort. DATABASE ACCESS rule: each of these scripts makes at most its own single,
+    never-retried connection attempt if it needs one -- multiple such stages within this one
+    monthly_refresh.py run/session count as one attempt, same as step 1's own docstring already
+    states for this runner's design."""
+    out_path = os.path.join(SUMMARY_DIR, output_rel_path)
+    mtime_before = os.path.getmtime(out_path) if os.path.exists(out_path) else None
+    proc = run_script(script_name)
+    mtime_after = os.path.getmtime(out_path) if os.path.exists(out_path) else None
+    succeeded = proc.returncode == 0 and mtime_after is not None and mtime_after != mtime_before
+    result = {
+        "label": label, "script": script_name, "output_file": output_rel_path,
+        "returncode": proc.returncode, "refreshed": succeeded,
+    }
+    if not succeeded:
+        result["not_refreshed_reason"] = (
+            f"script exited {proc.returncode}" if proc.returncode != 0
+            else "output file mtime did not change -- script may not have written it"
+        )
+        result["stderr_tail"] = proc.stderr[-1500:]
+        logger.warning("Step 4: %s NOT refreshed (%s) -- existing %s left in place, labelled "
+                        "'not refreshed' on its page.", label, result["not_refreshed_reason"], output_rel_path)
+    else:
+        logger.info("Step 4: %s refreshed (%s).", label, output_rel_path)
+    return result
+
+
 def step4_backtest(run_id: str) -> dict:
     prev_per_division = pd.read_csv(PER_DIVISION_SUMMARY_PATH) if os.path.exists(PER_DIVISION_SUMMARY_PATH) else None
     prev_transferability = pd.read_csv(TRANSFERABILITY_PATH) if os.path.exists(TRANSFERABILITY_PATH) else None
@@ -293,12 +325,47 @@ def step4_backtest(run_id: str) -> dict:
                                            if entry["previous_MAE"] else None)
         comparison.append(entry)
 
+    # ---- Also regenerate every OTHER analysis input forecast/sales_report.html displays that
+    # wasn't already covered above (METRICS.md Sec.28: "Step 4 also regenerates every analysis
+    # input the pages display, including the order-notice distribution and delivery timeliness by
+    # year, so that a monthly run leaves no section stale by design. An input the pipeline cannot
+    # regenerate is listed in the run log and labelled on its page as not refreshed."). Each call
+    # is independently fault-tolerant (see _run_regeneration_step) -- one failing does not abort
+    # step 4 or the run; it is recorded and the page's per-section staleness machinery (Part 2,
+    # src/build_report.py gather_freshness()) will show that one section as stale/behind, never
+    # the whole page.
+    analysis_inputs_refreshed = [
+        # Model section §5 chart (focus_items_test_all.csv) -- no DB call, reuses
+        # processed_all_divisions_monthly_qty.csv already refreshed by this run's step 1.
+        _run_regeneration_step("Model section base-model comparison (focus_items_test_all.csv)",
+                                "focus_item_model_selection.py", "focus_items_test_all.csv"),
+        # Order-notice distribution -- makes its own single DB connection (cube_Sale_APD, PEM101
+        # 128-item scope); part of this run's one-session DB-access budget, not a second attempt.
+        _run_regeneration_step("Order-notice distribution (leadtime_notice_buckets_overall.csv)",
+                                os.path.join("investigations", "order_leadtime.py"),
+                                "leadtime_notice_buckets_overall.csv"),
+        # Delivery timeliness by year, on_time_exact -- makes its own single DB connection
+        # (Cube_CES, PEM101 128-item scope).
+        _run_regeneration_step("Delivery timeliness by year, on_time_exact (delivery_by_year.csv)",
+                                os.path.join("investigations", "delivery_performance.py"),
+                                "delivery_by_year.csv"),
+    ]
+    # not_late (delivery_not_late_by_year.csv) reuses delivery_performance.py's OWN raw pull
+    # (output/data/raw_cube_ces_delivery_128items.csv) -- no new DB call -- so it must run AFTER
+    # delivery_performance.py above, never before/independently.
+    analysis_inputs_refreshed.append(
+        _run_regeneration_step("Delivery timeliness by year, not_late (delivery_not_late_by_year.csv)",
+                                os.path.join("investigations", "task2a_delivery_notlate_by_year.py"),
+                                "delivery_not_late_by_year.csv")
+    )
+
     return {
         "archived_previous_per_division_summary": archived_per_division,
         "archived_previous_transferability": archived_transferability,
         "per_division_comparison_topdown": comparison,
         "new_per_division_summary_rows": len(new_per_division),
         "new_transferability_rows": len(new_transferability),
+        "analysis_inputs_refreshed": analysis_inputs_refreshed,
     }
 
 
