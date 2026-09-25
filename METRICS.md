@@ -496,6 +496,10 @@ Every dashboard page and panel displays, near its title:
   page shows a visible staleness notice.
 - The forward-test log is never refreshed or rewritten; it keeps the
   cutoff it was generated at.
+- Where a page's sections draw on inputs with different pull dates, each
+  section shows its own data_pulled_at. The staleness notice is evaluated
+  per section, not from the single oldest input on the page, so one stale
+  section never marks a whole page stale.
 
 ## 27. forward_test_vintage
 
@@ -548,6 +552,12 @@ Every dashboard page and panel displays, near its title:
   reported in the log, never silently skipped.
 - Tests must not modify tracked output files; a test that regenerates a
   page writes to a temporary location.
+- Step 4 also regenerates every analysis input the pages display, including
+  the order-notice distribution and delivery timeliness by year, so that a
+  monthly run leaves no section stale by design. An input the pipeline
+  cannot regenerate is listed in the run log and labelled on its page as
+  not refreshed.
+- The backtest in step 4 follows the rolling_origin_evaluation section.
 
 ## 29. omni_trend_demand_classification
 
