@@ -6292,6 +6292,38 @@ None failed; none were retried after a failure.
 explicitly reserved for the user to run themselves; commands printed above/in the final report,
 never executed by this task.
 
+**Validator confirmation, task 2cfix (2026-09-25, `output/summary/task2cfix_validator_report.md`),
+reading none of the implementing agent's files:**
+
+1. **Backtest refactor identity: MATCH, independently re-derived.** The Validator re-ran
+   `backtest_all_divisions.py --value-col qty` and `transferability_all_divisions.py` itself
+   (its own execution, not a file re-read) and diffed against the pre-run files: **zero byte
+   differences**. CI101 Top-down MAE 13.018704 (both runs); PEM107 Top-down MAE 69.183464 (both
+   runs) -- **level V2**.
+2. **Per-section `data_pulled_at`: MATCH for the main section, the Omni tab (exact commit
+   timestamp match), and the stock panel; MIXED for `sales_report.html`'s 6 file-mtime-based
+   sections** -- a real, structural gap found: dry-run mode's step 7 writes the rebuilt report only
+   to a staged path (`written_to_tracked_path: false`), so if a dry run is the most recent action,
+   the TRACKED page's per-section timestamps can trail the freshly-regenerated (gitignored) source
+   files by several minutes -- content is unaffected (0% value change, independently confirmed),
+   so this is a timestamp-staleness gap, not a correctness one, and stays well under the 7-day
+   staleness-notice threshold. **Fixed for this instance** by rebuilding the tracked page for real
+   (`python src/build_report.py`, this task, commit below). **Not fixed structurally** -- it will
+   recur on any future dry run that isn't followed by a real rebuild; scheduled as a new open item
+   below. **Level V1** (Validator's own direct read of file mtimes vs. displayed values).
+3. **Step-10 change-magnitude figures: MATCH, both independent recomputation paths.** All 5
+   divisions: six-month-forecast change 0.0-0.015% (threshold 25%), backtest MAE change 0.0%
+   (threshold 20%) -- both comfortably pass, matching the run log exactly -- **level V2**.
+
+**New item, added this task**: `src/monthly_refresh.py`'s dry-run mode leaves the TRACKED
+`forecast/sales_report.html` unrebuilt (by design -- dry runs must write nothing tracked), which
+means its per-section timestamps can trail newly-regenerated source files whenever a dry run is
+the most recent monthly-refresh action with no real run immediately after. Not a data-correctness
+issue (content is unaffected), but worth a design decision for the next code task: either accept
+this as an expected, documented consequence of dry-run mode (a dry run is explicitly a test, not a
+publish), or add a lightweight "staged vs. tracked" comparison step so a stale-but-untracked drift
+is surfaced explicitly rather than only discoverable by an independent check.
+
 ---
 
 **Rule: this file must be updated as the final step of every completed task.**
