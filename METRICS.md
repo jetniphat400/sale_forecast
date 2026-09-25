@@ -496,3 +496,55 @@ Every dashboard page and panel displays, near its title:
   page shows a visible staleness notice.
 - The forward-test log is never refreshed or rewritten; it keeps the
   cutoff it was generated at.
+
+## 27. forward_test_vintage
+
+    vintage          : the set of forecasts produced by one generation run
+    each row         : item code, forecast_run_date, data_cutoff_date,
+                       config hash, model, horizon 1 to 6, target_month,
+                       forecast_qty, actual_qty
+    rows are appended, never modified or deleted, except that actual_qty is
+    filled once the target month becomes eligible
+    eligible         : the target month has ended and the leakage-guard
+                       margin has passed since its last day
+    scoring          : per vintage and per horizon, using section 25 metrics,
+                       only over eligible months
+
+- The log in existence today is vintage 1 and keeps its original cutoff.
+- A monthly run appends one new vintage. Comparing vintages over time is
+  the forward test; no single scored month is treated as proof.
+
+## 28. monthly_refresh
+
+    steps, in order:
+      1 pull data — one connection attempt, abort on failure, no retry
+      2 validate — zero-row guard and data invariants
+      3 rebuild the forecast_date-keyed series as a frozen snapshot
+      4 re-run the sales-model backtest; record each division's change
+        against the previous run
+      5 append a new forward-test vintage per section 27
+      6 fill actual_qty and score any months that became eligible
+      7 rebuild every page with section 26 timestamps
+      8 run the full test suite
+      9 scan staged files for sensitive content
+      10 check change magnitude against the previous run
+      11 commit and push only if steps 8 to 10 all pass
+
+    frozen, never touched by the monthly run:
+      existing forward-test vintages; the Phase J3 calibration outputs and
+      the robust ensemble; locked decisions in STATUS.md
+
+    change-magnitude gate — hold the push for human review if any of:
+      the six-month total forecast for a division changes by more than 25%
+      a division's backtest MAE changes by more than 20%
+      total on-hand stock across the pricelist scope changes by more than 30%
+
+- The three thresholds are assumptions and live in config.yaml, each
+  commented.
+- Calibration is not re-run automatically; pages keep showing
+  model_calibrated_at from the last calibration.
+- Every run writes a run log stating each step's outcome, the figures
+  checked at step 10, and whether it pushed. A held or failed run is
+  reported in the log, never silently skipped.
+- Tests must not modify tracked output files; a test that regenerates a
+  page writes to a temporary location.
