@@ -791,3 +791,26 @@ review — describes what the tab computes today, not a validated or endorsed me
 7529-7532) already carries `data_pulled_at` (2026-08-25) and `page_built_at` (2026-09-25 12:15
 ICT) in the format section 26 defines, and states plainly that this tab is not refreshed by the
 pipeline — no new section is needed for this; it is already covered by section 26.
+
+## 39. rolling_origin_evaluation
+
+    series        : the forecast_date-keyed monthly series, from the first
+                    usable month to the last eligible month, where eligible
+                    means the month has ended and the leakage-guard margin
+                    has passed as of the run date
+    origins       : K origins with horizon H, spaced as the existing scheme
+                    spaces them, placed so the last origin's test window
+                    ends at the last eligible month; K, H and the spacing are
+                    read from config, not hard-coded
+    training      : each origin uses only data before that origin
+    metrics       : section 25 and section 13, per origin, then the mean
+                    across origins
+    run to run    : each monthly run moves the window forward as eligible
+                    months accrue; every reported figure states the window's
+                    first and last test months
+
+- The Phase C results are the run anchored at their original end month.
+  They are kept for comparison and labelled with that window.
+- If fewer than K origins fit the available series, use as many as fit and
+  report it; below 3 origins, report the backtest as insufficient rather
+  than presenting a figure.
