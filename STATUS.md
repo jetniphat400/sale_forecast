@@ -6315,14 +6315,76 @@ reading none of the implementing agent's files:**
    divisions: six-month-forecast change 0.0-0.015% (threshold 25%), backtest MAE change 0.0%
    (threshold 20%) -- both comfortably pass, matching the run log exactly -- **level V2**.
 
-**New item, added this task**: `src/monthly_refresh.py`'s dry-run mode leaves the TRACKED
-`forecast/sales_report.html` unrebuilt (by design -- dry runs must write nothing tracked), which
-means its per-section timestamps can trail newly-regenerated source files whenever a dry run is
-the most recent monthly-refresh action with no real run immediately after. Not a data-correctness
-issue (content is unaffected), but worth a design decision for the next code task: either accept
-this as an expected, documented consequence of dry-run mode (a dry run is explicitly a test, not a
-publish), or add a lightweight "staged vs. tracked" comparison step so a stale-but-untracked drift
-is surfaced explicitly rather than only discoverable by an independent check.
+**RESOLVED (task 2cfix2, 2026-09-25, commit `5284c8d`).** The item immediately above (`src/
+monthly_refresh.py`'s dry-run mode leaving the TRACKED `forecast/sales_report.html`'s 6
+file-mtime-based sections able to trail newly-regenerated source files) is fixed at the root, not
+worked around: those 6 sections no longer read a file modification time at all.
+`src/build_report.py`'s `gather_freshness()` now reads each section's own recorded
+`snapshot_pull_date` column via a new `_source_pull_date()` helper (`_file_mtime_str()` removed
+entirely). Each generating script now writes this column: `backtest_all_divisions.py` and
+`transferability_all_divisions.py` copy it forward from `processed_all_divisions_monthly_qty.csv`'s
+own `snapshot_pull_date` (already read into a local `pull_date` variable at each script's own
+`__main__`, previously unused for this purpose); `focus_item_model_selection.py` likewise;
+`src/investigations/order_leadtime.py` and `delivery_performance.py` (neither of which had any
+pull-time concept before) now record `pd.Timestamp.now()` at the moment of their own live DB pull;
+`src/investigations/task2a_delivery_notlate_by_year.py` reads it forward from
+`delivery_performance.py`'s raw pull file (`raw_cube_ces_delivery_128items.csv`), making no new DB
+call, exactly as its own docstring already said it reuses that pull. Since the tracked page's
+freshness table is now built from a value embedded IN the data at generation time rather than a
+filesystem attribute that can advance independently of a real page rebuild, the previous
+staged-vs-tracked drift (a section's displayed date moving even though the tracked page was not
+rebuilt) cannot recur for these 6 sections: an un-rebuilt tracked page keeps showing whatever
+pull-time value was true when it was last actually built, which is correct (stale, honestly
+labelled by the existing per-section staleness check), never a false/drifted claim. Independently
+verified this task: all 6 files confirmed to carry the new column after a real (non-database-only)
+regeneration; a fresh `python -m pytest -q` run: 141 passed, `git status` clean. New tests added
+(`tests/test_page_timestamps.py`): a static check that neither `gather_freshness()` nor the whole
+`src/build_report.py` file calls `os.path.getmtime` any more; a data-level check that all 6 files
+carry `snapshot_pull_date`; a behavioural check that a freshly built report never renders the old
+`"-- file mtime"` label. **Level V1** (this task's own direct source edits + test run; not yet
+independently re-verified by a separate agent -- Part 5 of this task explicitly reserves that for
+a separate Validator, dispatched after this task closes).
+
+**New items, added this task (task 2cfix2, 2026-09-25) -- path-independence and one-vintage-per-
+month guard, both requested directly by this task's own brief, neither a pre-existing open item:**
+
+- **`src/db.py` (commit `ec956a0`) and `src/monthly_refresh.py` (commit `60b051c`) both called
+  bare `load_dotenv()` with no path argument** -- python-dotenv's default search behaviour depends
+  on the CURRENT WORKING DIRECTORY, not the importing module's own location, so a Scheduled Task
+  invoking `monthly_refresh.py` from an arbitrary cwd (e.g. `C:\Windows\system32`, the default
+  execution context for a Task Scheduler job with no explicit "Start in" directory) could silently
+  fail to find `.env`, leaving `DB_SERVER`/`DB_PASSWORD`/etc. unset. **Fixed**: both now pass
+  `dotenv_path=os.path.join(PROJECT_ROOT, ".env")` explicitly, `PROJECT_ROOT` derived from
+  `os.path.dirname(os.path.dirname(os.path.abspath(__file__)))` in each file (the same pattern
+  every other `src/*.py` script in this project already used -- confirmed by a repo-wide search,
+  this task, that no other file calls `load_dotenv()` or uses a bare `"python"` subprocess/
+  `os.getcwd()` anywhere in `src/`). **Proved**: `python src/monthly_refresh.py --dry-run` run
+  twice -- once from the project folder, once from `C:\Windows\system32` via the FULL confirmed
+  `sys.executable` path (`C:\Users\jetniphat.boo\AppData\Local\Programs\Python\Python312\
+  python.exe`) plus the full script path -- both passed every gate identically (steps 1-11 all
+  `ok`; step 8 141/141 tests; step 9 sensitive-content scan passed; step 10 change-magnitude gate
+  passed, 0 violations; step 11 `would_push_if_real_run: true`), confirming the fix works
+  regardless of starting directory. `git status` clean and the forward-test log's hash unchanged
+  (`7ba4a3a4...82fa2c`) after both runs. **Level V1** (this task's own direct proof; Part 5's
+  separate Validator has not yet independently re-run this).
+- **`src/monthly_refresh.py`'s `compute_new_vintage()`/`step5_new_vintage()` had no guard against
+  appending a second vintage in the same calendar month** (`next_vintage_id = int(existing_log[
+  "vintage_id"].max()) + 1` would happily run again). **Fixed** (commit `60b051c`): a new
+  `find_existing_vintage_this_month(log_path, now)` checks the log for a vintage whose
+  `forecast_run_date` falls in the CURRENT calendar month per the run's OWN clock (not the
+  scheduled date); if found, `step5_new_vintage()` skips computing/appending a new vintage,
+  records why (citing the existing vintage's id and date) in the run log, and every OTHER step
+  still runs normally. A new `--force-new-vintage` CLI flag overrides this for a deliberate
+  same-month re-run, with its use recorded in the result either way. **Exercised for real, not
+  just in a unit test**: both this task's proof dry runs above hit the real forward-test log's
+  actual state (vintage 1, `forecast_run_date=2026-09-07`, same month as the run's own clock,
+  2026-09-25) and both correctly show `step5` `"skipped": true` with the exact existing
+  vintage_id/date cited -- the guard's "blocks" path, demonstrated against the REAL tracked log,
+  read-only (never written to, since dry-run). **9 new unit tests**
+  (`tests/test_monthly_refresh.py`), all passing, covering both paths (guard blocks; override
+  allows) against a synthetic/temporary log file created under pytest's `tmp_path`, never the real
+  tracked one, and no database connection. **Level V1** (this task's own tests; Part 5's separate
+  Validator has not yet independently re-run them).
 
 ---
 

@@ -1430,3 +1430,70 @@ Corrections log, above; PROJECT_GRAPH.md, dead end DE4).
   Reserved/backlog, two independently-pulled inputs) now gets two independent staleness checks
   (`invStalenessNote`, `invBacklogStalenessNote`) instead of one check covering only stock.
   Confirmed by direct browser screenshot this task (`output/charts/task2cfix_verification/`).
+
+## Task 2cfix2 (2026-09-25) -- path independence, one-vintage-per-month guard, pull-time section dates
+
+- **The monthly runner is now proven path-independent, not merely "believed to be" -- level V2
+  (two independent full dry runs, different starting directories, identical result).** The one
+  real remaining cwd-dependency found this task: `src/db.py` (module-level `load_dotenv()`) and
+  `src/monthly_refresh.py`'s `step1_pull_data()` (a second, separate `load_dotenv()` call) both
+  called it with no path argument -- python-dotenv's default search is cwd-relative, not relative
+  to the importing file. **Fixed**: both now pass an explicit `dotenv_path=os.path.join(
+  PROJECT_ROOT, ".env")`. A repo-wide search this task (`grep -rn "load_dotenv"`) confirmed these
+  were the ONLY two call sites in the whole repository; a further repo-wide search for a bare
+  `"python"` subprocess call or `os.getcwd()` anywhere in `src/` found none -- every script the
+  monthly runner invokes as a subprocess (`load_data_all_divisions.py`,
+  `backtest_all_divisions.py`, `transferability_all_divisions.py`,
+  `src/investigations/order_leadtime.py`, `delivery_performance.py`,
+  `task2a_delivery_notlate_by_year.py`, `focus_item_model_selection.py`, `build_report.py`,
+  `score_forward_test_all_divisions.py`) already derived its own `PROJECT_ROOT` from `__file__`,
+  confirmed by direct read of each. **Proof**: `python src/monthly_refresh.py --dry-run` run once
+  from the project folder and once from `C:\Windows\system32` using the FULL confirmed
+  `sys.executable` path (`C:\Users\jetniphat.boo\AppData\Local\Programs\Python\Python312\
+  python.exe`) -- both runs' JSON logs show identical step-by-step outcomes (all 11 steps `ok`;
+  335 items/5 divisions pulled; step 8 141/141 tests passed; step 9 sensitive-content scan passed,
+  0 findings; step 10 change-magnitude gate passed, 0 violations, matching `backtest_mae_change_
+  pct_by_division` all 0.0% across both runs; step 11 `would_push_if_real_run: true`). `git status`
+  clean and the forward-test log's SHA-256 unchanged (`7ba4a3a4...82fa2c`) after both runs.
+  Source: this task's own two run logs, `output/runs/monthly_refresh_20260925T162346.json`
+  (project folder) and `output/runs/monthly_refresh_20260925T162451.json` (system32) -- not
+  tracked in git (gitignored under `output/`), but both exist on disk at task close.
+- **One-vintage-per-calendar-month guard added -- level V1 (this task's own 9 unit tests, plus one
+  real-world demonstration against the actual tracked log).** `find_existing_vintage_this_month()`
+  (`src/monthly_refresh.py`) checks whether the forward-test log already has a vintage whose
+  `forecast_run_date` falls in the run's OWN current calendar month; `step5_new_vintage()` skips
+  computing/appending a new vintage when one is found (records the existing vintage_id/date and
+  why), unless `--force-new-vintage` is passed. **Demonstrated against the real log, read-only,
+  during this task's own proof dry runs above**: vintage 1's real `forecast_run_date` is
+  `2026-09-07` (confirmed by direct read, `output/summary/forward_test_log_all_divisions.csv`),
+  the SAME calendar month as both dry runs' clock (2026-09-25) -- both runs' step 5 correctly
+  reports `"skipped": true, "existing_vintage_id_this_month": 1, "existing_forecast_run_date_
+  this_month": "2026-09-07"`, never touching the real log (dry-run also never writes). Both guard
+  paths (blocks; `--force-new-vintage` overrides) are additionally covered by
+  `tests/test_monthly_refresh.py`'s 9 tests, run against a synthetic/temporary log file
+  (pytest `tmp_path`), never the real tracked one, and no database connection.
+- **All 6 previously file-mtime-based dashboard sections now read a real recorded pull time --
+  level V1 (this task's own direct edits + a real, non-database-only regeneration of all 6 files;
+  Part 5's separate Validator has not yet independently re-run this).** None of the 6 files
+  (`phaseC_step2_per_division_summary_qty.csv`, `phaseC_step2_rolling_origin_qty.csv`,
+  `leadtime_notice_buckets_overall.csv`, `focus_items_test_all.csv`, `delivery_by_year.csv`,
+  `delivery_not_late_by_year.csv`) had a `snapshot_pull_date` column before this task (confirmed by
+  direct header read of each, this task) -- so all 6 needed a generator-level fix, not just a
+  build_report.py read-path change. **Where the underlying pull already recorded a
+  `snapshot_pull_date`** (`processed_all_divisions_monthly_qty.csv`, read via a `pull_date`
+  variable each script already had at its own `__main__` for logging, just never persisted into
+  its OWN output), `backtest_all_divisions.py`, `transferability_all_divisions.py` and
+  `focus_item_model_selection.py` now copy that same value forward into their own output files.
+  **Where no pull-time concept existed at all** (`src/investigations/order_leadtime.py`,
+  `delivery_performance.py`, both fresh live DB pulls with no snapshot concept), each now records
+  `pd.Timestamp.now()` at the moment of its own pull and writes it into both its raw file and its
+  summary output; `task2a_delivery_notlate_by_year.py` (which makes NO new DB call, reusing
+  `delivery_performance.py`'s raw pull per its own pre-existing docstring) reads the column forward
+  from that raw file rather than computing its own, raising loudly (not silently falling back to
+  mtime) if an older raw file lacks it. `src/build_report.py`'s `gather_freshness()` now calls a
+  new `_source_pull_date()` helper for all 6 sections; `_file_mtime_str()` and every
+  `os.path.getmtime` call in the file are gone entirely (a static test enforces this,
+  `tests/test_page_timestamps.py::test_build_report_gather_freshness_never_uses_file_mtime`).
+  Confirmed this task: a real run of `python src/monthly_refresh.py --dry-run` (which regenerates
+  these files for real regardless of dry-run mode, per step 4's own existing design) left all 6
+  files carrying the new column, and a fresh `python -m pytest -q` afterward: 141 passed.
