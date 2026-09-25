@@ -1219,3 +1219,34 @@ trade_off_curve:
 
   owner: "Locked 2026-09-24 (this task, Part 2). Both the Modeler and Validator scripts in this task read reorder_level_grid_r_months, simulation_window, warm_up and not_late_weighting directly from this block -- neither computes or chooses its own."
 
+# ============================================================
+# Monthly refresh (METRICS.md Sec.28, locked 2026-09-25 -- STATUS.md Locked Decisions, "The
+# monthly run may commit and push automatically, but only when every gate in METRICS.md Sec.28
+# passes") -- src/monthly_refresh.py's step 10 change-magnitude gate. TIER B: editable only here,
+# takes effect on the NEXT monthly_refresh.py run (a page slider would be the wrong place for a
+# push-safety gate). Each threshold below is a stated assumption (no business figure exists for
+# any of the three), following this file's own `..._owner` convention (e.g.
+# obsolescence_threshold_months / obsolescence_threshold_owner above): the VALUE is a Modeler
+# default, never a business-confirmed number, and is recorded as such rather than left implicit.
+# ============================================================
+monthly_refresh:
+  # "the six-month total forecast for a division changes by more than 25%" (METRICS.md Sec.28).
+  # 25% is chosen as a round, conservative fraction clearly larger than the ordinary run-to-run
+  # noise this project's own re-forecasts have shown (Phase C step 2's per-division MAE moves
+  # were single-digit-to-low-double-digit percentages between runs, never above ~20%) -- large
+  # enough to not fire on ordinary demand variation, small enough to still catch a real method/
+  # scope change slipping through unnoticed.
+  six_month_forecast_change_pct: 25.0
+  six_month_forecast_change_pct_owner: "Modeler default -- no business figure exists"
+
+  # "a division's backtest MAE changes by more than 20%" (METRICS.md Sec.28).
+  backtest_mae_change_pct: 20.0
+  backtest_mae_change_pct_owner: "Modeler default -- no business figure exists"
+
+  # "total on-hand stock across the pricelist scope changes by more than 30%" (METRICS.md
+  # Sec.28). Set higher than the other two because on-hand stock is a physical inventory level,
+  # not a model output -- it can legitimately swing more from a single large receipt or shipment
+  # than a forecast or an error metric would from ordinary month-to-month demand noise.
+  total_on_hand_stock_change_pct: 30.0
+  total_on_hand_stock_change_pct_owner: "Modeler default -- no business figure exists"
+
