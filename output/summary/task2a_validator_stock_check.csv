@@ -1,0 +1,18 @@
+division,metric,validator_recompute,artifact_inventory_json,match
+PEM101,sellable_qty,141323.0,141323.0,True
+PEM101,staging_qty,5671.0,5671.0,True
+PEM101,elsewhere_qty,20.0,20.0,True
+PEM101,on_hand_total,147014.0,147014.0,True
+PEM103,sellable_qty,43.0,43.0,True
+PEM103,staging_qty,0.0,0.0,True
+PEM103,elsewhere_qty,0.0,0.0,True
+PEM103,on_hand_total,43.0,43.0,True
+PEM107,sellable_qty,720.0,720.0,True
+PEM107,staging_qty,70.0,70.0,True
+PEM107,elsewhere_qty,0.0,0.0,True
+PEM107,on_hand_total,790.0,790.0,True
+"CI101 (unsplit, no sellable list)",on_hand_total,47.0,47.0,True
+"PEM102 (unsplit, no sellable list)",on_hand_total,4.0,4.0,True
+"PEM104 (unsplit, no sellable list)",on_hand_total,1.0,1.0,True
+ALL (445 codes),total_on_hand,147899.0,147899.0,True
+ALL (445 codes),reserved_total (ActualQty+BacklogQty dedup),42121.0,42121.0,True

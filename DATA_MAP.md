@@ -218,6 +218,30 @@ proof). **Trust note**: unusable regardless — no itemcode column, and no data 
   weak, one-directional evidence they are manufactured rather than bought complete
   (STATUS.md:2325-2327) — **H**.
 
+### Output files, confirmed this session (task 2a, 2026-09-25)
+
+- **`output/summary/forward_test_log_all_divisions.csv` is the current, real forward-test log** —
+  the literal path `output/summary/forward_test_log.csv`, named by PROJECT_GRAPH.md's T1 node and
+  several earlier STATUS.md entries, **does not exist on disk**; `_all_divisions` is the file
+  STATUS.md:4531 itself already documents as the current one (2,340 rows, `division` column added).
+  Confirmed by direct filesystem check, this task, before/after a pipeline refresh (SHA-256
+  `3adb765139b576c508a93bf0e21b3562d48711d4d04b002800eb5c55e7576a04`, unchanged) — **V1**. The stale
+  path reference in PROJECT_GRAPH.md's T1 row is a pre-existing documentation gap, not corrected in
+  this task (out of this task's stated scope); flagged here so a future reader isn't misled.
+- **`output/summary/phaseC_step2_transferability_per_division.csv` (`approach=='Top-down'` rows,
+  from `src/transferability_all_divisions.py`) confirmed genuine per-division, item-level,
+  rolling-origin (7 standard origins) Top-down figures** — now `forecast/sales_report.html`'s
+  PRIMARY results table (previously the page showed only Type-level, Combination-model-only
+  figures with no disclosure). One row (PEM107) independently re-verified exact by a from-scratch
+  Validator against the page's embedded value — **V2**.
+- **`index.html`'s stock panel now reports a sellable / staging (QA, FMTS, FMTO) / elsewhere
+  on-hand split**, using `config.yaml`'s `sellable_warehouse_codes` (configured only for PEM101/
+  PEM103/PEM107 — CI101/PEM102/PEM104 items are reported "not assessed," never guessed or
+  defaulted). Independently re-verified exact by a from-scratch Validator against a fresh
+  `Cube_Inventory_Exact` query: PEM101 141,323/5,671/20; PEM103 43/0/0; PEM107 720/70/0 — **V2**.
+  The `Available` column's formula is unchanged (still `qty − backlog`, still includes non-sellable
+  warehouses) — a note beside it now states this plainly.
+
 ---
 
 ## 2. Columns with established meaning
@@ -574,6 +598,23 @@ produced a wrong result, with the correct handling and the report that found it.
     superseded, not deleted. **V2** for the corrected figures (independently recomputed by a
     Validator in the same task).
 
+    **A separate, DIFFERENT `on_time_exact` instance found and fixed, 2026-09-25 (task 2a):**
+    `forecast/sales_report.html`'s `#chart-ontime` (fed by `output/summary/delivery_by_year.csv`)
+    was ALSO `on_time_exact`, not `not_late` — confirmed with file+line: `src/investigations/
+    delivery_performance.py`'s `classify_delay()` (lines 71-75) returns `"on_time"` only when
+    `days==0` exactly; row-weighted, PEM101 128-item scope, vs. `PlanDelDate` (the same scope/field
+    pattern as the original 73.2% incident above, but a separate chart, found independently this
+    task, not a re-discovery of the same instance). **Correct handling, now implemented**: chart
+    retitled to state `on_time_exact` explicitly; `not_late` added alongside for the same years
+    (unit-weighted by `ActualQty`, `ActualDelDate` vs. `ForecastDelDate`): 2023=55.4%, 2024=97.3%,
+    2025=98.9%, 2026=98.3%. Independently re-verified by a from-scratch Validator: 2023/2024 match
+    the page exactly; 2025/2026 show a small, both-additive discrepancy (+4 rows/+28 units in 2025;
+    +933 rows/+124,385 units in 2026), read as ordinary live-data accrual between the page's pull
+    and the Validator's later same-day query, not a computation bug — **level H** (a plausible
+    explanation, not confirmed by a row-level diff). Found: `output/summary/
+    task2a_validator_report.md`. **Level V2** for "this chart was on_time_exact" and for 2023/2024's
+    corrected figures (independent Validator match); **level H** for the 2025/2026 gap's cause.
+
 13. **Setting `assembly_time_days` above the median customer notice silently removed 36 items'
     entire policy.** Naive reading: raising a Tier-A default to its "robust upper bound" (7 days)
     is a conservative, safe change. Reality: METRICS.md §15's `component_stock_ato` criterion
@@ -784,8 +825,19 @@ produced a wrong result, with the correct handling and the report that found it.
     `src/build_inventory_dataset.py`'s `query_backlog_ces()`/`dedup_and_aggregate_ces_backlog()`
     (replacing `query_backlog()`/`aggregate_backlog()` against `Cube_Backlog` as the WRITTEN
     figure; the old query is kept only for this one-time before/after comparison, never again as
-    the panel's source). **Level V1** (one script, one session, this task; not yet independently
-    recomputed by a second agent — Part 6's Validator can re-check this figure).
+    the panel's source). **Level V2** (independently re-confirmed same day by a from-scratch
+    Validator against a fresh DB pull: 42,121.0 = 42,121.0 exact match — `output/summary/
+    task2a_validator_report.md`).
+
+    **Reserved-quantity convention, clarified (this task, from the Validator's own trace):** a
+    `Cube_CES` `Status='Backlog'` row's confirmed quantity is `ActualQty.fillna(0) +
+    BacklogQty.fillna(0)`, per the project's own pre-existing convention in
+    `src/phaseE1fix_part0_backlog_source.py` (predates this task) — summing `ActualQty` alone
+    understates the total (the Validator's own first-pass script, using `ActualQty` alone, got
+    1,342.0 and would have wrongly flagged a discrepancy against the panel's 42,121.0 before this
+    was caught). METRICS.md §14 itself only says "Σ qty" generically — this note exists so a future
+    reader doesn't repeat the same near-miss. **Level V1** (one trace, one session; consistent with
+    a pre-existing script, not independently re-derived from raw `Cube_CES` schema semantics).
 
     **Superseded text below (PENDING VERIFICATION, NOT CONFIRMED), kept per AGENTS.md rule 4 —
     never overwrite a previous conclusion silently:**
