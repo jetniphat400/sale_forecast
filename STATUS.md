@@ -6048,6 +6048,27 @@ after the refresh (SHA-256 `3adb765139b576c508a93bf0e21b3562d48711d4d04b002800eb
 re-verified twice). `forecast/inventory.html`'s remaining, non-§26 fixes (items 4-6, 9-10 above)
 are task 2b's job.
 
+**New item, added this task (documentation-only, 2026-09-25).** Running the test suite
+regenerates tracked HTML in place, changing only `page_built_at` on every run — task 2a observed
+this directly: commits `5c17ea4` and `da5aedd` are both trivial re-builds of
+`forecast/sales_report.html` triggered by running the test suite after task 2a's documentation
+commit, with no content change other than the timestamp (`git show --stat` on both commits: 1
+file changed, 2 insertions/2 deletions; `da5aedd`'s own commit message states this explicitly).
+METRICS.md §28's last bullet ("Tests must not modify tracked output files; a test that
+regenerates a page writes to a temporary location") names this as a requirement for the monthly
+run, but fixing the test itself is out of scope for a documentation-only task — scheduled here as
+a real, undone piece of work for the next code task.
+
+**New item, added this task (documentation-only, 2026-09-25).** PEM103 and PEM107's inventory
+data on `forecast/inventory.html`, pulled live at page-build time, is not persisted anywhere — so
+it cannot be independently re-verified after the fact. The task 2a Validator explicitly reported
+this as **"CANNOT BE INDEPENDENTLY VERIFIED"** for these two divisions' `data_pulled_at`
+timestamps (no persisted external record exists to check them against; internally plausible only
+— `output/summary/task2a_validator_report.md` line 221). Scheduled here as an open item for the
+next code task to address (e.g. persisting the pull timestamp/snapshot so it can be checked
+independently, consistent with this project's raw-vs-processed-data convention,
+CONVENTIONS.md).
+
 ---
 
 **Rule: this file must be updated as the final step of every completed task.**

@@ -386,7 +386,11 @@ remains an unconfirmed open point.**
 
 ## Time-bound tracks (detail)
 
-- **T1 — forward test.** `output/summary/forward_test_log.csv` logs real forecasts as they are
+- **T1 — forward test.** `output/summary/forward_test_log_all_divisions.csv` (path corrected
+  2026-09-25 — the literal path `output/summary/forward_test_log.csv` previously named here does
+  not exist on disk; confirmed by direct filesystem check, task 2a, `output/summary/
+  task2a_validator_report.md`; also restated in STATUS.md's task-2a-dated note, §10, "Refresh
+  every page's data... with METRICS.md §26 timestamps" entry) logs real forecasts as they are
   made; the leakage-guard margin (30 days) makes 2026-08 the first target month, **safe to score
   only from 2026-09-30** (STATUS.md, "Forward-test scoring for the 335-item log"). Feeds G1's own
   validation, independent of Phase F.
