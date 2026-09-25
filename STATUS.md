@@ -6386,6 +6386,30 @@ month guard, both requested directly by this task's own brief, neither a pre-exi
   tracked one, and no database connection. **Level V1** (this task's own tests; Part 5's separate
   Validator has not yet independently re-run them).
 
+**Validator confirmation, task 2cfix2 (2026-09-25, `output/summary/task2cfix2_validator_report.md`),
+reading none of the implementing agent's files -- all 3 checks MATCH, no discrepancies:**
+
+1. **System32 dry run: MATCH.** The Validator independently re-ran the exact scheduled-task
+   command from `C:\Windows\system32` itself (its own execution, own `sys.executable`
+   re-confirmation): all 11 steps `ok`, 141/141 tests, 0 sensitive findings, 0 change-magnitude
+   violations, vintage guard correctly cites vintage 1/2026-09-07 -- identical to the
+   implementer's own system32 run log on every figure checked. Forward-test log hash unchanged,
+   matching this file exactly. **Level V2** (upgraded from the V1 above).
+2. **One-vintage guard: MATCH.** The Validator wrote its own independent driver (not the
+   implementer's test file) against a throwaway copy of the real log made OUTSIDE the repo,
+   confirming both paths: blocked (copy byte-identical before/after, SHA-256 verified) and
+   force-override (vintage 2 computed and appended to the COPY only, real tracked files
+   reconfirmed unchanged by hash before and after the entire test). **Level V2**.
+3. **No date from file mtime: MATCH, with one correction to this task's own brief.** The
+   Validator read all of `src/build_report.py` (zero `os.path.getmtime` calls outside a docstring
+   describing the old bug) and **found the freshness table's real source-file count is 6, not 7**
+   -- `phaseC_step2_transferability_per_division.csv` (which this task's dispatch brief had
+   incorrectly included) actually feeds a different, separate window-statement section, not the
+   freshness table; the correct 6-file list matches DATA_MAP.md's own entry exactly. All 6 files'
+   `snapshot_pull_date` values independently read and confirmed to match the freshly-rendered
+   report's displayed dates to the minute, even when the rebuild ran several minutes after the
+   files were regenerated. **Level V2**.
+
 ---
 
 **Rule: this file must be updated as the final step of every completed task.**
