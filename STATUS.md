@@ -5403,6 +5403,26 @@ phase, particularly Phase 4. Full methodology, confidence levels and caveats are
   basis, not a proven one). Evidence: `output/summary/phaseE0_validator3_placeholder_coherence_report.md`
   and `phaseE0_synthesis_report.md`. Written into `config/config.yaml`
   (`placeholder_hierarchy_treatment`).
+- **`forecast/index.html` is an orphaned stale duplicate and will be deleted in the next code
+  task, as its own separate commit (decided 2026-09-25).** `output/summary/manual_factsheet.md`
+  Part 1.1/Part 5 found it structurally near-identical to the live root `index.html` but stale
+  (still reads "448 รหัส" where the live page reads the corrected "445 รหัส"), with exactly one
+  commit (2026-08-31) and nothing in the repo linking to or from it. Deleting it removes dead
+  weight; it is not part of the linked page graph and documenting it further would waste effort.
+- **The user manual will take two forms — short notes under each chart, and a manual tab on
+  `index.html` — written only after the next code task, so it describes the fixed pages, not
+  today's (decided 2026-09-25).** `manual_factsheet.md` Part 3.10 found three named "next task"
+  elements (product-type segmentation, relative cost display, PEM107 alert) do not exist in the
+  codebase yet under these names, so drafting the manual against today's page would describe
+  features that do not exist and miss the fixes the next code task makes. Concrete placement for
+  the manual tab is already scoped: `manual_factsheet.md` §1.2, extending the exact `#tabBar`
+  pattern at `index.html:228-231`.
+- **Every page is refreshed to current data and carries timestamps per METRICS.md §26 (decided
+  2026-09-25).** `manual_factsheet.md` found the sales report page's data 7-28 days stale
+  (Part 2.6), the stock panel's data 15-16 days stale with no on-page warning (Part 4.5, Part 5
+  item 8), and no page anywhere showing when its data was pulled or built. METRICS.md §26 now
+  defines `data_pulled_at`/`page_built_at`/`model_calibrated_at` and the staleness-notice rule;
+  this decision locks that every page adopts it, not just the ones already flagged.
 
 ## 5. Open Questions
 
@@ -5878,6 +5898,73 @@ evaluation to date is entirely in forecast-accuracy terms (MAE, RMSE, Bias) — 
 measured what those forecasts do to an actual inventory policy (service level achieved, stockouts
 prevented, capital tied up in safety stock). **This is Phase E** ("Phase 4 proper: calculate
 Max-Min and simulate it against historical demand" — Section 1).
+
+## 10. Scheduled Work — Next Code Task (Dashboard Fixes, added 2026-09-25)
+
+This is documentation only (no code/HTML changed this task, per instruction); the items below are
+what the next CODE task should address. Source: `output/summary/manual_factsheet.md` (dated
+2026-09-25 10:44 +0700, verification-only task), its Part 5 "Defects, restated as a numbered list"
+(10 items, cited by that list's own numbering below) plus three additional items this task adds,
+each explicitly **to be verified, not confirmed**.
+
+**From the factsheet's Part 5 defect list (`manual_factsheet.md` Part 5, items 1-10):**
+
+1. Delete `forecast/index.html` — stale, orphaned duplicate of the live dashboard (factsheet Part
+   5 item 1; also this task's STATUS.md §4 Locked Decision, "`forecast/index.html` is an orphaned
+   stale duplicate...").
+2. `forecast/sales_report.html`'s "MAE / MASE / Bias ต่อฝ่าย" table (`#div-results-table`) does not
+   disclose it is Type-level, Combination-model-only, not item-level and not "Top-down" (factsheet
+   Part 5 item 2).
+3. `forecast/sales_report.html`'s displayed "Usable range" end date (2026-08-28) is stale against
+   its own underlying data pulls and the page's own last build (factsheet Part 5 item 3) — this is
+   also the exact case METRICS.md §26 / the new CONVENTIONS.md "Page timestamps" rule (added this
+   task) is written to prevent.
+4. `forecast/inventory.html`'s "Obsolescence threshold (months)" Tier A slider has zero effect on
+   any number shown on the page (factsheet Part 5 item 4).
+5. `forecast/inventory.html`'s sellable-warehouse checklist checkboxes have zero effect on any
+   number shown on the page (factsheet Part 5 item 5).
+6. `forecast/inventory.html`'s per-item table shows Min/Max for `component_stock_ato` items,
+   contradicting METRICS.md §5's explicit statement that only `finished_goods_stock` items receive
+   a Min/Max (factsheet Part 5 item 6).
+7. Neither `index.html`'s stock panel nor `forecast/inventory.html`'s `on_hand_sellable` input
+   separates known non-sellable staging-warehouse stock from sellable stock; the one feature that
+   would have shown this (warehouse-role display) was deliberately removed (factsheet Part 5 item
+   7).
+8. `index.html`'s stock panel shows only a bare snapshot date (2026-09-09) with no staleness
+   indicator; the factsheet's fresh DB pull shows the real current quantity already 2.34% lower,
+   15-16 days later (factsheet Part 5 item 8) — another direct case for METRICS.md §26.
+9. The division-selector's exclusion reasons for CI101/PEM102/PEM104 on
+   `forecast/inventory.html` are only reliably accessible via the redundant `<ul>` list, not the
+   `<select>`'s `title` tooltips alone (factsheet Part 5 item 9).
+10. "Product-type segmentation," "relative cost display," and "PEM107 alert" — three elements the
+    next code task is expected to change — do not exist anywhere in the current codebase under
+    these names; the manual's section for them should not be drafted from today's page (factsheet
+    Part 5 item 10).
+
+**Three additional items, added this task — to be verified, not confirmed:**
+
+- **To be verified, not confirmed**: the on-time delivery chart on the sales report
+  (`#chart-ontime`, `forecast/sales_report.html`) reads `pct_on_time` from
+  `output/summary/delivery_by_year.csv`. Establish whether that column is `on_time_exact` (share
+  delivered ON the due date), which METRICS.md §19 says must never be presented as a delivery
+  benchmark (the project's prior 73.2% incident, METRICS.md §19 "Correction 2026-09-22"). If so,
+  relabel it and show `not_late` alongside.
+- **To be verified, not confirmed**: the stock panel's Reserved column (`index.html`, per
+  `manual_factsheet.md` Part 4.2) reads `Cube_Backlog`, which DATA_MAP.md records (Trap 5) as
+  lagging `Cube_CES` and which METRICS.md §14 excludes as a source of confirmed orders. Whether
+  this makes the Reserved figure stale/wrong in a way that matters for THIS use has not been
+  checked — see DATA_MAP.md §4 Trap 23 (added this task).
+- **To be verified, not confirmed**: the Phase 1 "Trend Pricelist Omni 2024–2026" tab (`#omniTab`)
+  on `index.html` — check whether it is built on the older 448-code basis rather than the
+  corrected 445-visible-sheet basis (per `manual_factsheet.md` Part 4.4's 445-vs-448 finding, which
+  was made about `data/inventory.json`/the stock panel, a DIFFERENT part of `index.html`, not this
+  tab). The factsheet does not state this tab's own basis one way or the other — this is an open
+  point for the next task to check itself, not a number carried over from the factsheet.
+
+**Also scheduled, from this task's STATUS.md §4 Locked Decisions (added 2026-09-25):** refresh
+every page's data to the current date, with METRICS.md §26 timestamps (`data_pulled_at`,
+`page_built_at`, `model_calibrated_at` per page, staleness notice where `data_pulled_at` is more
+than 7 days older than `page_built_at`).
 
 ---
 
