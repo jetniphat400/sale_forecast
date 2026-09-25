@@ -767,6 +767,22 @@ produced a wrong result, with the correct handling and the report that found it.
     specifically — though the Validator's own figures corroborate the row count/coverage match,
     which is what makes the contamination inference direct rather than speculative).
 
+23. **PENDING VERIFICATION, NOT CONFIRMED — `index.html`'s stock panel reads its "Reserved" column
+    from `Cube_Backlog`**, the same table this file's Trap 5 already found reason to distrust for a
+    different purpose (over-counting open demand, per METRICS.md §14: `Cube_Backlog` lags
+    `Cube_CES` by roughly 14 hours and held 8 pairs already delivered). Naive reading: since
+    `Cube_Backlog` is unreliable for one purpose (confirmed/open demand), it may also be unreliable
+    for the panel's Reserved figure. **This has NOT been checked** — this project has not verified
+    whether the stock panel's Reserved figure is actually stale or wrong in a way that matters for
+    that specific use; only that it reads a table separately found unreliable for a different
+    purpose. **Correct handling, pending**: treat the panel's Reserved column as unverified until a
+    task specifically checks it (e.g. against `Cube_CES` Status='Backlog', per Trap 5's correct
+    handling for open demand) and reports match rate/staleness for THIS use. Found: this task,
+    2026-09-25, from `output/summary/manual_factsheet.md` Part 4.2/4.3 (panel field list and data
+    source trace) cross-referenced with this file's own Trap 5 and METRICS.md §14. **Level H**
+    (a hypothesis that the same distrust applies here, not itself tested) — added to STATUS.md's
+    new scheduled-work list for the next code task to verify.
+
 ---
 
 ## 5. Unknowns
@@ -1115,17 +1131,48 @@ recomputing three of their figures without reading any of their files.
   recurs annually with no known cause, and for "no other field changes at May 2026" (independently
   checked twice).
 - **Does PEM107's Omni delivery decline begin at or after May 2026, supporting separation as its
-  cause? NO clean support.** `not_late` (unit-weighted) stays at 84.3% in May 2026 itself and only
-  crashes in June (to 46.0%, matching the already-established figure almost exactly — Analyst 3
-  independently reproduces it), then partially recovers (82.4% in August) and crashes again
-  (37.6%, partial month, September) — volatile, not a discrete regime shift starting at May.
-  Period-level: Omni not_late 89.4% (May 2025-Apr 2026) → 57.2% (May 2026-latest); the Validator's
-  independent recomputation matches almost exactly (89.41%→57.23%, n=751 units in both agents'
-  Period-2 not_late numerator — an exact match). Order-to-delivery interval, batch-traceability
-  (which, if anything, *rises* for Omni: 54.0%→62.2%), and `manufacturing_type` mix all show
-  gradual drift or noise, not a step at May 2026 (Analyst 3). **Level V2** for "no clean step at
-  May 2026" (Analyst 3's figures independently matched by the Validator on the headline not_late
-  numbers).
+  cause? UNDETERMINED (verdict revised 2026-09-25, this task; previously recorded as "NO clean
+  support" — see "Verdict revision" note below for what changed and why).** `not_late`
+  (unit-weighted) stays at 84.3% in May 2026 itself and only crashes in June (to 46.0%, matching
+  the already-established figure almost exactly — Analyst 3 independently reproduces it), then
+  partially recovers (82.4% in August) and crashes again (37.6%, partial month, September) —
+  volatile, not a discrete regime shift starting at May. **Finding, unit counts (factual record,
+  not itself a claim about cause):** period-level Omni `not_late` fell from about 89% before May
+  2026 to about 57% after, on small volume — 89.4% (May 2025-Apr 2026, n=2,069 rows / 13,068 units)
+  → 57.2% (May 2026-latest, n=751 rows / 2,675 units); the Validator's independent recomputation
+  matches almost exactly (89.41%→57.23%, same n=2,069/13,068 and n=751/2,675 unit counts in both
+  agents' figures — an exact match: `phase25_analyst3_report.md` lines 56-57, 83-87;
+  `phase25_validator_report.md` lines 96-97, 186-187). Order-to-delivery interval,
+  batch-traceability (which, if anything, *rises* for Omni: 54.0%→62.2%), and `manufacturing_type`
+  mix all show gradual drift or noise, not a step at May 2026 (Analyst 3). **Level V2** for the
+  underlying figures themselves (Analyst 3's figures independently matched by the Validator on the
+  headline not_late numbers and unit counts) — the level V2 attaches to the NUMBERS, not to the
+  causal verdict below, which is revised to UNDETERMINED.
+
+  **Verdict revision (2026-09-25, this task):** the prior wording above this note, "NO clean
+  support," is corrected to **UNDETERMINED**. Reasoning: `not_late` fell sharply in June 2026 — the
+  month immediately after the claimed May-2026 separation — which is what a genuine separation
+  effect showing up one month late would produce. But post-May volume is small (n=751/2,675 units
+  over roughly five months, May-September 2026) and the monthly values swing considerably (May
+  84.3%, June 46.0%, August partial recovery to 82.4%, September a further drop to 37.6%, per
+  Analyst 3's monthly detail cited above). This evidence is consistent with more than one
+  explanation — a real separation effect landing one month late, OR ordinary volatility in a
+  small, lumpy sample, OR some other cause not yet tested — and is therefore **undetermined, not
+  contradicting**, per CONVENTIONS.md's "Error review (added 2026-09-24)" section. (The task
+  instruction that produced this revision asked for this to be cited as "rule 7"; checked directly
+  against CONVENTIONS.md and it is not numbered 7 — it is the **3rd bullet** under "Error review
+  (added 2026-09-24)": *"Do not mark a question blocked on a person until the data route is
+  exhausted, listing what was tried. Evidence consistent with more than one explanation is
+  undetermined, not contradicting."* Cited here by its exact quoted text and section location,
+  per CONVENTIONS.md's own "verify, never recall" principle, since the requested number did not
+  match.) This revision changes only the causal verdict; the underlying V2 figures above are
+  unchanged.
+
+  **Open point, not yet confirmed (2026-09-25, this task):** what was actually separated in May
+  2026 is not established by any data check to date — stock and warehouses, production
+  lines/staff, or both. The business's statement (this section, level A) describes
+  "production+stock separated" without specifying which of these (or both) is meant. This is
+  recorded as an explicit open point for the business to clarify, not inferred from the data.
 - **Warehouse-movement angle: inconclusive, data too thin.** `cube_inventory_tran` covers only
   24/136 (17.6%) of PEM107's scope items, 47 rows total, every row dated 2021-12-14 — zero rows
   anywhere in 2025-2026, including the claimed May-2026 window. None of PEM107's four exclusive
@@ -1141,7 +1188,16 @@ adopted as the split point for any future PEM107 calibration on the business's a
 level A** — this does not reverse the October/November 2024 finding (that remains the data-fact
 about when dual-channel BATCH SHARING itself stopped, level V2) — the two are read as answering
 different questions (when batch-sharing stopped, vs. when the business considers the units
-formally/administratively separated), not as a resolved single timeline. **Per AGENTS.md rule 4/9,
+formally/administratively separated), not as a resolved single timeline. **Marked explicitly
+(2026-09-25, this task): this "different questions" reading (late-2024 = when dual-channel
+batch-sharing stopped; May-2026 = when the business considers the units administratively
+separated) is a LEVEL-H HYPOTHESIS, proposed to reconcile this project's data finding with the
+business's account — it is NOT itself derived from evidence. No data check in this project
+distinguishes "production batches" from "stock" as the object separated at either date (see the
+open point above), and none tests whether the two dates even describe the same underlying event.
+It is recorded as a candidate reconciliation, not a finding, and must not be carried forward as
+settled (AGENTS.md rule 7: a receiving agent must independently verify another agent's inference
+before relying on it as established, never state it as settled).** **Per AGENTS.md rule 4/9,
 both are recorded, neither chosen for the reader; recommended next step: ask the business the same
 falsifiable question already on record (was there a named system/process change around
 October/November 2024, distinct from the May 2026 organisational separation, and if so what was
