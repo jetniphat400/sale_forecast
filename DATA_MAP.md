@@ -152,6 +152,22 @@ the plain `itemcode` join already works; recorded as an untested alternative for
 `output/summary/phase23_part0_cubefinal_join_report.md`. **Level V1** (one script, one connection,
 one session).
 
+**`job_qty` is a fixed batch/lot-size constant, not a per-row completed quantity — found 2026-09-24
+(a later task).** Of 5,627 distinct `jobno` values in the PEM101/103/104/107 combined scope, only
+289 (5.1%) show more than one distinct `job_qty` value across their own rows; the rest repeat one
+fixed number across every row sharing that `jobno`, including `jobno` values recurring across many
+rows/dates. **Summing `job_qty` per month would multiply-count the same nominal lot every time it
+reappears.** `transfer_qty` (varies row-by-row, the quantity actually moved in that specific event)
+is the defensible "completed/moved quantity" proxy instead — used for the Q20 capacity proxy below.
+Highest sustained monthly output (`transfer_qty` summed by `final_date`'s month, no top-5 month more
+than ~2x the next): PEM101 ~249,080 units/month, PEM103 ~405/month, PEM107 ~6,221/month, PEM104
+~4/month (too thin to trust, 21 rows total) — **explicitly a LOWER BOUND on capacity, not capacity
+itself; the business could have run below its true ceiling in every observed month.** No field in
+`cube_final`'s live-reverified 35-column schema marks assembly/production start at all (§4 Trap 21)
+— Q19's assembly-time half remains CANNOT BE DETERMINED FROM THIS DATA; Q20's capacity proxy above
+is the closest available answer. Found: `output/summary/phase24_explorerC_report.md`. **Level V1**
+(one Explorer pass).
+
 ### Cube_PO_Exact
 Would be the ideal empirical procurement-lead-time source (po_date to fulfilment_date). **Trust
 note**: had zero rows for any of the 68 original pilot codes (STATUS.md:2013-2015) — **V1**, one
@@ -301,6 +317,25 @@ to stock, ETO = engineering to order** — **A**. Recorded beside, not in place 
 finding directly above: this field is set per order, and a single item often carries more than one
 value across its own sales rows, so even with the meanings now confirmed it remains unusable as a
 fixed per-item classification without further derivation (Q21, PROJECT_GRAPH.md).
+
+**Per-item derived classification, 2026-09-24 (a later task): now computed (dominant type by
+quantity share, <60% share = mixed) and PARTIALLY validated against real behaviour — usable, with
+stated per-division confidence, not a uniform-confidence classification.** Dominant-type counts,
+independently confirmed by a from-scratch Validator to an EXACT match on every figure: PEM101 83
+MTS / 20 MTO / 0 ETO / 10 mixed (of 113 items with 2024+ Omni-Channel/Actual+MPS data); PEM103 34/
+11/0/5 (of 50); PEM107 25/78/0/9 (of 112). **Level V2** for these counts. ETO is essentially never
+the per-item dominant type in this scope (one exception, a single PEM104 item). Whether the
+dominant label actually predicts real behaviour (stock presence, order notice, delivery time,
+batch-before-PO share) was also tested (one Explorer pass, **V1**, not yet independently
+recomputed): **PEM107 matches well on every dimension** (92% vs. 16.7% stock presence for
+MTS/MTO, 16 vs. 33 day delivery, 44.4% vs. 0% batch traceability); **PEM103 matches on
+timing/batching but NOT on physical stock-holding** (only 41.2% of its dominant-MTS items hold any
+stock at all — 20 of 34 hold zero); **PEM101 shows only a partial match** (stock/delivery differ by
+type, but batch-timing is near-zero for both labels, consistent with PEM101's already-known ~2%
+pooled batch-traceability). **PEM104 cross-check AGREES with its business-confirmed made-to-order
+status** (0 of 4 clear items default to MTS, 0% batch-before-PO traceability). Found: this task,
+`output/summary/phase24_explorerB_report.md`, `phase24_validator_report.md` Sec.2,
+`phase24_synthesis_report.md`.
 
 **warehouse field (sales-order tables)** — **no sales-order-level table checked (cube_Sale_APD,
 Cube_CES, or any other) carries a warehouse field at all** — repeated, independently re-affirmed
@@ -660,6 +695,78 @@ produced a wrong result, with the correct handling and the report that found it.
     `output/summary/phase23_modeler_report.md`. **Level V2** (independent Validator recomputation,
     exact floating-point match).
 
+    **Refined, 2026-09-24 (a later task, same day): is PEM101's apparent saving at today's service
+    level real?** The prior finding above (today's stock sits close to the median curve) was
+    re-tested for statistical distinguishability, not just proximity. At the exact preset "today's
+    not_late (98.28%), lowest median stock" (`r_months`≈0.97–1.00), the across-member band is very
+    wide — **min THB 4.47–4.66M, median THB 16.93–17.23M, max THB 29.45–29.80M (119–148% of median,
+    depending on the exact `r` used)** — and today's actual on-hand stock (THB 18,247,625.22) falls
+    comfortably inside it, and inside METRICS.md §20's own ±15% stock-value tolerance applied to the
+    median. **The apparent 7.25% saving (THB 16.93M model-median vs. THB 18.25M actual) is NOT
+    distinguishable from zero, by either test.** Independently confirmed by a from-scratch Validator
+    (different exact `r`, band within 1–4% of the Modeler's, same conclusion). **Value statement,
+    exactly as the evidence supports it: PEM101 is operating on the efficient curve within the
+    model's resolution — this is a statement about what the model can currently distinguish, not a
+    claim that no real efficiency gain is possible.** Cost of moving to a 99% stretch target: THB
+    4,372,760.99 (a 25.8% increase over today's model-implied median), itself well inside both
+    presets' own wide bands. Found: this task, `output/summary/phase24_modeler_part2_report.md`,
+    `phase24_validator_report.md` Sec.4. **Level V2** (independent Validator match on the
+    qualitative conclusion — today's value inside the band — with a small, explained numeric
+    difference from a stated methodological choice).
+
+21. **`cube_final.qacheck_date` looked like an early-stage QA-check event (the plausible start of a
+    measurable production duration for Q19); it is not — it is typically the 3rd of 4 date events,
+    not the 1st.** Naive reading: pair `qacheck_date` with a later completion date (`fg_final_date`)
+    to measure assembly/production duration. Reality: a rank analysis of the 4 near-fully-populated
+    date columns (`final_date`, `finalcheck_date`, `finalreceive_date`, `qacheck_date`) across
+    27,998 rows where all four are populated found `final_date` is earliest in ~99.7% of rows (mean
+    rank 1.00 of 4) and `qacheck_date` is typically 3rd of 4 (mean rank 3.26) — `finalcheck_date`
+    precedes `qacheck_date` in 79.7% of rows, the opposite of the naive assumption. Using
+    `qacheck_date`→`fg_final_date` as a duration pair also fails on plausibility (0.31% of rows
+    exceed 1 year, max 955 days) and coverage (22.8%). **A second, related trap in the same
+    investigation**: `finalcheck_date`→`finalreceive_date` numerically passes every literal duration
+    check (100% coverage, 100% later-after-earlier, hours-scale distribution) but 57.3% of rows show
+    an EXACTLY 1.00-hour gap clustered within normal office hours — a fixed system/batch default or
+    same-session clerical step, not an organic interval; using it as a real duration would silently
+    report a manufactured constant as measured data. **Correct handling**: no field in `cube_final`'s
+    live-reverified 35-column schema marks assembly/production START at all — the assembly half of
+    METRICS.md/PROJECT_GRAPH.md's Q19 remains CANNOT BE DETERMINED FROM THIS DATA. The one pair that
+    passes every check without an artifact, `final_date`→`finalcheck_date` (100% coverage, 99.68%
+    later, continuous non-round-number distribution), is usable ONLY as a narrow, explicitly-labelled
+    **post-completion inspection-lag** proxy (median 0.015–0.90 days depending on division — PEM101
+    0.90d, PEM103 0.20d, PEM104 0.04d, PEM107 0.015d) — NOT assembly time, since `final_date` is
+    itself already known to fall AFTER the PO date (§2, jobcode/jobno entry), consistent with it
+    marking "job recorded complete in the system," not "assembly begins." Found: this task,
+    2026-09-24, `output/summary/phase24_explorerC_report.md` Sec.2-3. **Level V1** (one Explorer
+    pass; the Validator's independent pass in this same task chose a DIFFERENT pair,
+    `final_date`→`fg_final_date`, without checking the contamination noted in Trap 22 below — see
+    that entry for why Explorer C's exclusion is treated as the more defensible finding).
+
+22. **`cube_final.fg_final_date`'s low (22.8%) population is not evenly spread across this
+    project's divisions — 86.6% of the rows that DO populate it carry `cube_final`'s own internal
+    `division='102'` tag, a production line outside this project's PEM101/103/104/107 scope
+    entirely, even though the pull itself was scoped by itemcode to only this project's items.**
+    Naive reading: any date pair with reasonable coverage and a clean later-after-earlier check
+    (e.g. `final_date`→`fg_final_date`, tested independently by this task's Validator: n=6,372,
+    100% later, median 3.03 days) represents a genuine, in-scope production statistic. Reality:
+    `cube_final.division` is a separate internal grouping from the sales-side division taxonomy
+    this project scopes by itemcode — an itemcode-scoped pull can still return rows whose
+    `cube_final.division` value belongs to a different production line. Explorer C found this
+    directly (`output/summary/phase24_explorerC_report.md` Sec.2: of 6,388 `fg_final_date`-populated
+    rows in the same combined scope, 5,534 (86.6%) carry `division='102'`) and excluded any
+    `fg_final_date`-based pair on these grounds; the independent Validator's own pass
+    (`output/summary/phase24_validator_report.md` Sec.3) tested the near-identical field/row count
+    (n=6,372, same 22.8% coverage) but did not check or report this contamination, and reported its
+    median (3.03 days) as a genuine duration statistic. **Correct handling**: Explorer C's exclusion
+    is treated as the better-supported finding (it explicitly checked and quantified the
+    contamination); the Validator's 3.03-day figure is very likely measuring mostly a different
+    production line's process, not this project's items, and is NOT adopted as this task's Q19
+    answer — see Trap 21 above for the finding that stands instead. Found: this task, 2026-09-24,
+    `output/summary/phase24_synthesis_report.md` (discrepancy trace). **Level V1** (one Explorer's
+    check, not independently reconfirmed by a second agent that also checked the `division` field
+    specifically — though the Validator's own figures corroborate the row count/coverage match,
+    which is what makes the contamination inference direct rather than speculative).
+
 ---
 
 ## 5. Unknowns
@@ -814,13 +921,58 @@ themselves derived from data, but consistent with data already recorded elsewher
   announcements, PROJECT_GRAPH.md), which remains blocked on data for the same reason: no table in
   this project's schema tracks the pipeline itself, only its outcomes once awarded.
 
+  **Tested, 2026-09-24 (a later task): the "job names" route is a weak, partial supplement, not a
+  substitute — EF1 remains blocked on data.** `cube_Sale_APD.ctr_name` is genuine free text (spec
+  strings, formal bid-reference codes, PEA office names); `cube_final.descriptions`/`project` were
+  checked and ruled out (pure engineering spec / warehouse-location label, neither distinguishes
+  tender work). Keyword patterns derived from inspecting the text give **precision 44.4%/recall
+  34.3%** (narrow, 4 patterns) or **precision 35.8%/recall 82.9%** (broad, 6 patterns) against
+  `revenue_type='Tendering'` as ground truth (n=35 Tendering rows — small, not stable outside this
+  scope) — **neither is a reliable classifier**. The text DOES add two things beyond `revenue_type`:
+  a finer buying-entity geography (specific provincial/district PEA office, one level finer than
+  `customer_segment`'s regional bucket) and a formal bid/contract reference-code format found
+  nowhere else in the schema; it does NOT add a project-type distinction (PEM103's scope is
+  uniformly distribution transformers). Order-to-delivery interval: Tendering median 60 days (IQR
+  41–98.5) vs. Omni Channel median 30 days (IQR 21–32) — roughly double, much wider spread. **As
+  already stated above, this is past-tender-only and cannot reveal future pipeline — this test does
+  not change that.** Found: `output/summary/phase24_explorerD_report.md`. **Level V1** (one
+  Explorer pass, not independently recomputed).
+
 **Business-confirmed, 2026-09-24: PEM107's Tendering and Omni Channel work originally shared
-production and stock, and were separated around the middle of 2026.** — **A**. Verification from
-data is pending; recorded here as a hypothesis to verify, not yet checked against any table in this
-file (see PROJECT_GRAPH.md, Q10's PEM107 branch, for where the pending check is tracked). If
-confirmed, this would bear directly on the PEM107 capacity-diversion hypothesis below (a real,
-named separation event landing inside the same 2026 window as the channel-mix reversal and the
-not_late decline), but it is not itself evidence for or against that hypothesis until checked.
+production and stock, and were separated around the middle of 2026.** — **A**.
+
+**CHECKED AGAINST DATA, 2026-09-24 (a later task, same day): the specific "separated around the
+middle of 2026" timing is CONTRADICTED.** Linking `cube_final.jobno` to `Cube_CES.OLMJobCode`
+(the same production-batch-reference concept, §2 below) and reading each batch's linked contracts'
+`RevenueType`, a **change point at October/November 2024** was found — the last PEM107 batch ever
+linked to both an Omni Channel and a Tendering contract has `final_date` 2024-10-03 (matching
+`Cube_CES` rows run through `CtrDate` 2024-08-30). From November 2024 through September 2026 (23
+consecutive months, covering the entire officially-specified Jan-2025-onward analysis window),
+**dual-channel batch linkage is exactly 0.00% every month**, in both the forward direction (batch
+counts) and the reverse direction (Omni volume traced to a dual-serving batch) — CONVENTIONS.md's
+two-direction rule satisfied. Only 14 of 2,178 PEM107 batches (0.64%) EVER link to both channels,
+all between 2023-01 and 2024-10. **Independently confirmed by a from-scratch Validator (own join,
+own window split): same November 2024 change point; 4.30% dual-channel share in the 2023-01–2024-10
+window (179/4,160 matched batch-month observations, a differently-scoped metric from the 0.64%
+figure above but the same substantive finding) vs. 0.00% from 2024-11 onward.** **Level V2**
+(independent Validator match on the change point and the flat-zero window).
+
+**What "mid-2026" would predict** (a change point around May–August 2026, coincident with PEM107's
+2026 `not_late` decline) **does not match what was found**: the batch-sharing change point is
+~19-20 months earlier than stated, and sits entirely outside the window where any delivery-
+performance change shows up — the June 2026 `not_late` drop (84.3%→46.0% unit-weighted, a real
+finding re-confirmed this task at the same magnitude as the pre-existing Q23 finding) does NOT
+coincide with any detectable change in batch-sharing indicators, which were already flat zero for a
+year and a half by then. **Per AGENTS.md rule 4/9: the business's stated view (level A) and this
+direct data contradiction are both recorded, neither chosen.** This is one specific, checkable
+proxy (a shared production-batch token) — a different kind of sharing (shared raw material,
+production lines, or scheduling without a shared batch token) could exist without appearing in this
+signal at all; absence of this signal is not proof of absence of every form of sharing.
+Recommendation: ask the business a falsifiable question — was there a named system/process change
+around October/November 2024 specifically (not mid-2026), and if "middle of 2026" is firm, what
+form of sharing would not leave a shared-`jobno`/`OLMJobCode` trace? Found: this task, 2026-09-24,
+`output/summary/phase24_explorerA_report.md`, `phase24_validator_report.md` (Sec.1),
+`phase24_synthesis_report.md`.
 
 **PEM107's Omni/Tendering split also reverses, in the opposite direction, in exactly the year its
 delivery performance drops** — Omni Channel dominated 2025 (71.6% of value) but Tendering dominates

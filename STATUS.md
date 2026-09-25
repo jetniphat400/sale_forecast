@@ -78,44 +78,55 @@ regenerated snapshot of it, not an independent status record kept by hand.**
   The service-level choice is no longer "blocked on a person," and as of 2026-09-24 the "option to
   be built" is now BUILT: the inventory page offers 3 presets plus a free not_late-target slider
   (Python-precomputed dense grid, page interpolates only, never simulates), showing per-item
-  Min/Max, total stock value with its envelope band, and the change vs today's on-hand.
-  (PROJECT_GRAPH.md, node G2.)
-- **G3 (operations plan)** — blocked on a person. Needs business input on Q19 (assembly/
-  inspection time) and Q20 (capacity) — each blocked on a person. Q21 (MTS/MTO/ETO split) was
-  corrected 2026-09-24 (CONVENTIONS.md error-review rule 7 — do not mark blocked on a person until
-  the data route is exhausted) from "blocked on a person" to "in progress — data route": value
-  meanings are now recorded (level A: MTO = made to order, MTS = made to stock, ETO = engineering
-  to order), and `manufacturing_type`'s own mode/majority-vote per item is an untested data route
-  proposed as the next step, before falling back to business input. Q17 (batch cadence/size):
-  `cube_final`'s itemcode join is now confirmed working (2026-09-24, DATA_MAP.md §4 Trap 7
-  resolved — 75.21% forward match rate), unblocking data access, though batch dates/sizes
-  themselves are not yet extracted from the newly-accessible rows. Q18 (BOM/shared components) is
-  resolved. (PROJECT_GRAPH.md, node G3 and nodes Q17-Q21.)
+  Min/Max, total stock value with its envelope band, and the change vs today's on-hand. **Value
+  statement, refined 2026-09-24 (a later task, same day): PEM101's apparent 7.25% saving at today's
+  service level is NOT distinguishable from zero, given both the trade-off curve's own very wide
+  across-member band (119-148% of the median) and METRICS.md §20's ±15% tolerance — independently
+  confirmed by a Validator. PEM101 is operating on the efficient curve within the model's
+  resolution.** (PROJECT_GRAPH.md, node G2.)
+- **G3 (operations plan)** — blocked on a person for the parts still needing business input; three
+  of five question nodes now have usable partial answers as of 2026-09-24. **Q17 (batch
+  cadence/size)**: `cube_final`'s itemcode join is confirmed working (DATA_MAP.md §4 Trap 7
+  resolved, 75.21% forward match rate); batch dates/sizes themselves not yet extracted. **Q18**
+  (BOM/shared components) is resolved. **Q19 (assembly time)**: still CANNOT BE DETERMINED FROM
+  THIS DATA — no field anywhere in `cube_final` marks assembly start, now confirmed on a
+  live-reverified schema check; a narrow, explicitly-NOT-assembly-time inspection-lag proxy is
+  available instead. **Q20 (capacity)**: a lower-bound proxy now exists (highest sustained monthly
+  output per division/Type), explicitly stated as a floor, not the true ceiling. **Q21
+  (MTS/MTO/ETO)**: a per-item dominant-type classification is now computed and independently
+  confirmed (exact match); it predicts real behaviour well for PEM107, partially for PEM103, weakly
+  for PEM101 — usable now with those stated caveats, not blocked on a person for a first pass.
+  (PROJECT_GRAPH.md, node G3 and nodes Q17-Q21.)
 - **PEM101** — G1 method locked. G2: partially calibratable (59 of 4,130 grid combinations fit
   both periods within tolerance; no single parameter uniquely identified). Robust ensemble
   (METRICS.md §22, corrected 2026-09-24): 80 distinct members (not 139); every item still returns
   the same range_ratio (≈8.0, driver `r_months`), so the range_ratio table carries no item-level
   information and was replaced by a not_late-target selector — the business now picks a target
   directly on the inventory page, with per-item Min/Max, stock value and its envelope band, and
-  the change vs today's on-hand shown live. (PROJECT_GRAPH.md, nodes Q10, G2.)
+  the change vs today's on-hand shown live. The apparent saving at today's service level is not
+  distinguishable from zero (see G2 above). (PROJECT_GRAPH.md, nodes Q10, G2.)
 - **PEM102** — covered only by the project-wide G1 forecasting-method decision (D2, Top-down
   Combination); PROJECT_GRAPH.md carries no division-specific open question for PEM102.
 - **PEM103** — moved out of G2. Q22: answered (level A) — transformers/tendering-pipeline
   business; the production mechanism itself is still pending EF1 (blocked on data). EF1:
   business-confirmed 2026-09-24 that PEM103's tender pipeline has no structured data source; job
   names in order descriptions give history only, not forward pipeline, so they cannot substitute
-  for it. Q10: not calibratable to a stock-based policy (would need 5-12x more capital than the
-  business holds). (PROJECT_GRAPH.md, nodes Q10, Q22, EF1.)
+  for it — **tested directly, 2026-09-24 (later task): confirmed a weak, partial supplement at
+  best (precision/recall against revenue_type well under 50-85%), does not resolve EF1.** Q10: not
+  calibratable to a stock-based policy (would need 5-12x more capital than the business holds).
+  (PROJECT_GRAPH.md, nodes Q10, Q22, EF1.)
 - **PEM104** — closed, dead end (DE4). Made to order by business model; no stock policy
-  applicable. (PROJECT_GRAPH.md, node DE4.)
+  applicable. Q21 cross-check (2026-09-24, later task): its manufacturing_type/stock/batch-timing
+  data agrees with this made-to-order status. (PROJECT_GRAPH.md, node DE4.)
 - **PEM107** — in G2's scope, but Q10: not calibratable under any tested parameter set (implies a
-  genuine operational change between 2024-2025 and 2026, not a search failure). **New PEM107
-  hypothesis to verify, 2026-09-24 (level A, business-confirmed, pending data verification):**
-  Tendering and Omni Channel work originally shared production and stock, separated around the
-  middle of 2026 — a concrete candidate mechanism for the operational change Q10 already infers,
-  not yet checked against any table. Q23: the 2026 channel-mix reversal is a business change, not a
-  recording change; the capacity-diversion hypothesis survives, at level H, not proven.
-  (PROJECT_GRAPH.md, nodes Q10, Q23.)
+  genuine operational change between 2024-2025 and 2026, not a search failure). **PEM107
+  production-separation claim, CHECKED AGAINST DATA 2026-09-24 (a later task, same day):
+  CONTRADICTED on timing.** The business's "shared production/stock, separated mid-2026" statement
+  (level A) does not match the data: the actual change point is **October/November 2024** (~19-20
+  months earlier), entirely outside the analysis window and disconnected from the June 2026
+  `not_late` drop — independently confirmed by a Validator (same change point). Q23: the 2026
+  channel-mix reversal is a business change, not a recording change; the capacity-diversion
+  hypothesis survives, at level H, not proven. (PROJECT_GRAPH.md, nodes Q10, Q23.)
 - **CI101** — covered only by the project-wide G1 forecasting-method decision (D2); PROJECT_GRAPH.md
   carries no division-specific open question for CI101.
 
