@@ -98,6 +98,12 @@
   .table-scroll { max-height: 640px; overflow: auto; border: 1px solid var(--gridline); border-radius: 8px; }
   .table-scroll table thead th { position: sticky; top: 0; background: var(--surface); z-index: 1; }
 
+  /* Shared tinted-callout style (task 2a, Part 2, added 2026-09-25) -- same visual values already
+     used twice on this page (#omniTab .note, .inv-bl-dupnote: background #fff8e6, border #e8cf87)
+     promoted to a page-wide class so page/data timestamps and staleness notices reuse the
+     existing convention instead of inventing new CSS, per METRICS.md Sec.26. */
+  .note-box { background:#fff8e6; border:1px solid #e8cf87; border-radius:8px; padding:10px 14px; font-size:12.5px; color: var(--text-secondary); }
+  p.scope-note { font-size: 12px; color: var(--muted); }
   .notes { font-size: 12.5px; color: var(--text-secondary); }
   .notes ul { margin: 6px 0 0; padding-left: 18px; }
   .notes li { margin-bottom: 6px; }
@@ -177,7 +183,7 @@ tr.section[role="button"]:focus-visible{outline:2px solid var(--series-1);outlin
 #invTable td.tleft{white-space:normal}
 #invTable td.inv-desc{font-size:11.5px;color:var(--text-secondary);white-space:normal}
 #invTable td:nth-child(6), #invTable th:nth-child(6),
-#invTable td:nth-child(8), #invTable th:nth-child(8){white-space:normal}
+#invTable td:nth-child(11), #invTable th:nth-child(11){white-space:normal}
 #invTable td:last-child{white-space:normal}
 .inv-qty-btn{background:none;border:0;padding:0;font:inherit;font-variant-numeric:tabular-nums;color:var(--series-1);cursor:pointer;text-decoration:underline;text-underline-offset:2px}
 .inv-qty-plain{font-variant-numeric:tabular-nums}
@@ -237,6 +243,20 @@ tr.section[role="button"]:focus-visible{outline:2px solid var(--series-1);outlin
     <h1>Chase Sales &amp; Operations Plan (S&amp;OP) — PEM Group</h1>
     <p>ปีวางแผน 2026 · History = ม.ค.–ก.ค. 2026 (ข้อมูลจริงจาก Cube Sale APD2026) · Plan = ส.ค.–ธ.ค. 2026 (พยากรณ์/ตัวอย่าง) ·
        สร้างจากหลัก Chase Strategy (Figure 3.5) — จัดกลุ่มตาม Product Category &gt; Type &gt; Description &gt; Code</p>
+    <p class="scope-note">
+      <b>data_pulled_at</b>: ไม่มีวันที่ที่แน่ชัด — เนื้อหาแท็บนี้มาจาก<b>ไฟล์ภายนอกที่ pipeline นี้ไม่ได้รีเฟรช</b>
+      (Price List PEM101–104 Q4'2025 R.1 = <code>reference/pricelist.xlsx</code>, ไฟล์เดียวกับที่ทั้งโครงการใช้อ้างอิง
+      product attributes; workbook เองไม่มีฟิลด์วันที่ภายใน — วันที่ตรวจสอบได้เพียงอย่างเดียวคือ filesystem
+      last-modified ของไฟล์นี้: <b>2026-08-21 09:26</b> ICT — และตัวเลข "ยอดขายจริง ม.ค.–ก.ค. 2026"/"Stock PEM101 Max-Min Q2 2026"
+      ด้านบนเป็นตัวอย่างที่พิมพ์ไว้ ณ ตอนสร้างแท็บนี้ ไม่ใช่ query สด) &nbsp;|&nbsp;
+      <b>page_built_at</b>: 2026-09-25 12:15 ICT (UTC+7) (แก้ไขหน้านี้ครั้งล่าสุด — index.html ไม่มี generator)
+    </p>
+    <div class="note-box" style="margin-top:6px">
+      ⚠ <b>แท็บนี้ไม่ได้ถูกรีเฟรชโดย pipeline นี้เลย</b> — เนื้อหาทั้งหมด (ตัวเลข History/Plan, Price List 426 รหัส,
+      Stock Max-Min) เป็นตัวอย่างประกอบการนำเสนอที่พิมพ์ไว้ครั้งเดียว ไม่ใช่ข้อมูลที่ pipeline ดึงใหม่ทุกครั้ง
+      (METRICS.md §26: "A page whose content comes from an external file the project cannot refresh...
+      shows that file's source date and says it is not refreshed by this pipeline")
+    </div>
   </header>
 
   <div class="kpi-row">
@@ -7402,6 +7422,8 @@ tr.section[role="button"]:focus-visible{outline:2px solid var(--series-1);outlin
    <h1>รายละเอียดสต็อคสินค้า (Inventory Detail)</h1>
    <p id="invSnapshotLabel">กำลังโหลดข้อมูล…</p>
    <p id="invBacklogLabel" class="desc" style="margin:2px 0 0"></p>
+   <p id="invPageTimestampNote" class="scope-note" style="margin:2px 0 0"></p>
+   <div id="invStalenessNote" class="note-box" style="display:none;margin:6px 0 0"></div>
    <p class="desc" style="margin:2px 0 0">หมายเหตุ: ยอดรวมสต็อคที่แสดงคือผลรวมจากทุกคลังรวมกัน</p>
   </header>
 
@@ -7412,6 +7434,20 @@ tr.section[role="button"]:focus-visible{outline:2px solid var(--series-1);outlin
 
   <div id="invContent" style="display:none">
    <div class="kpi-row" id="invCountStrip"></div>
+
+   <section>
+    <h2>สต็อคแยกตาม Sellable / Staging / Elsewhere ต่อฝ่าย</h2>
+    <p class="desc" id="invSellableSplitNote"></p>
+    <div class="table-scroll">
+     <table id="invSellableSplitTable">
+      <thead><tr>
+       <th class="tleft">ฝ่าย</th><th class="tleft">Sellable warehouse codes</th>
+       <th>Sellable (รวม)</th><th>Staging QA/FMTS/FMTO (รวม)</th><th>Elsewhere (รวม)</th>
+      </tr></thead>
+      <tbody id="invSellableSplitBody"></tbody>
+     </table>
+    </div>
+   </section>
 
    <section>
     <h2>รายการสินค้าและสต็อคคงเหลือ (ข้อมูลจริงจาก Cube_Inventory_Exact)</h2>
@@ -7425,9 +7461,10 @@ tr.section[role="button"]:focus-visible{outline:2px solid var(--series-1);outlin
     <div class="table-scroll">
      <table id="invTable">
       <colgroup>
-       <col style="width:7%"><col style="width:9%"><col style="width:11%">
-       <col style="width:23%"><col style="width:13%"><col style="width:10%">
-       <col style="width:8%"><col style="width:8%"><col style="width:11%">
+       <col style="width:6%"><col style="width:7%"><col style="width:9%">
+       <col style="width:17%"><col style="width:10%"><col style="width:7%">
+       <col style="width:7%"><col style="width:7%"><col style="width:7%">
+       <col style="width:6%"><col style="width:7%"><col style="width:10%">
       </colgroup>
       <thead>
        <tr>
@@ -7437,8 +7474,11 @@ tr.section[role="button"]:focus-visible{outline:2px solid var(--series-1);outlin
         <th class="tleft" data-k="description">Product Description</th>
         <th class="tleft" data-k="code">Product Code</th>
         <th data-k="qty">Inventory (qty)</th>
+        <th data-k="sellable_qty" title="ในคลังที่กำหนดว่าขายได้ของฝ่ายนั้น (sellable_warehouse_codes, config.yaml) — เป็นสมมติฐานทางธุรกิจ ไม่ใช่ข้อเท็จจริงที่ยืนยันจากข้อมูล">Sellable</th>
+        <th data-k="staging_qty" title="ในคลัง QA / FMTS / FMTO โดยเฉพาะ">Staging (QA/FMTS/FMTO)</th>
+        <th data-k="elsewhere_qty" title="ในคลังอื่นนอกเหนือจาก Sellable และ Staging">Elsewhere</th>
         <th data-k="backlog">Reserved</th>
-        <th data-k="available">Available</th>
+        <th data-k="available" title="qty − Reserved — ยังไม่ตัดคลังที่ไม่ใช่ sellable ออก">Available</th>
         <th>Lead time (วัน)</th>
        </tr>
       </thead>
@@ -7485,6 +7525,16 @@ tr.section[role="button"]:focus-visible{outline:2px solid var(--series-1);outlin
 <div id="omniTab">
  <h2>Trend ยอดขาย Omni Channel — สินค้าตาม Price List 01.06.69 (448 รหัส)</h2>
  <div class="sub">แหล่งข้อมูล: cube_Sale_APD · revenue_type = 'Omni Channel' · status = Actual + MPS · ปีปฏิทิน 2024–2026 (ข้อมูลถึง 25 ส.ค. 2026)</div>
+ <div class="note">
+   <b>data_pulled_at</b>: 2026-08-25 (วันที่ตัดข้อมูลตามข้อความของแท็บนี้เอง "ข้อมูลถึง 25 ส.ค. 2026") —
+   ฝังไว้ใน commit <code>62b1e81</code> ลง 2026-08-26 10:16 ICT (<code>git blame index.html</code>, บรรทัด OMNI/MATCH data) &nbsp;|&nbsp;
+   <b>page_built_at</b>: 2026-09-25 12:15 ICT (UTC+7) (แก้ไขหน้านี้ครั้งล่าสุด — index.html ไม่มี generator)<br>
+   <b>⚠ ข้อมูลเก่ากว่า 7 วัน</b> (ประมาณ 30 วัน ณ วันที่แก้ไขนี้) — <b>แท็บนี้ไม่ได้ถูกรีเฟรชโดย pipeline นี้เลย</b>
+   ข้อมูลฝังไว้ตรงๆ ใน HTML (ตัวแปร <code>OMNI</code>/<code>MATCH</code>), ไม่มีสคริปต์ generator ใดๆ ในโครงการสร้างแท็บนี้
+   (ค้นหาแล้วทั่วทั้ง repo — <code>omniTab</code>/<code>OMNI_DATA</code>/"Trend Pricelist" ไม่พบใน .py ไฟล์ใดเลย, task 2a Part 3) ·
+   <b>ใช้ฐานรหัสสินค้าเดิม 448 รหัส (รวม hidden sheets ของ pricelist)</b> ไม่ใช่ฐาน 445 รหัส visible-sheet ที่แก้ไขแล้ว
+   ซึ่งใช้ในแผงสต็อคและที่อื่นในโครงการ (DATA_MAP.md §1; <code>src/pricelist_reader.py</code>'s <code>load_visible_product_rows()</code>)
+ </div>
  <div class="note"><b>หมายเหตุ:</b> ข้อมูลแท็บนี้เป็น<b>คนละชุด</b>กับแท็บ S&amp;OP Plan เดิม (แท็บเดิม: Pricelist Q4'2025 426 รหัส, Actual อย่างเดียว ม.ค.–ก.ค. 2026) — ตัวเลขระหว่างสองแท็บเทียบกันตรงๆ ไม่ได้ · เดือน ส.ค. 2026 ยังไม่จบเดือน แสดงเป็นแท่งสีจาง และไม่รวมในการคำนวณ ADI/CV² (ฐาน 31 เดือน: ม.ค. 2024 – ก.ค. 2026) · ชื่อสินค้า/หมวด/ประเภทอ้างอิงจากไฟล์ Price List — ตัวที่ชื่อใน DB ต่างออกไปดูได้จาก tooltip ในตาราง</div>
  <details class="note" style="background:#eef6ff;border-color:#a8c8e8">
   <summary style="cursor:pointer;font-weight:600">นิยามศัพท์ (คลิกเพื่อขยาย)</summary>
@@ -7811,7 +7861,7 @@ function omniShowTab(n){
   function invEsc(s){
     return String(s==null?'':s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   }
-  const INV_NUM_KEYS = ['qty', 'backlog', 'available'];
+  const INV_NUM_KEYS = ['qty', 'sellable_qty', 'staging_qty', 'elsewhere_qty', 'backlog', 'available'];
 
   function invFmtQty(v){
     if(v==null) return '—';
@@ -7859,12 +7909,36 @@ function omniShowTab(n){
     const blDate = (bl.loaded_at || '').slice(0, 10);
     const blScope = (bl.sale_company_filter || []).join(' และ ');
     document.getElementById('invBacklogLabel').innerHTML =
-      'Reserved (Backlog) จาก ' + invEsc(bl.source_table || '—') + ' ณ วันที่ ' + invEsc(blDate)
-      + ' — คนละรอบการโหลดกับข้อมูลสต็อคด้านบน<br>'
-      + 'ขอบเขตบริษัทของทั้งสองตัวเลข: ' + invEsc(blScope) + '<br>'
-      + 'Reserved นับรวมทุกสถานะ ไม่มีการกรองสถานะใดๆ — <b>ตัวเลขอยู่ระหว่างรอการตรวจสอบยืนยัน</b><br>'
-      + 'Available = สต็อคคงเหลือ − Reserved (ยังไม่รวมสินค้าที่กำลังจะเข้า)<br>'
-      + 'คลิกตัวเลข Reserved เพื่อดูรายการ Backlog แต่ละรายการที่รวมกันเป็นยอดนั้น';
+      'Reserved จาก ' + invEsc(bl.source_table || '—') + ' (Status=' + invEsc(bl.status_filter || '—')
+      + ') ณ วันที่ ' + invEsc(blDate) + ' — คนละรอบการโหลดกับข้อมูลสต็อคด้านบน<br>'
+      + '<b>สลับจาก Cube_Backlog มาเป็น Cube_CES Status=\'Backlog\' แล้ว (task 2a Part 5, DATA_MAP.md Trap 23, '
+      + 'METRICS.md §14), ตัดข้อมูลซ้ำ (dedup) ตาม contract+item</b><br>'
+      + 'สูตร Available <b>ไม่ได้เปลี่ยน</b> (ยัง = สต็อคคงเหลือ − Reserved เหมือนเดิม, ยังไม่รวมสินค้าที่กำลังจะเข้า) — '
+      + '<b>Available ในตอนนี้ยังรวมสต็อคในคลังที่ไม่ได้ถูกกำหนดว่า "ขายได้" (sellable) ด้วย</b> '
+      + 'ดูคอลัมน์ Sellable/Staging/Elsewhere ในตารางด้านล่างเพื่อแยกส่วนนี้ออก<br>'
+      + 'คลิกตัวเลข Reserved เพื่อดูรายการที่รวมกันเป็นยอดนั้น';
+
+    // METRICS.md Sec.26 (page_timestamps), added 2026-09-25 (task 2a, Part 2). data_pulled_at
+    // comes from data/inventory.json's own snapshot/backlog fields (never typed); page_built_at
+    // is this hand-maintained page's own last edit for the stock panel (no generator exists for
+    // index.html -- CONVENTIONS.md/METRICS.md Sec.26's own rule for a page like this one).
+    const INV_PAGE_BUILT_AT = '2026-09-25 12:15';
+    const stockPulledAt = (data.snapshot.loaded_at || '').slice(0, 16);
+    const backlogPulledAt = (bl.loaded_at || '').slice(0, 16);
+    document.getElementById('invPageTimestampNote').innerHTML =
+      '<b>data_pulled_at</b> (สต็อค): ' + invEsc(stockPulledAt) + ' ICT (UTC+7) &nbsp;|&nbsp; '
+      + '<b>data_pulled_at</b> (Reserved): ' + invEsc(backlogPulledAt) + ' ICT (UTC+7) &nbsp;|&nbsp; '
+      + '<b>page_built_at</b>: ' + INV_PAGE_BUILT_AT + ' ICT (UTC+7) (แก้ไขหน้านี้ครั้งล่าสุด — index.html ไม่มี generator, เป็นไฟล์ที่แก้ไขด้วยมือ)';
+
+    const ageDaysStock = (new Date(INV_PAGE_BUILT_AT.replace(' ', 'T')) - new Date(stockPulledAt.replace(' ', 'T'))) / 86400000;
+    const staleEl = document.getElementById('invStalenessNote');
+    if (ageDaysStock > 7) {
+      staleEl.style.display = 'block';
+      staleEl.innerHTML = '⚠ <b>ข้อมูลสต็อคเก่ากว่า 7 วัน</b> (' + ageDaysStock.toFixed(1)
+        + ' วัน เทียบกับ page_built_at) — ตัวเลขในหน้านี้อาจไม่ตรงกับสต็อคจริงปัจจุบัน';
+    } else {
+      staleEl.style.display = 'none';
+    }
 
     const t = data.totals;
     document.getElementById('invCountStrip').innerHTML =
@@ -7872,6 +7946,35 @@ function omniShowTab(n){
       + '<div class="kpi-card"><div class="label">มีสต็อค (has_stock)</div><div class="value">' + t.has_stock + '</div></div>'
       + '<div class="kpi-card"><div class="label">สต็อคเป็นศูนย์ (zero_stock)</div><div class="value">' + t.zero_stock + '</div></div>'
       + '<div class="kpi-card"><div class="label">ไม่มีข้อมูลในระบบ (no_db_record)</div><div class="value">' + t.no_db_record + '</div></div>';
+
+    // Sellable / Staging / Elsewhere totals per division (task 2a Part 5). Label reuses
+    // config.yaml's own wording for the sellable-warehouse assumption.
+    const sst = data.sellable_split_totals || {by_division: {}, not_assessed_divisions: []};
+    const swByDiv = data.sellable_warehouse_codes_by_division || {};
+    const stagingCodes = (data.staging_warehouse_codes || []).join('/');
+    let splitRows = '';
+    Object.keys(sst.by_division).sort().forEach(div => {
+      const d = sst.by_division[div];
+      splitRows += '<tr><td class="tleft">' + invEsc(div) + '</td>'
+        + '<td class="tleft mono" style="font-size:11px">' + invEsc((swByDiv[div] || []).join(', ')) + '</td>'
+        + '<td>' + invFmtQty(d.sellable_total) + '</td>'
+        + '<td>' + invFmtQty(d.staging_total) + '</td>'
+        + '<td>' + invFmtQty(d.elsewhere_total) + '</td></tr>';
+    });
+    (sst.not_assessed_divisions || []).forEach(div => {
+      splitRows += '<tr><td class="tleft">' + invEsc(div) + '</td>'
+        + '<td class="tleft" style="color:var(--muted)">— (ไม่มี sellable list กำหนดไว้)</td>'
+        + '<td colspan="3" style="color:var(--muted)">not assessed</td></tr>';
+    });
+    document.getElementById('invSellableSplitBody').innerHTML = splitRows;
+    document.getElementById('invSellableSplitNote').innerHTML =
+      'Sellable-warehouse list ของแต่ละฝ่าย (<code>config.yaml phase_e1_assumptions.sellable_warehouse_codes</code>) '
+      + '<b>เป็นสมมติฐานทางธุรกิจ ไม่ใช่ข้อเท็จจริงที่ยืนยันจากข้อมูล</b> ('
+      + 'config.yaml เอง: "a BUSINESS ASSUMPTION standing in for a fact the data cannot supply, '
+      + 'to be confirmed by the warehouse team, never treated as verified") — '
+      + 'CI101/PEM102/PEM104 ไม่มี list กำหนดไว้ (สต็อคน้อยเกินกว่าจะกำหนด sellable set ได้อย่างมั่นใจ) '
+      + 'จึงแสดงเป็น "not assessed" เท่านั้น ไม่เดา 0 และไม่ใช้ list ของฝ่ายอื่นแทน<br>'
+      + 'คลัง Staging ที่นับเฉพาะเจาะจง: ' + invEsc(stagingCodes);
 
     const bizSel = document.getElementById('invBizFilter');
     const cateSel = document.getElementById('invCateFilter');
@@ -7882,10 +7985,17 @@ function omniShowTab(n){
       const o = document.createElement('option'); o.value = v; o.textContent = v; cateSel.appendChild(o);
     });
 
-    invItems = data.items.map(it => ({
-      ...it,
-      _search: (it.code + ' ' + (it.description || '')).toLowerCase(),
-    }));
+    invItems = data.items.map(it => {
+      const sp = it.sellable_split || {};
+      return {
+        ...it,
+        _search: (it.code + ' ' + (it.description || '')).toLowerCase(),
+        not_assessed: !!sp.not_assessed,
+        sellable_qty: sp.sellable_qty,
+        staging_qty: sp.staging_qty,
+        elsewhere_qty: sp.elsewhere_qty,
+      };
+    });
 
     document.getElementById('invSearchBox').addEventListener('input', invRenderTable);
     bizSel.addEventListener('change', invRenderTable);
@@ -7960,6 +8070,21 @@ function omniShowTab(n){
         qtyCell = '<span class="inv-qty-plain">' + invFmtQty(it.qty) + '</span>';
       }
 
+      // Sellable / Staging (QA,FMTS,FMTO) / Elsewhere split (task 2a Part 5). CI101/PEM102/PEM104
+      // have no configured sellable_warehouse_codes (config.yaml) -- shown as "not assessed", never
+      // a guessed 0 or an inherited list from another division (config.yaml's own comment: "a
+      // BUSINESS ASSUMPTION ... never treated as verified").
+      let sellableCell, stagingCell, elsewhereCell;
+      if (it.state === 'no_db_record') {
+        sellableCell = stagingCell = elsewhereCell = '<span class="badge badge-nodata">ไม่มีข้อมูล</span>';
+      } else if (it.not_assessed) {
+        sellableCell = stagingCell = elsewhereCell = '<span class="inv-num" style="color:var(--muted)">not assessed</span>';
+      } else {
+        sellableCell = '<span class="inv-num">' + invFmtQty(it.sellable_qty) + '</span>';
+        stagingCell = '<span class="inv-num">' + invFmtQty(it.staging_qty) + '</span>';
+        elsewhereCell = '<span class="inv-num">' + invFmtQty(it.elsewhere_qty) + '</span>';
+      }
+
       // A zero Reserved presents no clickable affordance at all -- there are no backlog rows
       // behind it to show, so a button would promise a popup that has nothing in it.
       let reservedCell;
@@ -7996,6 +8121,9 @@ function omniShowTab(n){
         + '<td class="tleft inv-desc">' + invEsc(it.description) + '</td>'
         + '<td class="mono">' + invEsc(it.code) + '</td>'
         + '<td>' + qtyCell + '</td>'
+        + '<td>' + sellableCell + '</td>'
+        + '<td>' + stagingCell + '</td>'
+        + '<td>' + elsewhereCell + '</td>'
         + '<td>' + reservedCell + '</td>'
         + '<td>' + availCell + '</td>'
         + '<td>' + ltCell + '</td>';
