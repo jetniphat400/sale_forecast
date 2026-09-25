@@ -342,6 +342,18 @@ not captured by this project's data, and May 2026 is adopted as the split point 
 calibration on the business's authority alone (level A) — this does not reverse the Oct/Nov 2024
 batch-sharing finding, which stands as the answer to a different question (when batch-sharing
 itself stopped, not when the business considers the units administratively separated).**
+**Verdict revised 2026-09-25 (a later task, same day): whether PEM107's Omni delivery decline
+begins at or after May 2026, supporting separation as its cause, is UNDETERMINED (was previously
+recorded in DATA_MAP.md as "NO clean support"). `not_late` fell sharply in June 2026, one month
+after the claimed separation (consistent with a genuine effect one month late), but post-May
+volume is small (n=751/2,675 units) and monthly values swing considerably (May 84.3%, June 46.0%,
+August partial recovery, September a further drop) — consistent with more than one explanation, so
+undetermined rather than contradicting, per CONVENTIONS.md's Error review section, 3rd bullet.
+Full reasoning and unit counts: DATA_MAP.md §7. Also newly marked: the "different questions"
+reading immediately above (late-2024 batch-sharing vs. May-2026 stock/administrative separation)
+is a LEVEL-H HYPOTHESIS proposed to reconcile the data with the business's account, not itself a
+finding — and what was separated in May 2026 (stock/warehouses, production lines/staff, or both)
+remains an unconfirmed open point.**
 `output/summary/phase25_explorer{1,2,4}_report.md`, `phase25_analyst3_report.md`,
 `phase25_validator_report.md`; DATA_MAP.md §7. | data, largely resolved; PEM103/PEM107 each now have ONE narrow named business question (see PROJECT_GRAPH.md Part 4/Gate note below) |
 | Q11 | done | (Explorer A) | Q10 | Contradicted — `output/summary/phaseJ2_explorerA_report.md` | — |

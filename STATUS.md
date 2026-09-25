@@ -132,12 +132,24 @@ regenerated snapshot of it, not an independent status record kept by hand.**
   earlier with no known cause (undermines it as May-2026-specific); no other field or behavioural
   measure (`not_late`, order-to-delivery, batch-traceability, manufacturing mix) shows a step at
   May 2026 — the real `not_late` disruption starts in June and is volatile, not a discrete shift
-  (V2, Validator match). **No reliable data trace of the May-2026 separation exists; it is treated
-  as operational and adopted as the split point on the business's authority alone (level A) — this
-  does not reverse the Oct/Nov 2024 batch-sharing finding, which answers a different question.**
-  Q23: the 2026 channel-mix reversal is a business change, not a recording change; the
-  capacity-diversion hypothesis survives, at level H, not proven. (PROJECT_GRAPH.md, nodes Q10,
-  Q23.)
+  (V2, Validator match). **VERDICT REVISED 2026-09-25 (a later task, same day): whether PEM107's
+  Omni delivery decline begins at or after May 2026, supporting separation as its cause, is now
+  recorded as UNDETERMINED, not "no reliable trace"/"NO."** `not_late` fell sharply in June 2026,
+  the month immediately after the claimed separation — consistent with a genuine separation effect
+  landing one month late — but post-May volume is small (n=751/2,675 units, ~5 months) and monthly
+  values swing considerably (May 84.3%, June 46.0%, August partial recovery to 82.4%, September a
+  further drop to 37.6%): consistent with more than one explanation, hence undetermined rather than
+  contradicting, per CONVENTIONS.md's "Error review" section, 3rd bullet (not "rule 7" as
+  originally requested — checked directly, this project's Error review list is unnumbered
+  bullets, and the matching one is the 3rd). Separately, what was actually separated in May 2026
+  (stock/warehouses, production lines/staff, or both) is an unconfirmed open point, and the
+  "different questions" reading (Oct/Nov 2024 = batch-sharing stopped; May 2026 = administrative/
+  stock separation) is now marked a level-H hypothesis proposed to reconcile the data with the
+  business's account, not itself a finding. Full detail: DATA_MAP.md §7. This does not reverse the
+  Oct/Nov 2024 batch-sharing finding (level V2), which still answers a different, narrower
+  question (when batch-sharing itself stopped). Q23: the 2026 channel-mix reversal is a business
+  change, not a recording change; the capacity-diversion hypothesis survives, at level H, not
+  proven. (PROJECT_GRAPH.md, nodes Q10, Q23.)
 - **CI101** — covered only by the project-wide G1 forecasting-method decision (D2); PROJECT_GRAPH.md
   carries no division-specific open question for CI101.
 
