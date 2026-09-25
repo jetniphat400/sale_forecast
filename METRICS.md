@@ -169,6 +169,10 @@ Two distinct metrics; never report one under the other's name.
 
 ## 15. segment_policy criteria
 
+**Superseded for G2 item eligibility by §23 `fulfilment_segmentation` (added 2026-09-25); this
+section's formula/text is kept unchanged below, per §23's own instruction ("Mark section 15
+accordingly; keep its text").**
+
     annual_value[item]     = sum of sale over the trailing 12 months
                              ending at the data cutoff, Omni Channel,
                              Actual + MPS
@@ -417,3 +421,78 @@ always stated.
   members stay distinct.
 - Every output states which deduplication applied and the resulting
   member count.
+
+## 23. fulfilment_segmentation
+
+    label[item]   = dominant manufacturing_type by quantity over the
+                    analysis window if its share is at least 60 percent;
+                    otherwise mixed
+    stock signals:
+      S1 on-hand stock above zero in Cube_Inventory_Exact, any warehouse,
+         at the current snapshot
+      S2 at least 50 percent of the item's delivered contracts trace to a
+         cube_final batch that existed before the PO
+      S3 median days from createDate to ActualDelDate at most 14
+
+    stock_policy        : label = MTS and at least 2 of S1 to S3 hold
+    confirmed_to_order  : label in {MTO, ETO} and at most 1 of S1 to S3
+                          hold — no Min or Max; planned under G3
+    conflict            : every other combination, and every mixed item —
+                          no Min or Max until confirmed; listed separately
+    PEM104              : every item confirmed_to_order, level A
+
+- If S2 cannot be computed for an item because no batch links, evaluate
+  on S1 and S3 and require both to hold for stock_policy.
+- S1 uses any warehouse because sellability cannot be verified from data.
+- Thresholds of 60 percent, 50 percent and 14 days are assumptions. Report
+  counts also at 50 and 70 percent, 40 and 60 percent, and 7 and 21 days.
+- For G2 item eligibility this supersedes the value and frequency criteria
+  of section 15. Mark section 15 accordingly; keep its text.
+
+## 24. relative_service_cost
+
+    For each distinct ensemble member e, deduplicated per section 22:
+      ratio_e(target) = stock_value_e(at target not_late)
+                        ÷ stock_value_e(at today's not_late)
+    Report the median, minimum and maximum of ratio_e across members for
+    each target.
+
+- Valid only for divisions with a non-empty robust_ensemble.
+- This is the primary figure for the service-level choice, because the
+  reorder level the data cannot identify largely cancels within each
+  member. Absolute stock values remain reported with their band.
+- If the ratio's band is not narrower than the absolute band, say so
+  rather than presenting the ratio as more certain.
+
+## 25. error_metrics
+
+    MAE   = mean(|forecast − actual|)
+    RMSE  = sqrt(mean((forecast − actual)²))
+
+- Both in quantity units, over the same window and series as bias.
+- MASE follows section 13. Where it is undefined, any output shown to a
+  user displays MASE_undefined, never NaN, 0 or infinity.
+
+## 26. page_timestamps
+
+Every dashboard page and panel displays, near its title:
+
+    data_pulled_at     : the time the underlying data was queried from the
+                         database, taken from the data itself — its
+                         snapshot_pull_date or the source table's load
+                         timestamp — never typed
+    page_built_at      : the time the page was generated, from the build
+                         run's clock
+    model_calibrated_at: on pages showing calibrated results, the date of
+                         the calibration run and the last month of data it
+                         used — distinct from data_pulled_at, because data
+                         is refreshed more often than calibration is re-run
+
+- All three are shown in Thai local time, UTC+7, with the date and time.
+- A page whose content comes from an external file the project cannot
+  refresh — such as the S&OP Plan tab — shows that file's source date and
+  says it is not refreshed by this pipeline.
+- If data_pulled_at is more than 7 days older than page_built_at, the
+  page shows a visible staleness notice.
+- The forward-test log is never refreshed or rewritten; it keeps the
+  cutoff it was generated at.
