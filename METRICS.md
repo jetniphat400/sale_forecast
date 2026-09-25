@@ -548,3 +548,246 @@ Every dashboard page and panel displays, near its title:
   reported in the log, never silently skipped.
 - Tests must not modify tracked output files; a test that regenerates a
   page writes to a temporary location.
+
+## 29. omni_trend_demand_classification
+
+**Drafted from the existing Trend Pricelist Omni tab's current implementation, pending user
+review — describes what the tab computes today, not a validated or endorsed metric.**
+
+    ADI[item] = 31 / count(months, of the first 31 calendar months
+                2024-01..2026-07, where that item's Actual+MPS qty > 0)
+    CV2[item] = population_variance(monthly Actual+MPS qty, over only the
+                nonzero months within that same 31-month window)
+                / mean(the same nonzero months)^2
+    class[item]:
+      Smooth       : ADI < 1.32 and CV2 < 0.49
+      Erratic      : ADI < 1.32 and CV2 >= 0.49
+      Intermittent : ADI >= 1.32 and CV2 < 0.49
+      Lumpy        : ADI >= 1.32 and CV2 >= 0.49
+      NoSale       : zero Actual+MPS qty in all 32 months (2024-01..2026-08)
+      NoSale31M    : zero qty in the 31-month window above, but nonzero in
+                     the 32nd (current, partial) month, 2026-08
+
+- Source: `index.html`'s embedded `OMNI` object (script `#omniTabJs`, line 7595) carries each
+  item's `adi`/`cv2`/`cls` fields already computed; the tab's own JS reads them, it does not
+  compute them at runtime. No generator script for this data exists anywhere in the repo
+  (confirmed by a repo-wide search, task 2a; restated in the page's own note, `index.html` line
+  7534), so the exact generating code cannot be inspected directly.
+- The formula above is the tab's own stated definition, in its "นิยามศัพท์" (glossary) block —
+  `index.html` lines 7542-7543 (ADI: "31 เดือน ÷ จำนวนเดือนที่มียอดขาย"; CV²: "ความผันผวนของขนาด
+  ออเดอร์ในเดือนที่ขายได้") and line 7549 ("เกณฑ์แบ่งกลุ่ม: ADI 1.32 และ CV² 0.49
+  (Syntetos-Boylan)") — and the same threshold is repeated in chart c2's own hint text, line
+  7669 ("เส้นแบ่ง ADI 1.32 / CV² 0.49").
+- This formula was independently reverse-engineered from the embedded `qa`/`qm` (quantity,
+  Actual/MPS) arrays this task and checked against every item in `OMNI.items` carrying a
+  non-null `adi` (340 of 448 items, the rest being NoSale/NoSale31M with `adi:null`): **0
+  mismatches** on `adi` and `cv2` (population-variance form, matched to 3 decimal places as
+  stored) and **0 mismatches** on the resulting `cls` label, for all 340 items. This is strong
+  evidence the formula above is what the embedded data is consistent with, not proof of the
+  generating script's exact code (which does not exist in the repo to inspect).
+- The 31-month window always excludes 2026-08 (the current, partial month) from ADI/CV²,
+  distinct from the revenue/quantity totals used elsewhere on the tab (§30/§34 below), which sum
+  over all 32 months including the partial one.
+
+## 30. omni_trend_kpi_row
+
+**Drafted from the existing Trend Pricelist Omni tab's current implementation, pending user
+review — describes what the tab computes today, not a validated or endorsed metric.**
+
+    item_count        : count of items passing the current filter bar
+                        (division/category/type/class/search text)
+    total_sales_value : sum of (Actual sale + MPS sale), in THB, over ALL
+                        32 months (2024-01..2026-08, including the partial
+                        current month), across the filtered items — always
+                        the value figure, never affected by the chart-unit
+                        (qty/baht) toggle
+    class_counts      : count of filtered items per section 29 `cls` label
+                        (Smooth / Erratic / Intermittent / Lumpy), plus a
+                        combined NoSale count (NoSale + NoSale31M together)
+
+- Source: `index.html` functions `agg()` (lines 7612-7620) and `kpis()` (lines 7780-7789),
+  `#omniTabJs`. `pass()` (lines 7604-7611) defines which items are "filtered."
+- `total_sales_value` sums `it.sa[i]+it.sm[i]` for every month index (line 7617: `tot+=it.sa[i]
+  +it.sm[i]`, looped over all `NM` = 32 months) — this is unconditional on `F.unit1`, unlike
+  chart 1's own bars (section 31), which follow the qty/baht toggle.
+
+## 31. omni_trend_chart1_monthly
+
+**Drafted from the existing Trend Pricelist Omni tab's current implementation, pending user
+review — describes what the tab computes today, not a validated or endorsed metric.**
+
+    per month        : stacked bar of Actual (qty or value, per the u1_b/
+                        u1_q toggle) plus MPS on top, over the filtered
+                        items, for all 32 months; the 32nd (current,
+                        partial) month's bar is rendered at reduced opacity
+    moving_average    : a trailing simple moving average of (Actual+MPS)
+                        per month, window = 3, 6, or 12 months, or a
+                        user-entered custom width from 1 to 24 months —
+                        plotted only from the point where a full window is
+                        available (no average for the first window-1
+                        months)
+    drill-down        : clicking a month's bar opens the daily view for
+                        that month (section 36) over the same filtered
+                        item set
+
+- Source: `chart1()` (lines 7633-7648) and `maLine()` (lines 7623-7632), `#omniTabJs`. The
+  moving average is a trailing window (each point averages itself and the `window-1` months
+  before it — line 7625: `for(let k=0;k<win;k++)s+=tot[i-k]`), not centered.
+
+## 32. omni_trend_chart2_map
+
+**Drafted from the existing Trend Pricelist Omni tab's current implementation, pending user
+review — describes what the tab computes today, not a validated or endorsed metric.**
+
+    x-axis    : ADI (section 29), clamped for display at 8 (values above 8
+                are plotted at the axis edge)
+    y-axis    : CV2 (section 29), clamped for display at 6
+    per point : one filtered item with non-null adi/cv2 (NoSale/NoSale31M
+                items are not plotted)
+    radius    : 3 + 7 × sqrt(item's total sale value over all 32 months ÷
+                the largest such total among the filtered, plotted items)
+    color     : by section 29 class (Smooth/Erratic/Intermittent/Lumpy)
+    reference lines: ADI = 1.32 (vertical), CV2 = 0.49 (horizontal)
+
+- Source: `chart2()`, lines 7649-7671, `#omniTabJs`. Display clamping (8/6) affects only where a
+  point is drawn on this chart — it does not change the stored `adi`/`cv2` values used elsewhere
+  (section 29, the SKU table, or the drill-down modal).
+
+## 33. omni_trend_chart4_division_split
+
+**Drafted from the existing Trend Pricelist Omni tab's current implementation, pending user
+review — describes what the tab computes today, not a validated or endorsed metric.**
+
+    per division (PEM101/102/103/104/107/CI101):
+      bar   : Actual (qty or value, per the u1_b/u1_q toggle) plus MPS on
+              top, summed over all 32 months
+      count : number of items in that division passing the current filter
+              (other than the division filter itself, which this chart
+              overrides one division at a time)
+
+- Source: `chart4()`, lines 7673-7696, `#omniTabJs`. Clicking a bar sets the page's division
+  filter to that division (or clears it, on a second click of the same bar).
+- The chart's own code comment (lines 7674-7678) records that a 2026-09-24 audit checked whether
+  any item appears under more than one division bar (double-counting risk) and found every
+  item's `sh` (division) list contains exactly one division, with the six bars' item counts
+  summing to the dataset's total distinct item count — no overlap, for the data as embedded
+  today.
+
+## 34. omni_trend_sku_table
+
+**Drafted from the existing Trend Pricelist Omni tab's current implementation, pending user
+review — describes what the tab computes today, not a validated or endorsed metric.**
+
+    per row (one filtered item): code, pricelist name, category, product
+    type, division(s), section 29 class, ADI, CV2, Qty รวม, ยอดขาย (ลบ.),
+    Remark
+
+    Qty รวม    = sum of (Actual qty + MPS qty) over ALL 32 months
+                (2024-01..2026-08, including the partial current month)
+    ยอดขาย (ลบ.) = sum of (Actual sale + MPS sale) over the same 32 months,
+                in millions of THB
+    Remark     = section 37 match-status badge, plus section 38's
+                duplicate-pricelist note when present
+
+- Source: `table()`, lines 7764-7779, `#omniTabJs`. Default sort is by `ยอดขาย` (sale)
+  descending; sortable also by Qty, ADI, or code (ascending/descending toggle on repeat click,
+  `sortK`/`sortD`, lines 7755, 7766-7769, 7812). Only the first 400 rows (by current sort) are
+  rendered; the panel below the table states how many of the total filtered rows are shown
+  (line 7777).
+- As in section 30, these totals are unconditional on the qty/baht chart toggle — the table
+  always shows both quantity and value columns together, never one substituted for the other.
+
+## 35. omni_trend_drilldown_sku
+
+**Drafted from the existing Trend Pricelist Omni tab's current implementation, pending user
+review — describes what the tab computes today, not a validated or endorsed metric.**
+
+    per month        : the clicked item's own Actual+MPS bar (qty or
+                        value, per a LOCAL toggle inside the modal that
+                        starts on quantity by default, independent of the
+                        page-level chart-1 toggle), over all 32 months
+    mean line         : arithmetic mean of the item's own (Actual+MPS)
+                        total, computed ONLY over months, within the first
+                        31-month window (section 29's window, i.e. index
+                        < 31), that are individually nonzero — the partial
+                        32nd month and any zero month are excluded from
+                        this average, even though they are still plotted
+                        as bars
+    moving_average    : same trailing-window definition as section 31,
+                        applied to this one item's monthly total
+    info line         : category, product type, division(s), class badge,
+                        ADI/CV2 (when not null), and section 38's
+                        duplicate-pricelist note (when present)
+    drill-down        : clicking a month's bar opens the daily view for
+                        that month for this item alone (section 36)
+
+- Source: `openSku()`, lines 7697-7728, `#omniTabJs`; the "months in the mean" filter is line
+  7706: `act=tot.map(...).filter(o=>o.v>0&&o.i<N31)`.
+
+## 36. omni_trend_drilldown_daily
+
+**Drafted from the existing Trend Pricelist Omni tab's current implementation, pending user
+review — describes what the tab computes today, not a validated or endorsed metric.**
+
+    per day of the clicked month : Actual qty/value and MPS qty/value,
+    summed from the raw daily records of either:
+      - one item (`it.dd`), if opened from the per-SKU drill-down
+        (section 35), or
+      - every item currently passing the page filter, if opened directly
+        from chart 1's monthly bar (section 31)
+    a day with no matching raw record shows no bar (no PO received that
+    day, per the tab's own hint text, line 7750)
+
+- Source: `openDaily()`, lines 7729-7754, `#omniTabJs`. Each raw daily record is a 5-element
+  array `[YYMMDD, qty_actual, sale_actual, qty_mps, sale_mps]` (embedded per item as `it.dd` in
+  the `OMNI` object, line 7595) — confirmed by inspecting the embedded data directly this task
+  (e.g. item `02-05-R-0004`'s first record `[241128, 2.0, 50000.0, 0.0, 0.0]` = 2024-11-28,
+  qty 2, sale value 50,000 THB, Actual status). As with section 29, no generator script exists
+  in the repo to show how these raw records were themselves produced from the source database;
+  this describes only the structure the page's own JS reads and how it aggregates it.
+
+## 37. omni_trend_match_status
+
+**Drafted from the existing Trend Pricelist Omni tab's current implementation, pending user
+review — describes what the tab computes today, not a validated or endorsed metric.**
+
+    Match (badge)        : this item code's `MATCH[code].s == 'ok'`
+    Check spec (badge)   : `MATCH[code].s == 'conflict'` — tooltip shows
+                           the pricelist spec (`pl_spec`) vs. the DB spec
+                           (`db_spec`) and the DB name (`dbn`)
+    No spec info (badge) : `MATCH[code].s == 'nospec'` — DB has a matching
+                           name (`dbn`) but no spec field to compare
+    No data in DB (badge): the item code has no entry in `MATCH` at all
+                           (default, `s: 'nodata'`)
+
+- Source: `matchBadge()`, lines 7756-7763, `#omniTabJs`; displayed in the SKU table's "Remark"
+  column (section 34) and the per-SKU drill-down's info line (section 35).
+- **Could not determine how the match status itself was computed.** The display logic above
+  (which badge/tooltip a given status value produces) is fully readable in `index.html`, but the
+  `MATCH` object itself (line 7594) is static embedded data — which comparison logic assigned
+  `s`/`dbn`/`pl_spec`/`db_spec` to each of the 448 item codes is not present anywhere in
+  `index.html`, and no generator script for it exists anywhere in the repo (same repo-wide
+  search as section 29/36, task 2a). This is flagged per instruction rather than guessed.
+
+## 38. omni_trend_duplicate_pricelist_flag
+
+**Drafted from the existing Trend Pricelist Omni tab's current implementation, pending user
+review — describes what the tab computes today, not a validated or endorsed metric.**
+
+    when present, an item's `rk` text (e.g. "พบซ้ำ 2 รายการ pricelist" —
+    "found duplicate 2 pricelist entries") is appended, as a plain hint
+    span, after that item's match-status badge, in the SKU table's
+    "Remark" column (section 34) and the per-SKU drill-down's info line
+    (section 35)
+
+- Source: display logic at lines 7773-7774 (`if(it.rk)rk.push(...)`) and line 7724, `#omniTabJs`.
+- **Could not determine how this flag itself was computed.** Only 1 of the 448 embedded items
+  (`DS-F-99-0308`) carries an `rk` value in the data checked this task, and no code anywhere in
+  `index.html`, nor any generator script in the repo, computes or assigns it — it is static
+  embedded data, exactly like section 37's `MATCH` object. Flagged per instruction rather than
+  guessed.
+
+**Note on section 26 and this tab**: `index.html`'s own note text for `#omniTab` (lines
+7529-7532) already carries `data_pulled_at` (2026-08-25) and `page_built_at` (2026-09-25 12:15
+ICT) in the format section 26 defines, and states plainly that this tab is not refreshed by the
+pipeline — no new section is needed for this; it is already covered by section 26.
