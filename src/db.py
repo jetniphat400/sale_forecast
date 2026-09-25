@@ -7,7 +7,14 @@ from dotenv import load_dotenv
 from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
 
-load_dotenv()
+# PROJECT_ROOT from __file__, never os.getcwd() (CONVENTIONS.md: no hardcoded absolute paths;
+# paths relative to the project root) -- this module is imported by scripts that may be launched
+# from any working directory (e.g. a Windows Scheduled Task running from C:\Windows\system32),
+# so a bare load_dotenv() (which searches from the CURRENT WORKING DIRECTORY, not this file's
+# location) could silently fail to find .env, leaving DB_SERVER/DB_PASSWORD/etc. unset. Task
+# 2cfix2, this task.
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+load_dotenv(dotenv_path=os.path.join(PROJECT_ROOT, ".env"))
 
 _REQUIRED_ENV_VARS = ["DB_SERVER", "DB_DATABASE", "DB_USER", "DB_PASSWORD", "DB_DRIVER"]
 
