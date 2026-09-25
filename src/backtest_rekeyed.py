@@ -50,13 +50,48 @@ SUMMARY_DIR = os.path.join(PROJECT_ROOT, "output", "summary")
 CHARTS_DIR = os.path.join(PROJECT_ROOT, "output", "charts")
 
 MA_WINDOWS = [3, 6, 12]
-HOLDOUT = 6
-MIN_TRAIN_MONTHS = 13
-ORIGIN_STEP = 2
-TRAIN_MONTHS = 19
-VAL_MONTHS = 6
-TEST_MONTHS = 6
-TOTAL_MONTHS = TRAIN_MONTHS + VAL_MONTHS + TEST_MONTHS  # 31
+
+CONFIG_PATH = os.path.join(PROJECT_ROOT, "config", "config.yaml")
+
+
+def load_config() -> dict:
+    with open(CONFIG_PATH, "r", encoding="utf-8") as f:
+        return yaml.safe_load(f)
+
+
+def load_backtest_settings(config: dict = None) -> dict:
+    """Task 2cfix Part 1 / METRICS.md Sec.39 ("K, H and the spacing are read from config, not
+    hard-coded"): the single place HOLDOUT/MIN_TRAIN_MONTHS/ORIGIN_STEP/TRAIN_MONTHS/VAL_MONTHS/
+    TEST_MONTHS/TOTAL_MONTHS are read from config/config.yaml's `backtest:` block. Every one of
+    this project's ~20 files that does `from backtest_rekeyed import HOLDOUT, TOTAL_MONTHS, ...`
+    gets these values transitively (module-level constants below, set from this function's
+    return value at import time) -- there is no second hardcoded copy of any of these six numbers
+    anywhere in the live pipeline (config/config.yaml, "Backtest window settings" comment block,
+    documents which files were checked and why two files' own same-VALUED constants are a
+    deliberately separate, frozen concept, not a duplicate of this one)."""
+    if config is None:
+        config = load_config()
+    b = config["backtest"]
+    holdout = int(b["holdout_months"])
+    min_train_months = int(b["min_train_months"])
+    origin_step = int(b["origin_step_months"])
+    train_months = int(b["train_months"])
+    val_months = int(b["val_months"])
+    test_months = int(b["test_months"])
+    total_months = train_months + val_months + test_months
+    return {"HOLDOUT": holdout, "MIN_TRAIN_MONTHS": min_train_months, "ORIGIN_STEP": origin_step,
+            "TRAIN_MONTHS": train_months, "VAL_MONTHS": val_months, "TEST_MONTHS": test_months,
+            "TOTAL_MONTHS": total_months}
+
+
+_BT_SETTINGS = load_backtest_settings()
+HOLDOUT = _BT_SETTINGS["HOLDOUT"]
+MIN_TRAIN_MONTHS = _BT_SETTINGS["MIN_TRAIN_MONTHS"]
+ORIGIN_STEP = _BT_SETTINGS["ORIGIN_STEP"]
+TRAIN_MONTHS = _BT_SETTINGS["TRAIN_MONTHS"]
+VAL_MONTHS = _BT_SETTINGS["VAL_MONTHS"]
+TEST_MONTHS = _BT_SETTINGS["TEST_MONTHS"]
+TOTAL_MONTHS = _BT_SETTINGS["TOTAL_MONTHS"]  # 31
 
 FOCUS_ITEMS = ["EEE-F-FC-1040010002", "HS-F-99-02110", "HS-F-99-0213"]
 KEYS = ["createDate", "forecastDate"]
@@ -132,6 +167,10 @@ def run_rolling_origin(series: dict, models: dict, pull_date, min_margin_days: i
                 continue
             window_end_month = months[train_size + HOLDOUT - 1]
             check_window_closed(window_end_month, pull_date, min_margin_days)
+            # METRICS.md Sec.39: "every reported figure states the window's first and last test
+            # months" -- the test window is months[train_size : train_size+HOLDOUT].
+            first_test_month = months[train_size]
+            last_test_month = window_end_month
             for model_name, model_fn in models.items():
                 try:
                     forecast = np.clip(model_fn(train, HOLDOUT), 0, None)
@@ -140,12 +179,14 @@ def run_rolling_origin(series: dict, models: dict, pull_date, min_margin_days: i
                     continue
                 m = compute_metrics(test, forecast, train)
                 results.append({"level": level, "key": key, "category": cat, "origin": origin_idx,
-                                 "train_size": train_size, "model": model_name, **m})
+                                 "train_size": train_size, "model": model_name,
+                                 "first_test_month": first_test_month, "last_test_month": last_test_month, **m})
             try:
                 combo = np.clip(combination_forecast(train, HOLDOUT, MA_WINDOWS), 0, None)
                 m = compute_metrics(test, combo, train)
                 results.append({"level": level, "key": key, "category": cat, "origin": origin_idx,
-                                 "train_size": train_size, "model": "Combination", **m})
+                                 "train_size": train_size, "model": "Combination",
+                                 "first_test_month": first_test_month, "last_test_month": last_test_month, **m})
             except Exception as e:
                 logger.warning("Combination failed for %s/%s at origin %d: %s", level, key, origin_idx, e)
     return pd.DataFrame(results)
@@ -169,18 +210,27 @@ def run_train_val_test(series: dict, models: dict, pull_date, min_margin_days: i
         check_window_closed(months[TRAIN_MONTHS + VAL_MONTHS - 1], pull_date, min_margin_days)  # val window end
         check_window_closed(months[TOTAL_MONTHS - 1], pull_date, min_margin_days)  # test window end
 
+        # METRICS.md Sec.39: "every reported figure states the window's first and last test
+        # months" -- val and test are two different windows here, each stated separately.
+        val_first_month, val_last_month = months[TRAIN_MONTHS], months[TRAIN_MONTHS + VAL_MONTHS - 1]
+        test_first_month, test_last_month = months[TRAIN_MONTHS + VAL_MONTHS], months[TOTAL_MONTHS - 1]
+
         for model_name, model_fn in models.items():
             fc_val = np.clip(model_fn(train, VAL_MONTHS), 0, None)
             val_records.append({"level": level, "key": key, "category": cat, "model": model_name,
+                                 "first_test_month": val_first_month, "last_test_month": val_last_month,
                                  **compute_metrics(val, fc_val, train)})
             fc_test = np.clip(model_fn(train_val, TEST_MONTHS), 0, None)
             test_records.append({"level": level, "key": key, "category": cat, "model": model_name,
+                                  "first_test_month": test_first_month, "last_test_month": test_last_month,
                                   **compute_metrics(test, fc_test, train_val)})
         combo_val = np.clip(combination_forecast(train, VAL_MONTHS, MA_WINDOWS), 0, None)
         val_records.append({"level": level, "key": key, "category": cat, "model": "Combination",
+                             "first_test_month": val_first_month, "last_test_month": val_last_month,
                              **compute_metrics(val, combo_val, train)})
         combo_test = np.clip(combination_forecast(train_val, TEST_MONTHS, MA_WINDOWS), 0, None)
         test_records.append({"level": level, "key": key, "category": cat, "model": "Combination",
+                              "first_test_month": test_first_month, "last_test_month": test_last_month,
                               **compute_metrics(test, combo_test, train_val)})
     return pd.DataFrame(val_records), pd.DataFrame(test_records)
 
@@ -206,9 +256,7 @@ if __name__ == "__main__":
     scope = pd.read_csv(os.path.join(SUMMARY_DIR, "part1_category_scope_all_codes.csv"))
     models = get_models(MA_WINDOWS)
 
-    CONFIG_PATH = os.path.join(PROJECT_ROOT, "config", "config.yaml")
-    with open(CONFIG_PATH, "r", encoding="utf-8") as f:
-        _config = yaml.safe_load(f)
+    _config = load_config()
     min_margin_days = load_min_margin_days(_config)
     logger.info("Leakage guard: min_margin_days=%d (config/config.yaml: leakage_guard.min_margin_days)", min_margin_days)
 

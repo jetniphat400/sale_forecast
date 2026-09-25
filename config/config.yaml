@@ -1250,3 +1250,60 @@ monthly_refresh:
   total_on_hand_stock_change_pct: 30.0
   total_on_hand_stock_change_pct_owner: "Modeler default -- no business figure exists"
 
+# ============================================================
+# Backtest window settings (METRICS.md Sec.39, rolling_origin_evaluation) -- moved out of
+# src/backtest_rekeyed.py's hardcoded module-level literals into config, task 2cfix Part 1.
+# "K, H and the spacing are read from config, not hard-coded" (METRICS.md Sec.39).
+#
+# WHY ALL SIX VALUES (not just the derived total_months): TRAIN_MONTHS/VAL_MONTHS/TEST_MONTHS are
+# each imported and used INDIVIDUALLY (not just as their sum) by several callers
+# (backtest_all_divisions.py, charts_all_divisions.py, focus_item_model_selection.py,
+# item_level_reconciliation.py) for the single train/validation/test split evaluation
+# (evaluation_policy.secondary above) -- moving only the total would leave those three as
+# hardcoded literals duplicating what this block already states. total_months is therefore
+# DERIVED (train_months + val_months + test_months) by src/backtest_rekeyed.py at load time, never
+# stored here separately, so it cannot drift out of sync with its own components.
+#
+# HOW EVERY CALLER READS THIS (single source, no per-file duplication): src/backtest_rekeyed.py
+# reads this block via its own load_config()/load_backtest_settings() at import time and sets its
+# module-level HOLDOUT/MIN_TRAIN_MONTHS/ORIGIN_STEP/TRAIN_MONTHS/VAL_MONTHS/TEST_MONTHS/
+# TOTAL_MONTHS constants FROM these config values (never re-hardcoded) -- every one of the ~20
+# files across src/ that does `from backtest_rekeyed import HOLDOUT, TOTAL_MONTHS, ...` therefore
+# reads a config-sourced value transitively, with zero duplication anywhere. This is the "reads
+# config.yaml directly" option this task's own instructions allow, applied at the one place
+# (backtest_rekeyed.py) that already owns these names, rather than editing every caller's import
+# line individually for no behavioural difference. Verified (this task): the ONLY other
+# module-level literal definitions of these exact values live in src/investigations/*.py
+# (backtest_aggregate.py, rolling_origin.py, rule_stability_origins.py, train_val_test.py) --
+# frozen, one-off historical investigation scripts never re-run by any pipeline stage, left
+# untouched deliberately -- and in src/phaseE1_common.py / src/phaseE2_pilot_recompute.py, which
+# define their OWN separate `TOTAL_MONTHS = 31` for a DIFFERENT purpose (anchoring Phase E1/E2's
+# intentionally FROZEN pilot comparison window, METRICS.md Sec.28's "frozen, never touched by the
+# monthly run" principle) -- deliberately NOT unified with this live, monthly-refreshed backtest
+# window, since doing so would make those frozen scenario outputs silently drift every month.
+# ============================================================
+backtest:
+  # HOLDOUT -- rolling-origin and train/val/test test-window length, in months. Evidence:
+  # src/backtest_aggregate.py / src/rolling_origin.py / src/rule_stability_origins.py (this
+  # project's original rolling-origin work) all used 6-month holdout throughout; kept unchanged by
+  # this refactor.
+  holdout_months: 6
+  holdout_months_owner: "Reused unchanged from the project's original rolling-origin scheme (src/backtest_aggregate.py, src/rolling_origin.py, src/rule_stability_origins.py) -- not a new figure"
+
+  # MIN_TRAIN_MONTHS -- smallest training window an origin is allowed to use (ensures MA12 has
+  # more than just its own 12-month window to fit against).
+  min_train_months: 13
+  min_train_months_owner: "Reused unchanged from src/rolling_origin.py / src/rule_stability_origins.py"
+
+  # ORIGIN_STEP -- months of spacing between successive rolling origins.
+  origin_step_months: 2
+  origin_step_months_owner: "Reused unchanged from src/rolling_origin.py / src/rule_stability_origins.py"
+
+  # TRAIN_MONTHS/VAL_MONTHS/TEST_MONTHS -- the single train/validation/test split
+  # (evaluation_policy.secondary above), 19/6/6 months. Evidence: src/evaluate_strategies.py /
+  # src/backtest_aggregate.py (this project's original train/val/test work).
+  train_months: 19
+  val_months: 6
+  test_months: 6
+  train_val_test_owner: "Reused unchanged from src/evaluate_strategies.py / src/backtest_aggregate.py -- not a new figure. total_months (31) = train_months + val_months + test_months, computed by src/backtest_rekeyed.py, never stored here separately."
+

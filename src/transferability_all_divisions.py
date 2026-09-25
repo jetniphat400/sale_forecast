@@ -69,6 +69,10 @@ def run_transferability_rolling_origin(item_series: dict, type_series: dict, pul
                 continue
             window_end_month = months[train_size + HOLDOUT - 1]
             check_window_closed(window_end_month, pull_date, min_margin_days)
+            # METRICS.md Sec.39: "every reported figure states the window's first and last test
+            # months".
+            first_test_month = months[train_size]
+            last_test_month = window_end_month
 
             direct_fc = np.clip(combination_forecast(train, HOLDOUT, MA_WINDOWS), 0, None)
             naive_fc = np.clip(naive_forecast(train, HOLDOUT), 0, None)
@@ -85,7 +89,8 @@ def run_transferability_rolling_origin(item_series: dict, type_series: dict, pul
                     continue
                 m = compute_metrics(test, fc, train)
                 results.append({"division": div, "category": cat, "type_key": type_key, "itemcode": code,
-                                 "origin": origin_idx, "train_size": train_size, "approach": approach, **m})
+                                 "origin": origin_idx, "train_size": train_size, "approach": approach,
+                                 "first_test_month": first_test_month, "last_test_month": last_test_month, **m})
     return pd.DataFrame(results)
 
 
@@ -108,9 +113,12 @@ if __name__ == "__main__":
     logger.info("%d item x origin x approach rows scored.", len(results))
 
     # ---- Per-division summary: mean MAE per approach ----
+    # METRICS.md Sec.39: states the SPAN of test months pooled across the origins scored into
+    # this mean (earliest origin's first test month to the last origin's last test month).
     per_division = results.groupby(["division", "approach"], as_index=False).agg(
         MAE=("MAE", "mean"), RMSE=("RMSE", "mean"), Bias=("Bias", "mean"), MASE=("MASE", "mean"),
-        n_scored=("MAE", "size"))
+        n_scored=("MAE", "size"),
+        first_test_month=("first_test_month", "min"), last_test_month=("last_test_month", "max"))
     per_division.to_csv(os.path.join(SUMMARY_DIR, "phaseC_step2_transferability_per_division.csv"), index=False)
 
     # ---- Verdict per division: does Top-down hold its advantage over Direct, and over Naive? ----

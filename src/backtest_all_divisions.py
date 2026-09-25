@@ -123,17 +123,25 @@ if __name__ == "__main__":
     test_df.to_csv(os.path.join(SUMMARY_DIR, f"phaseC_step2_test_{value_col}.csv"), index=False)
 
     # ---- Per-division, per-Type summary (Combination only) ----
+    # METRICS.md Sec.39: "every reported figure states the window's first and last test months" --
+    # a summary pooling K origins states the SPAN it pools (earliest origin's first test month to
+    # the last origin's last test month), not a single origin's own window.
     combo_ro = ro[ro["model"] == "Combination"]
     per_type_summary = combo_ro[combo_ro["level"] == "Type"].groupby(["division", "name"], as_index=False).agg(
         MAE=("MAE", "mean"), RMSE=("RMSE", "mean"), Bias=("Bias", "mean"), MASE=("MASE", "mean"),
-        n_origins=("origin", "nunique"))
+        n_origins=("origin", "nunique"),
+        rolling_origin_first_test_month=("first_test_month", "min"),
+        rolling_origin_last_test_month=("last_test_month", "max"))
     n_items_per_type = scope.groupby(["division", "type"], as_index=False).size().rename(
         columns={"type": "name", "size": "n_items"})
     per_type_summary = per_type_summary.merge(n_items_per_type, on=["division", "name"], how="left")
     per_type_summary.to_csv(os.path.join(SUMMARY_DIR, f"phaseC_step2_per_type_summary_{value_col}.csv"), index=False)
 
     per_division_summary = combo_ro[combo_ro["level"] == "Type"].groupby("division", as_index=False).agg(
-        MAE=("MAE", "mean"), RMSE=("RMSE", "mean"), Bias=("Bias", "mean"), MASE=("MASE", "mean"))
+        MAE=("MAE", "mean"), RMSE=("RMSE", "mean"), Bias=("Bias", "mean"), MASE=("MASE", "mean"),
+        n_origins=("origin", "nunique"),
+        rolling_origin_first_test_month=("first_test_month", "min"),
+        rolling_origin_last_test_month=("last_test_month", "max"))
     n_items_per_division = scope.groupby("division", as_index=False).size().rename(columns={"size": "n_items"})
     per_division_summary = per_division_summary.merge(n_items_per_division, on="division", how="left")
     per_division_summary.to_csv(os.path.join(SUMMARY_DIR, f"phaseC_step2_per_division_summary_{value_col}.csv"), index=False)
