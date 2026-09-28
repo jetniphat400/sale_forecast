@@ -1133,10 +1133,21 @@ report:
 #   silently overwrite a fact with a guess.
 #   notice period, on-time rate, demand history.
 # ============================================================
-# UPDATE (E1-fix, 2026-09-21): Tier A is no longer intent-only for holding_cost_rate,
-# sellable_warehouse_codes, and the scenario grid above -- forecast/inventory.html now implements
-# live on-page Tier A controls for these. segment_policy below is Tier B (a pipeline re-run is
-# required to change it), per its own comment.
+# UPDATE (E1-fix, 2026-09-21): Tier A is no longer intent-only for holding_cost_rate and the
+# scenario grid above -- forecast/inventory.html implements live on-page Tier A controls for
+# these (the 5 sliders: procurement lead time, assembly time, review interval, cycle service
+# level, holding cost rate). segment_policy below is Tier B (a pipeline re-run is required to
+# change it), per its own comment.
+#
+# CORRECTED (manual-publish task, 2026-09-28): sellable_warehouse_codes and
+# obsolescence_threshold_months were claimed live above, but never were -- reading
+# forecast/inventory.html's own client-side JS (readControls()/computeAll()) shows neither the
+# warehouse checklist's checked state nor the obsolescence slider's value was ever consumed by
+# any computation on the page; both only echoed back to their own on-screen label. This was
+# found while writing the dashboard's user manual and independently confirmed by that task's
+# Validator. Both controls are now DISABLED on the page itself (labelled "ยังไม่ทำงาน — อยู่ระหว่าง
+# แก้ไข") rather than left silently inert; making them live is out of this task's scope and is
+# tracked for task 2b instead.
 
 # ============================================================
 # Segment policy thresholds (locked 2026-09-21, E1-fix, METRICS.md Sec.15) -- TIER B: this is a
