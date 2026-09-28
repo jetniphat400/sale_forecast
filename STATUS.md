@@ -6148,6 +6148,53 @@ refresh work) — all three RESOLVED, task 2cfix (2026-09-25), see Section 12 fo
   registration must target the 5th of the month at 07:00 (Section 4 above, "The monthly run is
   scheduled for the 5th of each month at 07:00 local time").
 
+**Update, 2026-09-28 (manual-publish task).** The approved user manual (`docs/user_manual.md`,
+`config/manual_notes.yaml`) is published, and the following open items above are updated:
+
+- **Item 4** (obsolescence slider, no effect) and **item 5** (warehouse checklist, no effect):
+  **PARTIALLY DONE this task, commit `b1b945c`.** Both are now **disabled** on
+  `forecast/inventory.html` and labelled "ยังไม่ทำงาน — อยู่ระหว่างแก้ไข" rather than left silently
+  inert — confirmed by an independent Validator (fresh agent, no shared context with the
+  implementer) reading the rendered HTML directly. Making either control actually compute
+  something **remains OPEN, deferred to task 2b** — this task deliberately did not implement
+  them, per its own scope instruction.
+- **Item 6** (Min/Max shown for `component_stock_ato` items) and **item 9** (division-selector
+  exclusion reasons only in the `<ul>`, not the `<select>`'s tooltips): **unchanged, still OPEN,
+  deferred to task 2b** — out of this task's stated scope.
+- **Item 10** ("Product-type segmentation," "relative cost display," "PEM107 alert"): **unchanged
+  — the manual does not describe any of these**, consistent with this item's own instruction not
+  to draft that section until task 2b lands.
+- `config/config.yaml`'s comment falsely claiming the warehouse-checklist control was made live
+  (E1-fix, 2026-09-21) is **corrected, commit `423dfcf`** — the original text is kept, with a
+  dated correction directly beneath it, not silently overwritten (CONVENTIONS.md, "Report
+  contradictions explicitly").
+- **New, previously-unknown defect found and fixed this task, commit `e9cf93f` (via the Part 5
+  visual check, not source-reading alone):** the pinned Plotly build
+  (`https://cdnjs.cloudflare.com/ajax/libs/plotly.js/4.1.1/plotly.min.js`) silently drops the
+  plain-string `title: '...'` axis-title shorthand — confirmed directly in a real browser
+  (`Plotly._fullLayout.xaxis.title.text` stayed on the library's own built-in placeholder,
+  `"Click to enter X axis title"`, until the layout was rewritten as `title: {text: '...'}`).
+  **This means no Plotly axis title had ever visibly rendered on `forecast/sales_report.html` or
+  `forecast/inventory.html`, including titles believed already present before this task** (e.g.
+  chart-rolling's "Rolling origin", chart-ontime's "%") — a source-code read alone (this task's
+  own Validator pass included) could not have caught this, since the JS layout object looked
+  correct; only rendering the page in a real browser exposed it. Every `title:` in
+  `src/build_report.py`'s and `src/build_inventory_page.py`'s client JS is now the object form,
+  chart margins widened where a title was clipping, and both `tests/test_manual_survives_rebuild.py`
+  functions now assert `"title: '"` is absent from the rebuilt HTML, so the plain-string form
+  cannot silently return.
+- **Verified, this task**: rolling origin 1 is chronologically earliest (`src/backtest_rekeyed.py`
+  `get_origins()` returns ascending `train_size`; both callers' `enumerate(origins, start=1)`
+  pair `origin_idx=1` with the smallest `train_size` / earliest `window_end_month`) — confirmed
+  independently by two call sites sharing the same function, not reimplemented. The manual's
+  "Rolling-origin MAE" chart description states this as fact, with no `[ตรวจ]` marker.
+- Full detail: this task's independent Validator report (dispatched as a fresh agent, no shared
+  context with the implementer) confirmed all 6 checklist items; the one gap it found (the Trend
+  tab's daily drill-down chart had an X-axis title only as an external caption, not a real in-SVG
+  `<text>` element) was fixed and re-verified. Screenshots from the Part 5 CDP visual check (an
+  isolated Edge instance on a temp profile, closed by PID afterward) are in
+  `output/charts/manual_verification/` (gitignored, not committed).
+
 ## 11. Forward test ready for 30 September + monthly runner (this task, 2026-09-25)
 
 Scope: Part 1 (forward-test log path fixes, vintage migration, adapted consistency check, dry-run
