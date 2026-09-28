@@ -26,7 +26,7 @@
   h2 { font-size: 17px; margin: 32px 0 10px; border-bottom: 1px solid var(--border); padding-bottom: 6px; }
   h3 { font-size: 13px; color: var(--text-secondary); margin: 18px 0 6px; }
   p { margin: 6px 0; }
-  p.hint, p.scope-note { font-size: 12px; color: var(--muted); }
+  p.hint, p.scope-note, span.hint, span.scope-note { font-size: 12px; color: var(--muted); }
   p.note-box { font-size: 12px; color: var(--text-secondary); background: #f0efec; border-radius: 6px; padding: 8px 10px; }
   code { background: var(--gridline); padding: 1px 5px; border-radius: 4px; }
   .report-table { width:100%; border-collapse: collapse; font-size: 13px; margin: 6px 0 16px; }
@@ -55,11 +55,11 @@
   
     <details class="note-box" style="margin:10px 0">
       <summary style="cursor:pointer"><b>data_pulled_at:</b> 2026-09-25 11:51:56 ICT (UTC+7)
-        (เก่าที่สุดในหน้านี้, ดูรายละเอียดต่อส่วนด้านล่าง) &nbsp;|&nbsp; <b>page_built_at:</b> 2026-09-25 15:57 ICT (UTC+7)
+        (เก่าที่สุดในหน้านี้, ดูรายละเอียดต่อส่วนด้านล่าง) &nbsp;|&nbsp; <b>page_built_at:</b> 2026-09-28 11:23 ICT (UTC+7)
         &nbsp;<!-- source: src/build_report.py gather_freshness()/datetime.now(), this build run --></summary>
       <table class="report-table" style="margin-top:8px">
-        <thead><tr><th>ส่วนของหน้า / แหล่งข้อมูล</th><th>data_pulled_at (หรือ file mtime)</th><th>สถานะ (ประเมินแยกทีละส่วน)</th></tr></thead>
-        <tbody><tr><td>หลัก (forecast/actual, scope, ช่วงข้อมูล) -- snapshot_pull_date</td><td>2026-09-25 11:51:56</td><td>ทันสมัย (ok)</td></tr><tr><td>ตารางผลลัพธ์ต่อฝ่าย (phaseC_step2_transferability_per_division.csv / phaseC_step2_per_division_summary_qty.csv) -- file mtime</td><td>2026-09-25 15:48</td><td>ทันสมัย (ok)</td></tr><tr><td>Rolling-origin chart (phaseC_step2_rolling_origin_qty.csv) -- file mtime</td><td>2026-09-25 15:48</td><td>ทันสมัย (ok)</td></tr><tr><td>Notice-period chart (leadtime_notice_buckets_overall.csv) -- file mtime</td><td>2026-09-25 15:34</td><td>ทันสมัย (ok)</td></tr><tr><td>โมเดลพื้นฐาน chart (focus_items_test_all.csv) -- file mtime</td><td>2026-09-25 15:34</td><td>ทันสมัย (ok)</td></tr><tr><td>On-time exact (delivery_by_year.csv) -- file mtime</td><td>2026-09-25 15:34</td><td>ทันสมัย (ok)</td></tr><tr><td>Not-late (delivery_not_late_by_year.csv) -- file mtime, itself computed from a Cube_CES pull; see the on-time chart&#x27;s own note for that pull&#x27;s date</td><td>2026-09-25 15:34</td><td>ทันสมัย (ok)</td></tr></tbody>
+        <thead><tr><th>ส่วนของหน้า / แหล่งข้อมูล</th><th>data_pulled_at (snapshot_pull_date)</th><th>สถานะ (ประเมินแยกทีละส่วน)</th></tr></thead>
+        <tbody><tr><td>หลัก (forecast/actual, scope, ช่วงข้อมูล) -- snapshot_pull_date</td><td>2026-09-25 11:51:56</td><td>ทันสมัย (ok)</td></tr><tr><td>ตารางผลลัพธ์ต่อฝ่าย (phaseC_step2_transferability_per_division.csv / phaseC_step2_per_division_summary_qty.csv) -- snapshot_pull_date</td><td>2026-09-25 16:35</td><td>ทันสมัย (ok)</td></tr><tr><td>Rolling-origin chart (phaseC_step2_rolling_origin_qty.csv) -- snapshot_pull_date</td><td>2026-09-25 16:35</td><td>ทันสมัย (ok)</td></tr><tr><td>Notice-period chart (leadtime_notice_buckets_overall.csv) -- snapshot_pull_date</td><td>2026-09-25 16:35</td><td>ทันสมัย (ok)</td></tr><tr><td>โมเดลพื้นฐาน chart (focus_items_test_all.csv) -- snapshot_pull_date</td><td>2026-09-25 16:35</td><td>ทันสมัย (ok)</td></tr><tr><td>On-time exact (delivery_by_year.csv) -- snapshot_pull_date</td><td>2026-09-25 16:35</td><td>ทันสมัย (ok)</td></tr><tr><td>Not-late (delivery_not_late_by_year.csv) -- snapshot_pull_date, itself read forward from the same Cube_CES pull as the on-time chart above (no new DB call)</td><td>2026-09-25 16:35</td><td>ทันสมัย (ok)</td></tr></tbody>
       </table>
     </details>
     
@@ -105,6 +105,7 @@
       <h3>การกระจายของระยะเวลาแจ้งล่วงหน้า (Notice period)</h3>
       <!-- source: output/summary/leadtime_notice_buckets_overall.csv, column min_notice_days / pct_of_orders -->
       <div id="chart-notice" class="plotly-chart"></div>
+      <p class="hint">▸ ลูกค้าสั่งของล่วงหน้านานแค่ไหนก่อนวันที่ต้องส่ง<br>▸ แกน X = ระยะแจ้งล่วงหน้าขั้นต่ำ (≥30 วัน, ≥60 วัน … ≥180 วัน) · แกน Y = % ของออเดอร์ทั้งหมด<br>▸ สมมติแท่ง ≥30 วันสูง 6% หมายถึงออเดอร์ 100 ใบ มีแค่ 6 ใบที่แจ้งล่วงหน้าเกิน 30 วัน</p>
       <h3>สัดส่วนส่งมอบตรงวันครบกำหนดเป๊ะ vs. ส่งไม่ล่าช้า (2023-2026)</h3>
       <p class="hint">
         <b>on_time_exact</b> = ส่งมอบตรงวันครบกำหนดพอดี (PlanDelDate), นับตามจำนวนออเดอร์ (row-weighted),
@@ -122,6 +123,7 @@
       <!-- source: output/summary/delivery_by_year.csv, column year / pct_on_time -->
       <!-- source: output/summary/delivery_not_late_by_year.csv, column year / not_late_pct_unit_weighted -->
       <div id="chart-ontime" class="plotly-chart"></div>
+      <p class="hint">▸ ส่งของให้ลูกค้าทันวันนัดกี่ % ต่อปี<br>▸ แกน X = ปี · แกน Y = % (0-100)<br>▸ 2 เส้น ส่งไม่ช้า (ทันหรือก่อนวันนัด) กับ ส่งตรงวันพอดี ใช้เส้นส่งไม่ช้าถ้าจะตอบว่าลูกค้าได้ของทันไหม<br>▸ เส้นส่งตรงวันพอดีต่ำกว่าเสมอเพราะไม่นับที่ส่งก่อน อย่าเอาไปรายงานเป็นอัตราส่งทัน</p>
     </section>
     <section id="data">
       <h2>4. ข้อมูลที่ใช้ (Data)</h2>
@@ -146,6 +148,7 @@
       <p class="hint">คลิกที่ legend เพื่อซ่อน/แสดงแต่ละโมเดล</p>
       <!-- source: output/summary/focus_items_test_all.csv, column model / MAE -->
       <div id="chart-model" class="plotly-chart"></div>
+      <p class="hint">▸ แต่ละวิธีทายสินค้าหลัก 3 ตัวพลาดแค่ไหน<br>▸ แกน X = รหัสสินค้า 3 ตัว · แกน Y = MAE (ชิ้นต่อเดือน) แท่งต่ำ = ทายแม่นกว่า<br>▸ แต่ละสีคือหนึ่งวิธี คลิกชื่อใน legend เพื่อซ่อนหรือแสดง</p>
     </section>
     <div class="controls-note">
       <b>หมายเหตุ:</b> ตัวควบคุมบนหน้านี้ (Division/Type/Item/Origin selectors, legend toggles)
@@ -166,7 +169,9 @@
       </p>
       <div class="controls">
         <label>ฝ่าย (Division): <select id="filterDivision"><option value="__all__">ทั้งหมด</option><option value="CI101">CI101</option><option value="PEM101">PEM101</option><option value="PEM102">PEM102</option><option value="PEM103">PEM103</option><option value="PEM107">PEM107</option></select></label>
+        <span class="hint">(มีผลกับตาราง PRIMARY, SECONDARY และกราฟ Rolling-origin — ไม่มีผลกับกราฟ Forecast vs Actual)</span>
         <label>ประเภท (Type): <select id="filterType"><option value="__all__">ทั้งหมด</option></select></label>
+        <span class="hint">(มีผลกับกราฟ Rolling-origin เท่านั้น — ไม่มีผลกับตาราง PRIMARY/SECONDARY)</span>
       </div>
       <h3>PRIMARY — MAE / RMSE / Bias / MASE ต่อฝ่าย, วิธี Top-down ระดับรายการสินค้า (item-level, rolling-origin)</h3>
       <p class="hint">
@@ -200,16 +205,19 @@
       <h3>Rolling-origin MAE (Type level) — คลิก legend เพื่อซ่อน/แสดงแต่ละโมเดล</h3>
       <!-- source: output/summary/phaseC_step2_rolling_origin_qty.csv, column origin / model / MAE -->
       <div id="chart-rolling" class="plotly-chart"></div>
+      <p class="hint">▸ แต่ละวิธีทายแม่นสม่ำเสมอไหม ในการทดสอบแต่ละรอบ<br>▸ แกน X = รอบทดสอบที่ 1-7 เรียงตามเวลา · แกน Y = MAE เฉลี่ย (ชิ้นต่อเดือน)<br>▸ เส้นที่ต่ำและนิ่ง = ดี เส้นที่กระโดดขึ้นลง = บางช่วงทายได้ บางช่วงพลาดหนัก</p>
       <h3>Forecast เทียบกับ Actual — เลือกสินค้าและ rolling origin</h3>
       <p class="scope-note">ขอบเขตของกราฟนี้: สินค้ากลุ่มนำร่อง PEM101 (114 รหัส, Fuse Cutout + Surge Arrester)
         — มาตรฐาน 7 rolling origins แบบเดียวกับที่ใช้ทั่วทั้งโครงการ (get_origins(31,6), src/backtest_rekeyed.py),
         ไม่ใช่ 9 origins แบบเดิม (ดูหมายเหตุด้านล่าง)</p>
       <div class="controls">
         <label>Rolling origin: <select id="filterOrigin"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option></select></label>
+        <span class="hint">(ตัวกรอง ฝ่าย/ประเภท ด้านบนไม่มีผลกับกราฟนี้ — กราฟนี้มีเฉพาะสินค้า PEM101 กลุ่มนำร่องเท่านั้น)</span>
       </div>
       <div class="item-check-list"><label class="item-check"><input type="checkbox" class="fva-item" value="EEE-F-FC-1040010002" checked> EEE-F-FC-1040010002</label><label class="item-check"><input type="checkbox" class="fva-item" value="EEE-F-FC-1040011000"> EEE-F-FC-1040011000</label><label class="item-check"><input type="checkbox" class="fva-item" value="EEE-F-FC-1040011002P"> EEE-F-FC-1040011002P</label><label class="item-check"><input type="checkbox" class="fva-item" value="EEE-F-FC-1040011100"> EEE-F-FC-1040011100</label><label class="item-check"><input type="checkbox" class="fva-item" value="EEE-F-FC-1040011100N"> EEE-F-FC-1040011100N</label><label class="item-check"><input type="checkbox" class="fva-item" value="EEE-F-FC-1040011100NP"> EEE-F-FC-1040011100NP</label><label class="item-check"><input type="checkbox" class="fva-item" value="EEE-F-FC-1040021002"> EEE-F-FC-1040021002</label><label class="item-check"><input type="checkbox" class="fva-item" value="EEE-F-FC-1040021100N"> EEE-F-FC-1040021100N</label><label class="item-check"><input type="checkbox" class="fva-item" value="EEE-F-FC-104010116"> EEE-F-FC-104010116</label><label class="item-check"><input type="checkbox" class="fva-item" value="EEE-F-FC-5920-383-1000"> EEE-F-FC-5920-383-1000</label><label class="item-check"><input type="checkbox" class="fva-item" value="EEE-F-FL-1040030000"> EEE-F-FL-1040030000</label><label class="item-check"><input type="checkbox" class="fva-item" value="EEE-F-FL-1040030001"> EEE-F-FL-1040030001</label><label class="item-check"><input type="checkbox" class="fva-item" value="EEE-F-FL-1040030002"> EEE-F-FL-1040030002</label><label class="item-check"><input type="checkbox" class="fva-item" value="EEE-F-FL-1040030003"> EEE-F-FL-1040030003</label><label class="item-check"><input type="checkbox" class="fva-item" value="EEE-F-FL-1040030004"> EEE-F-FL-1040030004</label><label class="item-check"><input type="checkbox" class="fva-item" value="EEE-F-FL-1040030005"> EEE-F-FL-1040030005</label><label class="item-check"><input type="checkbox" class="fva-item" value="EEE-F-FL-1040030006"> EEE-F-FL-1040030006</label><label class="item-check"><input type="checkbox" class="fva-item" value="EEE-F-FL-1040030007"> EEE-F-FL-1040030007</label><label class="item-check"><input type="checkbox" class="fva-item" value="EEE-F-FL-1040030008"> EEE-F-FL-1040030008</label><label class="item-check"><input type="checkbox" class="fva-item" value="EEE-F-FL-1040030009"> EEE-F-FL-1040030009</label><label class="item-check"><input type="checkbox" class="fva-item" value="EEE-F-FL-1040030010"> EEE-F-FL-1040030010</label><label class="item-check"><input type="checkbox" class="fva-item" value="EEE-F-FL-1040030011"> EEE-F-FL-1040030011</label><label class="item-check"><input type="checkbox" class="fva-item" value="EEE-F-FL-1040030012"> EEE-F-FL-1040030012</label><label class="item-check"><input type="checkbox" class="fva-item" value="EEE-F-FL-1040030013"> EEE-F-FL-1040030013</label><label class="item-check"><input type="checkbox" class="fva-item" value="EEE-F-FL-1040030016"> EEE-F-FL-1040030016</label><label class="item-check"><input type="checkbox" class="fva-item" value="EEE-F-FL-1040030020"> EEE-F-FL-1040030020</label><label class="item-check"><input type="checkbox" class="fva-item" value="EEE-F-FL-1040030023"> EEE-F-FL-1040030023</label><label class="item-check"><input type="checkbox" class="fva-item" value="EEE-F-FL-1040030101"> EEE-F-FL-1040030101</label><label class="item-check"><input type="checkbox" class="fva-item" value="EEE-F-FL-1040030102"> EEE-F-FL-1040030102</label><label class="item-check"><input type="checkbox" class="fva-item" value="EEE-F-FL-1040030103"> EEE-F-FL-1040030103</label><label class="item-check"><input type="checkbox" class="fva-item" value="EEE-F-FL-1040030104"> EEE-F-FL-1040030104</label><label class="item-check"><input type="checkbox" class="fva-item" value="EEE-F-FL-1040030105"> EEE-F-FL-1040030105</label><label class="item-check"><input type="checkbox" class="fva-item" value="EEE-F-FL-1040030106"> EEE-F-FL-1040030106</label><label class="item-check"><input type="checkbox" class="fva-item" value="EEE-F-FL-1040030107"> EEE-F-FL-1040030107</label><label class="item-check"><input type="checkbox" class="fva-item" value="EEE-F-FL-1040030108"> EEE-F-FL-1040030108</label><label class="item-check"><input type="checkbox" class="fva-item" value="EEE-F-FL-1040030109"> EEE-F-FL-1040030109</label><label class="item-check"><input type="checkbox" class="fva-item" value="EEE-F-FL-1040030110"> EEE-F-FL-1040030110</label><label class="item-check"><input type="checkbox" class="fva-item" value="EEE-F-FL-1040030111"> EEE-F-FL-1040030111</label><label class="item-check"><input type="checkbox" class="fva-item" value="EEE-F-FL-1040030112"> EEE-F-FL-1040030112</label><label class="item-check"><input type="checkbox" class="fva-item" value="EEE-F-FL-1040030113"> EEE-F-FL-1040030113</label><label class="item-check"><input type="checkbox" class="fva-item" value="EEE-F-FL-1040030114"> EEE-F-FL-1040030114</label><label class="item-check"><input type="checkbox" class="fva-item" value="EEE-F-FL-5920-353-00700"> EEE-F-FL-5920-353-00700</label><label class="item-check"><input type="checkbox" class="fva-item" value="EEE-F-FL-5920-353-02600"> EEE-F-FL-5920-353-02600</label><label class="item-check"><input type="checkbox" class="fva-item" value="EEE-F-FL-5920-353-04100"> EEE-F-FL-5920-353-04100</label><label class="item-check"><input type="checkbox" class="fva-item" value="EEE-F-FL-5920-353-06600"> EEE-F-FL-5920-353-06600</label><label class="item-check"><input type="checkbox" class="fva-item" value="EEE-F-HC-1040020000"> EEE-F-HC-1040020000</label><label class="item-check"><input type="checkbox" class="fva-item" value="EEE-F-HC-1040020001"> EEE-F-HC-1040020001</label><label class="item-check"><input type="checkbox" class="fva-item" value="EEE-F-HC-1040020002"> EEE-F-HC-1040020002</label><label class="item-check"><input type="checkbox" class="fva-item" value="EEE-F-HC-1040020003"> EEE-F-HC-1040020003</label><label class="item-check"><input type="checkbox" class="fva-item" value="EEE-F-HC-1040020004"> EEE-F-HC-1040020004</label><label class="item-check"><input type="checkbox" class="fva-item" value="EEE-F-HC-1040020005"> EEE-F-HC-1040020005</label><label class="item-check"><input type="checkbox" class="fva-item" value="EEE-F-HC-1040020006"> EEE-F-HC-1040020006</label><label class="item-check"><input type="checkbox" class="fva-item" value="EEE-F-HC-1040020007"> EEE-F-HC-1040020007</label><label class="item-check"><input type="checkbox" class="fva-item" value="EEE-F-HC-1040020008"> EEE-F-HC-1040020008</label><label class="item-check"><input type="checkbox" class="fva-item" value="EEE-F-HC-1040020009"> EEE-F-HC-1040020009</label><label class="item-check"><input type="checkbox" class="fva-item" value="EEE-F-LT-1040020100"> EEE-F-LT-1040020100</label><label class="item-check"><input type="checkbox" class="fva-item" value="EEE-F-LT-1040020100P"> EEE-F-LT-1040020100P</label><label class="item-check"><input type="checkbox" class="fva-item" value="FC-A-27-00102"> FC-A-27-00102</label><label class="item-check"><input type="checkbox" class="fva-item" value="FC-A-27-00202"> FC-A-27-00202</label><label class="item-check"><input type="checkbox" class="fva-item" value="FC-A-27-00203"> FC-A-27-00203</label><label class="item-check"><input type="checkbox" class="fva-item" value="FC-A-38-00102"> FC-A-38-00102</label><label class="item-check"><input type="checkbox" class="fva-item" value="FC-A-38-00202"> FC-A-38-00202</label><label class="item-check"><input type="checkbox" class="fva-item" value="FS-F-99-0002"> FS-F-99-0002</label><label class="item-check"><input type="checkbox" class="fva-item" value="FS-F-99-0003"> FS-F-99-0003</label><label class="item-check"><input type="checkbox" class="fva-item" value="HS-F-99-0031"> HS-F-99-0031</label><label class="item-check"><input type="checkbox" class="fva-item" value="HS-F-99-0061"> HS-F-99-0061</label><label class="item-check"><input type="checkbox" class="fva-item" value="HS-F-99-0091"> HS-F-99-0091</label><label class="item-check"><input type="checkbox" class="fva-item" value="HS-F-99-0121"> HS-F-99-0121</label><label class="item-check"><input type="checkbox" class="fva-item" value="HS-F-99-0151"> HS-F-99-0151</label><label class="item-check"><input type="checkbox" class="fva-item" value="HS-F-99-0211"> HS-F-99-0211</label><label class="item-check"><input type="checkbox" class="fva-item" value="HS-F-99-02110" checked> HS-F-99-02110</label><label class="item-check"><input type="checkbox" class="fva-item" value="HS-F-99-0213" checked> HS-F-99-0213</label><label class="item-check"><input type="checkbox" class="fva-item" value="HS-F-99-0215"> HS-F-99-0215</label><label class="item-check"><input type="checkbox" class="fva-item" value="HS-F-99-0241"> HS-F-99-0241</label><label class="item-check"><input type="checkbox" class="fva-item" value="HS-F-99-02410"> HS-F-99-02410</label><label class="item-check"><input type="checkbox" class="fva-item" value="HS-F-99-0243"> HS-F-99-0243</label><label class="item-check"><input type="checkbox" class="fva-item" value="HS-F-99-0244"> HS-F-99-0244</label><label class="item-check"><input type="checkbox" class="fva-item" value="HS-F-99-0271"> HS-F-99-0271</label><label class="item-check"><input type="checkbox" class="fva-item" value="HS-F-99-0301"> HS-F-99-0301</label><label class="item-check"><input type="checkbox" class="fva-item" value="HS-F-99-03010"> HS-F-99-03010</label><label class="item-check"><input type="checkbox" class="fva-item" value="HS-F-99-0301H22"> HS-F-99-0301H22</label><label class="item-check"><input type="checkbox" class="fva-item" value="HS-F-99-0301H33"> HS-F-99-0301H33</label><label class="item-check"><input type="checkbox" class="fva-item" value="HS-F-99-0303"> HS-F-99-0303</label><label class="item-check"><input type="checkbox" class="fva-item" value="HS-F-99-0331"> HS-F-99-0331</label><label class="item-check"><input type="checkbox" class="fva-item" value="HS-F-99-0361"> HS-F-99-0361</label><label class="item-check"><input type="checkbox" class="fva-item" value="HS-F-99-1031"> HS-F-99-1031</label><label class="item-check"><input type="checkbox" class="fva-item" value="HS-F-99-1061"> HS-F-99-1061</label><label class="item-check"><input type="checkbox" class="fva-item" value="HS-F-99-1091"> HS-F-99-1091</label><label class="item-check"><input type="checkbox" class="fva-item" value="HS-F-99-1121"> HS-F-99-1121</label><label class="item-check"><input type="checkbox" class="fva-item" value="HS-F-99-1211"> HS-F-99-1211</label><label class="item-check"><input type="checkbox" class="fva-item" value="HS-F-99-1241"> HS-F-99-1241</label><label class="item-check"><input type="checkbox" class="fva-item" value="HS-F-99-1242"> HS-F-99-1242</label><label class="item-check"><input type="checkbox" class="fva-item" value="HS-F-99-1301"> HS-F-99-1301</label><label class="item-check"><input type="checkbox" class="fva-item" value="HS-F-99-1301H22"> HS-F-99-1301H22</label><label class="item-check"><input type="checkbox" class="fva-item" value="HS-F-99-1301H33"> HS-F-99-1301H33</label><label class="item-check"><input type="checkbox" class="fva-item" value="HS-F-99-1331"> HS-F-99-1331</label><label class="item-check"><input type="checkbox" class="fva-item" value="HS-F-99-1361"> HS-F-99-1361</label><label class="item-check"><input type="checkbox" class="fva-item" value="HS-F-99-2031N"> HS-F-99-2031N</label><label class="item-check"><input type="checkbox" class="fva-item" value="HS-F-99-2061N"> HS-F-99-2061N</label><label class="item-check"><input type="checkbox" class="fva-item" value="HS-F-99-2121N"> HS-F-99-2121N</label><label class="item-check"><input type="checkbox" class="fva-item" value="HS-F-99-2211N"> HS-F-99-2211N</label><label class="item-check"><input type="checkbox" class="fva-item" value="HS-F-99-2213N"> HS-F-99-2213N</label><label class="item-check"><input type="checkbox" class="fva-item" value="HS-F-99-2241N"> HS-F-99-2241N</label><label class="item-check"><input type="checkbox" class="fva-item" value="HS-F-99-2243N"> HS-F-99-2243N</label><label class="item-check"><input type="checkbox" class="fva-item" value="HS-F-99-2301N"> HS-F-99-2301N</label><label class="item-check"><input type="checkbox" class="fva-item" value="HS-F-99-2303N"> HS-F-99-2303N</label><label class="item-check"><input type="checkbox" class="fva-item" value="HS-F-99-2361N"> HS-F-99-2361N</label><label class="item-check"><input type="checkbox" class="fva-item" value="HS-F-99-3061"> HS-F-99-3061</label><label class="item-check"><input type="checkbox" class="fva-item" value="HS-F-99-3211"> HS-F-99-3211</label><label class="item-check"><input type="checkbox" class="fva-item" value="HS-F-99-3241"> HS-F-99-3241</label><label class="item-check"><input type="checkbox" class="fva-item" value="HS-F-99-3301"> HS-F-99-3301</label><label class="item-check"><input type="checkbox" class="fva-item" value="HS-F-99-3303"> HS-F-99-3303</label><label class="item-check"><input type="checkbox" class="fva-item" value="LS-F-99-1004"> LS-F-99-1004</label><label class="item-check"><input type="checkbox" class="fva-item" value="LS-F-99-2001"> LS-F-99-2001</label></div>
       <!-- source: output/summary/report_item_forecast_vs_actual_by_origin.csv, column origin / month_in_horizon / actual_qty / forecast_qty -->
       <div id="chart-fva" class="plotly-chart"></div>
+      <p class="hint">▸ ทายไว้เทียบกับของจริง สินค้าที่เลือก ในรอบทดสอบที่เลือก<br>▸ แกน X = เดือนที่ 1-6 หลังจุดตัดข้อมูล · แกน Y = จำนวน (ชิ้น)<br>▸ เส้นทึบ = ยอดจริง เส้นประ = ที่ทายไว้ เส้นประอยู่ใต้เส้นทึบ = ทายต่ำไป<br>▸ กราฟนี้มีเฉพาะสินค้า PEM101 ตัวกรองฝ่ายไม่มีผล</p>
       <p class="note-box">
         <b>หมายเหตุเกี่ยวกับแกน X เดิม (1-9):</b> กราฟเดิมใช้ข้อมูลจาก
         <code>phaseE1_2_rolling_origin_cumulative.csv</code> ซึ่งคำนวณจาก rolling-origin scheme
@@ -247,16 +255,21 @@ const MODEL_COLORS = {"Naive": "#898781", "MA3": "#eda100", "MA6": "#c98400", "M
 const PLOT_CONFIG = {responsive: true, displaylogo: false};
 const LAYOUT_BASE = {
   font: {family: 'system-ui, sans-serif', size: 12, color: '#0b0b0b'},
-  margin: {l: 50, r: 20, t: 10, b: 40},
+  // b:40 -> b:80 (this task): the old margin only fit tick labels + the horizontal legend row;
+  // once axis titles actually render (see the title:{text:...} fix below -- this Plotly build
+  // silently drops the plain-string title:'...' shorthand, so no axis title had ever visibly
+  // drawn on this page), the extra vertical space is needed so the title doesn't overlap the
+  // legend directly beneath it.
+  margin: {l: 60, r: 20, t: 10, b: 80},
   paper_bgcolor: '#fcfcfb', plot_bgcolor: '#fcfcfb',
-  legend: {orientation: 'h', y: -0.25}
+  legend: {orientation: 'h', y: -0.32}
 };
 
 function drawNotice() {
   Plotly.newPlot('chart-notice', [{
     x: REPORT_DATA.notice.labels, y: REPORT_DATA.notice.values, type: 'bar',
     marker: {color: '#eb6834'}, hovertemplate: '%{x}: %{y:.1f}%<extra></extra>'
-  }], Object.assign({}, LAYOUT_BASE, {yaxis: {title: '% ของออเดอร์'}}), PLOT_CONFIG);
+  }], Object.assign({}, LAYOUT_BASE, {xaxis: {title: {text: 'ระยะแจ้งล่วงหน้าขั้นต่ำ (วัน)'}}, yaxis: {title: {text: '% ของออเดอร์'}}}), PLOT_CONFIG);
 }
 
 function drawOntime() {
@@ -271,7 +284,7 @@ function drawOntime() {
       name: 'not_late (unit-weighted)', line: {color: '#1baf7a'},
       hovertemplate: '%{x}: %{y:.1f}%<extra>not_late</extra>'
     }
-  ], Object.assign({}, LAYOUT_BASE, {yaxis: {title: '%'}}), PLOT_CONFIG);
+  ], Object.assign({}, LAYOUT_BASE, {xaxis: {title: {text: 'ปี'}}, yaxis: {title: {text: '%'}}}), PLOT_CONFIG);
 }
 
 function drawModelChart() {
@@ -281,7 +294,7 @@ function drawModelChart() {
     x: items, y: items.map(it => REPORT_DATA.model_bar[m][it]), type: 'bar', name: m,
     marker: {color: MODEL_COLORS[m]}, hovertemplate: '%{x}<br>' + m + ': %{y:.1f}<extra></extra>'
   }));
-  Plotly.newPlot('chart-model', traces, Object.assign({}, LAYOUT_BASE, {barmode: 'group', yaxis: {title: 'MAE'}}), PLOT_CONFIG);
+  Plotly.newPlot('chart-model', traces, Object.assign({}, LAYOUT_BASE, {barmode: 'group', xaxis: {title: {text: 'รหัสสินค้า'}}, yaxis: {title: {text: 'MAE (ชิ้นต่อเดือน)'}}}), PLOT_CONFIG);
 }
 
 function currentDivision() { return document.getElementById('filterDivision').value; }
@@ -337,7 +350,7 @@ function drawRollingChart() {
             hovertemplate: 'origin %{x}<br>' + m + ': %{y:.1f}<extra></extra>'};
   });
   Plotly.newPlot('chart-rolling', traces, Object.assign({}, LAYOUT_BASE,
-    {xaxis: {title: 'Rolling origin', dtick: 1}, yaxis: {title: 'Mean MAE'}}), PLOT_CONFIG);
+    {xaxis: {title: {text: 'Rolling origin'}, dtick: 1}, yaxis: {title: {text: 'Mean MAE'}}}), PLOT_CONFIG);
 }
 
 function selectedFvaItems() {
@@ -368,7 +381,7 @@ function drawFvaChart() {
     return;
   }
   Plotly.newPlot('chart-fva', traces, Object.assign({}, LAYOUT_BASE,
-    {xaxis: {title: 'Month in horizon (origin ' + origin + ')', dtick: 1}, yaxis: {title: 'Quantity'}}), PLOT_CONFIG);
+    {xaxis: {title: {text: 'Month in horizon (origin ' + origin + ')'}, dtick: 1}, yaxis: {title: {text: 'Quantity'}}}), PLOT_CONFIG);
 }
 
 function redrawResultsSection() {
