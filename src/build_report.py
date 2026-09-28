@@ -35,6 +35,8 @@ from datetime import datetime
 import pandas as pd
 import yaml
 
+from manual_notes import render_notes_html
+
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 logger = logging.getLogger("build_report")
 
@@ -584,6 +586,7 @@ def render_page(config: dict) -> str:
       <h3>การกระจายของระยะเวลาแจ้งล่วงหน้า (Notice period)</h3>
       {cite('leadtime_notice_buckets_overall.csv', 'min_notice_days / pct_of_orders')}
       <div id="chart-notice" class="plotly-chart"></div>
+      {render_notes_html('sales_report.html', 'chart-notice')}
       <h3>สัดส่วนส่งมอบตรงวันครบกำหนดเป๊ะ vs. ส่งไม่ล่าช้า (2023-2026)</h3>
       <p class="hint">
         <b>on_time_exact</b> = ส่งมอบตรงวันครบกำหนดพอดี (PlanDelDate), นับตามจำนวนออเดอร์ (row-weighted),
@@ -601,6 +604,7 @@ def render_page(config: dict) -> str:
       {cite('delivery_by_year.csv', 'year / pct_on_time')}
       {cite('delivery_not_late_by_year.csv', 'year / not_late_pct_unit_weighted')}
       <div id="chart-ontime" class="plotly-chart"></div>
+      {render_notes_html('sales_report.html', 'chart-ontime')}
     </section>"""
 
     # ---- Section 4: Data ----
@@ -631,6 +635,7 @@ def render_page(config: dict) -> str:
       <p class="hint">คลิกที่ legend เพื่อซ่อน/แสดงแต่ละโมเดล</p>
       {cite('focus_items_test_all.csv', 'model / MAE')}
       <div id="chart-model" class="plotly-chart"></div>
+      {render_notes_html('sales_report.html', 'chart-model')}
     </section>"""
 
     # ---- Section 6: Results (Plotly, with Division/Type/Item/Origin controls) ----
@@ -655,7 +660,9 @@ def render_page(config: dict) -> str:
       </p>
       <div class="controls">
         <label>ฝ่าย (Division): <select id="filterDivision"><option value="__all__">ทั้งหมด</option>{div_options}</select></label>
+        <span class="hint">(มีผลกับตาราง PRIMARY, SECONDARY และกราฟ Rolling-origin — ไม่มีผลกับกราฟ Forecast vs Actual)</span>
         <label>ประเภท (Type): <select id="filterType"><option value="__all__">ทั้งหมด</option></select></label>
+        <span class="hint">(มีผลกับกราฟ Rolling-origin เท่านั้น — ไม่มีผลกับตาราง PRIMARY/SECONDARY)</span>
       </div>
       <h3>PRIMARY — MAE / RMSE / Bias / MASE ต่อฝ่าย, วิธี Top-down ระดับรายการสินค้า (item-level, rolling-origin)</h3>
       <p class="hint">
@@ -689,16 +696,19 @@ def render_page(config: dict) -> str:
       <h3>Rolling-origin MAE (Type level) — คลิก legend เพื่อซ่อน/แสดงแต่ละโมเดล</h3>
       {cite('phaseC_step2_rolling_origin_qty.csv', 'origin / model / MAE')}
       <div id="chart-rolling" class="plotly-chart"></div>
+      {render_notes_html('sales_report.html', 'chart-rolling')}
       <h3>Forecast เทียบกับ Actual — เลือกสินค้าและ rolling origin</h3>
       <p class="scope-note">ขอบเขตของกราฟนี้: สินค้ากลุ่มนำร่อง PEM101 ({len(fva_items)} รหัส, Fuse Cutout + Surge Arrester)
         — มาตรฐาน 7 rolling origins แบบเดียวกับที่ใช้ทั่วทั้งโครงการ (get_origins(31,6), src/backtest_rekeyed.py),
         ไม่ใช่ 9 origins แบบเดิม (ดูหมายเหตุด้านล่าง)</p>
       <div class="controls">
         <label>Rolling origin: <select id="filterOrigin">{"".join(f'<option value="{o}">{o}</option>' for o in range(1, 8))}</select></label>
+        <span class="hint">(ตัวกรอง ฝ่าย/ประเภท ด้านบนไม่มีผลกับกราฟนี้ — กราฟนี้มีเฉพาะสินค้า PEM101 กลุ่มนำร่องเท่านั้น)</span>
       </div>
       <div class="item-check-list">{item_checkboxes}</div>
       {cite('report_item_forecast_vs_actual_by_origin.csv', 'origin / month_in_horizon / actual_qty / forecast_qty')}
       <div id="chart-fva" class="plotly-chart"></div>
+      {render_notes_html('sales_report.html', 'chart-fva')}
       <p class="note-box">
         <b>หมายเหตุเกี่ยวกับแกน X เดิม (1-9):</b> กราฟเดิมใช้ข้อมูลจาก
         <code>phaseE1_2_rolling_origin_cumulative.csv</code> ซึ่งคำนวณจาก rolling-origin scheme
@@ -774,7 +784,7 @@ def render_page(config: dict) -> str:
   h2 {{ font-size: 17px; margin: 32px 0 10px; border-bottom: 1px solid var(--border); padding-bottom: 6px; }}
   h3 {{ font-size: 13px; color: var(--text-secondary); margin: 18px 0 6px; }}
   p {{ margin: 6px 0; }}
-  p.hint, p.scope-note {{ font-size: 12px; color: var(--muted); }}
+  p.hint, p.scope-note, span.hint, span.scope-note {{ font-size: 12px; color: var(--muted); }}
   p.note-box {{ font-size: 12px; color: var(--text-secondary); background: #f0efec; border-radius: 6px; padding: 8px 10px; }}
   code {{ background: var(--gridline); padding: 1px 5px; border-radius: 4px; }}
   .report-table {{ width:100%; border-collapse: collapse; font-size: 13px; margin: 6px 0 16px; }}
@@ -825,16 +835,21 @@ const MODEL_COLORS = """ + json.dumps(MODEL_COLORS) + """;
 const PLOT_CONFIG = {responsive: true, displaylogo: false};
 const LAYOUT_BASE = {
   font: {family: 'system-ui, sans-serif', size: 12, color: '#0b0b0b'},
-  margin: {l: 50, r: 20, t: 10, b: 40},
+  // b:40 -> b:80 (this task): the old margin only fit tick labels + the horizontal legend row;
+  // once axis titles actually render (see the title:{text:...} fix below -- this Plotly build
+  // silently drops the plain-string title:'...' shorthand, so no axis title had ever visibly
+  // drawn on this page), the extra vertical space is needed so the title doesn't overlap the
+  // legend directly beneath it.
+  margin: {l: 60, r: 20, t: 10, b: 80},
   paper_bgcolor: '#fcfcfb', plot_bgcolor: '#fcfcfb',
-  legend: {orientation: 'h', y: -0.25}
+  legend: {orientation: 'h', y: -0.32}
 };
 
 function drawNotice() {
   Plotly.newPlot('chart-notice', [{
     x: REPORT_DATA.notice.labels, y: REPORT_DATA.notice.values, type: 'bar',
     marker: {color: '#eb6834'}, hovertemplate: '%{x}: %{y:.1f}%<extra></extra>'
-  }], Object.assign({}, LAYOUT_BASE, {yaxis: {title: '% ของออเดอร์'}}), PLOT_CONFIG);
+  }], Object.assign({}, LAYOUT_BASE, {xaxis: {title: {text: 'ระยะแจ้งล่วงหน้าขั้นต่ำ (วัน)'}}, yaxis: {title: {text: '% ของออเดอร์'}}}), PLOT_CONFIG);
 }
 
 function drawOntime() {
@@ -849,7 +864,7 @@ function drawOntime() {
       name: 'not_late (unit-weighted)', line: {color: '#1baf7a'},
       hovertemplate: '%{x}: %{y:.1f}%<extra>not_late</extra>'
     }
-  ], Object.assign({}, LAYOUT_BASE, {yaxis: {title: '%'}}), PLOT_CONFIG);
+  ], Object.assign({}, LAYOUT_BASE, {xaxis: {title: {text: 'ปี'}}, yaxis: {title: {text: '%'}}}), PLOT_CONFIG);
 }
 
 function drawModelChart() {
@@ -859,7 +874,7 @@ function drawModelChart() {
     x: items, y: items.map(it => REPORT_DATA.model_bar[m][it]), type: 'bar', name: m,
     marker: {color: MODEL_COLORS[m]}, hovertemplate: '%{x}<br>' + m + ': %{y:.1f}<extra></extra>'
   }));
-  Plotly.newPlot('chart-model', traces, Object.assign({}, LAYOUT_BASE, {barmode: 'group', yaxis: {title: 'MAE'}}), PLOT_CONFIG);
+  Plotly.newPlot('chart-model', traces, Object.assign({}, LAYOUT_BASE, {barmode: 'group', xaxis: {title: {text: 'รหัสสินค้า'}}, yaxis: {title: {text: 'MAE (ชิ้นต่อเดือน)'}}}), PLOT_CONFIG);
 }
 
 function currentDivision() { return document.getElementById('filterDivision').value; }
@@ -915,7 +930,7 @@ function drawRollingChart() {
             hovertemplate: 'origin %{x}<br>' + m + ': %{y:.1f}<extra></extra>'};
   });
   Plotly.newPlot('chart-rolling', traces, Object.assign({}, LAYOUT_BASE,
-    {xaxis: {title: 'Rolling origin', dtick: 1}, yaxis: {title: 'Mean MAE'}}), PLOT_CONFIG);
+    {xaxis: {title: {text: 'Rolling origin'}, dtick: 1}, yaxis: {title: {text: 'Mean MAE'}}}), PLOT_CONFIG);
 }
 
 function selectedFvaItems() {
@@ -946,7 +961,7 @@ function drawFvaChart() {
     return;
   }
   Plotly.newPlot('chart-fva', traces, Object.assign({}, LAYOUT_BASE,
-    {xaxis: {title: 'Month in horizon (origin ' + origin + ')', dtick: 1}, yaxis: {title: 'Quantity'}}), PLOT_CONFIG);
+    {xaxis: {title: {text: 'Month in horizon (origin ' + origin + ')'}, dtick: 1}, yaxis: {title: {text: 'Quantity'}}}), PLOT_CONFIG);
 }
 
 function redrawResultsSection() {

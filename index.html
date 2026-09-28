@@ -234,6 +234,7 @@ tr.section[role="button"]:focus-visible{outline:2px solid var(--series-1);outlin
 <div id="tabBar">
  <button id="tb1" class="actv" onclick="omniShowTab(1)">S&amp;OP Plan (เดิม)</button>
  <button id="tb2" onclick="omniShowTab(2)">Trend Pricelist Omni 2024–2026</button>
+ <button id="tb3" onclick="omniShowTab(3)">คู่มือการใช้งาน</button>
 </div>
 <div id="origTab">
 
@@ -249,7 +250,8 @@ tr.section[role="button"]:focus-visible{outline:2px solid var(--series-1);outlin
       product attributes; workbook เองไม่มีฟิลด์วันที่ภายใน — วันที่ตรวจสอบได้เพียงอย่างเดียวคือ filesystem
       last-modified ของไฟล์นี้: <b>2026-08-21 09:26</b> ICT — และตัวเลข "ยอดขายจริง ม.ค.–ก.ค. 2026"/"Stock PEM101 Max-Min Q2 2026"
       ด้านบนเป็นตัวอย่างที่พิมพ์ไว้ ณ ตอนสร้างแท็บนี้ ไม่ใช่ query สด) &nbsp;|&nbsp;
-      <b>page_built_at</b>: 2026-09-25 12:15 ICT (UTC+7) (แก้ไขหน้านี้ครั้งล่าสุด — index.html ไม่มี generator)
+      <b>page_built_at</b> (ตามที่เซิร์ฟเวอร์ไฟล์รายงาน — <code>document.lastModified</code>, index.html ไม่มี generator):
+      <span id="sopPageBuiltAt">กำลังตรวจสอบ…</span>
     </p>
     <div class="note-box" style="margin-top:6px">
       ⚠ <b>แท็บนี้ไม่ได้ถูกรีเฟรชโดย pipeline นี้เลย</b> — เนื้อหาทั้งหมด (ตัวเลข History/Plan, Price List 426 รหัส,
@@ -325,12 +327,14 @@ tr.section[role="button"]:focus-visible{outline:2px solid var(--series-1);outlin
     <p class="desc">เส้นทึบ = ยอดขายจริง (ม.ค.–ก.ค.) · เส้นประ = พยากรณ์ (ส.ค.–ธ.ค., ค่าเฉลี่ยเคลื่อนที่ 3 เดือนล่าสุด)</p>
     <div class="chart-box">
       
-    <svg viewBox="0 0 720 260" class="chart-svg">
+    <svg viewBox="0 0 720 292" class="chart-svg">
       <line x1="50" y1="230.0" x2="700" y2="230.0" stroke="var(--gridline)" stroke-width="1"/><text x="42" y="234.0" text-anchor="end" class="axislabel">0</text><line x1="50" y1="177.5" x2="700" y2="177.5" stroke="var(--gridline)" stroke-width="1"/><text x="42" y="181.5" text-anchor="end" class="axislabel">24</text><line x1="50" y1="125.0" x2="700" y2="125.0" stroke="var(--gridline)" stroke-width="1"/><text x="42" y="129.0" text-anchor="end" class="axislabel">48</text><line x1="50" y1="72.5" x2="700" y2="72.5" stroke="var(--gridline)" stroke-width="1"/><text x="42" y="76.5" text-anchor="end" class="axislabel">73</text><line x1="50" y1="20.0" x2="700" y2="20.0" stroke="var(--gridline)" stroke-width="1"/><text x="42" y="24.0" text-anchor="end" class="axislabel">97</text>
       <text x="50.0" y="252" text-anchor="middle" class="axislabel">ม.ค.</text><text x="109.1" y="252" text-anchor="middle" class="axislabel">ก.พ.</text><text x="168.2" y="252" text-anchor="middle" class="axislabel">มี.ค.</text><text x="227.3" y="252" text-anchor="middle" class="axislabel">เม.ย.</text><text x="286.4" y="252" text-anchor="middle" class="axislabel">พ.ค.</text><text x="345.5" y="252" text-anchor="middle" class="axislabel">มิ.ย.</text><text x="404.5" y="252" text-anchor="middle" class="axislabel">ก.ค.</text><text x="463.6" y="252" text-anchor="middle" class="axislabel">ส.ค.</text><text x="522.7" y="252" text-anchor="middle" class="axislabel">ก.ย.</text><text x="581.8" y="252" text-anchor="middle" class="axislabel">ต.ค.</text><text x="640.9" y="252" text-anchor="middle" class="axislabel">พ.ย.</text><text x="700.0" y="252" text-anchor="middle" class="axislabel">ธ.ค.</text>
       <polyline points="50.0,86.7 109.1,84.7 168.2,52.2 227.3,56.6 286.4,47.4 345.5,63.0 404.5,153.3" fill="none" stroke="var(--series-1)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
       <polyline points="404.5,153.3 463.6,87.9 522.7,87.9 581.8,87.9 640.9,87.9 700.0,87.9" fill="none" stroke="var(--series-2)" stroke-width="2.5" stroke-dasharray="6,5" stroke-linecap="round" stroke-linejoin="round"/>
       <circle cx="50.0" cy="86.7" r="3.5" fill="var(--series-1)"/><circle cx="109.1" cy="84.7" r="3.5" fill="var(--series-1)"/><circle cx="168.2" cy="52.2" r="3.5" fill="var(--series-1)"/><circle cx="227.3" cy="56.6" r="3.5" fill="var(--series-1)"/><circle cx="286.4" cy="47.4" r="3.5" fill="var(--series-1)"/><circle cx="345.5" cy="63.0" r="3.5" fill="var(--series-1)"/><circle cx="404.5" cy="153.3" r="3.5" fill="var(--series-1)"/><circle cx="463.6" cy="87.9" r="3.5" fill="var(--series-2)"/><circle cx="522.7" cy="87.9" r="3.5" fill="var(--series-2)"/><circle cx="581.8" cy="87.9" r="3.5" fill="var(--series-2)"/><circle cx="640.9" cy="87.9" r="3.5" fill="var(--series-2)"/><circle cx="700.0" cy="87.9" r="3.5" fill="var(--series-2)"/>
+      <text x="375" y="278" text-anchor="middle" class="axislabel">เดือน (ม.ค.–ธ.ค.)</text>
+      <text x="14" y="130" text-anchor="middle" class="axislabel" transform="rotate(-90 14 130)">ยอดขาย (ล้านบาท)</text>
     </svg>
     
     </div>
@@ -7386,6 +7390,29 @@ tr.section[role="button"]:focus-visible{outline:2px solid var(--series-1);outlin
 </div>
 
 <script>
+  // page_built_at FIXED (this task, per CONVENTIONS.md "no date on a page is typed by hand"):
+  // index.html has no generator (confirmed repeatedly, task 2a Part 3 -- no script anywhere in
+  // the repo produces this file), so instead of a hand-typed constant this reads the server's own
+  // reported last-modified time for the file (document.lastModified is the runtime's parse of the
+  // HTTP Last-Modified response header, or the local filesystem mtime when opened as a file://
+  // URL) and converts it to this project's ICT (UTC+7) display convention. Labelled plainly as
+  // server-reported, not a query time, since it is the file's edit time, not a data pull time.
+  (function(){
+    function fmtIct(d){
+      var t = new Date(d.getTime() + 7*3600*1000);
+      var pad = function(n){ return String(n).padStart(2,'0'); };
+      return t.getUTCFullYear()+'-'+pad(t.getUTCMonth()+1)+'-'+pad(t.getUTCDate())+' '+pad(t.getUTCHours())+':'+pad(t.getUTCMinutes())+' ICT (UTC+7)';
+    }
+    var d = new Date(document.lastModified);
+    var text = isNaN(d.getTime())
+      ? document.lastModified + ' (ตามที่เบราว์เซอร์รายงาน ไม่สามารถแปลงเป็นเวลาไทยได้)'
+      : fmtIct(d);
+    var sop = document.getElementById('sopPageBuiltAt');
+    var omni = document.getElementById('omniPageBuiltAt');
+    if (sop) sop.textContent = text;
+    if (omni) omni.textContent = text;
+  })();
+
   const searchBox = document.getElementById('searchBox');
   const cateFilter = document.getElementById('cateFilter');
   const bizFilter = document.getElementById('bizFilter');
@@ -7448,6 +7475,7 @@ tr.section[role="button"]:focus-visible{outline:2px solid var(--series-1);outlin
       <tbody id="invSellableSplitBody"></tbody>
      </table>
     </div>
+    <div class="note-box" id="invSellableSplitManualNotes" style="margin-top:8px">▸ stock ของแต่ละฝ่ายแยกเป็น 3 กอง คลังที่ขายได้ / คลังตรวจ QA ที่ยังไม่พร้อม / คลังอื่น หน่วยเป็นชิ้น<br>▸ คอลัมน์ Sellable warehouse codes บอกว่าคลังไหนถูกนับเป็นคลังขายได้ รายชื่อนี้เป็นสมมติฐาน ยังไม่ได้ยืนยันจากฝ่ายคลัง<br>▸ CI101 / PEM102 / PEM104 ขึ้น not assessed เพราะยังไม่ได้กำหนดคลังขายได้ ไม่ใช่ศูนย์</div>
    </section>
 
    <section>
@@ -7529,7 +7557,8 @@ tr.section[role="button"]:focus-visible{outline:2px solid var(--series-1);outlin
  <div class="note">
    <b>data_pulled_at</b>: 2026-08-25 (วันที่ตัดข้อมูลตามข้อความของแท็บนี้เอง "ข้อมูลถึง 25 ส.ค. 2026") —
    ฝังไว้ใน commit <code>62b1e81</code> ลง 2026-08-26 10:16 ICT (<code>git blame index.html</code>, บรรทัด OMNI/MATCH data) &nbsp;|&nbsp;
-   <b>page_built_at</b>: 2026-09-25 12:15 ICT (UTC+7) (แก้ไขหน้านี้ครั้งล่าสุด — index.html ไม่มี generator)<br>
+   <b>page_built_at</b> (ตามที่เซิร์ฟเวอร์ไฟล์รายงาน — <code>document.lastModified</code>, index.html ไม่มี generator):
+   <span id="omniPageBuiltAt">กำลังตรวจสอบ…</span><br>
    <b>⚠ ข้อมูลเก่ากว่า 7 วัน</b> (ประมาณ 30 วัน ณ วันที่แก้ไขนี้) — <b>แท็บนี้ไม่ได้ถูกรีเฟรชโดย pipeline นี้เลย</b>
    ข้อมูลฝังไว้ตรงๆ ใน HTML (ตัวแปร <code>OMNI</code>/<code>MATCH</code>), ไม่มีสคริปต์ generator ใดๆ ในโครงการสร้างแท็บนี้
    (ค้นหาแล้วทั่วทั้ง repo — <code>omniTab</code>/<code>OMNI_DATA</code>/"Trend Pricelist" ไม่พบใน .py ไฟล์ใดเลย, task 2a Part 3) ·
@@ -7566,7 +7595,9 @@ tr.section[role="button"]:focus-visible{outline:2px solid var(--series-1);outlin
   <label>กลุ่ม <select id="fCls"><option value="ALL">ทั้งหมด</option><option>Smooth</option><option>Erratic</option><option>Intermittent</option><option>Lumpy</option><option value="NoSale">ไม่มียอดขาย</option></select></label>
   <label>ค้นหา <input id="fQ" placeholder="รหัส / ชื่อ / หมวด" size="18"></label>
   <label>เส้นเฉลี่ย <select id="fMA"><option value="3">3 เดือน</option><option value="6">6 เดือน</option><option value="12">12 เดือน</option><option value="0">กำหนดเอง</option></select><input id="fMAx" type="number" min="1" max="24" value="3" style="width:52px;display:none"></label>
+  <span class="hint" style="color:#6b8099;font-size:11px">(มีผลกับกราฟ ① และ SKU modal เท่านั้น — ไม่มีผลกับกราฟ ②③④)</span>
   <div class="tgl">หน่วยกราฟรวม:&nbsp;<button id="u1_b" class="on">บาท</button><button id="u1_q">จำนวน</button></div>
+  <span class="hint" style="color:#6b8099;font-size:11px">(ขนาดวงในกราฟ ② คิดจากบาทเสมอ ไม่เปลี่ยนตามปุ่มนี้)</span>
  </div>
  <div class="card"><h3>① Trend รวมรายเดือน (Actual + MPS)</h3><div class="hint">ผลรวมของทุกรหัสที่ผ่านตัวกรอง — <b>คลิกแท่งเดือนเพื่อ drill down ดูรายวัน</b></div><div id="c1"></div></div>
  <div class="grid2">
@@ -7582,6 +7613,98 @@ tr.section[role="button"]:focus-visible{outline:2px solid var(--series-1);outlin
  </div>
  <div class="hint" style="margin-top:8px">จัดทำจากข้อมูล ณ 25 ส.ค. 2026 · จำแนกกลุ่มด้วยเกณฑ์ Syntetos-Boylan (ADI 1.32, CV² 0.49) บน qty รายเดือน ฐาน 31 เดือน · รายเดือนคำนวณจากผลรวมข้อมูลรายวันชุดเดียวกับ drill down · ตัวเลขตรวจทานกับผล query ตรงจาก cube_Sale_APD แล้ว</div>
 </div>
+
+<style id="manualTabCss">
+#manualTab{display:none}
+#manualTab .wrap{max-width:900px}
+#manualTab h1{font-size:24px;margin:0 0 4px;font-weight:700;color:var(--text-primary)}
+#manualTab h2{font-size:18px;margin:28px 0 8px;font-weight:700;color:var(--text-primary);border-bottom:1px solid var(--border);padding-bottom:4px}
+#manualTab h3{font-size:14.5px;margin:18px 0 6px;font-weight:700;color:var(--text-primary)}
+#manualTab p{margin:6px 0;font-size:13.5px;line-height:1.6}
+#manualTab ul{margin:6px 0;padding-left:20px;font-size:13.5px;line-height:1.6}
+#manualTab li{margin-bottom:4px}
+#manualTab table{margin:8px 0 16px}
+#manualTab table th,#manualTab table td{text-align:left;white-space:normal;font-size:12.5px}
+#manualTab .manual-loading,#manualTab .manual-error{color:var(--muted);font-size:13px}
+</style>
+<div id="manualTab">
+ <div class="wrap">
+  <div id="manualTabContent"><p class="manual-loading">กำลังโหลดคู่มือ…</p></div>
+ </div>
+</div>
+<script id="manualTabJs">
+(function(){
+  // Loads docs/user_manual.md AT RUNTIME (fetch, same pattern this page already uses for
+  // data/inventory.json) and renders it with a small Markdown subset -- #, ##, ###, tables,
+  // "- " bullet lists, **bold**, plain paragraphs (the only constructs docs/user_manual.md
+  // actually uses). Deliberately NOT a copy pasted into this file: the manual's approved text
+  // lives in exactly one place (docs/user_manual.md, per this task's Part 0), so this tab can
+  // never drift from it -- there is nothing here to keep in sync.
+  let loaded = false;
+
+  function escHtml(s){
+    return s.replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+  }
+  function inline(s){
+    // **bold** only -- the only inline markup docs/user_manual.md uses.
+    return escHtml(s).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>');
+  }
+  function isTableRow(line){ return /^\|.*\|\s*$/.test(line); }
+  function isTableSep(line){ return /^\|[\s:-]+\|[\s:|-]*$/.test(line); }
+  function splitRow(line){
+    return line.replace(/^\||\|$/g, '').split('|').map(c => c.trim());
+  }
+
+  function renderMarkdown(md){
+    const lines = md.replace(/\r\n/g, '\n').split('\n');
+    let html = '', i = 0;
+    while (i < lines.length) {
+      const line = lines[i];
+      if (/^###\s+/.test(line)) { html += `<h3>${inline(line.replace(/^###\s+/, ''))}</h3>`; i++; continue; }
+      if (/^##\s+/.test(line)) { html += `<h2>${inline(line.replace(/^##\s+/, ''))}</h2>`; i++; continue; }
+      if (/^#\s+/.test(line)) { html += `<h1>${inline(line.replace(/^#\s+/, ''))}</h1>`; i++; continue; }
+      if (isTableRow(line) && i + 1 < lines.length && isTableSep(lines[i + 1])) {
+        const header = splitRow(line);
+        html += '<table><thead><tr>' + header.map(c => `<th>${inline(c)}</th>`).join('') + '</tr></thead><tbody>';
+        i += 2;
+        while (i < lines.length && isTableRow(lines[i])) {
+          html += '<tr>' + splitRow(lines[i]).map(c => `<td>${inline(c)}</td>`).join('') + '</tr>';
+          i++;
+        }
+        html += '</tbody></table>';
+        continue;
+      }
+      if (/^-\s+/.test(line)) {
+        html += '<ul>';
+        while (i < lines.length && /^-\s+/.test(lines[i])) {
+          html += `<li>${inline(lines[i].replace(/^-\s+/, ''))}</li>`;
+          i++;
+        }
+        html += '</ul>';
+        continue;
+      }
+      if (line.trim() === '') { i++; continue; }
+      html += `<p>${inline(line)}</p>`;
+      i++;
+    }
+    return html;
+  }
+
+  window.loadManualTab = function(){
+    if (loaded) return;
+    loaded = true;
+    fetch('docs/user_manual.md')
+      .then(res => { if (!res.ok) throw new Error('HTTP ' + res.status); return res.text(); })
+      .then(text => { document.getElementById('manualTabContent').innerHTML = renderMarkdown(text); })
+      .catch(err => {
+        loaded = false;
+        document.getElementById('manualTabContent').innerHTML =
+          '<p class="manual-error">ไม่สามารถโหลดคู่มือได้ (docs/user_manual.md) — ' + escHtml(String(err.message || err)) + '</p>';
+      });
+  };
+})();
+</script>
+
 <div id="modal"><div class="box"><button class="x" id="mClose">ปิด</button>
  <h3 id="mTitle" style="margin:0 0 2px"></h3><div id="mInfo" style="font-size:13px;margin-bottom:8px"></div>
  <div class="tgl" style="display:flex;margin-bottom:6px"><button id="mU_q" class="on">จำนวน</button><button id="mU_b">บาท</button></div>
@@ -7643,7 +7766,10 @@ function chart1(){
     s+=`<g class="mbar" data-i="${i}" style="cursor:pointer"><rect x="${x}" y="${H-B-hA}" width="${bw}" height="${hA}" fill="${C_ACT}"${part}/><rect x="${x}" y="${H-B-hA-hP}" width="${bw}" height="${hP}" fill="${C_MPS}"${part}/><rect x="${x}" y="${T}" width="${bw}" height="${H-T-B}" fill="transparent"><title>${M[i]}\nActual: ${fmt(A[i],F.unit1)}\nMPS: ${fmt(P[i],F.unit1)}\nคลิกเพื่อดูรายวัน</title></rect></g>`;
     s+=`<text x="${x+bw/2}" y="${H-B+12}" text-anchor="end" font-size="8.5" fill="#5b7188" transform="rotate(-52 ${x+bw/2} ${H-B+12})">${M[i]}</text>`;});
   s+=maLine(tot,sx,sy,L,H,B,F.ma,F.unit1);
+  s+=`<text x="${L+(W-L-R)/2}" y="${H-4}" text-anchor="middle" font-size="11" fill="#33506b">เดือน</text>`;
+  s+=`<text x="14" y="${T+(H-T-B)/2}" font-size="11" fill="#33506b" transform="rotate(-90 14 ${T+(H-T-B)/2})">${F.unit1=='b'?'บาท':'จำนวน (ชิ้น)'}</text>`;
   s+=`</svg><div class="hint">■ <span style="color:${C_ACT}">Actual</span> ■ <span style="color:${C_MPS}">MPS</span> — เส้นประส้ม = ค่าเฉลี่ยเคลื่อนที่ ${F.ma} เดือน — แท่งจาง = ส.ค.2026 ยังไม่จบเดือน</div>`;
+  s+='<div class="hint">▸ ยอดขายรวมแต่ละเดือนของสินค้าที่เลือก<br>▸ แกน X = เดือน (ม.ค. 2567 - ส.ค. 2569) · แกน Y = บาท หรือ ชิ้น ตามปุ่มหน่วย<br>▸ แท่งเข้ม = ส่งแล้ว แท่งอ่อนซ้อนบน = PO ที่รับแล้วยังไม่ส่ง เส้นประ = ค่าเฉลี่ยเคลื่อนที่<br>▸ แท่งสุดท้ายจางเพราะเดือนยังไม่จบ คลิกแท่งเพื่อดูรายวัน</div>';
   $('c1').innerHTML=s;
   $('c1').querySelectorAll('.mbar').forEach(g=>g.addEventListener('click',()=>openDaily(+g.dataset.i,null)));
 }
@@ -7668,6 +7794,7 @@ function chart2(){
 ADI ${it.adi} · CV² ${it.cv2} · ${it.cls}
 ยอดรวม ${(t/1e6).toFixed(2)} ลบ.</title></circle>`;}
   s+='</svg><div class="hint">1 จุด = 1 SKU (ขนาด = ยอดขายรวม) — คลิกจุดเพื่อดู trend รายตัว — เส้นแบ่ง ADI 1.32 / CV² 0.49</div>';
+  s+='<div class="hint">▸ สินค้าแต่ละตัวขายบ่อยแค่ไหน ขนาดออเดอร์แกว่งแค่ไหน<br>▸ แกน X = ADI (ขายห่างกันกี่เดือน) · แกน Y = CV² (ออเดอร์แกว่งแค่ไหน)<br>▸ เส้นแบ่ง 4 ช่อง ซ้ายล่าง Smooth ซ้ายบน Erratic ขวาล่าง Intermittent ขวาบน Lumpy<br>▸ วงใหญ่ = ยอดขายสูง ขนาดวงคิดจากบาทเสมอ ไม่ตามปุ่มหน่วย ค่าเกินขอบถูกตรึงไว้ที่ขอบ คลิกวงเพื่อดูรายสินค้า</div>';
   $('c2').innerHTML=s;
   $('c2').querySelectorAll('.dot').forEach(dt=>dt.addEventListener('click',()=>openSku(dt.dataset.c)));
 }
@@ -7691,7 +7818,9 @@ function chart4(){
     s+=`<text x="${L-6}" y="${y+bh/2+4}" text-anchor="end" font-size="12" font-weight="${on?'700':'400'}" fill="#17324f">${r.sh}</text>`;
     s+=`<g class="shbar" data-sh="${r.sh}" style="cursor:pointer"><rect x="${L}" y="${y}" width="${Math.max(wa,1)}" height="${bh}" fill="${C_ACT}"/><rect x="${L+wa}" y="${y}" width="${wp}" height="${bh}" fill="${C_MPS}"/><title>${r.sh}: ${fmt(r.a+r.p,F.unit1)} (${r.c} รหัส)</title></g>`;
     s+=`<text x="${L+wa+wp+5}" y="${y+bh/2+4}" font-size="11" fill="#33506b">${F.unit1=='b'?((r.a+r.p)/1e6).toFixed(1)+' ลบ.':Math.round(r.a+r.p).toLocaleString()}</text>`;});
+  s+=`<text x="${L+(W-L-R)/2}" y="${H-4}" text-anchor="middle" font-size="11" fill="#33506b">ยอดรวม (${F.unit1=='b'?'บาท':'จำนวน (ชิ้น)'}) ต่อฝ่าย</text>`;
   s+='</svg><div class="hint">คลิกแท่ง = กรองทั้งหน้า (คลิกซ้ำยกเลิก) — ตรวจสอบแล้ว (2026-09-24): ไม่มีรหัสสินค้าใดถูกนับซ้ำข้ามหน่วยธุรกิจ (ทุกรหัสอยู่ในหน่วยธุรกิจเดียว)</div>';
+  s+='<div class="hint">▸ ความยาวแท่ง = ยอดรวม (บาทหรือชิ้น) · แต่ละแถว = ฝ่าย<br>▸ คลิกแท่งเพื่อกรองเฉพาะฝ่ายนั้น คลิกซ้ำเพื่อยกเลิก</div>';
   $('c4').innerHTML=s;
   $('c4').querySelectorAll('.shbar').forEach(g=>g.addEventListener('click',()=>{F.sheet=(F.sheet==g.dataset.sh)?'ALL':g.dataset.sh;$('fSheet').value=F.sheet;render();}));
 }
@@ -7716,6 +7845,8 @@ function openSku(code){
     if(mean>0){const y=H-B-mean*sy;s+=`<line x1="${L}" y1="${y}" x2="${W-R}" y2="${y}" stroke="#7a4dbb" stroke-width="1.5" stroke-dasharray="6 4"/><text x="${W-R}" y="${y-4}" text-anchor="end" font-size="10" fill="#7a4dbb">เฉลี่ยเฉพาะเดือนที่ขาย</text>`;
       s+=`<line x1="${L}" y1="${y}" x2="${W-R}" y2="${y}" stroke="transparent" stroke-width="12" pointer-events="stroke"><title>ค่าเฉลี่ยเฉพาะเดือนที่มีขาย (${act.length} เดือน): ${fmt(mean,unit)}</title></line>`;}
     s+=maLine(tot,sx,sy,L,H,B,F.ma,unit);
+    s+=`<text x="${L+(W-L-R)/2}" y="${H-2}" text-anchor="middle" font-size="10" fill="#5b7188">เดือน</text>`;
+    s+=`<text x="14" y="${T+(H-T-B)/2}" font-size="10" fill="#5b7188" transform="rotate(-90 14 ${T+(H-T-B)/2})">${unit=='b'?'บาท':'จำนวน (ชิ้น)'}</text>`;
     s+='</svg>';
     $('mChart').innerHTML=s;
     $('mChart').querySelectorAll('.mbar2').forEach(g=>g.addEventListener('click',()=>openDaily(+g.dataset.i,it)));
@@ -7748,6 +7879,8 @@ function openDaily(mi,it){
     s+=`<rect x="${x}" y="${H-B-hA}" width="${bw}" height="${hA}" fill="${C_ACT}"><title>วันที่ ${i+1}: Actual ${fmt(A[i],unit)}</title></rect>`;
     s+=`<rect x="${x}" y="${H-B-hA-hP}" width="${bw}" height="${hP}" fill="${C_MPS}"><title>วันที่ ${i+1}: MPS ${fmt(P[i],unit)}</title></rect>`;
     if((i+1)%2==1)s+=`<text x="${x+bw/2}" y="${H-B+12}" text-anchor="middle" font-size="8.5" fill="#5b7188">${i+1}</text>`;});
+  s+=`<text x="14" y="${T+(H-T-B)/2}" font-size="10" fill="#5b7188" transform="rotate(-90 14 ${T+(H-T-B)/2})">${unit=='b'?'บาท':'จำนวน (ชิ้น)'}</text>`;
+  s+=`<text x="${L+(W-L-R)/2}" y="${H-4}" text-anchor="middle" font-size="10" fill="#5b7188">วันที่ในเดือน</text>`;
   s+=`</svg><div class="hint">รายวันเดือน ${M[mi]} — วันที่ไม่มีแท่ง = ไม่มีการรับ PO วันนั้น (หน่วย: ${unit=='b'?'บาท':'จำนวน'})</div>`;
   $('dTitle').textContent=(it?it.c+' — ':'')+'รายวัน '+M[mi];
   $('dChart').innerHTML=s;
@@ -7815,10 +7948,16 @@ document.addEventListener('DOMContentLoaded',()=>{
 });
 })();
 function omniShowTab(n){
+  // Rewritten (this task, Part 2) to hide each of the THREE tabs whenever another is shown --
+  // the previous 2-tab version only ever set #origTab/#omniTab and would have left a 3rd tab
+  // (added here) visible underneath tabs 1/2, since it never wrote that tab's display at all.
   document.getElementById('origTab').style.display = n==1?'':'none';
   document.getElementById('omniTab').style.display = n==2?'block':'none';
+  document.getElementById('manualTab').style.display = n==3?'block':'none';
   document.getElementById('tb1').className = n==1?'actv':'';
   document.getElementById('tb2').className = n==2?'actv':'';
+  document.getElementById('tb3').className = n==3?'actv':'';
+  if (n==3 && window.loadManualTab) window.loadManualTab();
   window.scrollTo(0,0);
 }
 </script>
@@ -7862,6 +8001,22 @@ function omniShowTab(n){
   function invEsc(s){
     return String(s==null?'':s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   }
+
+  // Converts an ISO-8601 UTC timestamp (e.g. '2026-09-25T05:13:02Z', as written by
+  // src/build_inventory_dataset.py into data/inventory.json's snapshot.generated_at) into this
+  // page's existing 'YYYY-MM-DD HH:MM' ICT (UTC+7) display string, by plain offset arithmetic on
+  // the absolute instant (Date.getTime() is always UTC millis, regardless of input format) --
+  // never dependent on the viewing browser's own local timezone. Returns null if the input is
+  // missing or unparseable, so callers can show an explicit "ไม่ทราบ" rather than "Invalid Date".
+  function invUtcIsoToIctString(isoUtc){
+    if(!isoUtc) return null;
+    const d = new Date(isoUtc);
+    if(isNaN(d.getTime())) return null;
+    const ict = new Date(d.getTime() + 7*3600*1000);
+    const pad = n => String(n).padStart(2,'0');
+    return ict.getUTCFullYear()+'-'+pad(ict.getUTCMonth()+1)+'-'+pad(ict.getUTCDate())+' '+pad(ict.getUTCHours())+':'+pad(ict.getUTCMinutes());
+  }
+
   const INV_NUM_KEYS = ['qty', 'sellable_qty', 'staging_qty', 'elsewhere_qty', 'backlog', 'available'];
 
   function invFmtQty(v){
@@ -7920,24 +8075,31 @@ function omniShowTab(n){
       + 'คลิกตัวเลข Reserved เพื่อดูรายการที่รวมกันเป็นยอดนั้น';
 
     // METRICS.md Sec.26 (page_timestamps), added 2026-09-25 (task 2a, Part 2). data_pulled_at
-    // comes from data/inventory.json's own snapshot/backlog fields (never typed); page_built_at
-    // is this hand-maintained page's own last edit for the stock panel (no generator exists for
-    // index.html -- CONVENTIONS.md/METRICS.md Sec.26's own rule for a page like this one).
-    const INV_PAGE_BUILT_AT = '2026-09-25 12:15';
+    // comes from data/inventory.json's own snapshot/backlog fields (never typed).
+    // page_built_at FIXED (this task, per CONVENTIONS.md "no date on a page is typed by hand"):
+    // used to be a hard-coded JS string constant here, re-typed by hand on every edit and
+    // silently stale the moment anyone forgot to update it. Now read directly from
+    // data.snapshot.generated_at, an ISO-8601 UTC timestamp src/build_inventory_dataset.py
+    // itself writes at the moment it generates this exact file -- never hand-typed again.
     const stockPulledAt = (data.snapshot.loaded_at || '').slice(0, 16);
     const backlogPulledAt = (bl.loaded_at || '').slice(0, 16);
+    const INV_PAGE_BUILT_AT = invUtcIsoToIctString(data.snapshot.generated_at);
     document.getElementById('invPageTimestampNote').innerHTML =
       '<b>data_pulled_at</b> (สต็อค): ' + invEsc(stockPulledAt) + ' ICT (UTC+7) &nbsp;|&nbsp; '
       + '<b>data_pulled_at</b> (Reserved): ' + invEsc(backlogPulledAt) + ' ICT (UTC+7) &nbsp;|&nbsp; '
-      + '<b>page_built_at</b>: ' + INV_PAGE_BUILT_AT + ' ICT (UTC+7) (แก้ไขหน้านี้ครั้งล่าสุด — index.html ไม่มี generator, เป็นไฟล์ที่แก้ไขด้วยมือ)';
+      + '<b>page_built_at</b>: ' + invEsc(INV_PAGE_BUILT_AT || 'ไม่ทราบ') + ' ICT (UTC+7) '
+      + '(จาก data/inventory.json field snapshot.generated_at, เขียนโดย src/build_inventory_dataset.py '
+      + 'ตอนสร้างไฟล์นี้ — ไม่ใช่ค่าที่พิมพ์ไว้ในโค้ดอีกต่อไป)';
 
     // METRICS.md Sec.26 (amended 2026-09-25, per-section staleness): the stock panel draws on
     // TWO independently-pulled inputs (on-hand stock, Reserved/backlog) -- each gets its OWN
     // staleness notice, evaluated against its OWN data_pulled_at, so a stale Reserved pull never
     // marks the (possibly fresh) stock figures stale, and vice versa.
-    const ageDaysStock = (new Date(INV_PAGE_BUILT_AT.replace(' ', 'T')) - new Date(stockPulledAt.replace(' ', 'T'))) / 86400000;
+    const ageDaysStock = INV_PAGE_BUILT_AT
+      ? (new Date(INV_PAGE_BUILT_AT.replace(' ', 'T')) - new Date(stockPulledAt.replace(' ', 'T'))) / 86400000
+      : NaN;
     const staleEl = document.getElementById('invStalenessNote');
-    if (ageDaysStock > 7) {
+    if (!isNaN(ageDaysStock) && ageDaysStock > 7) {
       staleEl.style.display = 'block';
       staleEl.innerHTML = '⚠ <b>ข้อมูลสต็อคเก่ากว่า 7 วัน</b> (' + ageDaysStock.toFixed(1)
         + ' วัน เทียบกับ page_built_at) — ตัวเลขสต็อคในหน้านี้อาจไม่ตรงกับสต็อคจริงปัจจุบัน';
@@ -7945,7 +8107,7 @@ function omniShowTab(n){
       staleEl.style.display = 'none';
     }
 
-    const ageDaysBacklog = backlogPulledAt
+    const ageDaysBacklog = (backlogPulledAt && INV_PAGE_BUILT_AT)
       ? (new Date(INV_PAGE_BUILT_AT.replace(' ', 'T')) - new Date(backlogPulledAt.replace(' ', 'T'))) / 86400000
       : NaN;
     const backlogStaleEl = document.getElementById('invBacklogStalenessNote');
@@ -8307,11 +8469,12 @@ function omniShowTab(n){
   });
 
   // Chosen behaviour: switching tabs while the panel is open closes the panel first, rather than
-  // leaving it open behind Tab 2 or silently re-showing Tab 1 underneath it. Implemented as an
-  // additive listener (not a change to omniShowTab itself), so existing tab-switching code is
-  // untouched -- omniShowTab still runs first and sets origTab/omniTab display as usual, then this
-  // listener additionally hides the panel if it was open.
-  ['tb1', 'tb2'].forEach(id => {
+  // leaving it open behind another tab or silently re-showing Tab 1 underneath it. Implemented as
+  // an additive listener (not a change to omniShowTab itself), so existing tab-switching code is
+  // untouched -- omniShowTab still runs first and sets each tab's display as usual, then this
+  // listener additionally hides the panel if it was open. Extended to 'tb3' (this task, Part 2) --
+  // the manual tab must close the panel too, exactly like tb1/tb2 already did.
+  ['tb1', 'tb2', 'tb3'].forEach(id => {
     document.getElementById(id).addEventListener('click', () => {
       const panel = document.getElementById('invPanel');
       if (panel.style.display === 'block') panel.style.display = 'none';

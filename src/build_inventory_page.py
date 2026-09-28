@@ -19,6 +19,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from build_inventory_page_data import build_data
+from manual_notes import render_notes_html
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 logger = logging.getLogger("build_inventory_page")
@@ -159,9 +160,22 @@ def build_page() -> str:
     defaults = data["tier_a_defaults"]
     ranges = data["tier_a_ranges"]
 
-    def slider(key, label, step, suffix=""):
+    def slider(key, label, step, suffix="", disabled=False):
         lo, hi = ranges[key]
         val = defaults[key]
+        # DISABLED, this task (2b's own job to implement, not this one -- Part 1 instruction:
+        # "Do not implement them here"): this control computed nothing on the page even before
+        # being disabled (confirmed by reading onControlChange()/computeAll() -- neither ever
+        # reads obsolescence_threshold_months for anything beyond its own on-screen label). It is
+        # now disabled and labelled so a user cannot mistake a dead control for a working one.
+        if disabled:
+            return f"""
+        <div class="ctrl-row disabled">
+          <label for="ctrl-{key}">{label}: <span id="val-{key}">{val}{suffix}</span>
+            <span class="disabled-flag">ยังไม่ทำงาน — อยู่ระหว่างแก้ไข</span></label>
+          <input type="range" id="ctrl-{key}" min="{lo}" max="{hi}" step="{step}" value="{val}"
+                 disabled aria-disabled="true">
+        </div>"""
         return f"""
         <div class="ctrl-row">
           <label for="ctrl-{key}">{label}: <span id="val-{key}">{val}{suffix}</span></label>
@@ -175,7 +189,7 @@ def build_page() -> str:
         slider("review_interval_days", "Review interval (days)", 1, "d"),
         slider("cycle_service_level", "Cycle service level", 0.01),
         slider("holding_cost_rate_annual", "Annual holding cost rate", 0.01),
-        slider("obsolescence_threshold_months", "Obsolescence threshold (months)", 1, "mo"),
+        slider("obsolescence_threshold_months", "Obsolescence threshold (months)", 1, "mo", disabled=True),
     ])
 
     division_options = "".join(
@@ -211,7 +225,9 @@ def build_page() -> str:
   .wrap {{ max-width: 1100px; margin: 0 auto; padding: 28px 24px 80px; }}
   h1 {{ font-size: 22px; margin: 0 0 4px; }}
   h2 {{ font-size: 17px; margin: 32px 0 10px; border-bottom: 1px solid var(--border); padding-bottom: 6px; }}
-  p.hint, p.scope-note {{ font-size: 12px; color: var(--muted); }}
+  p.hint, p.scope-note, span.hint, span.scope-note {{ font-size: 12px; color: var(--muted); }}
+  .ctrl-row.disabled {{ opacity: 0.55; }}
+  .ctrl-row .disabled-flag {{ color: var(--series-2); font-weight: 600; }}
   p.note-box {{ font-size: 12.5px; color: var(--text-secondary); background: #eef4fb;
     border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px; }}
   a.back-link {{ color: var(--series-1); text-decoration: none; font-size: 13px; }}
@@ -268,7 +284,8 @@ def build_page() -> str:
   <div class="ctrl-panel">
     {controls_html}
   </div>
-  <p>คลังสินค้าที่นับเป็น sellable สำหรับ division ที่เลือก (เปลี่ยนตาม division):</p>
+  <p>คลังสินค้าที่นับเป็น sellable สำหรับ division ที่เลือก (เปลี่ยนตาม division):
+    <span class="disabled-flag" id="warehouse-checklist-flag"></span></p>
   <div class="item-check-list" id="warehouse-checklist"></div>
 
   <div id="curve-target-section" style="display:none;">
@@ -277,6 +294,7 @@ def build_page() -> str:
     <p class="hint">ข้อมูลไม่สามารถระบุ reorder level ที่ถูกต้องได้ด้วยตัวเอง (ทุกรายการให้ range ratio เดียวกัน ไม่มีข้อมูลระดับรายการ) —
       การเลือกเป้าหมาย not_late ต่างหากที่เป็นตัวกำหนด reorder level (METRICS.md Sec.22)</p>
     <div id="chart-robust-curve" class="plotly-chart"></div>
+    {render_notes_html('inventory.html', 'chart-robust-curve')}
     <div class="preset-controls" style="display:flex; gap:10px; flex-wrap:wrap; margin:10px 0;">
       <button type="button" id="preset-today-lowest" class="preset-btn"></button>
       <button type="button" id="preset-highest-at-today" class="preset-btn"></button>
@@ -305,9 +323,11 @@ def build_page() -> str:
   <h2>Trade-off: Stock value vs. Cycle Service Level</h2>
   <p class="hint">เส้นแสดง stock_value ที่ระดับ service level ต่างๆ (ค่าควบคุมอื่นคงที่ตามที่ตั้งไว้ด้านบน) สำหรับ division ที่เลือก</p>
   <div id="chart-tradeoff" class="plotly-chart"></div>
+  {render_notes_html('inventory.html', 'chart-tradeoff')}
 
   <h2>Min เทียบกับค่าปัจจุบัน (current_min_max) — รายรายการ</h2>
   <div id="chart-min-vs-current" class="plotly-chart"></div>
+  {render_notes_html('inventory.html', 'chart-min-vs-current')}
 
   <h2>ตารางรายรายการ (เรียงตาม Value at Risk ได้)</h2>
   <p class="hint">Value at risk = max(0, current_min − scenario_min) × unit_cost — ค่าประมาณความเสี่ยงจากสต็อคปัจจุบันต่ำกว่าสถานการณ์นี้</p>
@@ -373,14 +393,21 @@ function renderNoPolicyTable(divisionData) {{
 }}
 
 function renderWarehouseChecklist(divisionData) {{
+  // DISABLED, this task (2b's own job to implement, not this one -- Part 1 instruction: "Do not
+  // implement them here"): unchecking a box here computed nothing even before being disabled --
+  // no function in this file ever read a .wh-check's checked state (confirmed by a full-file
+  // search). Now disabled and labelled so a user cannot mistake a dead control for a working one.
+  // Also corrects config.yaml's now-inaccurate comment claiming this control was made live.
   const el = document.getElementById('warehouse-checklist');
   el.innerHTML = '';
   for (const w of divisionData.sellable_warehouse_codes) {{
     const label = document.createElement('label');
     label.className = 'item-check';
-    label.innerHTML = `<input type="checkbox" class="wh-check" value="${{w}}" checked onchange="onControlChange()"> ${{w}}`;
+    label.innerHTML = `<input type="checkbox" class="wh-check" value="${{w}}" checked disabled aria-disabled="true"> ${{w}}`;
     el.appendChild(label);
   }}
+  const flag = document.getElementById('warehouse-checklist-flag');
+  if (flag) flag.textContent = 'ยังไม่ทำงาน — อยู่ระหว่างแก้ไข';
 }}
 
 let sortDir = {{}};
@@ -404,7 +431,7 @@ function renderTradeoff(controls, divisionData) {{
   for (let s = 0.80; s <= 0.991; s += 0.02) slValues.push(Math.round(s * 100) / 100);
   const values = slValues.map(sl => computeAll({{...controls, cycle_service_level: sl}}, divisionData).stockValue);
   Plotly.newPlot('chart-tradeoff', [{{ x: slValues, y: values, mode: 'lines+markers', line: {{color: '#2a78d6'}} }}],
-    {{ margin: {{t:10}}, xaxis: {{title: 'Cycle service level'}}, yaxis: {{title: 'Stock value (THB)'}} }},
+    {{ margin: {{t:10}}, xaxis: {{title: {{text: 'Cycle service level'}}}}, yaxis: {{title: {{text: 'Stock value (THB)'}}}} }},
     {{responsive: true}});
 }}
 
@@ -413,7 +440,9 @@ function renderMinVsCurrent(perItem) {{
   Plotly.newPlot('chart-min-vs-current', [
     {{ x: withCurrent.map(r => r.code), y: withCurrent.map(r => r.min), name: 'Scenario Min', type: 'bar', marker: {{color:'#2a78d6'}} }},
     {{ x: withCurrent.map(r => r.code), y: withCurrent.map(r => r.currentMin), name: 'Current Min', type: 'bar', marker: {{color:'#eda100'}} }}
-  ], {{ margin: {{t:10}}, barmode: 'group', xaxis: {{tickangle: -60, tickfont:{{size:8}}}} }}, {{responsive: true}});
+  ], {{ margin: {{t:10, b:90, l:70}}, barmode: 'group',
+       xaxis: {{title: {{text: 'รหัสสินค้า'}}, tickangle: -60, tickfont:{{size:8}}}},
+       yaxis: {{title: {{text: 'จำนวน (ชิ้น)'}}}} }}, {{responsive: true}});
 }}
 
 // BEGIN_CURVE_INTERP_JS
@@ -496,7 +525,7 @@ function applyCurveTarget(targetNotLate) {{
       mode: 'markers', marker: {{color:'#eb6834', size:12, symbol:'star'}} }},
     {{ x: [result.not_late_median_pct], y: [result.stock_value_median], name: 'selected target',
       mode: 'markers', marker: {{color:'#1baf7a', size:11, symbol:'diamond'}} }},
-  ], {{ margin: {{t:10}}, xaxis: {{title: 'not_late (%)'}}, yaxis: {{title: 'Stock value (THB), median curve + band'}} }},
+  ], {{ margin: {{t:40, l:90}}, xaxis: {{title: {{text: 'not_late (%)'}}}}, yaxis: {{title: {{text: 'Stock value (THB), median curve + band'}}}} }},
   {{responsive: true}});
 }}
 

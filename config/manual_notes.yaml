@@ -1,0 +1,72 @@
+# Manual chart notes -- single source of truth for the short "▸" lines that appear under each
+# chart, as approved in docs/user_manual.md. Keyed by page filename, then by that page's own
+# chart/table element id.
+#
+# src/build_report.py and src/build_inventory_page.py read this file and render each chart's list
+# of notes directly under it (see render_manual_notes() in each builder). index.html has no
+# generator, so its entries below are the source an editor copies into the static HTML by hand;
+# tests/test_manual_notes_sync.py checks the two stay in sync so a drift is caught, not silent.
+#
+# Every line here must appear verbatim (character-for-character) in docs/user_manual.md, under the
+# matching page/chart heading -- do not edit the wording here without also editing the manual.
+
+sales_report.html:
+  chart-notice:
+    - "▸ ลูกค้าสั่งของล่วงหน้านานแค่ไหนก่อนวันที่ต้องส่ง"
+    - "▸ แกน X = ระยะแจ้งล่วงหน้าขั้นต่ำ (≥30 วัน, ≥60 วัน … ≥180 วัน) · แกน Y = % ของออเดอร์ทั้งหมด"
+    - "▸ สมมติแท่ง ≥30 วันสูง 6% หมายถึงออเดอร์ 100 ใบ มีแค่ 6 ใบที่แจ้งล่วงหน้าเกิน 30 วัน"
+  chart-ontime:
+    - "▸ ส่งของให้ลูกค้าทันวันนัดกี่ % ต่อปี"
+    - "▸ แกน X = ปี · แกน Y = % (0-100)"
+    - "▸ 2 เส้น ส่งไม่ช้า (ทันหรือก่อนวันนัด) กับ ส่งตรงวันพอดี ใช้เส้นส่งไม่ช้าถ้าจะตอบว่าลูกค้าได้ของทันไหม"
+    - "▸ เส้นส่งตรงวันพอดีต่ำกว่าเสมอเพราะไม่นับที่ส่งก่อน อย่าเอาไปรายงานเป็นอัตราส่งทัน"
+  chart-model:
+    - "▸ แต่ละวิธีทายสินค้าหลัก 3 ตัวพลาดแค่ไหน"
+    - "▸ แกน X = รหัสสินค้า 3 ตัว · แกน Y = MAE (ชิ้นต่อเดือน) แท่งต่ำ = ทายแม่นกว่า"
+    - "▸ แต่ละสีคือหนึ่งวิธี คลิกชื่อใน legend เพื่อซ่อนหรือแสดง"
+  chart-rolling:
+    - "▸ แต่ละวิธีทายแม่นสม่ำเสมอไหม ในการทดสอบแต่ละรอบ"
+    - "▸ แกน X = รอบทดสอบที่ 1-7 เรียงตามเวลา · แกน Y = MAE เฉลี่ย (ชิ้นต่อเดือน)"
+    - "▸ เส้นที่ต่ำและนิ่ง = ดี เส้นที่กระโดดขึ้นลง = บางช่วงทายได้ บางช่วงพลาดหนัก"
+  chart-fva:
+    - "▸ ทายไว้เทียบกับของจริง สินค้าที่เลือก ในรอบทดสอบที่เลือก"
+    - "▸ แกน X = เดือนที่ 1-6 หลังจุดตัดข้อมูล · แกน Y = จำนวน (ชิ้น)"
+    - "▸ เส้นทึบ = ยอดจริง เส้นประ = ที่ทายไว้ เส้นประอยู่ใต้เส้นทึบ = ทายต่ำไป"
+    - "▸ กราฟนี้มีเฉพาะสินค้า PEM101 ตัวกรองฝ่ายไม่มีผล"
+
+inventory.html:
+  chart-robust-curve:
+    - "▸ ถ้าอยากส่งทันระดับนี้ ต้องถือ stock มูลค่าเท่าไหร่"
+    - "▸ แกน X = % ส่งไม่ช้า · แกน Y = มูลค่า stock (บาท)"
+    - "▸ เส้นกลาง = ค่ากลาง แถบรอบเส้น = ช่วงที่เป็นไปได้ ดาว = จุดที่เราอยู่วันนี้ เพชร = เป้าที่เลือก"
+    - "▸ ใช้ปุ่มเป้าสำเร็จรูป 3 ปุ่ม หรือเลื่อน slider เพื่อเลือกเป้า"
+  chart-tradeoff:
+    - "▸ ยิ่งอยากไม่ขาดของ ต้องถือของเพิ่มแค่ไหน"
+    - "▸ แกน X = cycle service level (0.80-0.99) · แกน Y = มูลค่า stock (บาท)"
+    - "▸ เส้นชันขึ้นช่วงท้าย = ช่วงที่เพิ่ม service อีกนิดต้องจ่ายแพงมาก"
+  chart-min-vs-current:
+    - "▸ Min ที่จำลองได้ เทียบกับ Min ที่ตั้งอยู่ในระบบตอนนี้"
+    - "▸ แกน X = รหัสสินค้า · แกน Y = จำนวน (ชิ้น)"
+    - "▸ ค่าปัจจุบันในระบบไม่มีใครใช้จริงและตั้งไว้ไม่สม่ำเสมอ ใช้ดูว่าต่างกันแค่ไหนเท่านั้น"
+
+# index.html has no generator -- these are hand-copied into the static HTML (invPanel's sellable
+# split table, and the Trend tab's charts c1/c2/c4). tests/test_manual_notes_sync.py checks the
+# copy stays byte-for-byte in sync with this file.
+index.html:
+  inv-sellable-split-table:
+    - "▸ stock ของแต่ละฝ่ายแยกเป็น 3 กอง คลังที่ขายได้ / คลังตรวจ QA ที่ยังไม่พร้อม / คลังอื่น หน่วยเป็นชิ้น"
+    - "▸ คอลัมน์ Sellable warehouse codes บอกว่าคลังไหนถูกนับเป็นคลังขายได้ รายชื่อนี้เป็นสมมติฐาน ยังไม่ได้ยืนยันจากฝ่ายคลัง"
+    - "▸ CI101 / PEM102 / PEM104 ขึ้น not assessed เพราะยังไม่ได้กำหนดคลังขายได้ ไม่ใช่ศูนย์"
+  trend-chart1-c1:
+    - "▸ ยอดขายรวมแต่ละเดือนของสินค้าที่เลือก"
+    - "▸ แกน X = เดือน (ม.ค. 2567 - ส.ค. 2569) · แกน Y = บาท หรือ ชิ้น ตามปุ่มหน่วย"
+    - "▸ แท่งเข้ม = ส่งแล้ว แท่งอ่อนซ้อนบน = PO ที่รับแล้วยังไม่ส่ง เส้นประ = ค่าเฉลี่ยเคลื่อนที่"
+    - "▸ แท่งสุดท้ายจางเพราะเดือนยังไม่จบ คลิกแท่งเพื่อดูรายวัน"
+  trend-chart2-c2:
+    - "▸ สินค้าแต่ละตัวขายบ่อยแค่ไหน ขนาดออเดอร์แกว่งแค่ไหน"
+    - "▸ แกน X = ADI (ขายห่างกันกี่เดือน) · แกน Y = CV² (ออเดอร์แกว่งแค่ไหน)"
+    - "▸ เส้นแบ่ง 4 ช่อง ซ้ายล่าง Smooth ซ้ายบน Erratic ขวาล่าง Intermittent ขวาบน Lumpy"
+    - "▸ วงใหญ่ = ยอดขายสูง ขนาดวงคิดจากบาทเสมอ ไม่ตามปุ่มหน่วย ค่าเกินขอบถูกตรึงไว้ที่ขอบ คลิกวงเพื่อดูรายสินค้า"
+  trend-chart4-c4:
+    - "▸ ความยาวแท่ง = ยอดรวม (บาทหรือชิ้น) · แต่ละแถว = ฝ่าย"
+    - "▸ คลิกแท่งเพื่อกรองเฉพาะฝ่ายนั้น คลิกซ้ำเพื่อยกเลิก"
