@@ -946,6 +946,35 @@ produced a wrong result, with the correct handling and the report that found it.
     `pipeline_gap_pct`) -- this contradicts the earlier typed figure, which was for a different item
     set, and the page now shows the computed value. **V1** (one recomputation by the implementing task).
 
+25. **A dry run of `src/monthly_refresh.py` changed real outputs.** Naive reading: `--dry-run`
+    writes nothing outside a staging folder (the module docstring said only writes to TRACKED files
+    were redirected). Reality: task M1's dry run (run `20260929T121502`, 2026-09-29) re-pulled data and
+    regenerated analysis inputs under `output/` (for example `leadtime_notice_buckets_overall.csv`,
+    `delivery_by_year.csv`), so the tracked `forecast/sales_report.html` no longer matched its sources
+    and `tests/test_build_report.py::test_embedded_json_matches_source_files_exactly` failed; the sales
+    report had to be rebuilt (commit `2413781`, 5 chart values changed). **Correct handling (task M2,
+    2026-09-29)**: a dry run copies the project to a temporary folder and runs every step there;
+    only the run log is written to `output/runs/` (`run_dry_run_in_sandbox` in
+    `src/monthly_refresh.py`). `tests/test_monthly_refresh_dry_run_isolation.py` hashes every file
+    under `output/` and the tracked pages before and after a dry run. The final dry run (run
+    `20260929T155035`, exact command from `C:\Windows\system32`) changed nothing but its run log
+    (1573 files before, 1574 after). **V2** (the hashes were compared by the implementing task and
+    re-read by an independent Validator from the saved hash files and run log). Found while doing it:
+    the first copy had no `output/charts` folder, so two regeneration scripts (`order_leadtime.py`,
+    `delivery_performance.py`) could not save their figures and were reported "not refreshed" in that
+    dry run; fixed afterwards and covered by a unit test only, because confirming it end to end needs
+    another dry run (another database connection).
+26. **The Min-Max page's "Items with a Min/Max" figure showed 0 for PEM101 and PEM107.** Naive
+    reading: the figure counts the items that get a Min/Max. Reality: it counted only rows whose policy
+    was `finished_goods_stock` (the section 15 value), while PEM101/PEM107 rows carry the METRICS.md
+    section 23 class `stock_policy` (`forecast/inventory.html` before commit `c08c470`); PEM101 had 72
+    items with a Min and a stock value of THB 62.0M and the box read 0. **Correct handling**: one rule,
+    `isItemTableRow`/`showsMinMax` in `src/build_inventory_page.py`, decides which rows the item table
+    lists and which show a Min and Max, and the summary counts exactly those rows for every division
+    (`tests/test_inventory_page_browser.py::test_summary_count_equals_item_table_rows_showing_a_min_and_max`).
+    Side effect, by design: PEM103's count also follows the rule (it previously counted rows that the
+    item table does not list). Found by the task M1 Validator; **V2**.
+
 ---
 
 ## 5. Unknowns

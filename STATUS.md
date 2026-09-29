@@ -6267,6 +6267,34 @@ correction: item 6's class counts changed after the 2026-09-29 bug fix (PEM107 `
   from them (5 values changed: 3 notice buckets, 1 on-time, 1 not-late). The forward-test logs were
   unchanged. The exact scheduled-task command has not been re-run end to end.
 
+**Task M2 (2026-09-29): dry-run isolation, stock from the daily snapshot, summary count, text corrections.**
+- **DONE.** A dry run works in a temporary copy of the project and writes only its run log
+  (`run_dry_run_in_sandbox`, `src/monthly_refresh.py`); `tests/test_monthly_refresh_dry_run_isolation.py`
+  hashes `output/` and the tracked pages before and after. Final dry run, run `20260929T155035`, exact
+  command from `C:\Windows\system32` (`python D:\sale_forecast\src\monthly_refresh.py --dry-run`): steps 1-11 ok,
+  221 tests passed, sensitive scan and change-magnitude gate passed; 1573 files before, 1574 after, only the
+  run log added; forward-test logs unchanged. (DATA_MAP.md Section 4 Trap 25.)
+- **DONE.** Runner step 7 builds `forecast/inventory.html` from the latest daily stock snapshot
+  (`src/inventory_page_sources.py`); the page shows the snapshot's load time as the stock section's
+  data-pulled time and the staleness notice past the configured threshold; `src/snapshot_daily.py` now also
+  keeps `minimum`, `maximum`, `reserve_bywa`.
+- **DONE.** Summary "Items with a Min/Max" follows the item-table rule (PEM101 0 -> 72, PEM107 0 -> 4,
+  PEM103 14 unchanged). (DATA_MAP.md Section 4 Trap 26.)
+- **DONE.** Relative-cost sentences by sign, status labels, forecast_date sentence with its computed value.
+- **OPEN, found and not done, by phase:**
+  - G2 (inventory page): the current Min/Max settings still come from the latest saved page pull until the
+    next daily snapshot writes the new columns (the run log says so); the runner's stock change gate
+    (Section 28 step 10c) still reports "not yet meaningful" and could now use the daily snapshot;
+    stock in the dry run was about two days old (the stock table reloads nightly).
+  - G1 (monthly runner, Section 11/12 lineage): the two regenerations that failed in the dry run because the
+    copy lacked `output/charts` (`order_leadtime.py`, `delivery_performance.py`) are fixed but not confirmed
+    end to end (needs another dry run, another database connection); the monthly Windows Scheduled Task is
+    still not registered (Section 4 decision: the user registers it).
+  - Dashboard fixes list (Section 10): typed numbers left in reader text (74% intermittent/lumpy, first
+    scoring month, `|t| < 2`, numbers inside `config/manual_notes.yaml`, the 2023-2026 year filter);
+    `sales_report.html` throws when the charting library is blocked; the statuses
+    `excluded - division excluded ...` and PEM103's classes have labels but no page shows some of them yet.
+
 ## 11. Forward test ready for 30 September + monthly runner (this task, 2026-09-25)
 
 Scope: Part 1 (forward-test log path fixes, vintage migration, adapted consistency check, dry-run
