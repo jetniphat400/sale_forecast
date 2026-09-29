@@ -87,16 +87,38 @@ logger = logging.getLogger("build_inventory_page_data")
 FORECAST_HORIZON_MONTHS = 10
 CONFIG_PATH = os.path.join(PROJECT_ROOT, "config", "config.yaml")
 PILOT_DIVISIONS = ["PEM101", "PEM103", "PEM107"]
-DISABLED_DIVISIONS = {
-    "CI101": "6 of 13 items ever have any on-hand stock (46.2%); the tiny amount that exists "
-             "co-locates in PEM101's own FG01, not a CI101-specific location -- too thin a base "
-             "for an independent sellable-warehouse set (output/summary/phaseE2_readiness_report.md).",
-    "PEM102": "Only 3 of 26 items ever have any on-hand stock (11.5%), 3 units total -- far too "
-              "few to establish a confident sellable-warehouse set.",
-    "PEM104": "Made to order by business model -- no stock policy applicable (DATA_MAP.md Sec.7, "
-              "PROJECT_GRAPH.md dead end DE4, business-confirmed 2026-09-23). Consistent with the "
-              "data: only 1 of 12 items ever has any on-hand stock (8.3%), 1 unit total.",
-}
+# Short option label per disabled division. Reasons are built by disabled_division_reasons() so the
+# "n of total" counts come from the data at build time, not from typed numbers.
+DISABLED_DIVISION_LABELS = {"CI101": "ยังไม่เปิด", "PEM102": "ยังไม่เปิด", "PEM104": "ผลิตตามสั่ง"}
+# Source of the stocked-item counts: output/summary/phaseE2_1_item_to_warehouse_reverse.csv
+# (column has_stock_anywhere, one row per item; see output/summary/phaseE2_readiness_report.md).
+# Earlier English reasons cited: CI101's small stock co-locates in PEM101's own FG01, not a
+# CI101-specific location; PEM104 is made to order by business model (DATA_MAP.md Sec.7,
+# PROJECT_GRAPH.md dead end DE4, business-confirmed 2026-09-23), consistent with 1 of 12 items
+# (8.3%, 1 unit) ever holding stock.
+STOCK_COVERAGE_PATH = os.path.join(SUMMARY_DIR, "phaseE2_1_item_to_warehouse_reverse.csv")
+
+
+def _stocked_item_counts(division: str) -> tuple:
+    """(items that ever hold stock, total items) for one division, from STOCK_COVERAGE_PATH."""
+    if not os.path.exists(STOCK_COVERAGE_PATH):
+        raise FileNotFoundError(f"Required source file missing: {STOCK_COVERAGE_PATH} "
+                                f"(needed for the disabled-division reasons).")
+    df = pd.read_csv(STOCK_COVERAGE_PATH)
+    sub = df[df["division"] == division]
+    if sub.empty:
+        raise ValueError(f"{STOCK_COVERAGE_PATH} has no rows for division {division}.")
+    return int(sub["has_stock_anywhere"].astype(bool).sum()), int(len(sub))
+
+
+def disabled_division_reasons() -> dict:
+    n_ci, t_ci = _stocked_item_counts("CI101")
+    n_102, t_102 = _stocked_item_counts("PEM102")
+    return {
+        "CI101": f"ยังไม่เปิด มีของในคลังแค่ {n_ci} จาก {t_ci} รหัส และอยู่ในคลังเดียวกับ PEM101 ยังกำหนดคลังของฝ่ายนี้ไม่ได้",
+        "PEM102": f"ยังไม่เปิด มีของในคลังแค่ {n_102} จาก {t_102} รหัส น้อยเกินกว่าจะกำหนดคลังได้",
+        "PEM104": "ไม่มีนโยบาย stock ฝ่ายนี้ผลิตตามสั่งทั้งหมด",
+    }
 
 
 FULFILMENT_SEGMENTATION_DIVISIONS = ["PEM101", "PEM107"]  # task 2b Part 2 scope; PEM103 unaffected
@@ -135,6 +157,8 @@ def _build_curve_target_pem101() -> dict:
     n_calibrated_on = int(policy_counts.get("finished_goods_stock", 0))
     seg_counts = _load_fulfilment_segmentation("PEM101")["class"].value_counts()
     n_current_set = int(seg_counts.get("stock_policy", 0))
+    # Restored as written (pending Thai wording): removing the internal names and section numbers
+    # would leave the sentence meaningless, so it stays whole and is listed for rewriting.
     data["item_set_note"] = (
         f"Calibrated on the pre-Sec.23 finished_goods_stock item set ({n_calibrated_on} items, "
         f"section 15 criterion). NOT recalibrated on the current Sec.23 stock_policy item set "
@@ -225,9 +249,9 @@ def _build_pem101_division(config: dict) -> dict:
         "segment_policy": sp,
         "snapshot_pull_date": series_bundle["pull_date"],
         "n_items_label": f"{len(items)} รายการ",
-        "warehouse_scope_note": "PEM101 128-item Fuse/Surge-Arrester pilot -- see STATUS.md whmap_report.md. "
-                                 "PARTIALLY CALIBRATED (METRICS.md Sec.22, 80 distinct ensemble members -- "
-                                 "see the Trade-off Curve Target section below).",
+        "warehouse_scope_note": warehouse_scope_note_and_ref("PEM101")[0],
+        # Reference kept off screen (the page renders it as an HTML comment).
+        "warehouse_scope_ref": warehouse_scope_note_and_ref("PEM101")[1],
         "curve_target": _build_curve_target_pem101(),
     }
 
@@ -316,10 +340,20 @@ def _build_pilot_division(config: dict, division: str, raw: pd.DataFrame) -> dic
         "segment_policy": {"p50_annual_value_thb": None, "note": "computed per-division, see output/summary/phaseE2pilot_report.md"},
         "snapshot_pull_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S") + " (live pull, not a frozen file)",
         "n_items_label": f"{len(items)} รายการ (ของทั้งหมด {len(codes)}, เฉพาะที่มีนโยบาย)",
-        "warehouse_scope_note": f"{division} -- E2 scoped pilot, sellable-warehouse list is a business assumption "
-                                 f"(output/summary/phaseE2_readiness_report.md, phaseE2pilot_report.md). "
-                                 + _division_calibration_note(division),
+        "warehouse_scope_note": warehouse_scope_note_and_ref(division)[0],
+        "warehouse_scope_ref": warehouse_scope_note_and_ref(division)[1],
     }
+
+
+def warehouse_scope_note_and_ref(division: str) -> tuple:
+    """(on-screen scope note, references kept for an HTML comment) for one enabled division."""
+    if division == "PEM101":
+        return ("PEM101 128-item Fuse/Surge-Arrester pilot. PARTIALLY CALIBRATED (80 distinct ensemble members).",
+                "see STATUS.md whmap_report.md; METRICS.md Sec.22; the Trade-off Curve Target section below")
+    return (f"{division} -- E2 scoped pilot, sellable-warehouse list is a business assumption. "
+            + _division_calibration_note(division),
+            "output/summary/phaseE2_readiness_report.md, phaseE2pilot_report.md; "
+            + _division_calibration_ref(division))
 
 
 def _division_calibration_note(division: str) -> str:
@@ -327,14 +361,23 @@ def _division_calibration_note(division: str) -> str:
     note, so a reader never mistakes this page's scenario values for a calibrated recommendation
     outside PEM101's own Robust Ensemble section. Cited: PROJECT_GRAPH.md Q10/Q22/Q23 nodes."""
     if division == "PEM103":
-        return ("PLANNED UNDER G3, NOT G2 (PROJECT_GRAPH.md Q22, business-confirmed 2026-09-23): "
+        return ("PLANNED UNDER G3, NOT G2: "
                 "PEM103 is a transformers/tendering-pipeline business, not a stock-policy division -- "
                 "the Tier A scenario values on this page are illustrative only, not a basis for "
                 "planning PEM103.")
     if division == "PEM107":
-        return ("UNCALIBRATED (METRICS.md Sec.20; Phase J3 found no stock-based policy fits both "
+        return ("UNCALIBRATED (Phase J3 found no stock-based policy fits both "
                 "the 2024-2025 and 2026 periods simultaneously) -- the Tier A scenario values on "
                 "this page are a scenario tool only, not a calibrated policy.")
+    return ""
+
+
+def _division_calibration_ref(division: str) -> str:
+    """References removed from _division_calibration_note's on-screen text, kept for an HTML comment."""
+    if division == "PEM103":
+        return "PROJECT_GRAPH.md Q22, business-confirmed 2026-09-23"
+    if division == "PEM107":
+        return "METRICS.md Sec.20"
     return ""
 
 
@@ -351,7 +394,23 @@ def _load_pem107_alert() -> dict:
     # column, rather than trusting each column to already be clean.
     items = items.astype(object).where(pd.notna(items), None)
     alert["items"] = items.to_dict("records")
+    # References are kept off screen: the limitations lose their DATA_MAP pointer here (it is
+    # returned separately for an HTML comment), the source block is only ever shown in a comment.
+    ref_pattern = " -- DATA_MAP.md Sec.7 (PEM107 branch):"
+    alert["limitations_refs"] = [ref_pattern.strip(" -:") for x in alert["limitations"] if ref_pattern in x]
+    alert["limitations"] = [x.replace(ref_pattern, ":") for x in alert["limitations"]]
     return alert
+
+
+# METRICS.md Sec.26 (page_timestamps): when the model was last calibrated. "source" is a reference
+# only; the page renders it as an HTML comment, never on screen.
+MODEL_CALIBRATED_AT = {
+    "run_date": "2026-09-23",
+    "last_month_of_data": "2026-07",
+    "source": "output/summary/phaseJ3_report.md header ('Date: 2026-09-23') and Part 1 "
+               "('Phase J bounds by ForecastDelDate in [2024-01, 2026-07]') -- METRICS.md "
+               "Sec.20 inverse calibration, Phase J3.",
+}
 
 
 def build_data() -> dict:
@@ -377,16 +436,11 @@ def build_data() -> dict:
         # fields touched on this page this task; Min/Max logic, segmentation, PEM107 alert etc.
         # are explicitly out of scope, per task instruction, for a separate task 2b).
         "page_built_at": datetime.now().strftime("%Y-%m-%d %H:%M") + " ICT (UTC+7) -- this build run's own clock",
-        "model_calibrated_at": {
-            "run_date": "2026-09-23",
-            "last_month_of_data": "2026-07",
-            "source": "output/summary/phaseJ3_report.md header ('Date: 2026-09-23') and Part 1 "
-                       "('Phase J bounds by ForecastDelDate in [2024-01, 2026-07]') -- METRICS.md "
-                       "Sec.20 inverse calibration, Phase J3.",
-        },
+        "model_calibrated_at": MODEL_CALIBRATED_AT,
         "division_order": PILOT_DIVISIONS,
         "default_division": "PEM101",
-        "disabled_divisions": DISABLED_DIVISIONS,
+        "disabled_divisions": disabled_division_reasons(),
+        "disabled_division_labels": DISABLED_DIVISION_LABELS,
         "tier_a_defaults": {
             "procurement_lead_time_days": e1["procurement_lead_time_days_default"],
             "assembly_time_days": e1["assembly_time_days_default"],
