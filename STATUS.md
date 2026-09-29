@@ -6295,6 +6295,41 @@ correction: item 6's class counts changed after the 2026-09-29 bug fix (PEM107 `
     `sales_report.html` throws when the charting library is blocked; the statuses
     `excluded - division excluded ...` and PEM103's classes have labels but no page shows some of them yet.
 
+**Task W-rest (2026-09-29): remaining typed numbers, sales report without the charting library. DONE.**
+- Computed at build time, each with its source in a comment beside it (`src/reader_values.py`): the 74%
+  intermittent/lumpy share (METRICS.md Sec.29 classification of the 333 forecast-status items with sales:
+  179 Intermittent + 68 Lumpy, 74.17%); the first scoring month (forward-test log first target month plus
+  `leakage_guard.min_margin_days`, printed as Thai month and Buddhist year, now ต.ค. 2569); the `|t|` bound
+  (`report_statistics.paired_t_threshold`, checked against `b3_paired_significance.csv`, largest |t| 1.555);
+  the delivery year range (years present in `delivery_by_year.csv`); the numbers in `config/manual_notes.yaml`
+  that describe data or a control (notice buckets, number of lines, focus codes, rounds, holdout months,
+  service-level range, preset buttons, PEM107 month), now `{braced}` names filled by the builders; the
+  slider ranges moved to `inventory_page.tier_a_ranges` in config. No visible number on either page changed
+  (Validator, number-by-number).
+- `sales_report.html` renders its text, tables and data-date table without the charting library; each chart
+  shows the approved message. Manual: one sentence added under ต้นทุนการยกระดับ (PEM101).
+- **No verified source, kept as they are:** the axis note "(0-100)" (a percentage scale, a definition); the
+  claim "Top-down vs Direct **and Naive**" in the significance limitation (`b3_paired_significance.csv` has
+  Direct, Top-down and Reconciled, no Naive pair) -> G1 (Phase F comparison / significance wording); the
+  fixed examples in the manual notes stay (marked "สมมติ").
+- **Phase F (manual numbers, `index.html` has no generator).** Every number in `docs/user_manual.md`, by line
+  of that file. *Describing data:* 12 and 51 (data to 25 ส.ค. 2569; 448 and 445 codes), 14 (notice buckets
+  30..180), 16 (procurement 45-60 days; the config grid is 45-75, a mismatch), 33 (พ.ค. 2569), 50 (gap "about
+  3%"; the page now computes 2%, a mismatch), 52 (ม.ค. 2567 - ส.ค. 2569), 60 (about 2 months behind).
+  *Describing a control or setting:* 4 (7-day staleness), 7 and 24 and 25 and 22 (6 months, 7 rounds, 1-7,
+  1-6), 8 and 19 (6 base methods), 20 and 21 (3 focus codes), 35 and 36 (3 preset buttons, target 99%),
+  40-44 (slider defaults 60, 3, 30, 0.95, 0.20), 45-48 (3 behaviour signals, 14 days, 2 of 3, at most 1),
+  49 (0.80-0.99), 59 (5th of the month), 60 (30-day margin), 54 (400 rows, 4 columns). *Illustrative
+  example:* 13 (Inventory 100, Sellable 80 ...), 15 (6%, 100 orders), 23 (MAE 10, Bias +3, MASE 0.7),
+  29 (MAE 120), 39 (+20.0% ...), 9 (ADI 1, ADI 4). *Page structure or definition (a fourth kind):* 1 (5
+  sections), 3 (2 timestamps), 6 (MASE 1), 10 and 55-58 (section numbers), 11 (3 piles), 17 (0-100), 18 (2
+  lines), 26 and 28 and 29-31 (division names), 53 (4 quadrants), 56 (ม.ค.-ธ.ค.).
+- **Found, not done, by phase:** dashboard fixes list (this section): the typed "1 เดือน" / bucket 30 in the
+  sales section 3 sentence; the trade-off note says 0.80-0.99 while the chart stops at 0.98; preset button
+  labels are English; delivery chart shows fractional-year ticks; the failure message leaves a large blank
+  gap under each chart; selecting a disabled division through script throws (not reachable by mouse).
+  Phase F: the two manual mismatches above.
+
 ## 11. Forward test ready for 30 September + monthly runner (this task, 2026-09-25)
 
 Scope: Part 1 (forward-test log path fixes, vintage migration, adapted consistency check, dry-run
