@@ -117,9 +117,11 @@ def run_script(script_name: str, args: list = None) -> subprocess.CompletedProce
     """Runs an existing, already-tested src/*.py script as a subprocess -- same reasoning as
     src/run_pipeline.py's run_stage(): exercises the exact code path a human would from the CLI,
     never re-derives that script's logic here."""
+    # Child output is UTF-8 (Thai log text); decode it as UTF-8 whatever the console code page is (a Scheduled
+    # Task started from C:\Windows\system32 uses cp874, which raised UnicodeDecodeError and aborted step 1).
     cmd = [sys.executable, os.path.join(SRC_DIR, script_name)] + (args or [])
     logger.info("Running: %s", " ".join(cmd))
-    result = subprocess.run(cmd, cwd=PROJECT_ROOT, capture_output=True, text=True)
+    result = subprocess.run(cmd, cwd=PROJECT_ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace")
     return result
 
 
@@ -676,7 +678,7 @@ def step7_rebuild_pages(dry_run: bool, staged_dir: str, step1_result: dict = Non
 
 def step8_run_tests() -> dict:
     proc = subprocess.run([sys.executable, "-m", "pytest", "-q"], cwd=PROJECT_ROOT,
-                           capture_output=True, text=True, timeout=600)
+                           capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=600)
     tail = proc.stdout.strip().splitlines()[-1] if proc.stdout.strip() else ""
     return {"returncode": proc.returncode, "passed": proc.returncode == 0,
             "summary_line": tail, "stdout_tail": proc.stdout[-3000:]}
@@ -687,7 +689,7 @@ def step8_run_tests() -> dict:
 # ---------------------------------------------------------------------------------------------
 
 def step9_scan_sensitive_content() -> dict:
-    proc = subprocess.run(["git", "status", "--porcelain"], cwd=PROJECT_ROOT, capture_output=True, text=True)
+    proc = subprocess.run(["git", "status", "--porcelain"], cwd=PROJECT_ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace")
     changed_paths = [line[3:] for line in proc.stdout.splitlines() if line.strip()]
     findings = []
     for rel_path in changed_paths:
@@ -796,7 +798,7 @@ def step11_commit_and_push(dry_run: bool, step8: dict, step9: dict, step10: dict
         return {"pushed": False, "reason": f"GitHub unreachable ({github_err}) -- held, not pushed."}
     subprocess.run(["git", "add", "-A"], cwd=PROJECT_ROOT, check=True)
     subprocess.run(["git", "commit", "-m", "Automated monthly refresh"], cwd=PROJECT_ROOT, check=True)
-    push = subprocess.run(["git", "push", "origin", "main"], cwd=PROJECT_ROOT, capture_output=True, text=True)
+    push = subprocess.run(["git", "push", "origin", "main"], cwd=PROJECT_ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace")
     return {"pushed": push.returncode == 0, "reason": push.stdout + push.stderr}
 
 
