@@ -42,6 +42,8 @@ import yaml
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from db import run_query  # noqa: E402
+from phaseE1_common import query_inventory_exact  # noqa: E402
+from pricelist_reader import load_visible_product_rows  # noqa: E402
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 logger = logging.getLogger("snapshot_daily")
@@ -55,6 +57,38 @@ SNAPSHOT_CSV = os.path.join(SNAPSHOT_DIR, "posting_delay.csv")
 SALE_TABLE = "[salewarehouse].[dbo].[cube_Sale_APD]"
 CUBE_FINAL_TABLE = "[salewarehouse].[dbo].[cube_final]"
 LOOKBACK_DAYS = 60
+REFERENCE_DIR = os.path.join(PROJECT_ROOT, "reference")
+
+
+def take_inventory_snapshot() -> pd.DataFrame:
+    """Task 2b, Part 5: per-item, per-warehouse on-hand quantity from Cube_Inventory_Exact, once
+    per day -- so PEM103/PEM107's live-pulled inventory.html figures (never otherwise persisted)
+    can be independently re-verified after the fact. Item scope: every code on reference/
+    pricelist.xlsx's VISIBLE sheets (PRICELIST RULE) -- the full 445/446-code registry, not just
+    whichever division happens to be selected on any one page. Reuses
+    src/phaseE1_common.py::query_inventory_exact (same helper build_inventory_page_data.py already
+    uses) rather than a new query shape."""
+    pl = load_visible_product_rows(os.path.join(REFERENCE_DIR, "pricelist.xlsx"))
+    codes = sorted(pl["code"].unique())
+    inv = query_inventory_exact(codes, allow_empty=True)
+    load_timestamp = pd.to_datetime(inv["timestamp"]).min() if len(inv) and inv["timestamp"].notna().any() else pd.Timestamp.now()
+    inv = inv[["itemcode", "warehouse", "stock"]].copy()
+    inv["load_timestamp"] = load_timestamp.strftime("%Y-%m-%d %H:%M:%S")
+    logger.info("Inventory snapshot: %d (item, warehouse) rows for %d pricelist codes, "
+                "load_timestamp=%s.", len(inv), len(codes), inv["load_timestamp"].iloc[0] if len(inv) else "n/a")
+    return inv
+
+
+def write_inventory_snapshot(inv: pd.DataFrame) -> str:
+    """One dated file per day (output/snapshots/inventory_daily_YYYY-MM-DD.csv), overwritten if
+    run again the same day -- same idempotent-per-day convention as append_snapshot() below."""
+    os.makedirs(SNAPSHOT_DIR, exist_ok=True)
+    today = datetime.now().date().isoformat()
+    path = os.path.join(SNAPSHOT_DIR, f"inventory_daily_{today}.csv")
+    inv.to_csv(path, index=False)
+    size_kb = os.path.getsize(path) / 1024
+    logger.info("Inventory snapshot written: %s (%.1f KB, %d rows).", path, size_kb, len(inv))
+    return path
 
 
 def load_config() -> dict:
@@ -132,10 +166,12 @@ def main():
     config = load_config()
     try:
         snapshot = take_snapshot(config)
+        inv_snapshot = take_inventory_snapshot()
     except Exception as exc:
         logger.error("DATABASE ACCESS RULE: first connection attempt failed, stopping. Error: %s", exc)
         raise
     append_snapshot(snapshot)
+    write_inventory_snapshot(inv_snapshot)
 
 
 if __name__ == "__main__":
