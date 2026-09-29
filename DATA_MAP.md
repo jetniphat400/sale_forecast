@@ -1497,3 +1497,142 @@ Corrections log, above; PROJECT_GRAPH.md, dead end DE4).
   Confirmed this task: a real run of `python src/monthly_refresh.py --dry-run` (which regenerates
   these files for real regardless of dry-run mode, per step 4's own existing design) left all 6
   files carrying the new column, and a fresh `python -m pytest -q` afterward: 141 passed.
+
+## Task 2b (2026-09-28): METRICS.md §23 fulfilment_segmentation, computed fresh for PEM101/PEM107
+
+**Item universe**: every PEM101 (144) and PEM107 (112) item with `status_category=='forecast'` in
+`output/summary/phaseC_step1revised_item_status_445.csv` -- the FULL forecast universe, wider than
+the 128/136-item pilot scopes the pre-existing forecast/unit_cost pipeline covers (see gap note
+below). Computed by `src/investigations/task2b_part2_fulfilment_segmentation.py`, one fresh DB
+connection, cube_Sale_APD (label) + Cube_Inventory_Exact (S1) + Cube_CES (S2/S3).
+
+- **label (dominant manufacturing_type by qty, 60% threshold) reproduces the prior Q21 finding
+  EXACTLY for PEM107** (25 MTS / 78 MTO / 0 ETO / 9 mixed, of 112 -- matches DATA_MAP.md's own Q21
+  entry above verbatim) -- **level V2** for PEM107's label distribution (two independent
+  computations, different sessions, exact match). PEM101's fresh count (100 MTS / 23 MTO / 21
+  mixed, of 144) is **not directly comparable** to the prior "83/20/0/10 of 113" figure -- this
+  task's universe is the full 144-item forecast set, the prior figure was a 113-item
+  history-having subset; both recorded, not reconciled (CONVENTIONS.md, differently-scoped
+  figures). **Level V1** for PEM101 pending independent Validator confirmation, this same task.
+- **Class counts (stock_policy / confirmed_to_order / conflict): PEM101 82/21/41; PEM107 9/78/25**
+  (`output/summary/task2b_part2_class_counts.csv`). **Level V1**, pending independent Validator
+  confirmation dispatched this same task (see STATUS.md §10 for the verdict once it lands).
+- **Eligibility change vs the current section-15 `finished_goods_stock` set**: PEM101 76→82 (+18
+  added, -12 removed, net +6); **PEM107 68→9 (-59, 0 added)** -- a large reduction, consistent with
+  PEM107's already-known 2026 shift toward MTO/Tendering-type fulfilment (PROJECT_GRAPH.md Q10
+  PEM107 branch, Q23) rather than a computation surprise. `output/summary/
+  task2b_part2_eligibility_change.csv`. **Level V1.**
+- **Coverage gap, PEM101 only**: 10 of PEM101's 82 `stock_policy` items (7 Low Voltage Capacitor, 2
+  LED Street light, 1 Photo Control Switch codes) fall OUTSIDE the 128-item Fuse/Surge-Arrester
+  pilot's forecast/unit_cost pipeline (PROJECT_GRAPH.md D3) -- these items are correctly classified
+  but `forecast/inventory.html` cannot show a Min/Max for them yet (no fabricated number; reported
+  as a gap, `min_max_computable:false` per item, AGENTS.md rule 1/3). PEM107 has no such gap (its
+  existing pipeline already covers its full 136-code division scope, confirmed this task).
+- **Threshold sensitivity** (one axis varied at a time, others at default -- METRICS.md §23's own
+  instruction): mixed-threshold 50/60/70% moves PEM101 stock_policy 83/82/76, PEM107 10/9/9; S2
+  threshold 40/50/60% moves PEM107 stock_policy 14/9/5 (PEM101 unaffected -- 3 of 144 items have
+  S2 not computable, none flip class at these thresholds); S3 threshold 7/14/21 days moves PEM101
+  72/82/82, PEM107 stays 9/9/18. Full grid: `output/summary/task2b_part2_threshold_sensitivity.csv`.
+  **Level V1.**
+
+**CORRECTION, 2026-09-29 (task 2b follow-up -- do not use the class-count figures above for
+PEM107; they were wrong).** Two independent agents (`output/summary/task2b_validator_report.md`,
+a Validator; `output/summary/task2b_part7b_reconciliation_report.md`, a targeted reconciliation)
+established that this entry's **PEM107 class counts above (stock_policy=9) were a bug, not a
+computation this project should keep**: `task2b_part2_fulfilment_segmentation.py`'s S2 signal
+never actually queried `cube_final` -- it used a self-referential `Cube_CES`-only proxy
+(`OLMJobCode` grouped `CtrDate` minimum), reused by mistake from a pre-`cube_final`-availability
+fallback (DATA_MAP.md §4 Trap 7) instead of the later, correct, already-working `cube_final` join
+(`phase25_analyst3_analysis.py::measure3_batch_traceability`). This wrongly gave 5 specific PEM107
+items (`VT-F-99-010721`, `VT-F-99-010819`, `CT-F-99-020502`, `CT-F-99-020505`, `CT-F-99-020507`,
+all MTS-labelled, S1-only) a `stock_policy` classification -- and a Min/Max on
+`forecast/inventory.html` -- when the correct method puts them at `conflict` (only S1 holds; S2
+and S3 both fail under the real `cube_final` join). Fixed this task: S2 now joins `cube_final` for
+real (exact method reused from `task2b_part7_validator.py`/`phase25_analyst3_analysis.py`), and
+`forecast/inventory.html` has been rebuilt.
+
+**Corrected class counts (task2b_part2_fulfilment_segmentation.py, re-run 2026-09-29, one fresh DB
+connection, source `output/summary/task2b_part2_class_counts.csv`): PEM107 stock_policy=4,
+confirmed_to_order=78, conflict=30** (was 9/78/25) -- **level V2** (independently confirmed exact
+match by both the Validator's and the reconciliation agent's separate recomputations). PEM101
+stock_policy is unaffected (82, unchanged -- PEM107 has zero items with S2 not computable, so no
+fallback-rule question arises there at all; PEM101's stock_policy count already matched exactly
+across all three independent computations before this fix).
+
+**PEM101 confirmed_to_order/conflict, the second, separate item (a genuine METRICS.md ambiguity,
+not a bug -- METRICS.md §23 stated the S2-missing fallback only for stock_policy and was silent for
+confirmed_to_order/conflict, now amended above, 2026-09-29):** this task's own re-run of the fixed
+script gives **confirmed_to_order=21, conflict=41** under the recommended fallback ("at most 1 of
+{S1,S3} hold", now in METRICS.md §23), and **confirmed_to_order=9, conflict=53** under the
+stricter alternate reading ("at most 0 of {S1,S3} hold") -- both from
+`output/summary/task2b_part2_class_counts.csv` / `task2b_part2_class_counts_strict_alt_fallback.csv`,
+**level V1** (this task's own single computation for these two exact figures).
+
+**A separate, smaller, NOT-independently-confirmed divergence, flagged not resolved:** the
+Validator's own fully independent recomputation (`task2b_validator_report.md`) reports PEM101
+confirmed_to_order/conflict = **20/42** (recommended fallback) and **8/54** (stricter alternate) --
+one item different from this task's 21/41 and 9/53 in both readings. The reconciliation report
+traces this 1-item difference to `CA-F-99-020102`'s manufacturing_type label (MTO under this
+script's `compute_label()`, which drops rows with missing `manufacturing_type` from the qty
+denominator, vs `mixed` under the Validator's label logic, which keeps them). This label-
+denominator question is **independent of the S2/cube_final bug fixed this task** and was **not**
+part of this task's mandated fix -- it is recorded here, per AGENTS.md rule 4 (report
+contradictions explicitly, never overwrite silently), as an **open, unresolved, lower-confidence
+question** for a future targeted check, not decided by this task. Per AGENTS.md rule 9, both the
+20/42-vs-21/41 and 8/54-vs-9/53 pairs are recorded as they stand -- this task does not silently
+prefer one script's number over the other's.
+
+## Task 2b (2026-09-28): METRICS.md §24 relative_service_cost, PEM101
+
+Computed by `src/investigations/task2b_part3_relative_service_cost.py` from the existing 80-member
+`output/summary/phase23_modeler_tradeoff_curve_points.csv` (no new DB access) -- per member,
+linearly interpolates ITS OWN (not_late%, stock_value) curve at today's real not_late (98.28%,
+`phaseJ3_validator_stock_value_summary.csv`) and at each target, then ratio_e = target/today.
+
+- **today_lowest_stock preset (target=today=98.28%): ratio median 1.000 (min=max=1.000, by
+  construction)** -- sanity-check, not a finding.
+- **highest_at_today_stock preset (target=98.579%): ratio median 1.077, range 1.025-1.110** (+7.7%,
+  range +2.5% to +11.0%). Ratio band width 7.9% of median vs. the absolute stock_value band's
+  110.9% of median at the same target -- **ratio band is materially narrower** (§24's own stated
+  reasoning holds empirically: the unidentifiable reorder level cancels within each member's own
+  ratio).
+- **stretch_99pct preset (target=99.0%): ratio median 1.242, range 1.104-1.366** (+24.2%, range
+  +10.4% to +36.6%). Ratio band width 21.1% of median vs. absolute 110.9% -- again materially
+  narrower.
+- All 80 members were interpolable at all 3 presets (0 excluded at any target).
+  `output/summary/task2b_part3_preset_report.csv`. **Level V1**, pending independent Validator
+  confirmation at the first and third presets, dispatched this same task.
+
+## Task 2b (2026-09-28): PEM107 Omni Channel not_late, before/after May 2026, fresh from Cube_CES
+
+Computed by `src/investigations/task2b_part4_pem107_alert.py`, one fresh DB connection, Cube_CES
+`Status='Actual'`, `RevenueType='Omni Channel'` (Cube_CES's own native column, no join needed),
+`ForecastDelDate>='2024-01-01'` (this project's standard usable-era start, stated explicitly as a
+scoping choice -- Cube_CES's full ~14-year history would not be a like-for-like comparison against
+5 post-May months, CONVENTIONS.md "compare only like with like").
+
+- **not_late (unit-weighted) before 2026-05-01: 87.1% (n=41,495 units, 2024-01-01 onward) → from
+  2026-05-01: 57.7% (n=2,702 units).** **Not directly comparable** to the earlier-cached "89.4%
+  (n=13,068, May 2025-Apr 2026 one-year window) → 57.2% (n=2,675)" figure above (PEM107 branch) --
+  different "before" window (this task: ~2 years from 2024-01-01; earlier: exactly 1 year), both
+  recorded, not reconciled, same underlying decline confirmed by both. The "from May 2026" unit
+  count (2,702 vs. 2,675) differs slightly too -- consistent with ordinary data accrual between
+  pull dates, not investigated further (out of this task's scope). **Level V1**, pending
+  independent Validator confirmation dispatched this same task.
+- **Top 3 Product Codes by units late (post-May-2026 window): RS-F-99-070002 (160 units late, 1.8%
+  not_late from May vs. 97.0% before), CT-F-99-020501 (153 units late, 7.3% vs. 83.3%),
+  RS-F-99-070003/RS-F-99-070006 tied (100 units late each)** -- all four are Current Transformer
+  types (LDB/COL). `output/summary/task2b_part4_pem107_alert_items.csv`,
+  `output/summary/task2b_part4_pem107_alert.json`. **Level V1.**
+
+**Bug found and fixed this task (Part 8's visual check, not caught by any Python-side test):** the
+PEM107 alert's per-item `not_late_*_pct` columns contain `NaN` for items with zero rows in a
+period; `pandas.DataFrame.to_dict()` re-introduces float `NaN` even where the source script wrote
+`None`, and Python's own `json.dumps()` silently serializes a bare `NaN` as the literal (invalid-
+JSON) token `NaN` by default -- valid enough for Python's own lenient `json.loads()` to accept
+(which is why no Python-side test caught it) but rejected by the browser's strict `JSON.parse()`,
+which threw and silently blanked EVERY number on `forecast/inventory.html`, not just the PEM107
+alert. Fixed in `src/build_inventory_page_data.py::_load_pem107_alert()` (NaN -> `None` before
+embedding) and defensively in `src/build_inventory_page.py::build_page()`
+(`json.dumps(data, allow_nan=False)`, so any future NaN fails the BUILD loudly instead of shipping
+a page that silently renders blank).

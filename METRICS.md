@@ -443,6 +443,22 @@ always stated.
 
 - If S2 cannot be computed for an item because no batch links, evaluate
   on S1 and S3 and require both to hold for stock_policy.
+- Added 2026-09-29 (task 2b follow-up, resolving a genuine ambiguity this
+  section left open -- METRICS.md previously stated the S2-missing
+  fallback only for stock_policy and was silent for
+  confirmed_to_order/conflict): if S2 cannot be computed for an MTO/ETO/
+  mixed-labelled item, evaluate on S1 and S3 only and require at most 1
+  of the two to hold for confirmed_to_order (i.e. NOT both) -- the direct
+  structural mirror of the stock_policy fallback above, which requires
+  BOTH remaining signals; label = mixed still routes straight to
+  conflict regardless. A stricter alternate reading was also considered
+  -- require at most 0 of {S1,S3} to hold (treating the dropped S2 slot
+  as still counting against the "at most 1 of 3" bar) -- and is recorded
+  as the alternate, not adopted, per AGENTS.md rule 9 (a genuine
+  ambiguity is reported with both readings, not silently resolved by one
+  agent). See DATA_MAP.md's Task 2b (2026-09-28) entry for the item
+  counts each reading produces for PEM101 (the only affected division at
+  material scale) and the evidence behind preferring the first reading.
 - S1 uses any warehouse because sellability cannot be verified from data.
 - Thresholds of 60 percent, 50 percent and 14 days are assumptions. Report
   counts also at 50 and 70 percent, 40 and 60 percent, and 7 and 21 days.
@@ -824,3 +840,14 @@ pipeline — no new section is needed for this; it is already covered by section
 - If fewer than K origins fit the available series, use as many as fit and
   report it; below 3 origins, report the backtest as insufficient rather
   than presenting a figure.
+
+## 40. excess_stock_flag
+
+    excess[item] = months_of_cover[item] > obsolescence_threshold_months
+
+- months_of_cover follows section 9, using on_hand_sellable for the
+  warehouses currently selected on the page.
+- Items with zero forecast have infinite cover and are flagged excess only
+  if on_hand_sellable is above zero; they are listed separately as stock
+  with no forecast demand.
+- The threshold is a Tier A control, default from config.
