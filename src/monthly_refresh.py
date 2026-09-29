@@ -697,7 +697,9 @@ def step7_rebuild_pages(dry_run: bool, staged_dir: str, step1_result: dict = Non
             "inventory_pilot_pull_label": sources["pull_labels"]["PEM103"],
             "inventory_stock_snapshot": sources["stock_meta"],
             "inventory_stock_pulled_at": sources["stock_pulled_at"],
-            "written_to_tracked_path": not dry_run}
+            "written_to_tracked_path": not dry_run and not IN_SANDBOX,
+            "written_to": "temporary copy of the project (dry run)" if IN_SANDBOX else
+                          ("staging folder" if dry_run else "tracked pages")}
 
 
 # ---------------------------------------------------------------------------------------------
@@ -866,10 +868,12 @@ def step11_commit_and_push(dry_run: bool, step8: dict, step9: dict, step10: dict
 # ---------------------------------------------------------------------------------------------
 
 COPY_SKIP_TOP = {".git", ".pytest_cache", "node_modules", ".claude", "__pycache__"}
-COPY_SKIP_OUTPUT = {"runs", "charts"}
+COPY_SKIP_OUTPUT = {"runs", "charts"}   # charts is recreated empty: regeneration scripts save their figures there
+IN_SANDBOX = os.environ.get("MONTHLY_REFRESH_SANDBOX") == "1"
 
 
 def _copy_project(dst: str) -> None:
+    os.makedirs(os.path.join(dst, "output", "charts"), exist_ok=True)
     """Copies what a run reads and writes into `dst`: everything at the project root except version
     control and caches, and under output/ only data, summary (without its archive) and snapshots."""
     for name in os.listdir(PROJECT_ROOT):

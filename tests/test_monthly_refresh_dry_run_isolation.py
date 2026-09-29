@@ -83,3 +83,26 @@ def test_dry_run_changes_nothing_but_its_run_log(tmp_path):
                 os.remove(os.path.join(PROJECT_ROOT, k))
             except OSError:
                 pass
+
+
+def test_the_temporary_copy_has_what_the_regeneration_scripts_write_into(tmp_path, monkeypatch):
+    """The first dry run left two analysis inputs "not refreshed" because the copy had no output/charts folder."""
+    sys.path.insert(0, os.path.join(PROJECT_ROOT, "src"))
+    import monthly_refresh as mr
+    fake = tmp_path / "project"
+    for sub in ("output/data", "output/summary/archive", "output/snapshots", "output/charts", "output/runs", "src", "config"):
+        (fake / sub).mkdir(parents=True)
+    (fake / "output/data/a.csv").write_text("x")
+    (fake / "output/summary/b.csv").write_text("x")
+    (fake / "output/summary/archive/old.csv").write_text("x")
+    (fake / "output/charts/big.png").write_text("x")
+    (fake / "output/runs/log.json").write_text("{}")
+    (fake / ".env").write_text("A=1")
+    monkeypatch.setattr(mr, "PROJECT_ROOT", str(fake))
+    dst = tmp_path / "copy"
+    dst.mkdir()
+    mr._copy_project(str(dst))
+    assert (dst / "output/charts").is_dir() and not list((dst / "output/charts").iterdir())
+    assert (dst / "output/data/a.csv").exists() and (dst / "output/summary/b.csv").exists()
+    assert (dst / "output/snapshots").is_dir() and (dst / ".env").exists()
+    assert not (dst / "output/runs").exists() and not (dst / "output/summary/archive").exists()
