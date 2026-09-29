@@ -126,6 +126,21 @@ def _build_curve_target_pem101() -> dict:
     # points as the section-22 curve above, no database access.
     with open(os.path.join(SUMMARY_DIR, "task2b_part3_ratio_grid_PEM101.json"), encoding="utf-8") as f:
         data["relative_service_cost"] = json.load(f)
+    # task 2b Part 2 (METRICS.md Sec.23): this curve/ensemble was built (Phase 22/23, 2026-09-24)
+    # on the pre-Sec.23 finished_goods_stock item set, before Sec.23 changed which items are
+    # Min/Max-eligible. Not recalibrated on the new stock_policy set this task (explicit scope
+    # decision, STATUS.md/PROJECT_GRAPH.md G2) -- labelled here so the page states its own scope,
+    # not just the documentation.
+    policy_counts = pd.read_csv(os.path.join(SUMMARY_DIR, "phaseE1fix_1_item_policy.csv"))["policy"].value_counts()
+    n_calibrated_on = int(policy_counts.get("finished_goods_stock", 0))
+    seg_counts = _load_fulfilment_segmentation("PEM101")["class"].value_counts()
+    n_current_set = int(seg_counts.get("stock_policy", 0))
+    data["item_set_note"] = (
+        f"Calibrated on the pre-Sec.23 finished_goods_stock item set ({n_calibrated_on} items, "
+        f"section 15 criterion). NOT recalibrated on the current Sec.23 stock_policy item set "
+        f"({n_current_set} items) this task -- recalibrating on the new set is scheduled follow-up "
+        f"work, not yet done (DATA_MAP.md 'Task 2b' entries, PROJECT_GRAPH.md node G2)."
+    )
     return data
 
 

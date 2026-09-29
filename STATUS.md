@@ -6614,6 +6614,23 @@ any stray tracked-file regeneration both before and after. Commit hashes: `6cd3c
 DATA_MAP.md), `57f256a` (inventory.html + build/reference/test code), `a32ce34` (task 2b
 investigation + Validator scripts), `823741a` (snapshot persistence), `7f4649a` (manual edits).
 
+**Addendum, 2026-09-29 (Orchestrator follow-up, same task): Part 2's on-page curve label was
+missing.** The task's own instruction ("label the curve with the item set it was calibrated on")
+had been satisfied in DATA_MAP.md/PROJECT_GRAPH.md/this file's own prose above, but **not on
+`forecast/inventory.html` itself** — the curve-target-summary box only showed ensemble-member count
+and today's point, with no item-set statement. Fixed: `src/build_inventory_page_data.py`'s
+`_build_curve_target_pem101()` now computes `item_set_note` at build time from
+`phaseE1fix_1_item_policy.csv` (76 pre-§23 `finished_goods_stock` items) and the §23 segmentation
+file (82 current `stock_policy` items) — no hardcoded figures — and
+`src/build_inventory_page.py`'s client JS renders it directly under the existing summary line.
+Rebuilt `forecast/inventory.html` from a fresh, single-attempt DB pull (succeeded); full suite
+re-run: **165 passed**; `git status` clean before/after except the intended 3-file diff. Verified by
+source/data inspection (the built page's embedded JSON contains the correct 76/82 figures and the
+client JS references the new field correctly) — **not** by a fresh CDP screenshot, given the small,
+mechanical nature of the change; this is stated explicitly per AGENTS.md rule 2 (confidence level
+with evidence), not silently equated with the isolated-Edge visual check Part 8 used for the rest of
+the page.
+
 ---
 
 **Rule: this file must be updated as the final step of every completed task.**

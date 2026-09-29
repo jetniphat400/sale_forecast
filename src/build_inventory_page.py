@@ -711,7 +711,8 @@ function renderCurveTarget(divisionData) {{
     `<b>${{ct.n_distinct_members}} distinct ensemble members</b> (deduplicated on reorder level, order-up-to level, ` +
     `review interval and replenishment lead time -- METRICS.md Sec.22, ${{ct.source_report}}). ` +
     `Today's point: not_late ${{ct.today_point.not_late_pct}}%, stock value ${{fmtTHB(ct.today_point.stock_value_thb)}} ` +
-    `(${{ct.today_point.source}}).`;
+    `(${{ct.today_point.source}}). ` +
+    `<br><span style="color:#b45309;">${{ct.item_set_note}}</span>`;
 
   const slider = document.getElementById('notlate-slider');
   slider.min = ct.not_late_range_pct[0];
