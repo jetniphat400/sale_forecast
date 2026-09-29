@@ -36,6 +36,14 @@ SCOPE OF "pull data" / "every page" IN THIS RUNNER (stated explicitly, not silen
     second connection), so stock is the latest saved pull under output/snapshots/, and the page
     shows the older of the two pull times (src/inventory_page_sources.py).
 
+DRY RUN ISOLATION (task M2): a dry run changes nothing outside a temporary folder. It copies the
+project (config, code, tests, pages and the inputs under output/data, output/summary and
+output/snapshots) into a temporary root and runs steps 1-10 there exactly as a real run would, so
+every write (refreshed analysis inputs, snapshots, forward-test rows, rebuilt pages) lands in the
+copy and every later step reads it from there. Step 11 only reports. The one thing written to the
+real project is the run log under output/runs/. tests/test_monthly_refresh_dry_run_isolation.py
+hashes every file under output/ and every tracked page before and after a dry run.
+
 DRY RUN (--dry-run): steps 1-10 are FULLY exercised (real data pull, real backtest, real
 consistency check, real test suite, real change-magnitude computation) -- only their WRITES to
 TRACKED files are redirected to a staging area under output/runs/<run_id>/staged/, and the new
@@ -51,9 +59,11 @@ import json
 import logging
 import os
 import re
+import shutil
 import socket
 import subprocess
 import sys
+import tempfile
 import urllib.parse
 from datetime import datetime
 
@@ -137,7 +147,13 @@ def check_tcp_reachable(host: str, port: int, timeout: float = 5.0) -> tuple:
         return False, str(e)
 
 
-def step1_pull_data(dry_run: bool) -> dict:
+def step1_pull_data(dry_run: bool, offline: bool = False) -> dict:
+    if offline:
+        # Test/offline mode: no connection at all; the data already under output/data is used as this run's pull.
+        monthly = pd.read_csv(os.path.join(DATA_DIR, "processed_all_divisions_monthly_qty.csv"))
+        return {"offline_reused_existing_pull": True, "rows_pulled": len(monthly),
+                "snapshot_pull_date": str(monthly["snapshot_pull_date"].iloc[0]),
+                "n_items": monthly["itemcode"].nunique(), "n_divisions": monthly["division"].nunique()}
     from dotenv import load_dotenv
     # Explicit absolute path -- see src/db.py's own identical fix, this task. A bare load_dotenv()
     # searches from the CURRENT WORKING DIRECTORY, not this file's location; a Scheduled Task
@@ -266,7 +282,7 @@ def _archive_if_exists(path: str, run_id: str) -> str:
     return archive_path
 
 
-def _run_regeneration_step(label: str, script_name: str, output_rel_path: str) -> dict:
+def _run_regeneration_step(label: str, script_name: str, output_rel_path: str, skip_reason: str = None) -> dict:
     """Runs one analysis-input regeneration script (src/*.py or src/investigations/*.py) as a
     subprocess, same run_script() pattern as the rest of this runner. NEVER aborts the whole run
     on failure -- METRICS.md Sec.28's own instruction: 'An input the pipeline cannot regenerate is
@@ -277,6 +293,9 @@ def _run_regeneration_step(label: str, script_name: str, output_rel_path: str) -
     monthly_refresh.py run/session count as one attempt, same as step 1's own docstring already
     states for this runner's design."""
     out_path = os.path.join(SUMMARY_DIR, output_rel_path)
+    if skip_reason:
+        return {"label": label, "script": script_name, "output_file": output_rel_path, "returncode": None,
+                "refreshed": False, "not_refreshed_reason": skip_reason}
     mtime_before = os.path.getmtime(out_path) if os.path.exists(out_path) else None
     proc = run_script(script_name)
     mtime_after = os.path.getmtime(out_path) if os.path.exists(out_path) else None
@@ -298,7 +317,7 @@ def _run_regeneration_step(label: str, script_name: str, output_rel_path: str) -
     return result
 
 
-def step4_backtest(run_id: str) -> dict:
+def step4_backtest(run_id: str, offline: bool = False) -> dict:
     prev_per_division = pd.read_csv(PER_DIVISION_SUMMARY_PATH) if os.path.exists(PER_DIVISION_SUMMARY_PATH) else None
     prev_transferability = pd.read_csv(TRANSFERABILITY_PATH) if os.path.exists(TRANSFERABILITY_PATH) else None
 
@@ -351,12 +370,14 @@ def step4_backtest(run_id: str) -> dict:
         # 128-item scope); part of this run's one-session DB-access budget, not a second attempt.
         _run_regeneration_step("Order-notice distribution (leadtime_notice_buckets_overall.csv)",
                                 os.path.join("investigations", "order_leadtime.py"),
-                                "leadtime_notice_buckets_overall.csv"),
+                                "leadtime_notice_buckets_overall.csv",
+                                skip_reason="offline mode: this script opens its own database connection" if offline else None),
         # Delivery timeliness by year, on_time_exact -- makes its own single DB connection
         # (Cube_CES, PEM101 128-item scope).
         _run_regeneration_step("Delivery timeliness by year, on_time_exact (delivery_by_year.csv)",
                                 os.path.join("investigations", "delivery_performance.py"),
-                                "delivery_by_year.csv"),
+                                "delivery_by_year.csv",
+                                skip_reason="offline mode: this script opens its own database connection" if offline else None),
     ]
     # not_late (delivery_not_late_by_year.csv) reuses delivery_performance.py's OWN raw pull
     # (output/data/raw_cube_ces_delivery_128items.csv) -- no new DB call -- so it must run AFTER
@@ -584,7 +605,7 @@ def step5_new_vintage(dry_run: bool, force_new_vintage: bool = False) -> dict:
 # Step 6: fill actual_qty and score any months that became eligible
 # ---------------------------------------------------------------------------------------------
 
-def step6_fill_and_score(dry_run: bool, computed_vintage: dict = None) -> dict:
+def step6_fill_and_score(dry_run: bool, computed_vintage: dict = None, offline: bool = False) -> dict:
     config = load_config()
     metadata = load_metadata(FORWARD_TEST_METADATA_PATH)
     existing_log = pd.read_csv(FORWARD_TEST_LOG_PATH, dtype=str)
@@ -622,6 +643,9 @@ def step6_fill_and_score(dry_run: bool, computed_vintage: dict = None) -> dict:
         result["note"] = "No target month is safe to score yet -- nothing filled, nothing scored."
         return result
 
+    if offline:
+        result["note"] = "offline mode: months are eligible but the actuals pull (a database connection) was skipped."
+        return result
     scope = pd.read_csv(SCOPE_FILE)
     actuals = pull_actuals_forecastDate(config, scope, safe_months)  # the ONLY other possible DB call this
     # run could make -- only reached if a month is actually eligible; never reached in this task's dry run.
@@ -646,10 +670,12 @@ def step7_rebuild_pages(dry_run: bool, staged_dir: str, step1_result: dict = Non
     """Rebuilds forecast/sales_report.html and forecast/inventory.html (METRICS.md Sec.28 step 7).
 
     The inventory page's PEM103/PEM107 sales come from this run's own step-1 pull
-    (output/data/raw_all_divisions_sales.csv). The monthly runner makes no stock pull (a second
-    connection), so the stock table is the latest saved pull under output/snapshots/; the page shows
-    the older of the two pull times and this result records both (src/inventory_page_sources.py).
-    In a dry run both pages are written under the staging folder, never to the tracked paths."""
+    (output/data/raw_all_divisions_sales.csv). The runner makes no stock pull; stock is the latest daily
+    snapshot written by src/snapshot_daily.py (output/snapshots/inventory_daily_*.csv), and the page shows
+    that snapshot's own load time as the stock section's data-pulled time, with the staleness notice when
+    it is older than the configured threshold (src/inventory_page_sources.py). A dry run never reaches this
+    function with dry_run=True: it runs inside a temporary copy of the project, where these are ordinary
+    writes."""
     import build_inventory_page
     import build_report
     import inventory_page_sources
@@ -661,7 +687,7 @@ def step7_rebuild_pages(dry_run: bool, staged_dir: str, step1_result: dict = Non
     if not pull_time:
         raise MonthlyRefreshAbort("Step 7 ABORTED: step 1 recorded no snapshot_pull_date, so the inventory page's "
                                   "sales pull time is unknown.")
-    sources = inventory_page_sources.runner_pull_sources(pull_time)
+    sources = inventory_page_sources.daily_snapshot_sources(pull_time)
     page = build_inventory_page.build_page(**sources)
     inv_path = os.path.join(staged_dir, "inventory.html") if dry_run else build_inventory_page.OUT_PATH
     with open(inv_path, "w", encoding="utf-8") as f:
@@ -669,6 +695,8 @@ def step7_rebuild_pages(dry_run: bool, staged_dir: str, step1_result: dict = Non
     return {"rendered_path": out_path, "inventory_rendered_path": inv_path,
             "inventory_sales_pull_time": str(pull_time),
             "inventory_pilot_pull_label": sources["pull_labels"]["PEM103"],
+            "inventory_stock_snapshot": sources["stock_meta"],
+            "inventory_stock_pulled_at": sources["stock_pulled_at"],
             "written_to_tracked_path": not dry_run}
 
 
@@ -676,9 +704,12 @@ def step7_rebuild_pages(dry_run: bool, staged_dir: str, step1_result: dict = Non
 # Step 8: run the full test suite
 # ---------------------------------------------------------------------------------------------
 
-def step8_run_tests() -> dict:
+def step8_run_tests(skip_tests: bool = False) -> dict:
+    if skip_tests:
+        # Only for tests of the runner itself (the suite would otherwise run inside its own test).
+        return {"skipped": True, "passed": None, "summary_line": "step 8 skipped (--skip-tests)"}
     proc = subprocess.run([sys.executable, "-m", "pytest", "-q"], cwd=PROJECT_ROOT,
-                           capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=600)
+                           capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=1800)
     tail = proc.stdout.strip().splitlines()[-1] if proc.stdout.strip() else ""
     return {"returncode": proc.returncode, "passed": proc.returncode == 0,
             "summary_line": tail, "stdout_tail": proc.stdout[-3000:]}
@@ -688,7 +719,35 @@ def step8_run_tests() -> dict:
 # Step 9: scan staged files for sensitive content
 # ---------------------------------------------------------------------------------------------
 
-def step9_scan_sensitive_content() -> dict:
+def _sandbox_changed_files(started_at: float) -> list:
+    """Inside a dry-run copy there is no git repository: files (outside output/) written since the run started."""
+    changed = []
+    for base in ("forecast", "docs", "config", "src", "tests", "data"):
+        for dirpath, _dirs, files in os.walk(os.path.join(PROJECT_ROOT, base)):
+            if "__pycache__" in dirpath:
+                continue
+            for f in files:
+                full = os.path.join(dirpath, f)
+                if os.path.getmtime(full) >= started_at:
+                    changed.append(os.path.relpath(full, PROJECT_ROOT))
+    return changed
+
+
+def step9_scan_sensitive_content(sandbox_started_at: float = None) -> dict:
+    if sandbox_started_at is not None:
+        changed_paths = _sandbox_changed_files(sandbox_started_at)
+        findings = []
+        for rel_path in changed_paths:
+            try:
+                with open(os.path.join(PROJECT_ROOT, rel_path), "r", encoding="utf-8", errors="ignore") as f:
+                    text = f.read()
+            except OSError:
+                continue
+            for pattern, label in SENSITIVE_PATTERNS:
+                if re.search(pattern, text):
+                    findings.append({"path": rel_path, "pattern_matched": label})
+        return {"n_changed_files_scanned": len(changed_paths), "changed_files": changed_paths,
+                "findings": findings, "passed": len(findings) == 0, "scanned_in": "dry-run copy"}
     proc = subprocess.run(["git", "status", "--porcelain"], cwd=PROJECT_ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace")
     changed_paths = [line[3:] for line in proc.stdout.splitlines() if line.strip()]
     findings = []
@@ -779,7 +838,7 @@ def step10_change_magnitude(config: dict, step4_result: dict, step5_result: dict
 # ---------------------------------------------------------------------------------------------
 
 def step11_commit_and_push(dry_run: bool, step8: dict, step9: dict, step10: dict) -> dict:
-    gates_passed = step8["passed"] and step9["passed"] and step10["passed"]
+    gates_passed = bool(step8["passed"] and step9["passed"] and step10["passed"])
     if dry_run:
         return {"pushed": False, "reason": "dry-run: step 11 never writes or pushes for real.",
                 "would_push_if_real_run": gates_passed,
@@ -806,13 +865,78 @@ def step11_commit_and_push(dry_run: bool, step8: dict, step9: dict, step10: dict
 # Orchestration
 # ---------------------------------------------------------------------------------------------
 
-def main(dry_run: bool, force_new_vintage: bool = False) -> dict:
+COPY_SKIP_TOP = {".git", ".pytest_cache", "node_modules", ".claude", "__pycache__"}
+COPY_SKIP_OUTPUT = {"runs", "charts"}
+
+
+def _copy_project(dst: str) -> None:
+    """Copies what a run reads and writes into `dst`: everything at the project root except version
+    control and caches, and under output/ only data, summary (without its archive) and snapshots."""
+    for name in os.listdir(PROJECT_ROOT):
+        if name in COPY_SKIP_TOP:
+            continue
+        src = os.path.join(PROJECT_ROOT, name)
+        if name == "output":
+            for sub in os.listdir(src):
+                if sub in COPY_SKIP_OUTPUT:
+                    continue
+                sub_src = os.path.join(src, sub)
+                sub_dst = os.path.join(dst, "output", sub)
+                if os.path.isdir(sub_src):
+                    shutil.copytree(sub_src, sub_dst, ignore=shutil.ignore_patterns("archive", "__pycache__"))
+                else:
+                    os.makedirs(os.path.dirname(sub_dst), exist_ok=True)
+                    shutil.copy2(sub_src, sub_dst)
+        elif os.path.isdir(src):
+            shutil.copytree(src, os.path.join(dst, name), ignore=shutil.ignore_patterns("__pycache__", ".pytest_cache"))
+        else:
+            shutil.copy2(src, os.path.join(dst, name))
+
+
+def run_dry_run_in_sandbox(force_new_vintage: bool = False, offline: bool = False, skip_tests: bool = False) -> dict:
+    """A dry run: everything runs inside a temporary copy of the project; only the run log is written to the real output/runs/."""
     run_id = datetime.now().strftime("%Y%m%dT%H%M%S")
+    temp_root = tempfile.mkdtemp(prefix="monthly_refresh_dry_")
+    logger.info("Dry run: working in a temporary copy at %s (removed afterwards).", temp_root)
+    try:
+        _copy_project(temp_root)
+        cmd = [sys.executable, os.path.join(temp_root, "src", "monthly_refresh.py"), "--dry-run", "--in-sandbox",
+               "--run-id", run_id, "--run-log-dir", RUNS_DIR]
+        if force_new_vintage:
+            cmd.append("--force-new-vintage")
+        if offline:
+            cmd.append("--offline")
+        if skip_tests:
+            cmd.append("--skip-tests")
+        env = dict(os.environ, MONTHLY_REFRESH_SANDBOX="1", PYTHONIOENCODING="utf-8")
+        proc = subprocess.run(cmd, cwd=temp_root, env=env, capture_output=True, text=True, encoding="utf-8", errors="replace")
+        log_path = os.path.join(RUNS_DIR, f"monthly_refresh_{run_id}.json")
+        if not os.path.exists(log_path):
+            raise MonthlyRefreshAbort(f"Dry run ABORTED before it wrote a run log (exit {proc.returncode}).\n"
+                                      f"{proc.stderr[-2500:]}")
+        with open(log_path, encoding="utf-8") as f:
+            log = json.load(f)
+        if proc.returncode != 0 and "aborted_at_step" not in log:
+            raise MonthlyRefreshAbort(f"Dry run exited {proc.returncode}: {proc.stderr[-2500:]}")
+        return log
+    finally:
+        shutil.rmtree(temp_root, ignore_errors=True)
+
+
+def main(dry_run: bool, force_new_vintage: bool = False, sandbox: bool = False, run_id: str = None,
+         run_log_dir: str = None, offline: bool = False, skip_tests: bool = False) -> dict:
+    if dry_run and not sandbox:
+        return run_dry_run_in_sandbox(force_new_vintage, offline, skip_tests)
+    run_id = run_id or datetime.now().strftime("%Y%m%dT%H%M%S")
+    started_mtime = datetime.now().timestamp()
     staged_dir = os.path.join(RUNS_DIR, run_id, "staged")
     os.makedirs(staged_dir, exist_ok=True)
     config = load_config()
+    # Inside a dry-run copy every step writes for real (into the copy); only step 11 stays a dry run.
+    steps_dry = dry_run and not sandbox
 
-    run_log = {"run_id": run_id, "dry_run": dry_run, "force_new_vintage": force_new_vintage,
+    run_log = {"run_id": run_id, "dry_run": dry_run, "dry_run_in_temporary_copy": sandbox, "offline": offline,
+               "force_new_vintage": force_new_vintage,
                "started_at": datetime.now().isoformat(timespec="seconds"), "steps": {}}
 
     def record(step_name, fn, *args, **kwargs):
@@ -824,30 +948,31 @@ def main(dry_run: bool, force_new_vintage: bool = False) -> dict:
             run_log["steps"][step_name] = {"status": "ABORTED", "reason": str(e)}
             run_log["aborted_at_step"] = step_name
             run_log["finished_at"] = datetime.now().isoformat(timespec="seconds")
-            _write_run_log(run_log, run_id)
+            _write_run_log(run_log, run_id, run_log_dir)
             raise
 
-    step1 = record("1_pull_data", step1_pull_data, dry_run)
+    step1 = record("1_pull_data", step1_pull_data, steps_dry, offline)
     record("2_validate", step2_validate)
     record("3_frozen_snapshot", step3_frozen_snapshot)
-    step4 = record("4_backtest", step4_backtest, run_id)
-    step5 = record("5_new_forward_test_vintage", step5_new_vintage, dry_run, force_new_vintage)
-    computed_vintage_for_preview = _LAST_COMPUTED_VINTAGE if dry_run else None
-    record("6_fill_and_score", step6_fill_and_score, dry_run, computed_vintage_for_preview)
-    record("7_rebuild_pages", step7_rebuild_pages, dry_run, staged_dir, step1)
-    step8 = record("8_run_tests", step8_run_tests)
-    step9 = record("9_scan_sensitive_content", step9_scan_sensitive_content)
+    step4 = record("4_backtest", step4_backtest, run_id, offline)
+    step5 = record("5_new_forward_test_vintage", step5_new_vintage, steps_dry, force_new_vintage)
+    computed_vintage_for_preview = _LAST_COMPUTED_VINTAGE if steps_dry else None
+    record("6_fill_and_score", step6_fill_and_score, steps_dry, computed_vintage_for_preview, offline)
+    record("7_rebuild_pages", step7_rebuild_pages, steps_dry, staged_dir, step1)
+    step8 = record("8_run_tests", step8_run_tests, skip_tests)
+    step9 = record("9_scan_sensitive_content", step9_scan_sensitive_content, started_mtime if sandbox else None)
     step10 = record("10_change_magnitude", step10_change_magnitude, config, step4, step5)
     step11 = record("11_commit_and_push", step11_commit_and_push, dry_run, step8, step9, step10)
 
     run_log["finished_at"] = datetime.now().isoformat(timespec="seconds")
-    _write_run_log(run_log, run_id)
+    _write_run_log(run_log, run_id, run_log_dir)
     return run_log
 
 
-def _write_run_log(run_log: dict, run_id: str) -> str:
-    os.makedirs(RUNS_DIR, exist_ok=True)
-    path = os.path.join(RUNS_DIR, f"monthly_refresh_{run_id}.json")
+def _write_run_log(run_log: dict, run_id: str, run_log_dir: str = None) -> str:
+    out_dir = run_log_dir or RUNS_DIR
+    os.makedirs(out_dir, exist_ok=True)
+    path = os.path.join(out_dir, f"monthly_refresh_{run_id}.json")
     with open(path, "w", encoding="utf-8") as f:
         json.dump(run_log, f, indent=2, default=str)
     logger.info("Run log written: %s", path)
@@ -862,9 +987,18 @@ if __name__ == "__main__":
                          help="Override the one-vintage-per-calendar-month guard (Part 2, "
                               "task 2cfix2) for a deliberate second real run in the same month. "
                               "Its use is recorded in the run log.")
+    parser.add_argument("--in-sandbox", action="store_true", help=argparse.SUPPRESS)
+    parser.add_argument("--run-id", default=None, help=argparse.SUPPRESS)
+    parser.add_argument("--run-log-dir", default=None, help=argparse.SUPPRESS)
+    parser.add_argument("--offline", action="store_true",
+                         help="Make no database connection (for tests): step 1 reuses the data already under "
+                              "output/data and the regenerations that connect are skipped and recorded.")
+    parser.add_argument("--skip-tests", action="store_true",
+                         help="Skip step 8 (for tests of the runner itself; recorded in the run log).")
     args = parser.parse_args()
     try:
-        log = main(dry_run=args.dry_run, force_new_vintage=args.force_new_vintage)
+        log = main(dry_run=args.dry_run, force_new_vintage=args.force_new_vintage, sandbox=args.in_sandbox,
+                   run_id=args.run_id, run_log_dir=args.run_log_dir, offline=args.offline, skip_tests=args.skip_tests)
         print(json.dumps(log, indent=2, default=str))
     except MonthlyRefreshAbort as e:
         logger.error("MONTHLY REFRESH ABORTED: %s", e)
