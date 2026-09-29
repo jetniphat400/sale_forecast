@@ -1636,3 +1636,71 @@ alert. Fixed in `src/build_inventory_page_data.py::_load_pem107_alert()` (NaN ->
 embedding) and defensively in `src/build_inventory_page.py::build_page()`
 (`json.dumps(data, allow_nan=False)`, so any future NaN fails the BUILD loudly instead of shipping
 a page that silently renders blank).
+
+## Phase A (2026-09-29): verification and audit -- verified facts
+
+Read-only task; no reclassification, page/config edit, or refactor executed. Full detail in each
+cited report under `output/summary/`.
+
+- **PEM107 confirmed_to_order (§23) is NOT uniformly viable for a made-to-order (G3) move.**
+  C1 stability 73/78=93.6% and C4 reverse-stock 10/78=12.8% (value THB 1,522,858) both support the
+  move -- **independently confirmed exact by a fresh Validator, level V2**
+  (`output/summary/phaseA_pem107_g3_verification.md`). C2 materiality is inconclusive under its own
+  stated bars: confirmed_to_order holds only 32.3% of PEM107 Omni Channel value (2024-01 to
+  2026-08, THB 72,830,606 of THB 225,254,636 total), below the 50% "material" bar; `conflict` holds
+  56.6% (THB 127,592,260), a class this criterion doesn't address -- **independently confirmed
+  exact, level V2**. C3 viability (median notice >= median PO-to-delivery time AND not_late>=85%)
+  passes for only 41/77 computable confirmed_to_order items (53%) -- **the 5 highest-value items
+  all pass, independently re-derived and re-confirmed by the Validator, level V2**; the class as a
+  whole does not uniformly pass. C5: 2026 late-delivery units concentrate in `conflict` (722/1,144
+  = 63.1%), not confirmed_to_order (334/1,144 = 29.2%) -- **independently confirmed exact, level
+  V2**. Source: `output/summary/phaseA_pem107_g3_verification.md`. **Decision pending for the
+  user** -- no reclassification made.
+- **PEM101's 41 §23 conflict-class items: 10 lean stock, 11 lean made-to-order, 20 undetermined**
+  at the primary thresholds (day_th=14, batch_th=0.50, matching §23's own S3/S2 cutoffs) --
+  `output/summary/phaseA_pem101_conflict_lean.md`. **5 randomly-selected items (seed 20260929)
+  independently re-classified by a fresh Validator using a different operationalization: all 5
+  match (all undetermined) -- level V2.** A minor, non-decision-changing discrepancy in one item's
+  underlying `cube_final`-linked-contract count (0 vs. 1) was found and reported, not smoothed over
+  -- does not change S2 or the classification either way. The 20 undetermined items (listed with
+  Product Type/Description/Code in the report) are the narrowed open question for business
+  confirmation, per this task's own scope.
+- **Trend tab's duplicate-pricelist flag (`rk`) IS fully explained**: a code appears on more than
+  one `reference/pricelist.xlsx` visible-sheet row (100% match both directions, n=1,
+  `DS-F-99-0308`) -- **independently confirmed exact by a fresh Validator, level V2**. This is a
+  genuine fix to METRICS.md §38's prior "no traceable computation" statement for this one flag
+  specifically (the 4 Match-status badges remain only partially explained, per below).
+  Source: `output/summary/phaseA_trend_badges.md`.
+- **Trend tab's `dbn` field (feeds the 4 Match-status badges) is `Cube_Product.description` for
+  that item code** -- confirmed by direct string match on multiple sample codes -- but which of an
+  itemcode's multiple `Cube_Product` rows is selected (when more than one exists) is NOT
+  determined (not the lowest-`id` row in 4/7 samples); flagged as an open gap, not investigated
+  further this task (stopping rule). **Level V1** for the `Cube_Product.description` source
+  identification; the exact row-selection rule remains unknown.
+- **The `nospec` Match-status badge is best explained by "no shared electrical-rating unit-type
+  between the pricelist description and `dbn`"** -- 100% recall (16/16), reproduced exactly by an
+  independent Validator; precision 30.2% (16/53) in this task's own computation vs. 30.8% (16/52)
+  in the Validator's independent recomputation -- **a genuine, reported discrepancy of exactly one
+  item in the predicted-positive set, not resolved further this task (stopping rule)**. The
+  `conflict` and `ok` badges are only partially reproduced by the same rule (conflict 62.5-83.3%
+  once 4 Thai-language-description CI101 items are excluded; ok 82.8%/77.8%, with CT
+  ratio-notation items as the likely residual gap, hypothesis only). The `nodata` badge is NOT
+  explained by this task's best-tested hypothesis (itemcode absent from `Cube_Product` entirely)
+  -- that hypothesis was tested and ruled out with evidence (4 sample codes structurally identical
+  to a matching "ok" item on every DB field checked) -- **confirms and sharpens METRICS.md §37/§38's
+  own "no traceable computation" conclusion for these 4 badges, now with concrete evidence of what
+  was ruled out for `nodata` specifically**. Source: `output/summary/phaseA_trend_badges.md`.
+- **A fully dead 5-file Phase-E1-prototype subgraph exists in `src/`**: `phaseE1_current_settings_
+  comparison.py`, `phaseE1_historical_simulation.py`, `phaseE1_maxmin_scenario.py`,
+  `phaseE1_segment_items.py`, `phaseE1_leadtime_demand.py` -- zero importers anywhere in `src/`,
+  `src/investigations/` or `tests/`, confirmed by repo-wide grep. Superseded by
+  `phaseE1fix_recompute.py`/`phaseE1fix_simulation.py`/`phaseE2_pilot_recompute.py`. **Level A**
+  (direct grep evidence). Two genuine query/function duplications also confirmed with file:line
+  citations (`query_inventory_exact` in `phaseE1_common.py:264-274` vs.
+  `build_inventory_dataset.py:172-190`; `load_config`/`verify_consistency` in
+  `score_forward_test_v2.py:64-69` vs. `score_forward_test_all_divisions.py:54-59`). 3
+  config.yaml keys confirmed to have zero code references (`aggregation_category_level_caveat`,
+  `combination_models`, `warehouse_roles`); 13 more flagged by an automated scan, only 5
+  spot-checked (**level H** for the unconfirmed 8). Source:
+  `output/summary/phaseA_refactor_audit.md`. **Refactor plan pending approval -- nothing
+  executed.**

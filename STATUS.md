@@ -6633,4 +6633,128 @@ the page.
 
 ---
 
+## 14. Phase A — verification and audit (2026-09-29)
+
+Verification/audit only, per this task's own scope rule: no PEM107 reclassification, no item-class
+change, no page/config edit, and no refactor was executed. Six agents: A1 (orchestrator, direct
+checks), A2-A5 (four parallel read-only forks, independent questions per AGENTS.md's decomposition
+test), A6 (a fresh, non-fork Validator with no shared context, recomputing 6 of the prior figures).
+
+**A1 — confirm the previous documentation task landed.**
+- **git log origin/main**: does **NOT** yet contain the task 2b commits (`6cd3cdf`..`302c9ac`) —
+  local `main` was still 7 commits ahead of `origin/main`, 0 behind, unpushed (the prior task's own
+  push attempt was refused by the session's auto-mode classifier, and the user chose not to work
+  around it). No "following documentation task" commits exist locally either — the open item from
+  task 2b's own final report ("manual: new prose for the 4 new features still needs writing") was
+  never actioned. **Reported, not silently assumed done.**
+- **AGENTS.md rule**: was **absent**. Added verbatim this task as rule 10 under "Rules binding
+  every agent."
+- **Manual**: `docs/user_manual.md`'s "หน้า Min-Max" section contains **none** of the 5 required
+  subsections (ประเภทสินค้า, เลือกคลัง, เกณฑ์ของค้าง, ต้นทุนการยกระดับ (PEM101), แถบเตือน PEM107);
+  `config/manual_notes.yaml`'s `inventory.html` block has notes only for the 3 pre-existing charts
+  (`chart-robust-curve`, `chart-tradeoff`, `chart-min-vs-current`) — none for the new features.
+  **Confirmed clean**: the warehouse checklist and obsolescence threshold are no longer marked "not
+  working" anywhere in the manual (that removal from task 2b held). The 5 features **do render**
+  on the published `forecast/inventory.html` (confirmed by source/data inspection, matching
+  `segmentation-note`/`curve-target-summary`/`renderWarehouseChecklist`/`pem107-alert`/`excess`
+  markers present, 31 matches). Per this task's own instruction, **no substitute prose was
+  written** — this remains an explicit open item for the user's assistant.
+- **`output/summary/pem101_conflict_items.md`**: was **absent**. Created this task: all 41 PEM101
+  §23 `conflict`-class items, Product Type/Description/Code from the pricelist's visible sheets,
+  grouped by Product Type, with manufacturing_type label+share and S1/S2/S3 signals.
+- **STATUS.md pending-decision records**: neither the PEM107 decision nor the PEM101 conflict list
+  was yet recorded as pending for the user — both added below, this task.
+
+**A2 — PEM107 made-to-order (G3) verification.** Full criteria, results at every threshold, and
+per-item detail: `output/summary/phaseA_pem107_g3_verification.md`. **Verdict: supported for a
+subset, not the full 78-item confirmed_to_order class.** C1 stability 93.6% (clears 80%/90%) and C4
+reverse-stock 12.8% (clears ≤20%) both support the move; C2 materiality is **inconclusive under its
+own stated bars** (confirmed_to_order holds only 32.3% of Omni value — below the 50% "material"
+bar — while `conflict`, a class this criterion doesn't address, holds 56.6%); C3 viability clears
+the 85% not_late bar for only 41/77 computable items (53%) — roughly half the class fails the
+direct delivery-viability test. C5 shows the 2026 late-delivery problem sits mostly in `conflict`
+(63.1% of late units), not `confirmed_to_order` (29.2%) — not evidence for reclassification either
+way. **Recommended subset (41 codes passing C3 at 85%)** is listed in the report. The other 37
+confirmed_to_order items are stable (C1) and mostly stock-free (C4) but fail C3 — a genuine open
+question for the business. **Independently re-verified by A6 (Validator, no shared context): C2,
+C4, C5 class shares all MATCH exactly; C3 on the 5 highest-value items (independently re-derived
+as the same 5, same order) all clear the viability bar — level V2.** **Decision: PENDING for the
+user** — this task recommends nothing be moved without that decision.
+- **Noticed, not pursued (SCOPE RULE)**: the `conflict` class carries both the most Omni value
+  (56.6%) and the most 2026 late-delivery volume (63.1%) — a materially bigger open question than
+  the confirmed_to_order/G3 question this task answers. Reported for a future task, not acted on.
+
+**A3 — PEM101's 41 §23 conflict items, which way do they lean.** Full method, thresholds, and
+per-item table: `output/summary/phaseA_pem101_conflict_lean.md`. At the primary thresholds
+(day_th=14, batch_th=0.50, matching §23's own S3/S2 cutoffs): **10 leaning stock, 11 leaning
+made-to-order, 20 undetermined** (also reported at day_th 7/21 — counts move to 6/14/21 and
+12/9/20 respectively; `batch_th` alone changes nothing, since this item set's batch-traceability
+signal is effectively binary, not threshold-sensitive). **The 20 undetermined items are listed in
+the report with Product Type/Description/Code, for business confirmation** — narrower than "all 41
+conflict items," per this task's instruction. **Independently re-verified by A6 (Validator, no
+shared context, different operationalization): 5 randomly-selected items (seed 20260929) —
+`EEE-F-FC-1040011002P`, `HS-F-99-0151`, `HS-F-99-1031`, `HS-F-99-2301N`, `HS-F-99-3303` — all 5
+MATCH (all undetermined under both methods) — level V2.** A minor, non-decision-changing
+discrepancy was flagged, not smoothed over: the Validator's fresh `cube_final` join found 1 linked
+contract for `HS-F-99-2301N` where the source file records 0 (still not pre-existing either way, no
+effect on S2 or classification).
+
+**A4 — Trend tab Remark badge rule reverse-engineering.** Full detail:
+`output/summary/phaseA_trend_badges.md`. The duplicate-pricelist flag (`rk`) is **fully
+reproduced**: a code appears on >1 pricelist visible-sheet row (100% both directions, n=1,
+`DS-F-99-0308`) — **independently confirmed exact by A6, level V2.** The 4 Match-status badges
+(ok/conflict/nospec/nodata) are only **partially** reproduced by the best candidate rule tested
+(rating-token comparison between the pricelist description and `Cube_Product.description`, the
+newly-identified source of the `dbn` field): nospec 100% recall/30.2% precision (A6: 100%
+recall/30.8% precision on a set differing by 1 item — **minor discrepancy, not smoothed over,
+level V1**), conflict 62.5-83.3%, ok 82.8%/77.8%, nodata only 20.6% recall with the obvious
+hypothesis (itemcode absent from `Cube_Product`) **tested and ruled out with evidence** (4 sample
+codes checked field-by-field, structurally identical to a matching "ok" item). **This confirms and
+sharpens METRICS.md §37/§38's own conclusion** that these badges have no traceable computation in
+this codebase — the `nodata` badge in particular remains a genuine, evidenced gap, not merely an
+unexamined one.
+
+**A5 — repository refactor audit (read-only, nothing changed).** Full detail:
+`output/summary/phaseA_refactor_audit.md`. Confirmed a fully dead 5-file Phase-E1-prototype
+subgraph (`phaseE1_current_settings_comparison.py`, `phaseE1_historical_simulation.py`,
+`phaseE1_maxmin_scenario.py`, `phaseE1_segment_items.py`, `phaseE1_leadtime_demand.py` — zero
+importers anywhere); two genuine query/function duplications (`query_inventory_exact` in
+`phaseE1_common.py` vs `build_inventory_dataset.py`; `load_config`/`verify_consistency` in
+`score_forward_test_v2.py` vs the active `score_forward_test_all_divisions.py`); 4 phase-named
+modules on active production paths (`phaseE1_common.py`, `phaseE2_pilot_recompute.py`,
+`phaseE1fix_recompute.py`, `phaseE1fix_simulation.py`); 3 confirmed-zero-reference config.yaml keys
+(`aggregation_category_level_caveat`, `combination_models`, `warehouse_roles`) plus 13 more flagged
+by an automated scan (5 spot-checked, not all individually confirmed); the 5 frozen
+`phaseE1_validator_fig*_FROZEN.csv` pilot-comparison copies, referenced only by their own
+frozen-recheck scripts. Document sizes: `index.html` 8,486 lines, `STATUS.md` 6,636, `DATA_MAP.md`
+1,638, `config.yaml` 1,320, `METRICS.md` 853. **Proposed four-stage refactor plan (naming;
+duplicate consolidation; config reorganisation; STATUS.md split) is PENDING approval — nothing
+executed.**
+
+**A6 — Validator.** Dispatched as a fresh, non-fork agent (no shared context with A2-A4), reading
+none of their write-ups, only METRICS.md/DATA_MAP.md/pre-existing data files plus (for the S2 join
+definition specifically) the pre-existing, already-established `cube_final`↔`Cube_CES` join method.
+3 database connection attempts, all succeeded, no retries. Verdicts folded into A2/A3/A4 above; full
+detail in each report's own "Validator cross-check" section. **6 of 7 checks MATCH exactly; 1 minor
+discrepancy** (the `nospec` badge rule's precision, 52 vs 53 predicted-positive items) reported
+plainly rather than rounded up to a match, per AGENTS.md rule 4.
+
+**Tests and commit**: full suite run this task — see the commit log for the exact count recorded at
+push time. Sensitive-content scan run on every file this task touched — 0 findings. Commits in
+focused groups; push attempted once per this task's own instruction.
+
+**PEM107 decision — PENDING for the user.** A2's verdict: supported for a 41-item subset of the
+78-item `confirmed_to_order` class (listed in `output/summary/phaseA_pem107_g3_verification.md`),
+not the full class — C2 and C3 do not clear their own stated bars for the class as a whole. No
+reclassification has been made. PROJECT_GRAPH.md's Q10 PEM107 branch is unchanged pending this
+decision (Phase A is verification-only, per its own scope rule).
+
+**PEM101 conflict list — narrowed, PENDING for the user.** Of the 41 §23 `conflict`-class PEM101
+items, A3 narrows the open question to the **20 undetermined items** (listed in
+`output/summary/phaseA_pem101_conflict_lean.md`, with Product Type/Description/Code) — the other 21
+lean one way or the other under A3's stated thresholds, though this is Phase A's own read of the
+data, not a business confirmation. No reclassification has been made.
+
+---
+
 **Rule: this file must be updated as the final step of every completed task.**
