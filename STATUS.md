@@ -6755,6 +6755,41 @@ items, A3 narrows the open question to the **20 undetermined items** (listed in
 lean one way or the other under A3's stated thresholds, though this is Phase A's own read of the
 data, not a business confirmation. No reclassification has been made.
 
+## Phase W0 (2026-09-29): S&OP Plan tab provenance -- verification only
+
+Scope: this task only (labelling of the S&OP Plan tab in `index.html`, external file uploaded 2026-08-24,
+commit 88cd3a1). No page edited. Full record: `output/summary/phaseW0_sop_provenance.md`; agent reports
+`phaseW0_worker_report.md` (Explorer+Analyst) and `phaseW0_validator_report.md` (independent Validator).
+2 DB connections (worker 1, Validator 1), both succeeded, no retries.
+
+**Verdict per part (levels: confirmed by query/parse unless stated):**
+- Per-code history: **real data, partly reproduced.** Best definition cube_Sale_APD_2016 / createDate / Actual /
+  Omni / cmp=PEM / exact code: 118 of 204 real codes exact (57.8%); usual project definition 99/204. No
+  combination of 1,512 reaches 95%. Every mismatching code has DB > tab (none lower). No cut-off date fits (best
+  any-field 157/204, not inferred as real). Cause of the rest not known; data drift between table refreshes
+  (152 rows, 631 status flips in 19 days) is an untested inference.
+- Monthly totals: **not reproducible from the database** (0 of 7 months in 1,512 combinations; nearest error
+  111.5 million baht; best 597.65 vs tab 492.4).
+- KPI figures: **not reproducible from the database** (204 codes with sales vs 219-223 in DB; 426 codes: repo
+  pricelist holds 419).
+- Min and Max (81 codes): **not reproducible from the database** (0 of 58 / 0 of 75 non-zero exact matches
+  against Cube_Inventory_Exact; the 2026-03-30 source file not found; limit: table is a 2026-09-28 state).
+- Earlier claims: 106/98 split PARTLY CONFIRMED (99/105); no-cut-off CONFIRMED; 18 zero-history codes with
+  sales REFUTED as stated (15 by that definition, 21 Jan-Jul); totals mismatch CONFIRMED.
+- The 21 zero-history codes with sales: 2 code-string, 1 company (PCE), 3 status (inferred timing), 15 unexplained.
+- Validator: independent recomputation (own parser, own pull) MATCHED every figure and all five code explanations.
+
+**Two positions, both stated, neither chosen -- for the user to decide:** (a) the user's understanding that the
+tab's figures are hypothetical; (b) the database evidence above that per-code history is at least in part
+derived from real data, while totals, KPIs and Min/Max cannot be tied to any database definition. How the tab
+is labelled for readers is undecided.
+
+Not confirmed in this task: the parse was of the HTML source (two independent parsers), not a browser render.
+Further work found, not done: identify the table/snapshot behind "Cube Sale APD2026" with the cube owners;
+obtain the 2026-03-30 PEM101 stock file and the original Price List R.1; test numeric row filters; compare
+the tab's Min/Max with this project's own Max-Min outputs. Sensitive-content scan of committed files: run before
+commit (customer-identifying scan CSV excluded from the commit). Commit hashes: see git log.
+
 ---
 
 **Rule: this file must be updated as the final step of every completed task.**

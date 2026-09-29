@@ -1704,3 +1704,30 @@ cited report under `output/summary/`.
   spot-checked (**level H** for the unconfirmed 8). Source:
   `output/summary/phaseA_refactor_audit.md`. **Refactor plan pending approval -- nothing
   executed.**
+
+## Phase W0 (2026-09-29): S&OP Plan tab provenance -- verified facts
+
+Source for all entries: `output/summary/phaseW0_sop_provenance.md` (worker and Validator reports alongside).
+
+- **The S&OP tab's Section 4 has 426 codes: 204 badged real data, 222 example; 81 badged real Max-Min (all
+  PEM101).** Parse of `index.html`, two independent parsers. **V2.**
+- **No table named cube_Sale_APD2026 exists; 18 sale/APD-named tables do, including cube_Sale_APD_2016
+  (142,058 rows, refreshed 2026-09-09) and cube_Sale_Snapshot (not inspected).** INFORMATION_SCHEMA query. **V1.**
+- **Per-code Jan-Jul 2026 quantities: Omni/Actual/cmp=PEM/createDate on cube_Sale_APD_2016 matches the tab's
+  history exactly for 118 of 204 real codes; the usual project definition (cube_Sale_APD, Omni, Actual, all
+  companies) matches 99; every mismatch has the DB higher than the tab.** Worker grid of 1,512 combinations,
+  re-computed for the best and usual definitions by the Validator. **V2.** Cause of the remaining gap: **H**
+  (data drift; untested).
+- **Monthly `sale` totals of every tested definition differ from the tab's Section 1 Actual row in all 7 months
+  (nearest 7-month error 111.5 million baht).** **V1** for the grid; **V2** for the best definition's figures.
+- **No cut-off date on any date field reaches 95% of per-code matches; the best (plan_date <= 2026-08-04/05) is
+  157/204 and no date is inferred.** **V1.**
+- **Between cube_Sale_APD_2016 (2026-09-09) and cube_Sale_APD (2026-09-28), 152 more Omni Actual rows fall in
+  Jan-Jul 2026 and 631 row ids changed status.** Worker query. **V1.**
+- **The repo `reference/pricelist.xlsx` holds 419 of the tab's 426 codes and 26 codes the tab lacks.** **V1.**
+- **Cube_Inventory_Exact min/max (2026-09-28 load) matches the tab's non-zero Min/Max for 0 of 58 / 0 of 75 of the
+  81 codes under every aggregation tried; the source file "Stock ... 30-03-2026.xlsx" was not found.** **V1**;
+  comparison limited by the six-month gap.
+- **Trap:** a per-code match rate over all 426 codes is inflated by example codes where both tab and DB are 0
+  (207 of 325); use the 204 real codes as the base.
+
