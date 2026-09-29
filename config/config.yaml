@@ -1064,11 +1064,13 @@ report:
     รายการ (Item) ตามสัดส่วนยอดขายจริงในอดีตของสินค้านั้นเทียบกับยอดขายรวมของ Type ทั้งหมด
 
   # Source: STATUS.md Current Status Summary, "Phase 2 -- Model Selection" (high confidence).
+  # Previous wording (kept off screen): no single model consistently beats the others at every
+  # level (Category/Type/Item), and rule-based model selection (SBC, Kostenko-Hyndman,
+  # Petropoulos-Kourentzes) is not significantly better than the Combination average, so
+  # Combination was chosen as the safer approach (confidence: high).
   why_not_single_model: >-
-    ไม่มีโมเดลเดี่ยวใดชนะโมเดลอื่นอย่างสม่ำเสมอในทุกระดับ (Category/Type/Item) และการเลือกโมเดล
-    ด้วยกฎเกณฑ์ทางวิชาการ (SBC, Kostenko-Hyndman, Petropoulos-Kourentzes) ก็ไม่ได้ผลดีกว่าค่าเฉลี่ย
-    รวม (Combination) อย่างมีนัยสำคัญ — จึงเลือกใช้ Combination เป็นแนวทางที่ปลอดภัยกว่าการเดิมพัน
-    กับโมเดลเดียว (ความเชื่อมั่นสูง)
+    ไม่มีวิธีทายวิธีเดียวที่ชนะทุกกลุ่มสินค้า และการเลือกวิธีตามกฎทางวิชาการก็ไม่ได้ดีกว่าการเฉลี่ยหลายวิธี
+    จึงใช้ค่าเฉลี่ย (Combination) ซึ่งเสี่ยงน้อยกว่าพึ่งวิธีเดียว
 
   # Source: STATUS.md Locked Decisions, "Model progression is Naive baseline, then Moving
   # Average, then Croston and SBA. TensorFlow and Prophet are excluded...".
@@ -1081,35 +1083,21 @@ report:
   # Each item a short, standing (not-yet-resolved) caveat, carrying its own stated confidence
   # level from STATUS.md -- not a resolved finding restated as fact.
   limitations:
-    - "ยังไม่สามารถพิสูจน์ได้ว่า forecast_date (วันที่ส่งมอบตามสัญญา) ถูกแก้ไขภายหลังจากรับ PO
-      หรือไม่ เพราะไม่มีตารางบันทึกการแก้ไขในระบบ — ผลกระทบถูกจำกัดไว้ต่ำกว่า 2.5% ของแถวข้อมูล
-      โดยไม่มีทิศทางที่แน่นอน (ความเชื่อมั่นสูงในข้อสรุปเชิงลบนี้ แต่ยังไม่ใช่ข้อพิสูจน์)"
+    # Previous wording of the next four items is in git history (commit 1f87b6e); the on-screen
+    # text below is the approved Thai wording, used verbatim.
+    - "วันส่งตามสัญญาอาจถูกแก้หลังรับ PO ระบบไม่มีบันทึกการแก้ ตรวจแล้วกระทบไม่เกิน 2.5% ของรายการ"
     - "ไม่มีข้อมูลประวัติของ Price List เวอร์ชันเก่า จึงไม่สามารถตรวจสอบได้ว่าการจัดฝ่าย/ประเภท
       สินค้าเคยเปลี่ยนแปลงไปจากอดีตหรือไม่ (cannot be determined จากข้อมูลที่มีอยู่ในปัจจุบัน)"
-    - "ข้อมูลยอดขายอ้างอิงจาก PO ที่ลูกค้าสั่งจริงเท่านั้น ไม่ครอบคลุมความต้องการที่ไม่ได้กลายเป็น
-      PO เลย (เช่น ลูกค้าที่ถูกปฏิเสธเพราะสินค้าไม่พอ หรือใบเสนอราคาที่ไม่ถูกแปลงเป็นคำสั่งซื้อ) —
-      เป็นข้อจำกัดเชิงโครงสร้างของทั้งแนวทาง ไม่ใช่จุดบกพร่องที่แก้ไขได้ด้วยการทำความสะอาดข้อมูล"
-    - "ความได้เปรียบของ Top-down เทียบกับ Direct และ Naive ไม่มีนัยสำคัญทางสถิติ (paired t-test,
-      |t| ต่ำกว่า 2 ในทุกคู่เปรียบเทียบ) — เลือกใช้ Top-down เพราะเป็นแนวทางที่ตรงไปตรงมาที่สุดใน
-      เชิงโครงสร้าง ไม่ใช่เพราะพิสูจน์แล้วว่าให้ผลแม่นยำที่สุด"
-    - "เวลาประกอบสินค้า (assembly time) หลังได้รับชิ้นส่วนไม่มีอยู่ในข้อมูลเลย เป็นช่องว่างที่ต้อง
-      ให้ธุรกิจยืนยัน — ทุกค่าที่ใช้เวลานี้ในการวิเคราะห์ Phase E เป็นค่าอนุมาน (assumption) ที่ตั้ง
-      ไว้เพื่อการวิเคราะห์ ไม่ใช่ข้อเท็จจริงที่วัดได้"
-    - "ค่า Min/Max สต็อกที่ตั้งไว้ในระบบปัจจุบัน (Cube_Inventory_Exact) ใช้เป็น input ในการคำนวณ
-      ไม่ได้ — 46 จาก 128 รายการไม่มีการตั้งค่าเลย และค่าที่มีอยู่ไม่สอดคล้องกันสูงระหว่างคลัง — ใช้
-      ได้เพียงเป็นข้อมูลเปรียบเทียบ (baseline) เท่านั้น"
+    - "ยอดขายนับจาก PO ที่ลูกค้าสั่งจริงเท่านั้น จึงไม่เห็นความต้องการที่ไม่ได้กลายเป็น PO เช่น ลูกค้าที่ไม่สั่งเพราะรู้ว่าไม่มีของ"
+    - "ความได้เปรียบของ Top-down เทียบกับ Direct และ Naive ไม่มีนัยสำคัญทางสถิติ (paired t-test, |t| ต่ำกว่า 2 ในทุกคู่เปรียบเทียบ) เลือกใช้ Top-down เพราะเป็นแนวทางที่ตรงไปตรงมาที่สุดในเชิงโครงสร้าง ไม่ใช่เพราะพิสูจน์แล้วว่าให้ผลแม่นยำที่สุด"
+    - "ไม่มีข้อมูลเวลาประกอบหลังได้ชิ้นส่วน ตัวเลขนี้ในการวางแผน stock เป็นค่าสมมติ"
+    - "Min/Max ที่ตั้งอยู่ในระบบตอนนี้ใช้คำนวณไม่ได้ 46 จาก 128 รายการไม่ได้ตั้ง และค่าที่มีไม่สอดคล้องกัน ใช้ได้แค่เป็นตัวเทียบ"
   # Standing next-step items, each pulled from an already-recorded open item in STATUS.md.
   next_steps:
-    - "รอบให้คะแนน Forward-test ครั้งแรกจะเริ่มได้หลังวันที่ 2026-09-30 (เมื่อผ่าน leakage-guard
-      margin 30 วัน) โดยเดือนพยากรณ์แรกที่จะให้คะแนนคือ 2026-08"
-    - "ตัดสินใจว่าจะใช้รหัสสินค้าใกล้เคียง (analogue) แทนค่าเฉลี่ย Type สำหรับ 66 จาก 82 รายการ
-      Placeholder ที่มีรหัสใกล้เคียงหรือไม่ — ยังไม่ทดสอบว่าให้ผลแม่นยำกว่าจริง เป็นงานของ Modeler
-      ในอนาคต"
-    - "เลือกระดับ Service Level ที่เหมาะสม (90/95/98%) และให้คำนิยาม 'มูลค่าสต็อกตามสถานการณ์'
-      ที่ชัดเจนหนึ่งเดียว (ค่าเฉลี่ยตามการจำลอง เทียบกับค่าคงที่ที่ระดับ Max) ก่อนถือว่าผลลัพธ์
-      Phase E1 ผ่านการตรวจสอบ (validate) อย่างสมบูรณ์"
-    - "ยืนยันนโยบายรีเซ็ตรหัสผ่านฐานข้อมูลเป็นระยะกับฝ่าย IT — เพิ่งเกิดปัญหารหัสผ่านหมดอายุ
-      ระหว่าง Phase E0 ทำให้งานตรวจสอบข้อมูลหยุดชะงักไปหนึ่งรอบ"
+    # The earlier next-step items (first forward-test scoring round, analogue codes for
+    # placeholders, service-level definition, database password reset policy) are project-team
+    # items, not reader items; they remain in git history (commit 1f87b6e) and STATUS.md.
+    - "ทุกเดือนระบบจะเทียบการทายกับยอดขายจริงเดือนล่าสุด ผลรอบแรกต้นเดือน ต.ค. 2569"
 
 # ============================================================
 # Three-tier parameter classification (documented 2026-09-19, Phase G intent -- NOT implemented

@@ -326,26 +326,27 @@ def gather_freshness() -> dict:
     monthly = pd.read_csv(monthly_path, usecols=["snapshot_pull_date"])
     main_pull = str(monthly["snapshot_pull_date"].iloc[0])
 
+    # Reader-facing label -> pull time; each label's source note stays off screen, in an HTML comment.
     sections = {
-        "หลัก (forecast/actual, scope, ช่วงข้อมูล) -- snapshot_pull_date":
-            main_pull,
-        "ตารางผลลัพธ์ต่อฝ่าย (phaseC_step2_transferability_per_division.csv / "
-        "phaseC_step2_per_division_summary_qty.csv) -- snapshot_pull_date":
-            _source_pull_date("phaseC_step2_per_division_summary_qty.csv"),
-        "Rolling-origin chart (phaseC_step2_rolling_origin_qty.csv) -- snapshot_pull_date":
-            _source_pull_date("phaseC_step2_rolling_origin_qty.csv"),
-        "Notice-period chart (leadtime_notice_buckets_overall.csv) -- snapshot_pull_date":
-            _source_pull_date("leadtime_notice_buckets_overall.csv"),
-        "โมเดลพื้นฐาน chart (focus_items_test_all.csv) -- snapshot_pull_date":
-            _source_pull_date("focus_items_test_all.csv"),
-        "On-time exact (delivery_by_year.csv) -- snapshot_pull_date":
-            _source_pull_date("delivery_by_year.csv"),
-        "Not-late (delivery_not_late_by_year.csv) -- snapshot_pull_date, itself read forward "
-        "from the same Cube_CES pull as the on-time chart above (no new DB call)":
-            _source_pull_date("delivery_not_late_by_year.csv"),
+        "ช่วงข้อมูลหลัก": main_pull,
+        "ผลทดสอบต่อฝ่าย": _source_pull_date("phaseC_step2_per_division_summary_qty.csv"),
+        "กราฟ Rolling-origin": _source_pull_date("phaseC_step2_rolling_origin_qty.csv"),
+        "กราฟระยะเวลาแจ้งล่วงหน้า": _source_pull_date("leadtime_notice_buckets_overall.csv"),
+        "กราฟ MAE โมเดลพื้นฐาน": _source_pull_date("focus_items_test_all.csv"),
+        "กราฟส่งตรงวันพอดี": _source_pull_date("delivery_by_year.csv"),
+        "กราฟส่งไม่ช้า": _source_pull_date("delivery_not_late_by_year.csv"),
+    }
+    section_sources = {
+        "ช่วงข้อมูลหลัก": "output/data/processed_full_category_sales_monthly_forecastDate.csv (forecast/actual, scope, usable range), column snapshot_pull_date",
+        "ผลทดสอบต่อฝ่าย": "phaseC_step2_transferability_per_division.csv / phaseC_step2_per_division_summary_qty.csv, column snapshot_pull_date",
+        "กราฟ Rolling-origin": "phaseC_step2_rolling_origin_qty.csv, column snapshot_pull_date",
+        "กราฟระยะเวลาแจ้งล่วงหน้า": "leadtime_notice_buckets_overall.csv, column snapshot_pull_date",
+        "กราฟ MAE โมเดลพื้นฐาน": "focus_items_test_all.csv, column snapshot_pull_date",
+        "กราฟส่งตรงวันพอดี": "delivery_by_year.csv, column snapshot_pull_date",
+        "กราฟส่งไม่ช้า": "delivery_not_late_by_year.csv, column snapshot_pull_date, itself read forward from the same Cube_CES pull as the on-time chart (no new DB call)",
     }
     data_pulled_at_min = min(sections.values())
-    return {"sections": sections, "data_pulled_at_min": data_pulled_at_min}
+    return {"sections": sections, "section_sources": section_sources, "data_pulled_at_min": data_pulled_at_min}
 
 
 def gather_primary_results() -> pd.DataFrame:
@@ -500,14 +501,14 @@ def render_page(config: dict) -> str:
     stale_sections = [label for label, age in section_ages.items() if age > STALENESS_THRESHOLD_DAYS]
 
     freshness_rows = "".join(
-        f"<tr><td>{html.escape(label)}</td><td>{value}</td>"
-        f"<td>{f'⚠ เก่ากว่า {STALENESS_THRESHOLD_DAYS} วัน ({section_ages[label]} วัน)' if label in stale_sections else 'ทันสมัย (ok)'}</td></tr>"
+        f"<tr><td><!-- source: {freshness['section_sources'][label]} -->{html.escape(label)}</td><td>{value}</td>"
+        f"<td>{f'เก่ากว่า {STALENESS_THRESHOLD_DAYS} วัน' if label in stale_sections else 'ใหม่'}</td></tr>"
         for label, value in freshness["sections"].items()
     )
     staleness_html = (
         f"""<p class="note-box"><b>⚠ บางส่วนของหน้านี้ใช้ข้อมูลเก่ากว่า {STALENESS_THRESHOLD_DAYS} วัน (ประเมินแยกทีละส่วน):</b>
         {"; ".join(html.escape(s) for s in stale_sections)} — ส่วนอื่นของหน้านี้ที่ไม่อยู่ในรายการนี้
-        ยังคงใช้ข้อมูลที่ทันสมัย (ไม่ถือว่าทั้งหน้าเก่าเพียงเพราะส่วนใดส่วนหนึ่งเก่า, METRICS.md §26)</p>"""
+        ยังคงใช้ข้อมูลที่ทันสมัย (ไม่ถือว่าทั้งหน้าเก่าเพียงเพราะส่วนใดส่วนหนึ่งเก่า)<!-- METRICS.md §26 --></p>"""
         if stale_sections else ""
     )
     timestamps_html = f"""
@@ -515,8 +516,9 @@ def render_page(config: dict) -> str:
       <summary style="cursor:pointer"><b>data_pulled_at:</b> {data_pulled_at} {ICT_LABEL}
         (เก่าที่สุดในหน้านี้, ดูรายละเอียดต่อส่วนด้านล่าง) &nbsp;|&nbsp; <b>page_built_at:</b> {page_built_at} {ICT_LABEL}
         &nbsp;<!-- source: src/build_report.py gather_freshness()/datetime.now(), this build run --></summary>
+      <h3 style="margin-top:10px">ข้อมูลแต่ละส่วนดึงเมื่อ</h3>
       <table class="report-table" style="margin-top:8px">
-        <thead><tr><th>ส่วนของหน้า / แหล่งข้อมูล</th><th>data_pulled_at (snapshot_pull_date)</th><th>สถานะ (ประเมินแยกทีละส่วน)</th></tr></thead>
+        <thead><tr><th>ส่วน</th><th>ดึงเมื่อ</th><th>สถานะ</th></tr></thead>
         <tbody>{freshness_rows}</tbody>
       </table>
     </details>
@@ -588,19 +590,8 @@ def render_page(config: dict) -> str:
       <div id="chart-notice" class="plotly-chart"></div>
       {render_notes_html('sales_report.html', 'chart-notice')}
       <h3>สัดส่วนส่งมอบตรงวันครบกำหนดเป๊ะ vs. ส่งไม่ล่าช้า (2023-2026)</h3>
-      <p class="hint">
-        <b>on_time_exact</b> = ส่งมอบตรงวันครบกำหนดพอดี (PlanDelDate), นับตามจำนวนออเดอร์ (row-weighted),
-        ขอบเขต PEM101 128 รายการ — <code>src/investigations/delivery_performance.py:71-75</code>
-        (<code>classify_delay</code>) และบรรทัด 155-161 (<code>by_year</code> aggregation, คอลัมน์
-        <code>pct_on_time</code>) &mdash; METRICS.md §19 ห้ามใช้ตัวเลขนี้เป็น fill-rate benchmark
-        เพียงลำพัง (เหตุการณ์ 73.2% เดิม) จึงแสดง <b>not_late</b> ควบคู่กัน<br>
-        <b>not_late</b> = ส่งมอบตรงหรือก่อนกำหนด (ForecastDelDate), <b>ถ่วงน้ำหนักตามจำนวนหน่วย
-        (unit-weighted, ActualQty)</b> ไม่ใช่ตามจำนวนออเดอร์ — เลือกใช้ unit-weighted เพราะ
-        METRICS.md §10 (fill_rate) นิยามเป็น unit-based ไม่ใช่ order-based โดยตรง และเลขนี้ควรอ่าน
-        คู่กับ fill_rate/service-level ของโครงการ ไม่ใช่สัดส่วนนับออเดอร์
-        (<code>src/investigations/task2a_delivery_notlate_by_year.py</code>, คำนวณจากข้อมูล
-        Cube_CES ชุดเดียวกับ on_time_exact ไม่ได้ดึงข้อมูลใหม่)
-      </p>
+      <!-- Previous wording, kept off screen: on_time_exact = delivered exactly on the due date (PlanDelDate), counted by number of orders (row-weighted), PEM101 128 items -- src/investigations/delivery_performance.py:71-75 (classify_delay) and lines 155-161 (by_year aggregation, column pct_on_time); METRICS.md §19 forbids using this figure alone as a fill-rate benchmark (the earlier 73.2% incident), so not_late is shown alongside. not_late = delivered on or before ForecastDelDate, unit-weighted (ActualQty), not by order count; unit-weighted because METRICS.md §10 (fill_rate) is defined as unit-based, not order-based, and the figure is read alongside fill_rate/service level (src/investigations/task2a_delivery_notlate_by_year.py, computed from the same Cube_CES data as on_time_exact, no new pull). -->
+      <p class="hint">เส้นส่งไม่ช้านับเป็นชิ้น เพราะสิ่งที่ลูกค้าสนใจคือได้ของครบทันไหม ไม่ใช่จำนวนใบสั่ง</p>
       {cite('delivery_by_year.csv', 'year / pct_on_time')}
       {cite('delivery_not_late_by_year.csv', 'year / not_late_pct_unit_weighted')}
       <div id="chart-ontime" class="plotly-chart"></div>
@@ -615,11 +606,16 @@ def render_page(config: dict) -> str:
         <tbody>
           <tr><td>แหล่งข้อมูล (Source table)</td><td>{cite_config('source_table')}<code>{html.escape(str(config['source_table']))}</code></td></tr>
           <tr><td>ช่วงข้อมูลที่ใช้ได้ (Usable range)</td><td>{cite_config('date_range.start')}<!-- source: output/data/processed_full_category_sales_monthly_forecastDate.csv, column year_month (max) -->{config['date_range']['start']} — {usable_range_end}
-            <span class="hint">(เดือนสุดท้ายที่มีข้อมูลจริง คำนวณตอน build — ไม่ใช่ค่าที่พิมพ์ไว้ใน config.yaml อีกต่อไป)</span></td></tr>
-          <tr><td>Split lots</td><td>รายการที่ดูเหมือนซ้ำแต่เป็นการแบ่งส่งมอบจริง (split lots) ยังคงเก็บไว้ทั้งหมด ไม่ถูกลบออก (STATUS.md, Locked Decisions)</td></tr>
-          <tr><td>MPS retained</td><td>สถานะ MPS (PO ที่รับแล้ว รอส่งมอบ) ถือเป็นยอดขายที่ยืนยันแล้ว (confirmed demand) ต้องไม่ถูกตัดออกจากการพยากรณ์ (STATUS.md, Locked Decisions)</td></tr>
-          <tr><td>forecast_date keying</td><td>Series การพยากรณ์ใช้ forecast_date (วันที่ส่งมอบตามสัญญา) เป็น key แบบ frozen snapshot ไม่ query สดทุกครั้ง (STATUS.md, Locked Decisions)</td></tr>
-          <tr><td>Pricelist as division source</td><td>Price List คือแหล่งอ้างอิงหลักของฝ่าย (division) ของสินค้า ไม่ใช้คอลัมน์ division ในฐานข้อมูลกรองข้อมูล (STATUS.md, CONVENTIONS.md)</td></tr>
+            <!-- previously: last month with real data, computed at build time, no longer typed in config.yaml -->
+            <span class="hint">(เดือนล่าสุดที่ข้อมูลครบ)</span></td></tr>
+          <!-- Split lots; STATUS.md, Locked Decisions -->
+          <tr><td colspan="2">รายการที่ดูเหมือนซ้ำแต่เป็นการแบ่งส่งหลายงวด นับครบทุกงวด</td></tr>
+          <!-- MPS retained; STATUS.md, Locked Decisions -->
+          <tr><td colspan="2">PO ที่รับแล้วแต่ยังไม่ส่ง (MPS) นับเป็นยอดขาย เพราะลูกค้าสั่งแล้วจริง</td></tr>
+          <!-- forecast_date keying: the series is keyed on forecast_date, a frozen snapshot, not queried live each time; STATUS.md, Locked Decisions -->
+          <tr><td colspan="2">ยอดขายนับตามเดือนที่ต้องส่งของตามสัญญา ไม่ใช่เดือนที่รับ PO</td></tr>
+          <!-- Pricelist as division source; the database division column is not used to filter; STATUS.md, CONVENTIONS.md -->
+          <tr><td colspan="2">ฝ่ายของสินค้ายึดตาม Price List</td></tr>
         </tbody>
       </table>
     </section>"""
@@ -652,42 +648,27 @@ def render_page(config: dict) -> str:
     sec6 = f"""
     <section id="results">
       <h2>6. ผลลัพธ์ (Results)</h2>
-      <p class="hint">
-        {cite('phaseC_step2_transferability_per_division.csv', 'first_test_month / last_test_month')}
-        <b>หน้าต่างทดสอบ backtest (rolling-origin, {backtest_window['n_origins']} origins):</b>
-        เดือนทดสอบตั้งแต่ <b>{backtest_window['first_test_month']}</b> ถึง <b>{backtest_window['last_test_month']}</b>
-        (METRICS.md §39 -- ทุกตัวเลข MAE/RMSE/Bias/MASE ด้านล่างนี้มาจากช่วงหน้าต่างนี้)
-      </p>
+      {cite('phaseC_step2_transferability_per_division.csv', 'first_test_month / last_test_month')}
+      <!-- rolling-origin backtest window, {backtest_window['n_origins']} origins; METRICS.md §39 -->
+      <p class="hint">ตัวเลขทุกตัวด้านล่างมาจากการทดสอบช่วง {backtest_window['first_test_month']} ถึง {backtest_window['last_test_month']}</p>
       <div class="controls">
         <label>ฝ่าย (Division): <select id="filterDivision"><option value="__all__">ทั้งหมด</option>{div_options}</select></label>
-        <span class="hint">(มีผลกับตาราง PRIMARY, SECONDARY และกราฟ Rolling-origin — ไม่มีผลกับกราฟ Forecast vs Actual)</span>
+        <span class="hint">(มีผลกับตารางหลัก ตารางรอง และกราฟ Rolling-origin · ไม่มีผลกับกราฟ Forecast vs Actual)</span>
         <label>ประเภท (Type): <select id="filterType"><option value="__all__">ทั้งหมด</option></select></label>
-        <span class="hint">(มีผลกับกราฟ Rolling-origin เท่านั้น — ไม่มีผลกับตาราง PRIMARY/SECONDARY)</span>
+        <span class="hint">(มีผลกับกราฟ Rolling-origin เท่านั้น · ไม่มีผลกับตารางหลักและตารางรอง)</span>
       </div>
-      <h3>PRIMARY — MAE / RMSE / Bias / MASE ต่อฝ่าย, วิธี Top-down ระดับรายการสินค้า (item-level, rolling-origin)</h3>
-      <p class="hint">
-        นี่คือวิธี <b>Top-down</b> ที่โครงการนำมาใช้จริง (STATUS.md Locked Decisions, "Final
-        forecasting method") — พยากรณ์ที่ระดับ Type แล้วปันส่วนลงระดับรายการสินค้าตามส่วนแบ่งยอด
-        ขายย้อนหลัง คำนวณใหม่ทุก rolling origin (ไม่ใช่ปันส่วนแบบตายตัวครั้งเดียว), ให้คะแนนที่
-        <b>ระดับรายการสินค้าแต่ละชิ้น</b> ทั้ง 7 origins มาตรฐานของโครงการ —
-        <code>src/transferability_all_divisions.py</code>, สรุปที่
-        <code>output/summary/phaseC_step2_transferability_per_division.csv</code>
-        (ดูรายละเอียดวิธีที่ <code>output/summary/phaseC_step2_report.md</code> Part 3)
-      </p>
+      <h3>ตารางหลัก — ความแม่นของวิธี Top-down (วิธีที่ใช้จริง) ต่อฝ่าย</h3>
+      <!-- Previous wording, kept off screen: this is the Top-down method the project adopted (STATUS.md Locked Decisions, "Final forecasting method"): forecast at Type level, then allocate to items by trailing sales share, recomputed at every rolling origin (not a one-time fixed allocation), scored at item level across the project's standard 7 origins -- src/transferability_all_divisions.py, summary in output/summary/phaseC_step2_transferability_per_division.csv (method detail in output/summary/phaseC_step2_report.md Part 3). -->
+      <p class="hint">ทายยอดรวมระดับประเภทสินค้าก่อน แล้วแบ่งให้แต่ละรหัสตามสัดส่วนที่เคยขาย ทดสอบย้อนหลัง 7 รอบ</p>
       {cite('phaseC_step2_transferability_per_division.csv', 'MAE / RMSE / Bias / MASE / n_scored')}
       <!-- filtered to rows where approach == 'Top-down' -->
       <table class="report-table" id="primary-results-table">
         <thead><tr><th>ฝ่าย</th><th>MAE</th><th>RMSE</th><th>Bias</th><th>MASE</th><th>n_scored (item × origin)</th></tr></thead>
         <tbody></tbody>
       </table>
-      <h3>SECONDARY — MAE / RMSE / MASE / Bias ต่อฝ่าย, วิธี Combination ระดับ Type เท่านั้น (ค่าเฉลี่ยข้าม Type และ origin)</h3>
-      <p class="hint">
-        <b>ตารางนี้ไม่ใช่วิธี Top-down ที่โครงการนำมาใช้</b> — เป็นตัวเลขโมเดล
-        <b>Combination เท่านั้น</b> ที่ระดับ <b>Type</b> (ไม่ใช่ระดับรายการสินค้า), เฉลี่ยข้ามทุก
-        Type และทั้ง 7 rolling origins ต่อฝ่าย — <code>src/backtest_all_divisions.py:126-139</code>
-        (ค้นพบ/เปิดเผยครั้งแรก: <code>output/summary/manual_factsheet.md</code> Part 5 ข้อ 2)
-        เก็บไว้เพื่อเทียบเคียง ไม่ใช่ตารางหลักอีกต่อไป
-      </p>
+      <h3>ตารางรอง — วิธี Combination ระดับประเภทสินค้า</h3>
+      <!-- Previous wording, kept off screen: Combination model only, at Type level (not item level), averaged across all Types and the 7 rolling origins per division -- src/backtest_all_divisions.py:126-139 (first disclosed in output/summary/manual_factsheet.md Part 5 item 2); kept for comparison, no longer the primary table. -->
+      <p class="hint">เก็บไว้เทียบ ไม่ใช่วิธีที่ใช้</p>
       {cite('phaseC_step2_per_division_summary_qty.csv', 'MAE / RMSE / Bias / MASE / n_items')}
       <table class="report-table" id="div-results-table">
         <thead><tr><th>ฝ่าย</th><th>MAE</th><th>RMSE</th><th>MASE</th><th>Bias</th><th>จำนวนสินค้า</th></tr></thead>
@@ -698,9 +679,8 @@ def render_page(config: dict) -> str:
       <div id="chart-rolling" class="plotly-chart"></div>
       {render_notes_html('sales_report.html', 'chart-rolling')}
       <h3>Forecast เทียบกับ Actual — เลือกสินค้าและ rolling origin</h3>
-      <p class="scope-note">ขอบเขตของกราฟนี้: สินค้ากลุ่มนำร่อง PEM101 ({len(fva_items)} รหัส, Fuse Cutout + Surge Arrester)
-        — มาตรฐาน 7 rolling origins แบบเดียวกับที่ใช้ทั่วทั้งโครงการ (get_origins(31,6), src/backtest_rekeyed.py),
-        ไม่ใช่ 9 origins แบบเดิม (ดูหมายเหตุด้านล่าง)</p>
+      <!-- Previous wording, kept off screen: scope of this chart is the PEM101 pilot group ({len(fva_items)} codes, Fuse Cutout + Surge Arrester), the standard 7 rolling origins used across the project (get_origins(31,6), src/backtest_rekeyed.py), not the earlier 9 origins. -->
+      <p class="scope-note">ทดสอบ 7 รอบแบบเดียวกับตารางด้านบน · มีเฉพาะสินค้า PEM101 กลุ่มนำร่อง</p>
       <div class="controls">
         <label>Rolling origin: <select id="filterOrigin">{"".join(f'<option value="{o}">{o}</option>' for o in range(1, 8))}</select></label>
         <span class="hint">(ตัวกรอง ฝ่าย/ประเภท ด้านบนไม่มีผลกับกราฟนี้ — กราฟนี้มีเฉพาะสินค้า PEM101 กลุ่มนำร่องเท่านั้น)</span>
@@ -717,14 +697,9 @@ def render_page(config: dict) -> str:
         ไม่มีเส้น forecast เปรียบเทียบ กราฟด้านบนนี้คำนวณใหม่ด้วย scheme มาตรฐาน 7 origins
         (src/build_report_data.py) และแสดงทั้ง forecast และ actual
       </p>
-      <p>
-        {cite('b3_paired_significance.csv', 'paired_t_stat')}
-        <b>ข้อค้นพบที่บันทึกไว้ (recorded finding):</b> ความได้เปรียบของ Top-down เทียบกับ Direct
-        ไม่มีนัยสำคัญทางสถิติ (paired t = {fmt_num(sig['paired_t_stat'], 3)}, |t| &lt; 2, ค่าความ
-        แตกต่างเฉลี่ย {fmt_num(sig['mean_diff_b_minus_a'], 2)}) — เลือกใช้ Top-down เพราะเป็น
-        แนวทางที่ตรงไปตรงมาที่สุดในเชิงโครงสร้าง ไม่ใช่เพราะพิสูจน์แล้วว่าแม่นยำกว่าอย่างมี
-        นัยสำคัญ
-      </p>
+      {cite('b3_paired_significance.csv', 'paired_t_stat')}
+      <!-- Recorded finding, kept off screen: Top-down's advantage over Direct is not statistically significant (paired t = {fmt_num(sig['paired_t_stat'], 3)}, |t| < 2, mean difference {fmt_num(sig['mean_diff_b_minus_a'], 2)}); Top-down was chosen as the most structurally direct approach, not because it was proven more accurate. -->
+      <p>Top-down ทายพลาดน้อยกว่าวิธี Direct เล็กน้อย แต่ต่างกันไม่มากพอจะยืนยันทางสถิติ ที่เลือกใช้เพราะทำได้ทั้งระบบและผลนิ่งกว่า</p>
     </section>"""
 
     # ---- Section 7: Limitations ----
@@ -744,15 +719,8 @@ def render_page(config: dict) -> str:
     </section>"""
 
     controls_note = f"""
-    <div class="controls-note">
-      <b>หมายเหตุ:</b> ตัวควบคุมบนหน้านี้ (Division/Type/Item/Origin selectors, legend toggles)
-      เปลี่ยนเฉพาะ<b>มุมมองที่แสดง</b> ไม่ได้เปลี่ยนตัวโมเดลหรือค่าพยากรณ์ที่คำนวณไว้แล้ว —
-      การเปลี่ยนแปลงเชิงโครงสร้าง (เช่น พารามิเตอร์ Tier B: base models, combination method,
-      scope, series key, aggregation level) ต้องแก้ไขที่ <code>config.yaml</code> และรัน
-      pipeline ใหม่ ตามการจัดกลุ่มพารามิเตอร์ Tier A/B/C ที่บันทึกไว้ใน <code>config.yaml</code>
-      <!-- source: config.yaml, comment block "Three-tier parameter classification" (Tier A/B/C) -->
-      (ดู <code>config.yaml</code> — comment block "Three-tier parameter classification")
-    </div>"""
+    <!-- Previous wording, kept off screen: the controls on this page (Division/Type/Item/Origin selectors, legend toggles) change only the view shown, not the model or the forecasts already computed; structural changes (Tier B parameters: base models, combination method, scope, series key, aggregation level) are made in config.yaml and need a pipeline re-run, per the Tier A/B/C grouping in config.yaml's comment block "Three-tier parameter classification". -->
+    <div class="controls-note">ตัวกรองในส่วนนี้เปลี่ยนแค่สิ่งที่แสดง ไม่ได้เปลี่ยนการทาย</div>"""
 
     body = sec1 + sec2 + sec3 + sec4 + sec5 + controls_note + sec6 + sec7 + sec8
 
@@ -807,9 +775,7 @@ def render_page(config: dict) -> str:
 <div class="wrap">
   <a class="back-link" href="../index.html">&larr; กลับหน้าหลัก</a>
   <h1>รายงานการพยากรณ์ยอดขาย (Sales Forecast Report) — PEM Group</h1>
-  <p style="color:var(--text-secondary);font-size:12px;">
-    สร้างโดย src/build_report.py — ทุกตัวเลขมีที่มาระบุไว้ในซอร์สโค้ด HTML (ดู &lt;!-- source: ... --&gt;)
-  </p>
+  <!-- สร้างโดย src/build_report.py — ทุกตัวเลขมีที่มาระบุไว้ในซอร์สโค้ด HTML (ดู source comments) -->
   {timestamps_html}
   {body}
 </div>

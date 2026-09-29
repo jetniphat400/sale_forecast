@@ -69,7 +69,7 @@ def test_sales_report_rebuild_still_has_every_note_and_axis_title(tmp_path):
     )
 
     for scope_label in [
-        "มีผลกับตาราง PRIMARY, SECONDARY และกราฟ Rolling-origin",
+        "มีผลกับตารางหลัก ตารางรอง และกราฟ Rolling-origin",
         "มีผลกับกราฟ Rolling-origin เท่านั้น",
         "ตัวกรอง ฝ่าย/ประเภท ด้านบนไม่มีผลกับกราฟนี้",
     ]:

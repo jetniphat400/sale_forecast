@@ -49,17 +49,16 @@
 <div class="wrap">
   <a class="back-link" href="../index.html">&larr; กลับหน้าหลัก</a>
   <h1>รายงานการพยากรณ์ยอดขาย (Sales Forecast Report) — PEM Group</h1>
-  <p style="color:var(--text-secondary);font-size:12px;">
-    สร้างโดย src/build_report.py — ทุกตัวเลขมีที่มาระบุไว้ในซอร์สโค้ด HTML (ดู &lt;!-- source: ... --&gt;)
-  </p>
+  <!-- สร้างโดย src/build_report.py — ทุกตัวเลขมีที่มาระบุไว้ในซอร์สโค้ด HTML (ดู source comments) -->
   
     <details class="note-box" style="margin:10px 0">
       <summary style="cursor:pointer"><b>data_pulled_at:</b> 2026-09-25 11:51:56 ICT (UTC+7)
-        (เก่าที่สุดในหน้านี้, ดูรายละเอียดต่อส่วนด้านล่าง) &nbsp;|&nbsp; <b>page_built_at:</b> 2026-09-28 11:23 ICT (UTC+7)
+        (เก่าที่สุดในหน้านี้, ดูรายละเอียดต่อส่วนด้านล่าง) &nbsp;|&nbsp; <b>page_built_at:</b> 2026-09-29 10:37 ICT (UTC+7)
         &nbsp;<!-- source: src/build_report.py gather_freshness()/datetime.now(), this build run --></summary>
+      <h3 style="margin-top:10px">ข้อมูลแต่ละส่วนดึงเมื่อ</h3>
       <table class="report-table" style="margin-top:8px">
-        <thead><tr><th>ส่วนของหน้า / แหล่งข้อมูล</th><th>data_pulled_at (snapshot_pull_date)</th><th>สถานะ (ประเมินแยกทีละส่วน)</th></tr></thead>
-        <tbody><tr><td>หลัก (forecast/actual, scope, ช่วงข้อมูล) -- snapshot_pull_date</td><td>2026-09-25 11:51:56</td><td>ทันสมัย (ok)</td></tr><tr><td>ตารางผลลัพธ์ต่อฝ่าย (phaseC_step2_transferability_per_division.csv / phaseC_step2_per_division_summary_qty.csv) -- snapshot_pull_date</td><td>2026-09-25 16:35</td><td>ทันสมัย (ok)</td></tr><tr><td>Rolling-origin chart (phaseC_step2_rolling_origin_qty.csv) -- snapshot_pull_date</td><td>2026-09-25 16:35</td><td>ทันสมัย (ok)</td></tr><tr><td>Notice-period chart (leadtime_notice_buckets_overall.csv) -- snapshot_pull_date</td><td>2026-09-25 16:35</td><td>ทันสมัย (ok)</td></tr><tr><td>โมเดลพื้นฐาน chart (focus_items_test_all.csv) -- snapshot_pull_date</td><td>2026-09-25 16:35</td><td>ทันสมัย (ok)</td></tr><tr><td>On-time exact (delivery_by_year.csv) -- snapshot_pull_date</td><td>2026-09-25 16:35</td><td>ทันสมัย (ok)</td></tr><tr><td>Not-late (delivery_not_late_by_year.csv) -- snapshot_pull_date, itself read forward from the same Cube_CES pull as the on-time chart above (no new DB call)</td><td>2026-09-25 16:35</td><td>ทันสมัย (ok)</td></tr></tbody>
+        <thead><tr><th>ส่วน</th><th>ดึงเมื่อ</th><th>สถานะ</th></tr></thead>
+        <tbody><tr><td><!-- source: output/data/processed_full_category_sales_monthly_forecastDate.csv (forecast/actual, scope, usable range), column snapshot_pull_date -->ช่วงข้อมูลหลัก</td><td>2026-09-25 11:51:56</td><td>ใหม่</td></tr><tr><td><!-- source: phaseC_step2_transferability_per_division.csv / phaseC_step2_per_division_summary_qty.csv, column snapshot_pull_date -->ผลทดสอบต่อฝ่าย</td><td>2026-09-25 16:35</td><td>ใหม่</td></tr><tr><td><!-- source: phaseC_step2_rolling_origin_qty.csv, column snapshot_pull_date -->กราฟ Rolling-origin</td><td>2026-09-25 16:35</td><td>ใหม่</td></tr><tr><td><!-- source: leadtime_notice_buckets_overall.csv, column snapshot_pull_date -->กราฟระยะเวลาแจ้งล่วงหน้า</td><td>2026-09-25 16:35</td><td>ใหม่</td></tr><tr><td><!-- source: focus_items_test_all.csv, column snapshot_pull_date -->กราฟ MAE โมเดลพื้นฐาน</td><td>2026-09-25 16:35</td><td>ใหม่</td></tr><tr><td><!-- source: delivery_by_year.csv, column snapshot_pull_date -->กราฟส่งตรงวันพอดี</td><td>2026-09-25 16:35</td><td>ใหม่</td></tr><tr><td><!-- source: delivery_not_late_by_year.csv, column snapshot_pull_date, itself read forward from the same Cube_CES pull as the on-time chart (no new DB call) -->กราฟส่งไม่ช้า</td><td>2026-09-25 16:35</td><td>ใหม่</td></tr></tbody>
       </table>
     </details>
     
@@ -107,19 +106,8 @@
       <div id="chart-notice" class="plotly-chart"></div>
       <p class="hint">▸ ลูกค้าสั่งของล่วงหน้านานแค่ไหนก่อนวันที่ต้องส่ง<br>▸ แกน X = ระยะแจ้งล่วงหน้าขั้นต่ำ (≥30 วัน, ≥60 วัน … ≥180 วัน) · แกน Y = % ของออเดอร์ทั้งหมด<br>▸ สมมติแท่ง ≥30 วันสูง 6% หมายถึงออเดอร์ 100 ใบ มีแค่ 6 ใบที่แจ้งล่วงหน้าเกิน 30 วัน</p>
       <h3>สัดส่วนส่งมอบตรงวันครบกำหนดเป๊ะ vs. ส่งไม่ล่าช้า (2023-2026)</h3>
-      <p class="hint">
-        <b>on_time_exact</b> = ส่งมอบตรงวันครบกำหนดพอดี (PlanDelDate), นับตามจำนวนออเดอร์ (row-weighted),
-        ขอบเขต PEM101 128 รายการ — <code>src/investigations/delivery_performance.py:71-75</code>
-        (<code>classify_delay</code>) และบรรทัด 155-161 (<code>by_year</code> aggregation, คอลัมน์
-        <code>pct_on_time</code>) &mdash; METRICS.md §19 ห้ามใช้ตัวเลขนี้เป็น fill-rate benchmark
-        เพียงลำพัง (เหตุการณ์ 73.2% เดิม) จึงแสดง <b>not_late</b> ควบคู่กัน<br>
-        <b>not_late</b> = ส่งมอบตรงหรือก่อนกำหนด (ForecastDelDate), <b>ถ่วงน้ำหนักตามจำนวนหน่วย
-        (unit-weighted, ActualQty)</b> ไม่ใช่ตามจำนวนออเดอร์ — เลือกใช้ unit-weighted เพราะ
-        METRICS.md §10 (fill_rate) นิยามเป็น unit-based ไม่ใช่ order-based โดยตรง และเลขนี้ควรอ่าน
-        คู่กับ fill_rate/service-level ของโครงการ ไม่ใช่สัดส่วนนับออเดอร์
-        (<code>src/investigations/task2a_delivery_notlate_by_year.py</code>, คำนวณจากข้อมูล
-        Cube_CES ชุดเดียวกับ on_time_exact ไม่ได้ดึงข้อมูลใหม่)
-      </p>
+      <!-- Previous wording, kept off screen: on_time_exact = delivered exactly on the due date (PlanDelDate), counted by number of orders (row-weighted), PEM101 128 items -- src/investigations/delivery_performance.py:71-75 (classify_delay) and lines 155-161 (by_year aggregation, column pct_on_time); METRICS.md §19 forbids using this figure alone as a fill-rate benchmark (the earlier 73.2% incident), so not_late is shown alongside. not_late = delivered on or before ForecastDelDate, unit-weighted (ActualQty), not by order count; unit-weighted because METRICS.md §10 (fill_rate) is defined as unit-based, not order-based, and the figure is read alongside fill_rate/service level (src/investigations/task2a_delivery_notlate_by_year.py, computed from the same Cube_CES data as on_time_exact, no new pull). -->
+      <p class="hint">เส้นส่งไม่ช้านับเป็นชิ้น เพราะสิ่งที่ลูกค้าสนใจคือได้ของครบทันไหม ไม่ใช่จำนวนใบสั่ง</p>
       <!-- source: output/summary/delivery_by_year.csv, column year / pct_on_time -->
       <!-- source: output/summary/delivery_not_late_by_year.csv, column year / not_late_pct_unit_weighted -->
       <div id="chart-ontime" class="plotly-chart"></div>
@@ -131,18 +119,23 @@
         <tbody>
           <tr><td>แหล่งข้อมูล (Source table)</td><td><!-- source: config.yaml, field source_table --><code>[salewarehouse].[dbo].[cube_Sale_APD]</code></td></tr>
           <tr><td>ช่วงข้อมูลที่ใช้ได้ (Usable range)</td><td><!-- source: config.yaml, field date_range.start --><!-- source: output/data/processed_full_category_sales_monthly_forecastDate.csv, column year_month (max) -->2024-01-01 — 2026-07
-            <span class="hint">(เดือนสุดท้ายที่มีข้อมูลจริง คำนวณตอน build — ไม่ใช่ค่าที่พิมพ์ไว้ใน config.yaml อีกต่อไป)</span></td></tr>
-          <tr><td>Split lots</td><td>รายการที่ดูเหมือนซ้ำแต่เป็นการแบ่งส่งมอบจริง (split lots) ยังคงเก็บไว้ทั้งหมด ไม่ถูกลบออก (STATUS.md, Locked Decisions)</td></tr>
-          <tr><td>MPS retained</td><td>สถานะ MPS (PO ที่รับแล้ว รอส่งมอบ) ถือเป็นยอดขายที่ยืนยันแล้ว (confirmed demand) ต้องไม่ถูกตัดออกจากการพยากรณ์ (STATUS.md, Locked Decisions)</td></tr>
-          <tr><td>forecast_date keying</td><td>Series การพยากรณ์ใช้ forecast_date (วันที่ส่งมอบตามสัญญา) เป็น key แบบ frozen snapshot ไม่ query สดทุกครั้ง (STATUS.md, Locked Decisions)</td></tr>
-          <tr><td>Pricelist as division source</td><td>Price List คือแหล่งอ้างอิงหลักของฝ่าย (division) ของสินค้า ไม่ใช้คอลัมน์ division ในฐานข้อมูลกรองข้อมูล (STATUS.md, CONVENTIONS.md)</td></tr>
+            <!-- previously: last month with real data, computed at build time, no longer typed in config.yaml -->
+            <span class="hint">(เดือนล่าสุดที่ข้อมูลครบ)</span></td></tr>
+          <!-- Split lots; STATUS.md, Locked Decisions -->
+          <tr><td colspan="2">รายการที่ดูเหมือนซ้ำแต่เป็นการแบ่งส่งหลายงวด นับครบทุกงวด</td></tr>
+          <!-- MPS retained; STATUS.md, Locked Decisions -->
+          <tr><td colspan="2">PO ที่รับแล้วแต่ยังไม่ส่ง (MPS) นับเป็นยอดขาย เพราะลูกค้าสั่งแล้วจริง</td></tr>
+          <!-- forecast_date keying: the series is keyed on forecast_date, a frozen snapshot, not queried live each time; STATUS.md, Locked Decisions -->
+          <tr><td colspan="2">ยอดขายนับตามเดือนที่ต้องส่งของตามสัญญา ไม่ใช่เดือนที่รับ PO</td></tr>
+          <!-- Pricelist as division source; the database division column is not used to filter; STATUS.md, CONVENTIONS.md -->
+          <tr><td colspan="2">ฝ่ายของสินค้ายึดตาม Price List</td></tr>
         </tbody>
       </table>
     </section>
     <section id="model">
       <h2>5. โมเดลพยากรณ์ (Model)</h2>
       <p>Top-down Combination คือการพยากรณ์ยอดขายในระดับ &quot;Type&quot; (กลุ่มสินค้าที่ขายในลักษณะเดียวกัน เช่น High Voltage Distribution Fuse Cutout) ก่อน โดยใช้ค่าเฉลี่ยของโมเดลพยากรณ์ 6 แบบร่วมกัน (Naive, MA3, MA6, MA12, Croston, SBA) แล้วจึงกระจายยอดพยากรณ์ของ Type นั้นไปยังสินค้าแต่ละ รายการ (Item) ตามสัดส่วนยอดขายจริงในอดีตของสินค้านั้นเทียบกับยอดขายรวมของ Type ทั้งหมด</p>
-      <p>ไม่มีโมเดลเดี่ยวใดชนะโมเดลอื่นอย่างสม่ำเสมอในทุกระดับ (Category/Type/Item) และการเลือกโมเดล ด้วยกฎเกณฑ์ทางวิชาการ (SBC, Kostenko-Hyndman, Petropoulos-Kourentzes) ก็ไม่ได้ผลดีกว่าค่าเฉลี่ย รวม (Combination) อย่างมีนัยสำคัญ — จึงเลือกใช้ Combination เป็นแนวทางที่ปลอดภัยกว่าการเดิมพัน กับโมเดลเดียว (ความเชื่อมั่นสูง)</p>
+      <p>ไม่มีวิธีทายวิธีเดียวที่ชนะทุกกลุ่มสินค้า และการเลือกวิธีตามกฎทางวิชาการก็ไม่ได้ดีกว่าการเฉลี่ยหลายวิธี จึงใช้ค่าเฉลี่ย (Combination) ซึ่งเสี่ยงน้อยกว่าพึ่งวิธีเดียว</p>
       <p>ไม่ใช้ Neural Network (เช่น TensorFlow) หรือ Prophet เนื่องจากมีข้อมูลย้อนหลังเพียง 31 เดือน และ 74% ของรหัสสินค้ามีลักษณะการขายแบบ Intermittent หรือ Lumpy (ขายไม่สม่ำเสมอ ไม่ต่อเนื่อง) ทำให้ Neural Network มีความเสี่ยงสูงที่จะ Overfit กับข้อมูลจำนวนน้อย และ Prophet มีสมมติฐาน ว่าข้อมูลต่อเนื่อง (continuous) ซึ่งไม่ตรงกับลักษณะข้อมูลจริงของโครงการนี้</p>
       <h3>MAE ของโมเดลพื้นฐาน 6 แบบ เทียบกับ Combination และ Top-down (3 focus codes)</h3>
       <p class="hint">คลิกที่ legend เพื่อซ่อน/แสดงแต่ละโมเดล</p>
@@ -150,53 +143,31 @@
       <div id="chart-model" class="plotly-chart"></div>
       <p class="hint">▸ แต่ละวิธีทายสินค้าหลัก 3 ตัวพลาดแค่ไหน<br>▸ แกน X = รหัสสินค้า 3 ตัว · แกน Y = MAE (ชิ้นต่อเดือน) แท่งต่ำ = ทายแม่นกว่า<br>▸ แต่ละสีคือหนึ่งวิธี คลิกชื่อใน legend เพื่อซ่อนหรือแสดง</p>
     </section>
-    <div class="controls-note">
-      <b>หมายเหตุ:</b> ตัวควบคุมบนหน้านี้ (Division/Type/Item/Origin selectors, legend toggles)
-      เปลี่ยนเฉพาะ<b>มุมมองที่แสดง</b> ไม่ได้เปลี่ยนตัวโมเดลหรือค่าพยากรณ์ที่คำนวณไว้แล้ว —
-      การเปลี่ยนแปลงเชิงโครงสร้าง (เช่น พารามิเตอร์ Tier B: base models, combination method,
-      scope, series key, aggregation level) ต้องแก้ไขที่ <code>config.yaml</code> และรัน
-      pipeline ใหม่ ตามการจัดกลุ่มพารามิเตอร์ Tier A/B/C ที่บันทึกไว้ใน <code>config.yaml</code>
-      <!-- source: config.yaml, comment block "Three-tier parameter classification" (Tier A/B/C) -->
-      (ดู <code>config.yaml</code> — comment block "Three-tier parameter classification")
-    </div>
+    <!-- Previous wording, kept off screen: the controls on this page (Division/Type/Item/Origin selectors, legend toggles) change only the view shown, not the model or the forecasts already computed; structural changes (Tier B parameters: base models, combination method, scope, series key, aggregation level) are made in config.yaml and need a pipeline re-run, per the Tier A/B/C grouping in config.yaml's comment block "Three-tier parameter classification". -->
+    <div class="controls-note">ตัวกรองในส่วนนี้เปลี่ยนแค่สิ่งที่แสดง ไม่ได้เปลี่ยนการทาย</div>
     <section id="results">
       <h2>6. ผลลัพธ์ (Results)</h2>
-      <p class="hint">
-        <!-- source: output/summary/phaseC_step2_transferability_per_division.csv, column first_test_month / last_test_month -->
-        <b>หน้าต่างทดสอบ backtest (rolling-origin, 7 origins):</b>
-        เดือนทดสอบตั้งแต่ <b>2025-02</b> ถึง <b>2026-07</b>
-        (METRICS.md §39 -- ทุกตัวเลข MAE/RMSE/Bias/MASE ด้านล่างนี้มาจากช่วงหน้าต่างนี้)
-      </p>
+      <!-- source: output/summary/phaseC_step2_transferability_per_division.csv, column first_test_month / last_test_month -->
+      <!-- rolling-origin backtest window, 7 origins; METRICS.md §39 -->
+      <p class="hint">ตัวเลขทุกตัวด้านล่างมาจากการทดสอบช่วง 2025-02 ถึง 2026-07</p>
       <div class="controls">
         <label>ฝ่าย (Division): <select id="filterDivision"><option value="__all__">ทั้งหมด</option><option value="CI101">CI101</option><option value="PEM101">PEM101</option><option value="PEM102">PEM102</option><option value="PEM103">PEM103</option><option value="PEM107">PEM107</option></select></label>
-        <span class="hint">(มีผลกับตาราง PRIMARY, SECONDARY และกราฟ Rolling-origin — ไม่มีผลกับกราฟ Forecast vs Actual)</span>
+        <span class="hint">(มีผลกับตารางหลัก ตารางรอง และกราฟ Rolling-origin · ไม่มีผลกับกราฟ Forecast vs Actual)</span>
         <label>ประเภท (Type): <select id="filterType"><option value="__all__">ทั้งหมด</option></select></label>
-        <span class="hint">(มีผลกับกราฟ Rolling-origin เท่านั้น — ไม่มีผลกับตาราง PRIMARY/SECONDARY)</span>
+        <span class="hint">(มีผลกับกราฟ Rolling-origin เท่านั้น · ไม่มีผลกับตารางหลักและตารางรอง)</span>
       </div>
-      <h3>PRIMARY — MAE / RMSE / Bias / MASE ต่อฝ่าย, วิธี Top-down ระดับรายการสินค้า (item-level, rolling-origin)</h3>
-      <p class="hint">
-        นี่คือวิธี <b>Top-down</b> ที่โครงการนำมาใช้จริง (STATUS.md Locked Decisions, "Final
-        forecasting method") — พยากรณ์ที่ระดับ Type แล้วปันส่วนลงระดับรายการสินค้าตามส่วนแบ่งยอด
-        ขายย้อนหลัง คำนวณใหม่ทุก rolling origin (ไม่ใช่ปันส่วนแบบตายตัวครั้งเดียว), ให้คะแนนที่
-        <b>ระดับรายการสินค้าแต่ละชิ้น</b> ทั้ง 7 origins มาตรฐานของโครงการ —
-        <code>src/transferability_all_divisions.py</code>, สรุปที่
-        <code>output/summary/phaseC_step2_transferability_per_division.csv</code>
-        (ดูรายละเอียดวิธีที่ <code>output/summary/phaseC_step2_report.md</code> Part 3)
-      </p>
+      <h3>ตารางหลัก — ความแม่นของวิธี Top-down (วิธีที่ใช้จริง) ต่อฝ่าย</h3>
+      <!-- Previous wording, kept off screen: this is the Top-down method the project adopted (STATUS.md Locked Decisions, "Final forecasting method"): forecast at Type level, then allocate to items by trailing sales share, recomputed at every rolling origin (not a one-time fixed allocation), scored at item level across the project's standard 7 origins -- src/transferability_all_divisions.py, summary in output/summary/phaseC_step2_transferability_per_division.csv (method detail in output/summary/phaseC_step2_report.md Part 3). -->
+      <p class="hint">ทายยอดรวมระดับประเภทสินค้าก่อน แล้วแบ่งให้แต่ละรหัสตามสัดส่วนที่เคยขาย ทดสอบย้อนหลัง 7 รอบ</p>
       <!-- source: output/summary/phaseC_step2_transferability_per_division.csv, column MAE / RMSE / Bias / MASE / n_scored -->
       <!-- filtered to rows where approach == 'Top-down' -->
       <table class="report-table" id="primary-results-table">
         <thead><tr><th>ฝ่าย</th><th>MAE</th><th>RMSE</th><th>Bias</th><th>MASE</th><th>n_scored (item × origin)</th></tr></thead>
         <tbody></tbody>
       </table>
-      <h3>SECONDARY — MAE / RMSE / MASE / Bias ต่อฝ่าย, วิธี Combination ระดับ Type เท่านั้น (ค่าเฉลี่ยข้าม Type และ origin)</h3>
-      <p class="hint">
-        <b>ตารางนี้ไม่ใช่วิธี Top-down ที่โครงการนำมาใช้</b> — เป็นตัวเลขโมเดล
-        <b>Combination เท่านั้น</b> ที่ระดับ <b>Type</b> (ไม่ใช่ระดับรายการสินค้า), เฉลี่ยข้ามทุก
-        Type และทั้ง 7 rolling origins ต่อฝ่าย — <code>src/backtest_all_divisions.py:126-139</code>
-        (ค้นพบ/เปิดเผยครั้งแรก: <code>output/summary/manual_factsheet.md</code> Part 5 ข้อ 2)
-        เก็บไว้เพื่อเทียบเคียง ไม่ใช่ตารางหลักอีกต่อไป
-      </p>
+      <h3>ตารางรอง — วิธี Combination ระดับประเภทสินค้า</h3>
+      <!-- Previous wording, kept off screen: Combination model only, at Type level (not item level), averaged across all Types and the 7 rolling origins per division -- src/backtest_all_divisions.py:126-139 (first disclosed in output/summary/manual_factsheet.md Part 5 item 2); kept for comparison, no longer the primary table. -->
+      <p class="hint">เก็บไว้เทียบ ไม่ใช่วิธีที่ใช้</p>
       <!-- source: output/summary/phaseC_step2_per_division_summary_qty.csv, column MAE / RMSE / Bias / MASE / n_items -->
       <table class="report-table" id="div-results-table">
         <thead><tr><th>ฝ่าย</th><th>MAE</th><th>RMSE</th><th>MASE</th><th>Bias</th><th>จำนวนสินค้า</th></tr></thead>
@@ -207,9 +178,8 @@
       <div id="chart-rolling" class="plotly-chart"></div>
       <p class="hint">▸ แต่ละวิธีทายแม่นสม่ำเสมอไหม ในการทดสอบแต่ละรอบ<br>▸ แกน X = รอบทดสอบที่ 1-7 เรียงตามเวลา · แกน Y = MAE เฉลี่ย (ชิ้นต่อเดือน)<br>▸ เส้นที่ต่ำและนิ่ง = ดี เส้นที่กระโดดขึ้นลง = บางช่วงทายได้ บางช่วงพลาดหนัก</p>
       <h3>Forecast เทียบกับ Actual — เลือกสินค้าและ rolling origin</h3>
-      <p class="scope-note">ขอบเขตของกราฟนี้: สินค้ากลุ่มนำร่อง PEM101 (114 รหัส, Fuse Cutout + Surge Arrester)
-        — มาตรฐาน 7 rolling origins แบบเดียวกับที่ใช้ทั่วทั้งโครงการ (get_origins(31,6), src/backtest_rekeyed.py),
-        ไม่ใช่ 9 origins แบบเดิม (ดูหมายเหตุด้านล่าง)</p>
+      <!-- Previous wording, kept off screen: scope of this chart is the PEM101 pilot group (114 codes, Fuse Cutout + Surge Arrester), the standard 7 rolling origins used across the project (get_origins(31,6), src/backtest_rekeyed.py), not the earlier 9 origins. -->
+      <p class="scope-note">ทดสอบ 7 รอบแบบเดียวกับตารางด้านบน · มีเฉพาะสินค้า PEM101 กลุ่มนำร่อง</p>
       <div class="controls">
         <label>Rolling origin: <select id="filterOrigin"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option></select></label>
         <span class="hint">(ตัวกรอง ฝ่าย/ประเภท ด้านบนไม่มีผลกับกราฟนี้ — กราฟนี้มีเฉพาะสินค้า PEM101 กลุ่มนำร่องเท่านั้น)</span>
@@ -226,22 +196,17 @@
         ไม่มีเส้น forecast เปรียบเทียบ กราฟด้านบนนี้คำนวณใหม่ด้วย scheme มาตรฐาน 7 origins
         (src/build_report_data.py) และแสดงทั้ง forecast และ actual
       </p>
-      <p>
-        <!-- source: output/summary/b3_paired_significance.csv, column paired_t_stat -->
-        <b>ข้อค้นพบที่บันทึกไว้ (recorded finding):</b> ความได้เปรียบของ Top-down เทียบกับ Direct
-        ไม่มีนัยสำคัญทางสถิติ (paired t = -1.555, |t| &lt; 2, ค่าความ
-        แตกต่างเฉลี่ย -8.48) — เลือกใช้ Top-down เพราะเป็น
-        แนวทางที่ตรงไปตรงมาที่สุดในเชิงโครงสร้าง ไม่ใช่เพราะพิสูจน์แล้วว่าแม่นยำกว่าอย่างมี
-        นัยสำคัญ
-      </p>
+      <!-- source: output/summary/b3_paired_significance.csv, column paired_t_stat -->
+      <!-- Recorded finding, kept off screen: Top-down's advantage over Direct is not statistically significant (paired t = -1.555, |t| < 2, mean difference -8.48); Top-down was chosen as the most structurally direct approach, not because it was proven more accurate. -->
+      <p>Top-down ทายพลาดน้อยกว่าวิธี Direct เล็กน้อย แต่ต่างกันไม่มากพอจะยืนยันทางสถิติ ที่เลือกใช้เพราะทำได้ทั้งระบบและผลนิ่งกว่า</p>
     </section>
     <section id="limitations">
       <h2>7. ข้อจำกัด (Limitations)</h2>
-      <ul><li>ยังไม่สามารถพิสูจน์ได้ว่า forecast_date (วันที่ส่งมอบตามสัญญา) ถูกแก้ไขภายหลังจากรับ PO หรือไม่ เพราะไม่มีตารางบันทึกการแก้ไขในระบบ — ผลกระทบถูกจำกัดไว้ต่ำกว่า 2.5% ของแถวข้อมูล โดยไม่มีทิศทางที่แน่นอน (ความเชื่อมั่นสูงในข้อสรุปเชิงลบนี้ แต่ยังไม่ใช่ข้อพิสูจน์)</li><li>ไม่มีข้อมูลประวัติของ Price List เวอร์ชันเก่า จึงไม่สามารถตรวจสอบได้ว่าการจัดฝ่าย/ประเภท สินค้าเคยเปลี่ยนแปลงไปจากอดีตหรือไม่ (cannot be determined จากข้อมูลที่มีอยู่ในปัจจุบัน)</li><li>ข้อมูลยอดขายอ้างอิงจาก PO ที่ลูกค้าสั่งจริงเท่านั้น ไม่ครอบคลุมความต้องการที่ไม่ได้กลายเป็น PO เลย (เช่น ลูกค้าที่ถูกปฏิเสธเพราะสินค้าไม่พอ หรือใบเสนอราคาที่ไม่ถูกแปลงเป็นคำสั่งซื้อ) — เป็นข้อจำกัดเชิงโครงสร้างของทั้งแนวทาง ไม่ใช่จุดบกพร่องที่แก้ไขได้ด้วยการทำความสะอาดข้อมูล</li><li>ความได้เปรียบของ Top-down เทียบกับ Direct และ Naive ไม่มีนัยสำคัญทางสถิติ (paired t-test, |t| ต่ำกว่า 2 ในทุกคู่เปรียบเทียบ) — เลือกใช้ Top-down เพราะเป็นแนวทางที่ตรงไปตรงมาที่สุดใน เชิงโครงสร้าง ไม่ใช่เพราะพิสูจน์แล้วว่าให้ผลแม่นยำที่สุด</li><li>เวลาประกอบสินค้า (assembly time) หลังได้รับชิ้นส่วนไม่มีอยู่ในข้อมูลเลย เป็นช่องว่างที่ต้อง ให้ธุรกิจยืนยัน — ทุกค่าที่ใช้เวลานี้ในการวิเคราะห์ Phase E เป็นค่าอนุมาน (assumption) ที่ตั้ง ไว้เพื่อการวิเคราะห์ ไม่ใช่ข้อเท็จจริงที่วัดได้</li><li>ค่า Min/Max สต็อกที่ตั้งไว้ในระบบปัจจุบัน (Cube_Inventory_Exact) ใช้เป็น input ในการคำนวณ ไม่ได้ — 46 จาก 128 รายการไม่มีการตั้งค่าเลย และค่าที่มีอยู่ไม่สอดคล้องกันสูงระหว่างคลัง — ใช้ ได้เพียงเป็นข้อมูลเปรียบเทียบ (baseline) เท่านั้น</li></ul>
+      <ul><li>วันส่งตามสัญญาอาจถูกแก้หลังรับ PO ระบบไม่มีบันทึกการแก้ ตรวจแล้วกระทบไม่เกิน 2.5% ของรายการ</li><li>ไม่มีข้อมูลประวัติของ Price List เวอร์ชันเก่า จึงไม่สามารถตรวจสอบได้ว่าการจัดฝ่าย/ประเภท สินค้าเคยเปลี่ยนแปลงไปจากอดีตหรือไม่ (cannot be determined จากข้อมูลที่มีอยู่ในปัจจุบัน)</li><li>ยอดขายนับจาก PO ที่ลูกค้าสั่งจริงเท่านั้น จึงไม่เห็นความต้องการที่ไม่ได้กลายเป็น PO เช่น ลูกค้าที่ไม่สั่งเพราะรู้ว่าไม่มีของ</li><li>ความได้เปรียบของ Top-down เทียบกับ Direct และ Naive ไม่มีนัยสำคัญทางสถิติ (paired t-test, |t| ต่ำกว่า 2 ในทุกคู่เปรียบเทียบ) เลือกใช้ Top-down เพราะเป็นแนวทางที่ตรงไปตรงมาที่สุดในเชิงโครงสร้าง ไม่ใช่เพราะพิสูจน์แล้วว่าให้ผลแม่นยำที่สุด</li><li>ไม่มีข้อมูลเวลาประกอบหลังได้ชิ้นส่วน ตัวเลขนี้ในการวางแผน stock เป็นค่าสมมติ</li><li>Min/Max ที่ตั้งอยู่ในระบบตอนนี้ใช้คำนวณไม่ได้ 46 จาก 128 รายการไม่ได้ตั้ง และค่าที่มีไม่สอดคล้องกัน ใช้ได้แค่เป็นตัวเทียบ</li></ul>
     </section>
     <section id="next-steps">
       <h2>8. ขั้นตอนต่อไป (Next Steps)</h2>
-      <ul><li>รอบให้คะแนน Forward-test ครั้งแรกจะเริ่มได้หลังวันที่ 2026-09-30 (เมื่อผ่าน leakage-guard margin 30 วัน) โดยเดือนพยากรณ์แรกที่จะให้คะแนนคือ 2026-08</li><li>ตัดสินใจว่าจะใช้รหัสสินค้าใกล้เคียง (analogue) แทนค่าเฉลี่ย Type สำหรับ 66 จาก 82 รายการ Placeholder ที่มีรหัสใกล้เคียงหรือไม่ — ยังไม่ทดสอบว่าให้ผลแม่นยำกว่าจริง เป็นงานของ Modeler ในอนาคต</li><li>เลือกระดับ Service Level ที่เหมาะสม (90/95/98%) และให้คำนิยาม &#x27;มูลค่าสต็อกตามสถานการณ์&#x27; ที่ชัดเจนหนึ่งเดียว (ค่าเฉลี่ยตามการจำลอง เทียบกับค่าคงที่ที่ระดับ Max) ก่อนถือว่าผลลัพธ์ Phase E1 ผ่านการตรวจสอบ (validate) อย่างสมบูรณ์</li><li>ยืนยันนโยบายรีเซ็ตรหัสผ่านฐานข้อมูลเป็นระยะกับฝ่าย IT — เพิ่งเกิดปัญหารหัสผ่านหมดอายุ ระหว่าง Phase E0 ทำให้งานตรวจสอบข้อมูลหยุดชะงักไปหนึ่งรอบ</li></ul>
+      <ul><li>ทุกเดือนระบบจะเทียบการทายกับยอดขายจริงเดือนล่าสุด ผลรอบแรกต้นเดือน ต.ค. 2569</li></ul>
     </section>
 </div>
 <!-- source: output/summary/*.csv (see gather_* functions in src/build_report.py) and
