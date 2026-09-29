@@ -925,6 +925,27 @@ produced a wrong result, with the correct handling and the report that found it.
     (a hypothesis that the same distrust applies here, not itself tested) — added to STATUS.md's
     new scheduled-work list for the next code task to verify.
 
+24. **`forecast/inventory.html` was never rebuilt by the monthly runner, so its numbers and dates
+    aged silently.** Naive reading: METRICS.md §28 step 7 ("rebuild every page") covers every page
+    the runner's monthly run touches. Reality: `src/monthly_refresh.py` step 7 rebuilt only
+    `forecast/sales_report.html`; `forecast/inventory.html`'s builder needs stock and PEM103/PEM107
+    sales pulls that the runner's single connection does not make (module docstring of
+    `src/monthly_refresh.py`, before this fix). **Correct handling (task M1, 2026-09-29)**: step 7
+    now also builds the inventory page from this run's own step-1 pull
+    (`output/data/raw_all_divisions_sales.csv`) plus the latest saved stock pull under
+    `output/snapshots/` (`src/inventory_page_sources.py`); the page shows the older of the two pull
+    times. The runner never pulls stock itself, so stock stays as old as the last saved pull until a
+    separate stock pull exists. Also found in the same task: `src/monthly_refresh.py` decoded child
+    output with the console code page, so a run started from `C:\Windows\system32` (cp874)
+    raised `UnicodeDecodeError` and aborted step 1; fixed by decoding as UTF-8. **V1** (found and
+    fixed in one task; the dry-run result is recorded in STATUS.md Section 10, task M1).
+    Related: the page's "monthly against daily" gap for PEM101 was typed as 3.3% (a run on the older
+    128-item pilot set, STATUS.md Phase E1-fix-2). Recomputed at build time on the items the page
+    gives a Min/Max, against `output/summary/phaseE1fix_2_minmax_stockvalue.csv`
+    (`stock_value_contribution`), the gap is 1.6% on 2026-09-29 (`src/reader_values.py`,
+    `pipeline_gap_pct`) -- this contradicts the earlier typed figure, which was for a different item
+    set, and the page now shows the computed value. **V1** (one recomputation by the implementing task).
+
 ---
 
 ## 5. Unknowns

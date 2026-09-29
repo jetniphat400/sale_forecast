@@ -6239,6 +6239,34 @@ Full detail in the new Section 13 below; items 4-6 and 10 above are DONE as stat
 correction: item 6's class counts changed after the 2026-09-29 bug fix (PEM107 `stock_policy` is
 4, not the 9 first reported) — see Section 13.**
 
+**Task M1 (2026-09-29): Min-Max page layout, reader values computed at build time, runner rebuilds
+`forecast/inventory.html`.**
+- **DONE.** `forecast/inventory.html`: fixed left control panel (division selector, six sliders,
+  warehouse checklist, summary box) at 900 px and wider, collapsible bar below; changed numbers flash
+  for about a second; service-level marker on the trade-off chart; charts replaced by a message when the
+  charting library fails; totals and tables render on load without it. Rules added to CONVENTIONS.md
+  ("Page layout", "Dynamic values").
+- **DONE.** Numbers in reader text now computed at build time (`src/reader_values.py`, config
+  `page_timestamps`): backtest rounds, items with no current Min/Max (46 of 128), forecast_date
+  disagreement share (2.52%, `phaseA_a1_task2_*` outputs), fulfilment notice threshold and signal count,
+  staleness threshold, PEM101 monthly-versus-daily gap (now 1.6%, replacing the typed 3.3% from the older
+  128-item set; DATA_MAP.md Section 4 Trap 24), PEM107 month and units.
+- **DONE.** `src/monthly_refresh.py` step 7 also rebuilds `forecast/inventory.html` (sales from the run's
+  own pull, stock from the latest saved pull); child-process output is decoded as UTF-8 (a run from
+  `C:\Windows\system32` aborted at step 1 on cp874).
+- **OPEN, found and not done:** typed numbers left in reader text (74% intermittent/lumpy share, first
+  scoring month, |t| < 2, axis and example numbers in `config/manual_notes.yaml`, the 2023-2026 year
+  filter); the summary figure "Items with a Min/Max" shows 0 for PEM101 and PEM107 (counts only
+  `finished_goods_stock`); `placeholder - method already assigned` and the PEM103 `excluded - division
+  excluded ...` statuses have no approved Thai wording; sales_report.html throws when the charting library
+  is blocked; "ไม่เกิน 2.5%" against an exact 2.52%.
+- **Dry run, 2026-09-29:** the first run from `C:\Windows\system32` aborted at step 1 (decoding bug,
+  fixed). Steps 2-11 were then run on that pull's data (no second connection): every gate passed except
+  one test, `test_embedded_json_matches_source_files_exactly`, which compares the tracked sales report to
+  analysis inputs that step 4 had refreshed from the new pull; it passed after the sales report was rebuilt
+  from them (5 values changed: 3 notice buckets, 1 on-time, 1 not-late). The forward-test logs were
+  unchanged. The exact scheduled-task command has not been re-run end to end.
+
 ## 11. Forward test ready for 30 September + monthly runner (this task, 2026-09-25)
 
 Scope: Part 1 (forward-test log path fixes, vintage migration, adapted consistency check, dry-run
