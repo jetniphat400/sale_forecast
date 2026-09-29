@@ -72,7 +72,9 @@ def take_inventory_snapshot() -> pd.DataFrame:
     codes = sorted(pl["code"].unique())
     inv = query_inventory_exact(codes, allow_empty=True)
     load_timestamp = pd.to_datetime(inv["timestamp"]).min() if len(inv) and inv["timestamp"].notna().any() else pd.Timestamp.now()
-    inv = inv[["itemcode", "warehouse", "stock"]].copy()
+    # minimum/maximum/reserve_bywa are kept too (task M2): the Min-Max page shows the settings now in the
+    # system, and the monthly runner builds that page from this snapshot.
+    inv = inv[["itemcode", "warehouse", "stock", "minimum", "maximum", "reserve_bywa"]].copy()
     inv["load_timestamp"] = load_timestamp.strftime("%Y-%m-%d %H:%M:%S")
     logger.info("Inventory snapshot: %d (item, warehouse) rows for %d pricelist codes, "
                 "load_timestamp=%s.", len(inv), len(codes), inv["load_timestamp"].iloc[0] if len(inv) else "n/a")

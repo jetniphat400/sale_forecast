@@ -478,6 +478,7 @@ def build_page(**data_sources) -> str:
   </div>
 
   <p class="scope-note" id="snapshot-note"></p>
+  <p class="scope-note" id="stock-note" style="display:none"></p>
   </main>
   </div>
 </div>
@@ -552,7 +553,9 @@ const POLICY_LABEL = {{ stock_policy: 'เก็บ stock', confirmed_to_order: 
 // Display names for the placeholder table's status values (matched on their leading words).
 function statusLabel(p) {{
   if (String(p).startsWith('placeholder - pending method')) return 'ไม่มีประวัติขาย (รอวิธีประมาณ)';
+  if (String(p).startsWith('placeholder - method already assigned')) return 'ไม่มีประวัติขาย (กำหนดวิธีประมาณแล้ว)';
   if (String(p).startsWith('excluded - listed but never sold')) return 'ตัดออก มีใน Price List แต่ไม่เคยขาย';
+  if (String(p).startsWith('excluded - division excluded')) return 'ตัดออก ทั้งฝ่ายไม่ใช้นโยบาย stock';
   return p;
 }}
 function policyLabel(p) {{ return POLICY_LABEL[p] || p; }}
@@ -581,6 +584,13 @@ function signalsCell(r) {{
   return `S1 ${{signalMark(r.S1)}} &nbsp; S2 ${{s2}} &nbsp; S3 ${{signalMark(r.S3)}}`;
 }}
 
+// One rule decides which rows the item table lists and which of them show a Min and Max; the summary
+// box counts exactly those rows, for every division.
+function isItemTableRow(r) {{
+  return !r.noForecastDemand && r.policy !== 'confirmed_to_order' && r.policy !== 'conflict';
+}}
+function showsMinMax(r) {{ return isItemTableRow(r) && r.min !== null && r.max !== null; }}
+
 function renderTable(perItem) {{
   // task 2b Part 1 (METRICS.md Sec.40): items with no_forecast_demand move to the separate
   // "stock with no forecast demand" table instead of showing months of cover = ∞ in this one.
@@ -592,8 +602,7 @@ function renderTable(perItem) {{
   const segmented = perItem.some(r => r.label !== undefined);
   noteEl.style.display = segmented ? 'block' : 'none';
   for (const r of perItem) {{
-    if (r.noForecastDemand) continue;
-    if (r.policy === 'confirmed_to_order' || r.policy === 'conflict') continue;
+    if (!isItemTableRow(r)) continue;
     const var_ = (r.currentMin && r.min !== null && r.unitCost) ? Math.max(0, r.currentMin - r.min) * r.unitCost : 0;
     const tr = document.createElement('tr');
     tr.innerHTML = `<td>${{r.code}}</td><td>${{policyLabel(r.policy)}}</td>` +
@@ -797,8 +806,9 @@ function applyCurveTarget(targetNotLate) {{
       'ต้องเพิ่ม stock กี่ % เพื่อไปถึงเป้าที่เลือก: ไม่มีข้อมูลสมาชิก ensemble ที่ครอบคลุมเป้าหมายนี้ (นอกช่วงที่คำนวณไว้)';
   }} else {{
     const pct = v => (100 * (v - 1));
-    const sg = v => (v >= 0 ? '+' : '-');   // the "+" of the approved wording turns into "-" when the change is a reduction
-    const f1 = v => sg(pct(v)) + Math.abs(pct(v)).toFixed(1);
+    const sg = v => (v >= 0 ? '+' : '\u2212');      // + or the minus sign, so a range crossing zero reads correctly
+    const signed = v => sg(pct(v)) + Math.abs(pct(v)).toFixed(1);
+    const magnitude = v => Math.abs(pct(v)).toFixed(1);
     const ratioBandPctOfMedian = ratio.median ? 100 * (ratio.max - ratio.min) / ratio.median : null;
     const absBandPctOfMedian = result.stock_value_median ? 100 * (result.stock_value_max - result.stock_value_min) / result.stock_value_median : null;
     const narrower = (ratioBandPctOfMedian !== null && absBandPctOfMedian !== null && ratioBandPctOfMedian < absBandPctOfMedian);
@@ -806,9 +816,12 @@ function applyCurveTarget(targetNotLate) {{
       : narrower
         ? ` <span style="color:#1baf7a">ช่วงของอัตราส่วนนี้ (${{ratioBandPctOfMedian.toFixed(1)}}% ของค่ากลาง) แคบกว่าช่วงมูลค่า stock สัมบูรณ์ด้านบน (${{absBandPctOfMedian.toFixed(1)}}%) — เชื่อถือได้มากกว่า</span>`
         : ` <span style="color:#c0392b">ช่วงของอัตราส่วนนี้ (${{ratioBandPctOfMedian.toFixed(1)}}% ของค่ากลาง) ไม่แคบกว่าช่วงมูลค่า stock สัมบูรณ์ (${{absBandPctOfMedian.toFixed(1)}}%) — ห้ามนำเสนอว่าแน่นอนกว่า</span>`;
-    rscNote.innerHTML = htmlComment('METRICS.md §24 relative_service_cost') +
-      `ต้องเพิ่ม stock ${{f1(ratio.median)}}% (ช่วง ${{f1(ratio.min)}}% ถึง ${{f1(ratio.max)}}%) ` +
-      `เพื่อขยับการส่งไม่ช้าจาก ${{state.rsc.today_not_late_pct}}% เป็น ${{result.not_late_median_pct.toFixed(2)}}%` + bandNote;
+    const today = state.rsc.today_not_late_pct, target = result.not_late_median_pct.toFixed(2);
+    // Two approved sentences, chosen by the sign of the median ratio.
+    const sentence = pct(ratio.median) >= 0
+      ? `ต้องเพิ่ม stock +${{magnitude(ratio.median)}}% (ช่วง ${{signed(ratio.min)}}% ถึง ${{signed(ratio.max)}}%) เพื่อขยับการส่งไม่ช้าจาก ${{today}}% เป็น ${{target}}%`
+      : `ลด stock ได้ ${{magnitude(ratio.median)}}% (ช่วง ${{signed(ratio.min)}}% ถึง ${{signed(ratio.max)}}%) ถ้ายอมให้การส่งไม่ช้าลดจาก ${{today}}% เป็น ${{target}}%`;
+    rscNote.innerHTML = htmlComment('METRICS.md §24 relative_service_cost') + sentence + bandNote;
   }}
 
   const tbody = document.getElementById('curve-item-table-body');
@@ -963,6 +976,24 @@ function onDivisionChange() {{
   const pullNote = String(divisionData.snapshot_pull_date).slice(pullShown.length).trim();
   document.getElementById('snapshot-note').innerHTML =
     htmlComment('data_pulled_at') + '<b>ข้อมูลดึงเมื่อ:</b> ' + pullShown + ' ICT (UTC+7)' + (pullNote ? htmlComment(pullNote) : '') + staleNote;
+  // The stock section has its own pull time (the daily stock snapshot's load time) and its own staleness notice.
+  const stockEl = document.getElementById('stock-note');
+  if (divisionData.stock_pulled_at) {{
+    const stockAt = parseYmdHm(divisionData.stock_pulled_at);
+    let stockStale = '';
+    if (builtAt && stockAt) {{
+      const stockAge = (builtAt - stockAt) / 86400000;
+      if (stockAge > DATA.staleness_threshold_days) {{
+        stockStale = ' <span class="note-box" style="display:inline;padding:2px 8px;">&#9888; ข้อมูลเก่ากว่า ' + DATA.staleness_threshold_days + ' วัน (' +
+          stockAge.toFixed(1) + ' วัน) เทียบกับหน้าสร้างเมื่อ</span>';
+      }}
+    }}
+    stockEl.innerHTML = htmlComment('stock section, daily snapshot load time') + '<b>ข้อมูลดึงเมื่อ (stock):</b> ' +
+      divisionData.stock_pulled_at + ' ICT (UTC+7)' + stockStale;
+    stockEl.style.display = '';
+  }} else {{
+    stockEl.style.display = 'none';
+  }}
   renderWarehouseChecklist(divisionData);
   renderNoPolicyTable(divisionData);
   renderCurveTarget(divisionData);
@@ -984,7 +1015,7 @@ function onControlChange(noFlash) {{
   const result = computeAll(controls, divisionData, checked);
   document.getElementById('tot-stock-value').textContent = fmtTHB(result.stockValue);
   document.getElementById('tot-holding-cost').textContent = fmtTHB(result.holdingCost);
-  document.getElementById('tot-n-items').textContent = result.perItem.filter(r => r.policy === 'finished_goods_stock' && r.min !== null).length;
+  document.getElementById('tot-n-items').textContent = result.perItem.filter(showsMinMax).length;
   document.getElementById('tot-excess-count').textContent = result.excessCount;
   renderTable(result.perItem);
   renderNoForecastTable(result.perItem);

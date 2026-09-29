@@ -443,11 +443,13 @@ def apply_reader_text(data: dict) -> dict:
     return data
 
 
-def build_data(inventory_source=None, sales_source=None, pull_labels: dict = None) -> dict:
+def build_data(inventory_source=None, sales_source=None, pull_labels: dict = None, stock_pulled_at: str = None,
+               stock_meta: dict = None) -> dict:
     """Builds the page's embedded data. By default it pulls live (one connection attempt each for
     stock and for PEM103/PEM107 sales). The optional arguments let a caller supply already-pulled
     data instead, with no database access: inventory_source(codes, allow_empty=False) -> stock rows,
-    sales_source(codes) -> raw sales rows, pull_labels {division: 'data pulled at' text}
+    sales_source(codes) -> raw sales rows, pull_labels {division: 'data pulled at' text}, stock_pulled_at
+    (the stock section's own pull time, shown as its data-pulled time)
     (src/inventory_page_sources.py provides them from saved snapshots or from the monthly runner's pull)."""
     with open(CONFIG_PATH, "r", encoding="utf-8") as f:
         config = yaml.safe_load(f)
@@ -499,6 +501,10 @@ def build_data(inventory_source=None, sales_source=None, pull_labels: dict = Non
         "pem107_alert": {},
     }
     apply_reader_text(data)
+    if stock_pulled_at:
+        for dd in data["divisions"].values():
+            dd["stock_pulled_at"] = stock_pulled_at
+        data["stock_meta"] = stock_meta or {}
     logger.info("Built multi-division data: %s", {k: len(v["items"]) for k, v in divisions.items()})
     return data
 

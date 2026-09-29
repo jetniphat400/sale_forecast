@@ -252,3 +252,86 @@ def test_phone_width_panel_is_collapsible_and_page_does_not_scroll_sideways(edge
         edge.pump(0.4)
         assert edge.ev("document.documentElement.scrollWidth <= window.innerWidth + 1"), f"{division}: page scrolls sideways at 390px"
     assert not edge.errors, edge.errors
+
+
+# ------------------------------------------------------------------ summary count, relative-cost sentences, status labels
+
+COUNT_JS = """(function(){
+  var rows=[...document.querySelectorAll('#item-table-body tr')];
+  var showing=rows.filter(function(r){var mn=r.children[4].textContent.trim(),mx=r.children[5].textContent.trim();
+    return mn!=='-' && mx!=='-';}).length;
+  return {shown:document.getElementById('tot-n-items').textContent.trim(), rowsWithMinMax:showing, rows:rows.length}})()"""
+
+
+@pytest.mark.parametrize("division", DIVISIONS)
+def test_summary_count_equals_item_table_rows_showing_a_min_and_max(desktop, division):
+    e = desktop
+    select_division(e, division)
+    settings = [dict(RESET),
+                dict(RESET, procurement_lead_time_days=90, cycle_service_level=0.99, assembly_time_days=10)]
+    for setting in settings:
+        for k, v in setting.items():
+            set_slider(e, k, v)
+        c = e.ev(COUNT_JS)
+        assert c["rows"] > 0
+        assert c["shown"] == str(c["rowsWithMinMax"]), f"{division} {setting}: summary shows {c['shown']}, table has {c['rowsWithMinMax']} rows with a Min and Max"
+    # the count must not be the old always-zero value for the divisions that use the class rule
+    assert e.ev(COUNT_JS)["rowsWithMinMax"] > 0
+    assert not e.errors, e.errors
+
+
+def _target_sentence(e):
+    return e.ev("document.getElementById('relative-service-cost-note').textContent").strip()
+
+
+def _set_target(e, value):
+    e.ev(f"(function(){{var s=document.getElementById('notlate-slider'); s.value={value}; "
+         f"s.dispatchEvent(new Event('input')); return 1}})()")
+    e.pump(0.3)
+
+
+def test_relative_cost_sentence_follows_the_sign_of_the_median(desktop):
+    import re
+    e = desktop
+    select_division(e, "PEM101")
+    lo = float(e.ev("document.getElementById('notlate-slider').min"))
+    hi = float(e.ev("document.getElementById('notlate-slider').max"))
+    minus = "−"
+    range_re = r"\(ช่วง ([+" + minus + r"])(\d+\.\d)% ถึง ([+" + minus + r"])(\d+\.\d)%\)"
+    # above today: the increase sentence, "+" before the median and signed range bounds
+    e.ev("document.getElementById('preset-stretch').click(); 1")
+    e.pump(0.3)
+    today_pct = e.ev("document.getElementById('preset-today-lowest').textContent")
+    up = _target_sentence(e)
+    m = re.match(r"ต้องเพิ่ม stock \+(\d+\.\d)% " + range_re + r" เพื่อขยับการส่งไม่ช้าจาก (\d+\.\d+)% เป็น (\d+\.\d+)%", up)
+    assert m, f"sentence above today is not the increase sentence: {up}"
+    assert float(m.group(1)) > 0 and m.group(2) == "+" and m.group(4) == "+", up
+    assert float(m.group(7)) > float(m.group(6))
+    # below today: the reduction sentence, range bounds carry minus signs
+    _set_target(e, (lo + hi) / 2)
+    down = _target_sentence(e)
+    m = re.match(r"ลด stock ได้ (\d+\.\d)% " + range_re + r" ถ้ายอมให้การส่งไม่ช้าลดจาก (\d+\.\d+)% เป็น (\d+\.\d+)%", down)
+    assert m, f"sentence below today is not the reduction sentence: {down}"
+    assert m.group(2) == minus and m.group(4) == minus, f"a reduction range must carry minus signs: {down}"
+    assert float(m.group(7)) < float(m.group(6))
+    assert "+-" not in down and "ต้องเพิ่ม" not in down
+    # at today's own level the range straddles zero: both signs show
+    e.ev("document.getElementById('preset-today-lowest').click(); 1")
+    e.pump(0.3)
+    mid = _target_sentence(e)
+    m = re.search(range_re, mid)
+    assert m and m.group(1) == minus and m.group(3) == "+", f"a range crossing zero must read minus to plus: {mid}"
+    assert mid.startswith("ต้องเพิ่ม stock +")
+    assert not e.errors, e.errors
+
+
+@pytest.mark.parametrize("division", DIVISIONS)
+def test_placeholder_status_values_show_their_approved_labels(desktop, division):
+    e = desktop
+    select_division(e, division)
+    cells = e.ev("[...document.querySelectorAll('#no-policy-table-body tr')].map(r=>r.children[2].textContent.trim())")
+    raw = [c for c in cells if c.startswith("placeholder - ") or c.startswith("excluded - ")]
+    assert not raw, f"{division}: raw status values are still shown: {sorted(set(raw))}"
+    allowed = {"ไม่มีประวัติขาย (รอวิธีประมาณ)", "ไม่มีประวัติขาย (กำหนดวิธีประมาณแล้ว)",
+               "ตัดออก มีใน Price List แต่ไม่เคยขาย", "ตัดออก ทั้งฝ่ายไม่ใช้นโยบาย stock"}
+    assert set(cells) <= allowed, sorted(set(cells) - allowed)
