@@ -35,6 +35,7 @@ from datetime import datetime
 import pandas as pd
 import yaml
 
+import reader_values as rv
 from manual_notes import render_notes_html
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
@@ -52,7 +53,6 @@ OUT_PATH = os.path.join(FORECAST_DIR, "sales_report.html")
 # `date`/Get-Date, both returning +0700), so datetime.now() needs no timezone conversion --
 # it is labelled ICT directly, never silently assumed.
 ICT_LABEL = "ICT (UTC+7)"
-STALENESS_THRESHOLD_DAYS = 7  # METRICS.md Sec.26
 
 FOCUS_ITEMS = ["EEE-F-FC-1040010002", "HS-F-99-02110", "HS-F-99-0213"]
 BASE_MODELS = ["Naive", "MA3", "MA6", "MA12", "Croston", "SBA"]
@@ -488,6 +488,8 @@ def render_page(config: dict) -> str:
     freshness = gather_freshness()
     backtest_window = gather_backtest_window(primary_results, results["per_division"])
 
+    # Staleness threshold (METRICS.md Sec.26): read from config.yaml page_timestamps at build time.
+    STALENESS_THRESHOLD_DAYS = rv.staleness_threshold_days(config)
     page_built_at = datetime.now().strftime("%Y-%m-%d %H:%M")
     built_dt = datetime.strptime(page_built_at, "%Y-%m-%d %H:%M")
     data_pulled_at = freshness["data_pulled_at_min"]
@@ -513,8 +515,8 @@ def render_page(config: dict) -> str:
     )
     timestamps_html = f"""
     <details class="note-box" style="margin:10px 0">
-      <summary style="cursor:pointer"><b>data_pulled_at:</b> {data_pulled_at} {ICT_LABEL}
-        (เก่าที่สุดในหน้านี้, ดูรายละเอียดต่อส่วนด้านล่าง) &nbsp;|&nbsp; <b>page_built_at:</b> {page_built_at} {ICT_LABEL}
+      <summary style="cursor:pointer"><!-- data_pulled_at --><b>ข้อมูลดึงเมื่อ:</b> {data_pulled_at} {ICT_LABEL}
+        (เก่าที่สุดในหน้านี้, ดูรายละเอียดต่อส่วนด้านล่าง) &nbsp;|&nbsp; <!-- page_built_at --><b>หน้าสร้างเมื่อ:</b> {page_built_at} {ICT_LABEL}
         &nbsp;<!-- source: src/build_report.py gather_freshness()/datetime.now(), this build run --></summary>
       <h3 style="margin-top:10px">ข้อมูลแต่ละส่วนดึงเมื่อ</h3>
       <table class="report-table" style="margin-top:8px">
@@ -532,13 +534,24 @@ def render_page(config: dict) -> str:
     excluded_total = int(scope_table["excluded"].sum())
     total_codes = int(scope_table.values.sum())
 
-    ontime_2026_val = biz["ontime_by_year"][biz["ontime_by_year"]["year"] == 2026]["pct_on_time"].iloc[0]
+    # First and last year shown come from the data (the years present in the trend), not typed.
+    ontime_first_year = int(biz["ontime_by_year"]["year"].min())
+    ontime_last_year = int(biz["ontime_by_year"]["year"].max())
+    ontime_2026_val = biz["ontime_by_year"][biz["ontime_by_year"]["year"] == ontime_last_year]["pct_on_time"].iloc[0]
+    ontime_2023_val = biz["ontime_by_year"][biz["ontime_by_year"]["year"] == ontime_first_year]["pct_on_time"].iloc[0]
+    n_rounds = rv.backtest_rounds(config)
+    n_no_minmax, n_scope_items = rv.count_no_current_minmax()
+    report_values = {
+        "forecast_date_change_pct": f"{rv.forecast_date_disagreement_pct():.1f}",
+        "n_no_minmax": n_no_minmax, "n_scope_items": n_scope_items,
+        "history_months": rv.total_history_months(config), "n_base_models": len(BASE_MODELS),
+    }
 
     # ---- Section 1: Executive summary ----
     sec1 = f"""
     <section id="exec-summary">
       <h2>1. บทสรุปผู้บริหาร (Executive Summary)</h2>
-      <p>{html.escape(report['model_description'])}</p>
+      <p>{html.escape(report['model_description'].format(**report_values))}</p>
       <p>
         {cite('phaseC_step1revised_item_status_445.csv', 'status_category')}
         โครงการนี้ครอบคลุมสินค้าทั้งหมด <b>{total_codes}</b> รหัส ใน Omni Channel ทุกฝ่าย
@@ -549,8 +562,8 @@ def render_page(config: dict) -> str:
         ลูกค้าให้เวลาแจ้งล่วงหน้าก่อนส่งมอบเพียง <b>{fmt_num(biz['median_notice'], 0)}</b> วัน
         (median) ซึ่งสั้นกว่าระยะเวลาจัดหาวัตถุดิบมาก
         {cite('delivery_by_year.csv', 'pct_on_time')}
-        อัตราการส่งมอบตรงเวลาปรับตัวขึ้นจาก 57.8% (2023) เป็น
-        <b>{fmt_num(ontime_2026_val, 1)}%</b> ในปี 2026 (ข้อมูลบางส่วน)
+        อัตราการส่งมอบตรงเวลาปรับตัวขึ้นจาก {fmt_num(ontime_2023_val, 1)}% ({ontime_first_year}) เป็น
+        <b>{fmt_num(ontime_2026_val, 1)}%</b> ในปี {ontime_last_year} (ข้อมูลบางส่วน)
       </p>
     </section>"""
 
@@ -589,7 +602,7 @@ def render_page(config: dict) -> str:
       {cite('leadtime_notice_buckets_overall.csv', 'min_notice_days / pct_of_orders')}
       <div id="chart-notice" class="plotly-chart"></div>
       {render_notes_html('sales_report.html', 'chart-notice')}
-      <h3>สัดส่วนส่งมอบตรงวันครบกำหนดเป๊ะ vs. ส่งไม่ล่าช้า (2023-2026)</h3>
+      <h3>สัดส่วนส่งมอบตรงวันครบกำหนดเป๊ะ vs. ส่งไม่ล่าช้า ({ontime_first_year}-{ontime_last_year})</h3>
       <!-- Previous wording, kept off screen: on_time_exact = delivered exactly on the due date (PlanDelDate), counted by number of orders (row-weighted), PEM101 128 items -- src/investigations/delivery_performance.py:71-75 (classify_delay) and lines 155-161 (by_year aggregation, column pct_on_time); METRICS.md §19 forbids using this figure alone as a fill-rate benchmark (the earlier 73.2% incident), so not_late is shown alongside. not_late = delivered on or before ForecastDelDate, unit-weighted (ActualQty), not by order count; unit-weighted because METRICS.md §10 (fill_rate) is defined as unit-based, not order-based, and the figure is read alongside fill_rate/service level (src/investigations/task2a_delivery_notlate_by_year.py, computed from the same Cube_CES data as on_time_exact, no new pull). -->
       <p class="hint">เส้นส่งไม่ช้านับเป็นชิ้น เพราะสิ่งที่ลูกค้าสนใจคือได้ของครบทันไหม ไม่ใช่จำนวนใบสั่ง</p>
       {cite('delivery_by_year.csv', 'year / pct_on_time')}
@@ -604,7 +617,7 @@ def render_page(config: dict) -> str:
       <h2>4. ข้อมูลที่ใช้ (Data)</h2>
       <table class="report-table">
         <tbody>
-          <tr><td>แหล่งข้อมูล (Source table)</td><td>{cite_config('source_table')}<code>{html.escape(str(config['source_table']))}</code></td></tr>
+          <tr><td>แหล่งข้อมูล (Source table)</td><td>{cite_config('source_table')}<!-- table: {html.escape(str(config['source_table']))} -->ระบบขายของบริษัท</td></tr>
           <tr><td>ช่วงข้อมูลที่ใช้ได้ (Usable range)</td><td>{cite_config('date_range.start')}<!-- source: output/data/processed_full_category_sales_monthly_forecastDate.csv, column year_month (max) -->{config['date_range']['start']} — {usable_range_end}
             <!-- previously: last month with real data, computed at build time, no longer typed in config.yaml -->
             <span class="hint">(เดือนล่าสุดที่ข้อมูลครบ)</span></td></tr>
@@ -624,10 +637,10 @@ def render_page(config: dict) -> str:
     sec5 = f"""
     <section id="model">
       <h2>5. โมเดลพยากรณ์ (Model)</h2>
-      <p>{html.escape(report['model_description'])}</p>
-      <p>{html.escape(report['why_not_single_model'])}</p>
-      <p>{html.escape(report['why_not_ml'])}</p>
-      <h3>MAE ของโมเดลพื้นฐาน 6 แบบ เทียบกับ Combination และ Top-down (3 focus codes)</h3>
+      <p>{html.escape(report['model_description'].format(**report_values))}</p>
+      <p>{html.escape(report['why_not_single_model'].format(**report_values))}</p>
+      <p>{html.escape(report['why_not_ml'].format(**report_values))}</p>
+      <h3>MAE ของโมเดลพื้นฐาน {len(BASE_MODELS)} แบบ เทียบกับ Combination และ Top-down ({len(FOCUS_ITEMS)} focus codes)</h3>
       <p class="hint">คลิกที่ legend เพื่อซ่อน/แสดงแต่ละโมเดล</p>
       {cite('focus_items_test_all.csv', 'model / MAE')}
       <div id="chart-model" class="plotly-chart"></div>
@@ -659,7 +672,7 @@ def render_page(config: dict) -> str:
       </div>
       <h3>ตารางหลัก — ความแม่นของวิธี Top-down (วิธีที่ใช้จริง) ต่อฝ่าย</h3>
       <!-- Previous wording, kept off screen: this is the Top-down method the project adopted (STATUS.md Locked Decisions, "Final forecasting method"): forecast at Type level, then allocate to items by trailing sales share, recomputed at every rolling origin (not a one-time fixed allocation), scored at item level across the project's standard 7 origins -- src/transferability_all_divisions.py, summary in output/summary/phaseC_step2_transferability_per_division.csv (method detail in output/summary/phaseC_step2_report.md Part 3). -->
-      <p class="hint">ทายยอดรวมระดับประเภทสินค้าก่อน แล้วแบ่งให้แต่ละรหัสตามสัดส่วนที่เคยขาย ทดสอบย้อนหลัง 7 รอบ</p>
+      <p class="hint">ทายยอดรวมระดับประเภทสินค้าก่อน แล้วแบ่งให้แต่ละรหัสตามสัดส่วนที่เคยขาย ทดสอบย้อนหลัง {n_rounds} รอบ</p>
       {cite('phaseC_step2_transferability_per_division.csv', 'MAE / RMSE / Bias / MASE / n_scored')}
       <!-- filtered to rows where approach == 'Top-down' -->
       <table class="report-table" id="primary-results-table">
@@ -680,30 +693,22 @@ def render_page(config: dict) -> str:
       {render_notes_html('sales_report.html', 'chart-rolling')}
       <h3>Forecast เทียบกับ Actual — เลือกสินค้าและ rolling origin</h3>
       <!-- Previous wording, kept off screen: scope of this chart is the PEM101 pilot group ({len(fva_items)} codes, Fuse Cutout + Surge Arrester), the standard 7 rolling origins used across the project (get_origins(31,6), src/backtest_rekeyed.py), not the earlier 9 origins. -->
-      <p class="scope-note">ทดสอบ 7 รอบแบบเดียวกับตารางด้านบน · มีเฉพาะสินค้า PEM101 กลุ่มนำร่อง</p>
+      <p class="scope-note">ทดสอบ {n_rounds} รอบแบบเดียวกับตารางด้านบน · มีเฉพาะสินค้า PEM101 กลุ่มนำร่อง</p>
       <div class="controls">
-        <label>Rolling origin: <select id="filterOrigin">{"".join(f'<option value="{o}">{o}</option>' for o in range(1, 8))}</select></label>
+        <label>Rolling origin: <select id="filterOrigin">{"".join(f'<option value="{o}">{o}</option>' for o in range(1, n_rounds + 1))}</select></label>
         <span class="hint">(ตัวกรอง ฝ่าย/ประเภท ด้านบนไม่มีผลกับกราฟนี้ — กราฟนี้มีเฉพาะสินค้า PEM101 กลุ่มนำร่องเท่านั้น)</span>
       </div>
       <div class="item-check-list">{item_checkboxes}</div>
       {cite('report_item_forecast_vs_actual_by_origin.csv', 'origin / month_in_horizon / actual_qty / forecast_qty')}
       <div id="chart-fva" class="plotly-chart"></div>
       {render_notes_html('sales_report.html', 'chart-fva')}
-      <p class="note-box">
-        <b>หมายเหตุเกี่ยวกับแกน X เดิม (1-9):</b> กราฟเดิมใช้ข้อมูลจาก
-        <code>phaseE1_2_rolling_origin_cumulative.csv</code> ซึ่งคำนวณจาก rolling-origin scheme
-        ของ Phase E1.2 เอง (protection period 4 เดือน) ทำให้ได้ 9 origins ไม่ใช่ 7 origins ตาม
-        rolling-origin evaluation มาตรฐานของโครงการ (6-month holdout) และแสดงเฉพาะ actual
-        ไม่มีเส้น forecast เปรียบเทียบ กราฟด้านบนนี้คำนวณใหม่ด้วย scheme มาตรฐาน 7 origins
-        (src/build_report_data.py) และแสดงทั้ง forecast และ actual
-      </p>
       {cite('b3_paired_significance.csv', 'paired_t_stat')}
       <!-- Recorded finding, kept off screen: Top-down's advantage over Direct is not statistically significant (paired t = {fmt_num(sig['paired_t_stat'], 3)}, |t| < 2, mean difference {fmt_num(sig['mean_diff_b_minus_a'], 2)}); Top-down was chosen as the most structurally direct approach, not because it was proven more accurate. -->
       <p>Top-down ทายพลาดน้อยกว่าวิธี Direct เล็กน้อย แต่ต่างกันไม่มากพอจะยืนยันทางสถิติ ที่เลือกใช้เพราะทำได้ทั้งระบบและผลนิ่งกว่า</p>
     </section>"""
 
     # ---- Section 7: Limitations ----
-    limitations_html = "".join(f"<li>{html.escape(x)}</li>" for x in report["limitations"])
+    limitations_html = "".join(f"<li>{html.escape(x.format(**report_values))}</li>" for x in report["limitations"])
     sec7 = f"""
     <section id="limitations">
       <h2>7. ข้อจำกัด (Limitations)</h2>
@@ -711,7 +716,7 @@ def render_page(config: dict) -> str:
     </section>"""
 
     # ---- Section 8: Next steps ----
-    next_steps_html = "".join(f"<li>{html.escape(x)}</li>" for x in report["next_steps"])
+    next_steps_html = "".join(f"<li>{html.escape(x.format(**report_values))}</li>" for x in report["next_steps"])
     sec8 = f"""
     <section id="next-steps">
       <h2>8. ขั้นตอนต่อไป (Next Steps)</h2>
@@ -822,13 +827,13 @@ function drawOntime() {
   Plotly.newPlot('chart-ontime', [
     {
       x: REPORT_DATA.ontime.years, y: REPORT_DATA.ontime.values, type: 'scatter', mode: 'lines+markers',
-      name: 'on_time_exact (row-weighted)', line: {color: '#2a78d6'},
-      hovertemplate: '%{x}: %{y:.1f}%<extra>on_time_exact</extra>'
+      name: 'ส่งตรงวันพอดี (นับเป็นรายการ)', line: {color: '#2a78d6'},
+      hovertemplate: '%{x}: %{y:.1f}%<extra>ส่งตรงวันพอดี (นับเป็นรายการ)</extra>'
     },
     {
       x: REPORT_DATA.notlate.years, y: REPORT_DATA.notlate.values, type: 'scatter', mode: 'lines+markers',
-      name: 'not_late (unit-weighted)', line: {color: '#1baf7a'},
-      hovertemplate: '%{x}: %{y:.1f}%<extra>not_late</extra>'
+      name: 'ส่งไม่ช้า (นับเป็นชิ้น)', line: {color: '#1baf7a'},
+      hovertemplate: '%{x}: %{y:.1f}%<extra>ส่งไม่ช้า (นับเป็นชิ้น)</extra>'
     }
   ], Object.assign({}, LAYOUT_BASE, {xaxis: {title: {text: 'ปี'}}, yaxis: {title: {text: '%'}}}), PLOT_CONFIG);
 }

@@ -1054,12 +1054,17 @@ phase_e1_assumptions:
 # is claimed here. Edit this block by hand (a business-readable, non-technical audience) without
 # touching src/build_report.py; the script re-reads it on every run.
 # ============================================================
+# Reader text below may hold {braced} names: src/build_report.py fills each at build time from data,
+# config or a recorded output (src/reader_values.py), never from a typed number (CONVENTIONS.md
+# "Dynamic values"). Known typed numbers still in this block, with no verified source yet:
+# the 74% of items with intermittent or lumpy sales (why_not_ml) and the "ต.ค. 2569" first
+# scoring round (next_steps).
 report:
   # Plain-language description of Top-down combination forecasting, for a non-technical reader.
   # Source: STATUS.md Locked Decisions, "Final forecasting method: Top-down combination".
   model_description: >-
     Top-down Combination คือการพยากรณ์ยอดขายในระดับ "Type" (กลุ่มสินค้าที่ขายในลักษณะเดียวกัน
-    เช่น High Voltage Distribution Fuse Cutout) ก่อน โดยใช้ค่าเฉลี่ยของโมเดลพยากรณ์ 6 แบบร่วมกัน
+    เช่น High Voltage Distribution Fuse Cutout) ก่อน โดยใช้ค่าเฉลี่ยของโมเดลพยากรณ์ {n_base_models} แบบร่วมกัน
     (Naive, MA3, MA6, MA12, Croston, SBA) แล้วจึงกระจายยอดพยากรณ์ของ Type นั้นไปยังสินค้าแต่ละ
     รายการ (Item) ตามสัดส่วนยอดขายจริงในอดีตของสินค้านั้นเทียบกับยอดขายรวมของ Type ทั้งหมด
 
@@ -1075,7 +1080,7 @@ report:
   # Source: STATUS.md Locked Decisions, "Model progression is Naive baseline, then Moving
   # Average, then Croston and SBA. TensorFlow and Prophet are excluded...".
   why_not_ml: >-
-    ไม่ใช้ Neural Network (เช่น TensorFlow) หรือ Prophet เนื่องจากมีข้อมูลย้อนหลังเพียง 31 เดือน
+    ไม่ใช้ Neural Network (เช่น TensorFlow) หรือ Prophet เนื่องจากมีข้อมูลย้อนหลังเพียง {history_months} เดือน
     และ 74% ของรหัสสินค้ามีลักษณะการขายแบบ Intermittent หรือ Lumpy (ขายไม่สม่ำเสมอ ไม่ต่อเนื่อง)
     ทำให้ Neural Network มีความเสี่ยงสูงที่จะ Overfit กับข้อมูลจำนวนน้อย และ Prophet มีสมมติฐาน
     ว่าข้อมูลต่อเนื่อง (continuous) ซึ่งไม่ตรงกับลักษณะข้อมูลจริงของโครงการนี้
@@ -1085,13 +1090,13 @@ report:
   limitations:
     # Previous wording of the next four items is in git history (commit 1f87b6e); the on-screen
     # text below is the approved Thai wording, used verbatim.
-    - "วันส่งตามสัญญาอาจถูกแก้หลังรับ PO ระบบไม่มีบันทึกการแก้ ตรวจแล้วกระทบไม่เกิน 2.5% ของรายการ"
+    - "วันส่งตามสัญญาอาจถูกแก้หลังรับ PO ระบบไม่มีบันทึกการแก้ ตรวจแล้วกระทบไม่เกิน {forecast_date_change_pct}% ของรายการ"
     - "ไม่มีข้อมูลประวัติของ Price List เวอร์ชันเก่า จึงไม่สามารถตรวจสอบได้ว่าการจัดฝ่าย/ประเภท
       สินค้าเคยเปลี่ยนแปลงไปจากอดีตหรือไม่ (cannot be determined จากข้อมูลที่มีอยู่ในปัจจุบัน)"
     - "ยอดขายนับจาก PO ที่ลูกค้าสั่งจริงเท่านั้น จึงไม่เห็นความต้องการที่ไม่ได้กลายเป็น PO เช่น ลูกค้าที่ไม่สั่งเพราะรู้ว่าไม่มีของ"
     - "ความได้เปรียบของ Top-down เทียบกับ Direct และ Naive ไม่มีนัยสำคัญทางสถิติ (paired t-test, |t| ต่ำกว่า 2 ในทุกคู่เปรียบเทียบ) เลือกใช้ Top-down เพราะเป็นแนวทางที่ตรงไปตรงมาที่สุดในเชิงโครงสร้าง ไม่ใช่เพราะพิสูจน์แล้วว่าให้ผลแม่นยำที่สุด"
     - "ไม่มีข้อมูลเวลาประกอบหลังได้ชิ้นส่วน ตัวเลขนี้ในการวางแผน stock เป็นค่าสมมติ"
-    - "Min/Max ที่ตั้งอยู่ในระบบตอนนี้ใช้คำนวณไม่ได้ 46 จาก 128 รายการไม่ได้ตั้ง และค่าที่มีไม่สอดคล้องกัน ใช้ได้แค่เป็นตัวเทียบ"
+    - "Min/Max ที่ตั้งอยู่ในระบบตอนนี้ใช้คำนวณไม่ได้ {n_no_minmax} จาก {n_scope_items} รายการไม่ได้ตั้ง และค่าที่มีไม่สอดคล้องกัน ใช้ได้แค่เป็นตัวเทียบ"
   # Standing next-step items, each pulled from an already-recorded open item in STATUS.md.
   next_steps:
     # The earlier next-step items (first forward-test scoring round, analogue codes for
@@ -1306,3 +1311,10 @@ backtest:
   test_months: 6
   train_val_test_owner: "Reused unchanged from src/evaluate_strategies.py / src/backtest_aggregate.py -- not a new figure. total_months (31) = train_months + val_months + test_months, computed by src/backtest_rekeyed.py, never stored here separately."
 
+# ============================================================
+# Page timestamps (METRICS.md Sec.26): a section whose data was pulled more than this many days
+# before the page was built is labelled stale. Read by src/build_report.py and
+# src/build_inventory_page.py.
+# ============================================================
+page_timestamps:
+  staleness_threshold_days: 7

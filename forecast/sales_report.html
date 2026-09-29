@@ -52,8 +52,8 @@
   <!-- สร้างโดย src/build_report.py — ทุกตัวเลขมีที่มาระบุไว้ในซอร์สโค้ด HTML (ดู source comments) -->
   
     <details class="note-box" style="margin:10px 0">
-      <summary style="cursor:pointer"><b>data_pulled_at:</b> 2026-09-25 11:51:56 ICT (UTC+7)
-        (เก่าที่สุดในหน้านี้, ดูรายละเอียดต่อส่วนด้านล่าง) &nbsp;|&nbsp; <b>page_built_at:</b> 2026-09-29 10:37 ICT (UTC+7)
+      <summary style="cursor:pointer"><!-- data_pulled_at --><b>ข้อมูลดึงเมื่อ:</b> 2026-09-25 11:51:56 ICT (UTC+7)
+        (เก่าที่สุดในหน้านี้, ดูรายละเอียดต่อส่วนด้านล่าง) &nbsp;|&nbsp; <!-- page_built_at --><b>หน้าสร้างเมื่อ:</b> 2026-09-29 12:05 ICT (UTC+7)
         &nbsp;<!-- source: src/build_report.py gather_freshness()/datetime.now(), this build run --></summary>
       <h3 style="margin-top:10px">ข้อมูลแต่ละส่วนดึงเมื่อ</h3>
       <table class="report-table" style="margin-top:8px">
@@ -117,7 +117,7 @@
       <h2>4. ข้อมูลที่ใช้ (Data)</h2>
       <table class="report-table">
         <tbody>
-          <tr><td>แหล่งข้อมูล (Source table)</td><td><!-- source: config.yaml, field source_table --><code>[salewarehouse].[dbo].[cube_Sale_APD]</code></td></tr>
+          <tr><td>แหล่งข้อมูล (Source table)</td><td><!-- source: config.yaml, field source_table --><!-- table: [salewarehouse].[dbo].[cube_Sale_APD] -->ระบบขายของบริษัท</td></tr>
           <tr><td>ช่วงข้อมูลที่ใช้ได้ (Usable range)</td><td><!-- source: config.yaml, field date_range.start --><!-- source: output/data/processed_full_category_sales_monthly_forecastDate.csv, column year_month (max) -->2024-01-01 — 2026-07
             <!-- previously: last month with real data, computed at build time, no longer typed in config.yaml -->
             <span class="hint">(เดือนล่าสุดที่ข้อมูลครบ)</span></td></tr>
@@ -188,14 +188,6 @@
       <!-- source: output/summary/report_item_forecast_vs_actual_by_origin.csv, column origin / month_in_horizon / actual_qty / forecast_qty -->
       <div id="chart-fva" class="plotly-chart"></div>
       <p class="hint">▸ ทายไว้เทียบกับของจริง สินค้าที่เลือก ในรอบทดสอบที่เลือก<br>▸ แกน X = เดือนที่ 1-6 หลังจุดตัดข้อมูล · แกน Y = จำนวน (ชิ้น)<br>▸ เส้นทึบ = ยอดจริง เส้นประ = ที่ทายไว้ เส้นประอยู่ใต้เส้นทึบ = ทายต่ำไป<br>▸ กราฟนี้มีเฉพาะสินค้า PEM101 ตัวกรองฝ่ายไม่มีผล</p>
-      <p class="note-box">
-        <b>หมายเหตุเกี่ยวกับแกน X เดิม (1-9):</b> กราฟเดิมใช้ข้อมูลจาก
-        <code>phaseE1_2_rolling_origin_cumulative.csv</code> ซึ่งคำนวณจาก rolling-origin scheme
-        ของ Phase E1.2 เอง (protection period 4 เดือน) ทำให้ได้ 9 origins ไม่ใช่ 7 origins ตาม
-        rolling-origin evaluation มาตรฐานของโครงการ (6-month holdout) และแสดงเฉพาะ actual
-        ไม่มีเส้น forecast เปรียบเทียบ กราฟด้านบนนี้คำนวณใหม่ด้วย scheme มาตรฐาน 7 origins
-        (src/build_report_data.py) และแสดงทั้ง forecast และ actual
-      </p>
       <!-- source: output/summary/b3_paired_significance.csv, column paired_t_stat -->
       <!-- Recorded finding, kept off screen: Top-down's advantage over Direct is not statistically significant (paired t = -1.555, |t| < 2, mean difference -8.48); Top-down was chosen as the most structurally direct approach, not because it was proven more accurate. -->
       <p>Top-down ทายพลาดน้อยกว่าวิธี Direct เล็กน้อย แต่ต่างกันไม่มากพอจะยืนยันทางสถิติ ที่เลือกใช้เพราะทำได้ทั้งระบบและผลนิ่งกว่า</p>
@@ -241,13 +233,13 @@ function drawOntime() {
   Plotly.newPlot('chart-ontime', [
     {
       x: REPORT_DATA.ontime.years, y: REPORT_DATA.ontime.values, type: 'scatter', mode: 'lines+markers',
-      name: 'on_time_exact (row-weighted)', line: {color: '#2a78d6'},
-      hovertemplate: '%{x}: %{y:.1f}%<extra>on_time_exact</extra>'
+      name: 'ส่งตรงวันพอดี (นับเป็นรายการ)', line: {color: '#2a78d6'},
+      hovertemplate: '%{x}: %{y:.1f}%<extra>ส่งตรงวันพอดี (นับเป็นรายการ)</extra>'
     },
     {
       x: REPORT_DATA.notlate.years, y: REPORT_DATA.notlate.values, type: 'scatter', mode: 'lines+markers',
-      name: 'not_late (unit-weighted)', line: {color: '#1baf7a'},
-      hovertemplate: '%{x}: %{y:.1f}%<extra>not_late</extra>'
+      name: 'ส่งไม่ช้า (นับเป็นชิ้น)', line: {color: '#1baf7a'},
+      hovertemplate: '%{x}: %{y:.1f}%<extra>ส่งไม่ช้า (นับเป็นชิ้น)</extra>'
     }
   ], Object.assign({}, LAYOUT_BASE, {xaxis: {title: {text: 'ปี'}}, yaxis: {title: {text: '%'}}}), PLOT_CONFIG);
 }
