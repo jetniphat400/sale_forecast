@@ -125,6 +125,11 @@ Explorer   Validator    Analyst      Modeler        Synthesizer
    the decision to the human. It does not pick a side.** Resolving a genuine disagreement between
    two agents' findings is not the Synthesizer's job — surfacing it clearly enough for a human to
    decide is.
+10. **Subagents act only within their brief. A subagent dispatched to assess, review, validate or
+    explore must not edit tracked files, run pipeline steps that write outputs, or commit. Only
+    the orchestrating agent commits, after checking each subagent's output against its brief. A
+    subagent that finds more work to do reports it; it does not do it.** Written after a task 2b
+    assessment subagent implemented unassigned work and committed it.
 
 ## Orchestrator rules
 
