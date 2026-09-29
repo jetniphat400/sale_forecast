@@ -134,6 +134,14 @@
 
 Reader-facing text. Any text a dashboard reader can see is written for PEM's sales, planning and management staff, in Thai, following .claude/skills/reader-text/SKILL.md. File names, code paths, line numbers, METRICS or DATA_MAP section numbers, and config keys never appear on screen; keep them in HTML comments. When a prompt supplies finished Thai text, use it verbatim.
 
+## Page layout (added 2026-09-29)
+
+Page layout. Before adding, removing or moving anything on a dashboard page, state who uses it and for what task, and place it so that a control sits within sight of what it changes; a reader can change a control and see the effect without scrolling; every control says which parts of the page it affects and which it does not; and existing elements are reconsidered, not only new ones added.
+
+## Dynamic values (added 2026-09-29)
+
+Dynamic values. Every number a dashboard reader sees is computed at build time from verified data, config or a verified recorded output file. No number is typed into reader text, config or code. The only exception is an illustrative example in the user manual, marked as an example.
+
 ## Project map (added 2026-09-24)
 
 - **Every task begins by reading `DATA_MAP.md` and `PROJECT_GRAPH.md`, in addition to `STATUS.md`,
