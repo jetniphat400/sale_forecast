@@ -542,7 +542,7 @@ def render_page(config: dict) -> str:
     n_rounds = rv.backtest_rounds(config)
     n_no_minmax, n_scope_items = rv.count_no_current_minmax()
     report_values = {
-        "forecast_date_change_pct": f"{rv.forecast_date_disagreement_pct():.1f}",
+        "forecast_date_revision_share_pct": f"{rv.forecast_date_disagreement_pct():.1f}",
         "n_no_minmax": n_no_minmax, "n_scope_items": n_scope_items,
         "history_months": rv.total_history_months(config), "n_base_models": len(BASE_MODELS),
     }

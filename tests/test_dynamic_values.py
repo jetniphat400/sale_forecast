@@ -203,7 +203,7 @@ def test_sales_report_numbers_follow_their_sources(two_builds):
     # 46 of 128 items with no current Min/Max
     assert _first(r"ใช้คำนวณไม่ได้ (\d+) จาก \d+ รายการ", p) == str(int(_first(r"ใช้คำนวณไม่ได้ (\d+) จาก \d+ รายการ", b)) + 5)
     # 2.5% forecast_date finding: doubled disagreement rows double the share
-    fb, fp = float(_first(r"กระทบไม่เกิน ([\d.]+)% ของรายการ", b)), float(_first(r"กระทบไม่เกิน ([\d.]+)% ของรายการ", p))
+    fb, fp = float(_first(r"กระทบประมาณ ([\d.]+)% ของรายการ", b)), float(_first(r"กระทบประมาณ ([\d.]+)% ของรายการ", p))
     assert fp == pytest.approx(2 * fb, abs=0.11), (fb, fp)
     # on-time 2023 value in the executive summary
     ob, op = float(_first(r"ปรับตัวขึ้นจาก ([\d.]+)% \(\d{4}\)", b)), float(_first(r"ปรับตัวขึ้นจาก ([\d.]+)% \(\d{4}\)", p))

@@ -1090,7 +1090,7 @@ report:
   limitations:
     # Previous wording of the next four items is in git history (commit 1f87b6e); the on-screen
     # text below is the approved Thai wording, used verbatim.
-    - "วันส่งตามสัญญาอาจถูกแก้หลังรับ PO ระบบไม่มีบันทึกการแก้ ตรวจแล้วกระทบไม่เกิน {forecast_date_change_pct}% ของรายการ"
+    - "วันส่งตามสัญญาอาจถูกแก้หลังรับ PO ระบบไม่มีบันทึกการแก้ ตรวจแล้วกระทบประมาณ {forecast_date_revision_share_pct}% ของรายการ"
     - "ไม่มีข้อมูลประวัติของ Price List เวอร์ชันเก่า จึงไม่สามารถตรวจสอบได้ว่าการจัดฝ่าย/ประเภท
       สินค้าเคยเปลี่ยนแปลงไปจากอดีตหรือไม่ (cannot be determined จากข้อมูลที่มีอยู่ในปัจจุบัน)"
     - "ยอดขายนับจาก PO ที่ลูกค้าสั่งจริงเท่านั้น จึงไม่เห็นความต้องการที่ไม่ได้กลายเป็น PO เช่น ลูกค้าที่ไม่สั่งเพราะรู้ว่าไม่มีของ"
