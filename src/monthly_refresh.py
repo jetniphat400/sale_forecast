@@ -28,14 +28,13 @@ SCOPE OF "pull data" / "every page" IN THIS RUNNER (stated explicitly, not silen
     reused rather than re-pulled a second time. If it is NOT fresh, this step logs that
     forecast/sales_report.html's Usable range text may be stale and continues (it is not fatal to
     steps 4-11, which do not depend on it).
-  - Step 7 "every page" = forecast/sales_report.html only (src/build_report.py), the only
-    dashboard page this project has a script-based generator for that is wired to the backtest
-    this runner re-runs. index.html has NO generator script anywhere in the repo (STATUS.md,
-    confirmed by repeated repo-wide search) -- it is hand-maintained and out of this runner's
-    reach. forecast/inventory.html's generator (src/build_inventory_page.py) requires its OWN
-    separate database pull (Cube_Inventory_Exact/Cube_CES) -- a second connection attempt this
-    runner's single-connection-per-run design does not make; it is out of scope here and
-    unaffected by this runner (STATUS.md Sec.10 items 4-6/9-10, "deferred to task 2b").
+  - Step 7 rebuilds forecast/sales_report.html (src/build_report.py) and forecast/inventory.html
+    (src/build_inventory_page.py). index.html has NO generator script anywhere in the repo
+    (STATUS.md, confirmed by repeated repo-wide search) -- it is hand-maintained and out of this
+    runner's reach. The inventory page's PEM103/PEM107 sales come from this run's own step-1 pull
+    (output/data/raw_all_divisions_sales.csv); the runner makes no stock pull (that would be a
+    second connection), so stock is the latest saved pull under output/snapshots/, and the page
+    shows the older of the two pull times (src/inventory_page_sources.py).
 
 DRY RUN (--dry-run): steps 1-10 are FULLY exercised (real data pull, real backtest, real
 consistency check, real test suite, real change-magnitude computation) -- only their WRITES to
@@ -641,13 +640,34 @@ def step6_fill_and_score(dry_run: bool, computed_vintage: dict = None) -> dict:
 # module docstring for scope)
 # ---------------------------------------------------------------------------------------------
 
-def step7_rebuild_pages(dry_run: bool, staged_dir: str) -> dict:
+def step7_rebuild_pages(dry_run: bool, staged_dir: str, step1_result: dict = None) -> dict:
+    """Rebuilds forecast/sales_report.html and forecast/inventory.html (METRICS.md Sec.28 step 7).
+
+    The inventory page's PEM103/PEM107 sales come from this run's own step-1 pull
+    (output/data/raw_all_divisions_sales.csv). The monthly runner makes no stock pull (a second
+    connection), so the stock table is the latest saved pull under output/snapshots/; the page shows
+    the older of the two pull times and this result records both (src/inventory_page_sources.py).
+    In a dry run both pages are written under the staging folder, never to the tracked paths."""
+    import build_inventory_page
     import build_report
+    import inventory_page_sources
     if dry_run:
         out_path = build_report.build_report(output_path=os.path.join(staged_dir, "sales_report.html"))
     else:
         out_path = build_report.build_report()
-    return {"rendered_path": out_path, "written_to_tracked_path": not dry_run}
+    pull_time = (step1_result or {}).get("snapshot_pull_date")
+    if not pull_time:
+        raise MonthlyRefreshAbort("Step 7 ABORTED: step 1 recorded no snapshot_pull_date, so the inventory page's "
+                                  "sales pull time is unknown.")
+    sources = inventory_page_sources.runner_pull_sources(pull_time)
+    page = build_inventory_page.build_page(**sources)
+    inv_path = os.path.join(staged_dir, "inventory.html") if dry_run else build_inventory_page.OUT_PATH
+    with open(inv_path, "w", encoding="utf-8") as f:
+        f.write(page)
+    return {"rendered_path": out_path, "inventory_rendered_path": inv_path,
+            "inventory_sales_pull_time": str(pull_time),
+            "inventory_pilot_pull_label": sources["pull_labels"]["PEM103"],
+            "written_to_tracked_path": not dry_run}
 
 
 # ---------------------------------------------------------------------------------------------
@@ -812,7 +832,7 @@ def main(dry_run: bool, force_new_vintage: bool = False) -> dict:
     step5 = record("5_new_forward_test_vintage", step5_new_vintage, dry_run, force_new_vintage)
     computed_vintage_for_preview = _LAST_COMPUTED_VINTAGE if dry_run else None
     record("6_fill_and_score", step6_fill_and_score, dry_run, computed_vintage_for_preview)
-    record("7_rebuild_pages", step7_rebuild_pages, dry_run, staged_dir)
+    record("7_rebuild_pages", step7_rebuild_pages, dry_run, staged_dir, step1)
     step8 = record("8_run_tests", step8_run_tests)
     step9 = record("9_scan_sensitive_content", step9_scan_sensitive_content)
     step10 = record("10_change_magnitude", step10_change_magnitude, config, step4, step5)
