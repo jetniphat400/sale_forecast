@@ -33,6 +33,7 @@ import pandas as pd
 import yaml
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import reader_values as rv
 from phaseE1_common import (
     PROJECT_ROOT, SUMMARY_DIR, load_config, load_scope, load_monthly_series, topdown_item_forecast,
     query_inventory_exact, current_minmax_per_item,
@@ -157,18 +158,20 @@ def _build_curve_target_pem101() -> dict:
     n_calibrated_on = int(policy_counts.get("finished_goods_stock", 0))
     seg_counts = _load_fulfilment_segmentation("PEM101")["class"].value_counts()
     n_current_set = int(seg_counts.get("stock_policy", 0))
-    # Restored as written (pending Thai wording): removing the internal names and section numbers
-    # would leave the sentence meaningless, so it stays whole and is listed for rewriting.
     data["item_set_note"] = (
-        f"Calibrated on the pre-Sec.23 finished_goods_stock item set ({n_calibrated_on} items, "
-        f"section 15 criterion). NOT recalibrated on the current Sec.23 stock_policy item set "
-        f"({n_current_set} items) this task -- recalibrating on the new set is scheduled follow-up "
-        f"work, not yet done (DATA_MAP.md 'Task 2b' entries, PROJECT_GRAPH.md node G2)."
+        f"ปรับให้ตรงกับผลจริงจากสินค้า {n_calibrated_on} รายการตามเกณฑ์เดิม "
+        f"ตอนนี้สินค้าที่เข้าเกณฑ์เก็บ stock มี {n_current_set} รายการ ยังไม่ได้ปรับใหม่ตามชุดนี้"
     )
+    # Previous English wording, kept off screen (rendered as an HTML comment): "Calibrated on the
+    # pre-Sec.23 finished_goods_stock item set (N items, section 15 criterion). NOT recalibrated on
+    # the current Sec.23 stock_policy item set (M items) this task -- recalibrating on the new set is
+    # scheduled follow-up work, not yet done (DATA_MAP.md 'Task 2b' entries, PROJECT_GRAPH.md node G2)."
+    data["item_set_ref"] = ("counts: phaseE1fix_1_item_policy.csv policy finished_goods_stock; task2b_part2_item_level.csv "
+                            "class stock_policy; METRICS.md Sec.23 (supersedes section 15); DATA_MAP.md 'Task 2b'; PROJECT_GRAPH.md G2")
     return data
 
 
-def _build_pem101_division(config: dict) -> dict:
+def _build_pem101_division(config: dict, inventory_source=None) -> dict:
     e1 = config["phase_e1_assumptions"]
     sp = config["segment_policy"]
     scope = load_scope(config)
@@ -191,7 +194,10 @@ def _build_pem101_division(config: dict) -> dict:
     # fabricated number (AGENTS.md rule 1/3: never guess, report the gap).
     seg = _load_fulfilment_segmentation("PEM101")
     codes_for_inv = list(seg.index)
-    inv_raw = _persist_and_reload(query_inventory_exact(codes_for_inv, allow_empty=True), "PEM101_inventory")
+    if inventory_source is not None:
+        inv_raw = inventory_source(codes_for_inv, allow_empty=True)
+    else:
+        inv_raw = _persist_and_reload(query_inventory_exact(codes_for_inv, allow_empty=True), "PEM101_inventory")
     by_wh = _by_warehouse_map(inv_raw)
     policy_by_code = policy_df.set_index("code")["type"].to_dict()  # type/category still section-15-sourced, unaffected
 
@@ -256,7 +262,8 @@ def _build_pem101_division(config: dict) -> dict:
     }
 
 
-def _build_pilot_division(config: dict, division: str, raw: pd.DataFrame) -> dict:
+def _build_pilot_division(config: dict, division: str, raw: pd.DataFrame, inventory_source=None,
+                          pull_label: str = None) -> dict:
     e1 = config["phase_e1_assumptions"]
     scope = load_division_scope(config, division)
     codes = sorted(scope["code"].unique())
@@ -270,7 +277,10 @@ def _build_pilot_division(config: dict, division: str, raw: pd.DataFrame) -> dic
     policy_df = pd.read_csv(os.path.join(SUMMARY_DIR, f"phaseE2pilot_{division}_1_item_policy.csv"))
     detail_df = pd.read_csv(os.path.join(SUMMARY_DIR, f"phaseE2pilot_{division}_2_minmax_stockvalue_twogroup.csv"))
 
-    inv = _persist_and_reload(query_inventory_exact(codes), f"{division}_inventory")
+    if inventory_source is not None:
+        inv = inventory_source(codes)
+    else:
+        inv = _persist_and_reload(query_inventory_exact(codes), f"{division}_inventory")
     current_mm = current_minmax_per_item(inv, codes)
     current_mm_by_code = {row["itemcode"]: {"current_min": row["current_total_min"], "current_max": row["current_total_max"]}
                           for _, row in current_mm.iterrows()}
@@ -338,47 +348,39 @@ def _build_pilot_division(config: dict, division: str, raw: pd.DataFrame) -> dic
         "items": items, "no_policy_items": no_policy,
         "sellable_warehouse_codes": e1["sellable_warehouse_codes"][division],
         "segment_policy": {"p50_annual_value_thb": None, "note": "computed per-division, see output/summary/phaseE2pilot_report.md"},
-        "snapshot_pull_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S") + " (live pull, not a frozen file)",
+        "snapshot_pull_date": pull_label or (datetime.now().strftime("%Y-%m-%d %H:%M:%S") + " (live pull, not a frozen file)"),
         "n_items_label": f"{len(items)} รายการ (ของทั้งหมด {len(codes)}, เฉพาะที่มีนโยบาย)",
         "warehouse_scope_note": warehouse_scope_note_and_ref(division)[0],
         "warehouse_scope_ref": warehouse_scope_note_and_ref(division)[1],
     }
 
 
+def _pem107_split_label() -> str:
+    """Thai month and year of the PEM107 split date, from task2b_part4_pem107_alert.json split_date."""
+    with open(os.path.join(SUMMARY_DIR, "task2b_part4_pem107_alert.json"), encoding="utf-8") as f:
+        return rv.thai_month_year(json.load(f)["split_date"])
+
+
 def warehouse_scope_note_and_ref(division: str) -> tuple:
-    """(on-screen scope note, references kept for an HTML comment) for one enabled division."""
+    """(on-screen scope note, facts and references kept for an HTML comment) for one enabled division."""
     if division == "PEM101":
-        return ("PEM101 128-item Fuse/Surge-Arrester pilot. PARTIALLY CALIBRATED (80 distinct ensemble members).",
-                "see STATUS.md whmap_report.md; METRICS.md Sec.22; the Trade-off Curve Target section below")
-    return (f"{division} -- E2 scoped pilot, sellable-warehouse list is a business assumption. "
-            + _division_calibration_note(division),
-            "output/summary/phaseE2_readiness_report.md, phaseE2pilot_report.md; "
-            + _division_calibration_ref(division))
-
-
-def _division_calibration_note(division: str) -> str:
-    """Sec.22 (2026-09-24): per-division calibration/planning status shown in the page's scope
-    note, so a reader never mistakes this page's scenario values for a calibrated recommendation
-    outside PEM101's own Robust Ensemble section. Cited: PROJECT_GRAPH.md Q10/Q22/Q23 nodes."""
+        return ("PEM101 ปรับให้ตรงกับผลจริงแล้วบางส่วน ใช้ส่วนเลือกเป้าการส่งทันด้านล่าง",
+                "previous English note: PEM101 128-item Fuse/Surge-Arrester pilot. PARTIALLY CALIBRATED "
+                "(80 distinct ensemble members). See STATUS.md whmap_report.md; METRICS.md Sec.22.")
     if division == "PEM103":
-        return ("PLANNED UNDER G3, NOT G2: "
-                "PEM103 is a transformers/tendering-pipeline business, not a stock-policy division -- "
-                "the Tier A scenario values on this page are illustrative only, not a basis for "
-                "planning PEM103.")
+        return ("PEM103 ผลิตตามงานประมูล วางแผนแบบผลิตตามสั่ง ตัวเลขในหน้านี้ใช้ดูทิศทางเท่านั้น",
+                "previous English note: PEM103 -- E2 scoped pilot, sellable-warehouse list is a business assumption. "
+                "PLANNED UNDER G3, NOT G2 (PROJECT_GRAPH.md Q22, business-confirmed): PEM103 is a "
+                "transformers/tendering-pipeline business, not a stock-policy division; the Tier A scenario values "
+                "are illustrative only. Sources: output/summary/phaseE2_readiness_report.md, phaseE2pilot_report.md.")
     if division == "PEM107":
-        return ("UNCALIBRATED (Phase J3 found no stock-based policy fits both "
-                "the 2024-2025 and 2026 periods simultaneously) -- the Tier A scenario values on "
-                "this page are a scenario tool only, not a calibrated policy.")
-    return ""
-
-
-def _division_calibration_ref(division: str) -> str:
-    """References removed from _division_calibration_note's on-screen text, kept for an HTML comment."""
-    if division == "PEM103":
-        return "PROJECT_GRAPH.md Q22, business-confirmed 2026-09-23"
-    if division == "PEM107":
-        return "METRICS.md Sec.20"
-    return ""
+        return (f"PEM107 ยังไม่ได้ปรับให้ตรงกับผลจริง เพราะระบบเปลี่ยนเมื่อ {_pem107_split_label()} "
+                f"และข้อมูลหลังเปลี่ยนยังน้อย ตัวเลขใช้ดูทิศทางเท่านั้น",
+                "previous English note: PEM107 -- E2 scoped pilot, sellable-warehouse list is a business assumption. "
+                "UNCALIBRATED (Phase J3 found no stock-based policy fits both the 2024-2025 and 2026 periods "
+                "simultaneously; METRICS.md Sec.20); the Tier A scenario values are a scenario tool only. "
+                "Sources: output/summary/phaseE2_readiness_report.md, phaseE2pilot_report.md.")
+    raise ValueError(f"No scope note for division {division}")
 
 
 def _load_pem107_alert() -> dict:
@@ -397,8 +399,11 @@ def _load_pem107_alert() -> dict:
     # References are kept off screen: the limitations lose their DATA_MAP pointer here (it is
     # returned separately for an HTML comment), the source block is only ever shown in a comment.
     ref_pattern = " -- DATA_MAP.md Sec.7 (PEM107 branch):"
-    alert["limitations_refs"] = [ref_pattern.strip(" -:") for x in alert["limitations"] if ref_pattern in x]
-    alert["limitations"] = [x.replace(ref_pattern, ":") for x in alert["limitations"]]
+    alert["split_label"] = rv.thai_month_year(alert["split_date"])
+    # The four English limitation bullets are replaced on screen by Thai wording built from these
+    # numbers; the English originals are kept for an HTML comment.
+    alert["limitations_english"] = list(alert["limitations"])
+    del alert["limitations"]
     return alert
 
 
@@ -413,20 +418,54 @@ MODEL_CALIBRATED_AT = {
 }
 
 
-def build_data() -> dict:
+def apply_reader_text(data: dict) -> dict:
+    """Sets every reader-facing text/value that needs no database: disabled-division reasons, scope
+    notes, the curve item-set note, the PEM107 alert block, the staleness threshold and the PEM101
+    monthly-versus-daily gap. build_data() calls it; tests/test_reader_text.py calls it on the
+    tracked page's embedded data so a rebuild without a database still exercises the builder's text."""
+    with open(CONFIG_PATH, "r", encoding="utf-8") as f:
+        config = yaml.safe_load(f)
+    data["disabled_divisions"] = disabled_division_reasons()
+    data["disabled_division_labels"] = DISABLED_DIVISION_LABELS
+    data["model_calibrated_at"] = MODEL_CALIBRATED_AT
+    data["staleness_threshold_days"] = rv.staleness_threshold_days(config)
+    data["fulfilment_notice_days"] = rv.fulfilment_notice_threshold_days()
+    data["fulfilment_signal_count"] = rv.fulfilment_signal_count()
+    for division, dd in data["divisions"].items():
+        dd["warehouse_scope_note"], dd["warehouse_scope_ref"] = warehouse_scope_note_and_ref(division)
+    ct = _build_curve_target_pem101()
+    data["divisions"]["PEM101"]["curve_target"] = ct
+    data["pem107_alert"] = _load_pem107_alert()
+    # Gap between this page's monthly-prorated stock value and the recorded daily-window figure,
+    # PEM101, default scenario (src/reader_values.py::pipeline_gap_pct).
+    data["pipeline_gap_pct"] = rv.pipeline_gap_pct(data["divisions"]["PEM101"], data["tier_a_defaults"],
+                                                     data["days_per_month"])
+    return data
+
+
+def build_data(inventory_source=None, sales_source=None, pull_labels: dict = None) -> dict:
+    """Builds the page's embedded data. By default it pulls live (one connection attempt each for
+    stock and for PEM103/PEM107 sales). The optional arguments let a caller supply already-pulled
+    data instead, with no database access: inventory_source(codes, allow_empty=False) -> stock rows,
+    sales_source(codes) -> raw sales rows, pull_labels {division: 'data pulled at' text}
+    (src/inventory_page_sources.py provides them from saved snapshots or from the monthly runner's pull)."""
     with open(CONFIG_PATH, "r", encoding="utf-8") as f:
         config = yaml.safe_load(f)
     e1 = config["phase_e1_assumptions"]
 
-    divisions = {"PEM101": _build_pem101_division(config)}
+    divisions = {"PEM101": _build_pem101_division(config, inventory_source)}
 
     pilot_codes = []
     for division in ["PEM103", "PEM107"]:
         scope = load_division_scope(config, division)
         pilot_codes.extend(scope["code"].tolist())
-    raw = _persist_and_reload(pull_raw_sales(config, sorted(set(pilot_codes))), "PEM103_PEM107_sales")
+    if sales_source is not None:
+        raw = sales_source(sorted(set(pilot_codes)))
+    else:
+        raw = _persist_and_reload(pull_raw_sales(config, sorted(set(pilot_codes))), "PEM103_PEM107_sales")
     for division in ["PEM103", "PEM107"]:
-        divisions[division] = _build_pilot_division(config, division, raw)
+        divisions[division] = _build_pilot_division(config, division, raw, inventory_source,
+                                                     (pull_labels or {}).get(division))
 
     data = {
         "focus_items": ["EEE-F-FC-1040010002", "HS-F-99-02110", "HS-F-99-0213"],
@@ -439,8 +478,7 @@ def build_data() -> dict:
         "model_calibrated_at": MODEL_CALIBRATED_AT,
         "division_order": PILOT_DIVISIONS,
         "default_division": "PEM101",
-        "disabled_divisions": disabled_division_reasons(),
-        "disabled_division_labels": DISABLED_DIVISION_LABELS,
+        "disabled_divisions": {}, "disabled_division_labels": {},
         "tier_a_defaults": {
             "procurement_lead_time_days": e1["procurement_lead_time_days_default"],
             "assembly_time_days": e1["assembly_time_days_default"],
@@ -458,8 +496,9 @@ def build_data() -> dict:
         # task 2b Part 4: PEM107 delivery-decline alert, precomputed by
         # src/investigations/task2b_part4_pem107_alert.py (Cube_CES, no live DB access from this
         # builder itself -- reads that script's already-written JSON).
-        "pem107_alert": _load_pem107_alert(),
+        "pem107_alert": {},
     }
+    apply_reader_text(data)
     logger.info("Built multi-division data: %s", {k: len(v["items"]) for k, v in divisions.items()})
     return data
 
