@@ -63,17 +63,44 @@ def compute_item_min_max(item, controls, days_per_month):
             "replenishment": replen}
 
 
-def compute_all(division_data, controls, days_per_month):
+def gets_min_max(item):
+    """task 2b Part 2 (METRICS.md Sec.23): 'stock_policy' (PEM101/PEM107) or the original
+    'finished_goods_stock' (PEM103, unaffected by segmentation) get a Min/Max; nothing else does,
+    even if the item has enough history to technically produce a number."""
+    return item["policy"] in ("finished_goods_stock", "stock_policy")
+
+
+def on_hand_sellable_for(item, checked_warehouses):
+    checked = set(checked_warehouses)
+    return float(sum(w["qty"] for w in item.get("by_warehouse", []) if w["code"] in checked))
+
+
+def compute_all(division_data, controls, days_per_month, checked_warehouses=None):
+    """checked_warehouses defaults to the division's full sellable_warehouse_codes (the same total
+    the page showed before task 2b's checklist did anything) -- METRICS.md Sec.40
+    (excess_stock_flag): a zero-forecast item has infinite cover and is flagged excess only if
+    on_hand_sellable > 0 (also marked no_forecast_demand so callers can list it separately)."""
+    if checked_warehouses is None:
+        checked_warehouses = division_data["sellable_warehouse_codes"]
+    checked_set = set(checked_warehouses)
     stock_value = 0.0
     per_item = []
     for item in division_data["items"]:
-        r = compute_item_min_max(item, controls, days_per_month)
-        in_fg = item["policy"] == "finished_goods_stock"
+        in_fg = gets_min_max(item)
+        r = compute_item_min_max(item, controls, days_per_month) if in_fg else {"min": None, "max": None, "unreliable": True}
         contribution = (r["min"] * item["unit_cost"]) if (in_fg and not item["no_unit_cost_item"] and r["min"] is not None) else 0.0
         if in_fg:
             stock_value += contribution
-        moc = (item["on_hand_sellable"] / r["mean_monthly_forecast"]) if r.get("mean_monthly_forecast") else float("inf")
+        on_hand_sellable = on_hand_sellable_for(item, checked_set)
+        has_forecast = bool(r.get("mean_monthly_forecast"))
+        moc = (on_hand_sellable / r["mean_monthly_forecast"]) if has_forecast else float("inf")
+        no_forecast_demand = not has_forecast
+        excess = (on_hand_sellable > 0) if no_forecast_demand else (moc > controls["obsolescence_threshold_months"])
         per_item.append({"code": item["code"], "policy": item["policy"], "min": r["min"], "max": r["max"],
-                          "stock_value_contribution": contribution, "months_of_cover": moc})
+                          "stock_value_contribution": contribution, "months_of_cover": moc,
+                          "on_hand_sellable": on_hand_sellable, "excess": excess,
+                          "no_forecast_demand": no_forecast_demand})
     holding_cost = stock_value * controls["holding_cost_rate_annual"]
-    return {"stock_value": stock_value, "holding_cost": holding_cost, "per_item": per_item}
+    excess_count = sum(1 for r in per_item if r["excess"])
+    return {"stock_value": stock_value, "holding_cost": holding_cost, "per_item": per_item,
+            "excess_count": excess_count}

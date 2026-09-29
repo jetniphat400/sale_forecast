@@ -37,6 +37,48 @@ from phaseE1_common import (
     PROJECT_ROOT, SUMMARY_DIR, load_config, load_scope, load_monthly_series, topdown_item_forecast,
     query_inventory_exact, current_minmax_per_item,
 )
+
+
+SNAPSHOT_DIR = os.path.join(PROJECT_ROOT, "output", "snapshots")
+
+
+def _persist_and_reload(df: pd.DataFrame, name: str) -> pd.DataFrame:
+    """Task 2b Part 5: PEM103/PEM107's inventory.html data is pulled live at build time and was
+    never otherwise kept -- every such pull is now written to a DATED file under
+    output/snapshots/ (gitignored, per CONVENTIONS.md "never commit generated output") with its
+    own pull time, and the page is built from THAT FILE (read back immediately), not the
+    in-memory DataFrame the query returned -- so a later reader can verify any figure on the page
+    against exactly the bytes this build used, not merely "whatever query ran that day"."""
+    os.makedirs(SNAPSHOT_DIR, exist_ok=True)
+    pull_time = datetime.now()
+    out = df.copy()
+    out["_pull_time"] = pull_time.strftime("%Y-%m-%d %H:%M:%S")
+    path = os.path.join(SNAPSHOT_DIR, f"inventory_page_pull_{name}_{pull_time.date().isoformat()}.csv")
+    out.to_csv(path, index=False)
+    logger.info("[%s] Live pull persisted to %s (%d rows, %.1f KB) -- building from this file, "
+                "not the in-memory result.", name, path, len(out), os.path.getsize(path) / 1024)
+    reloaded = pd.read_csv(path)
+    # CSV round-tripping loses datetime dtype (becomes plain strings) -- restore it for any column
+    # that was datetime64 in the original pull, so downstream .dt accessor code (build_monthly_
+    # series's forecast_date.dt.to_period, etc.) sees the same dtypes it would have from the live
+    # in-memory DataFrame, not a broken string column.
+    for col in df.columns:
+        if pd.api.types.is_datetime64_any_dtype(df[col]):
+            reloaded[col] = pd.to_datetime(reloaded[col], errors="coerce")
+    return reloaded
+
+
+def _by_warehouse_map(inv: pd.DataFrame) -> dict:
+    """{itemcode: [{code, qty}, ...]} sorted by qty descending -- same shape/convention as
+    index.html's stock panel (data/inventory.json's own `by_warehouse` field), added task 2b Part
+    1 so the client-side checklist can recompute on_hand_sellable from whichever warehouses are
+    checked, without a second database round-trip."""
+    out = {}
+    for code, g in inv.groupby("itemcode"):
+        rows = (g.groupby("warehouse", as_index=False)["stock"].sum()
+                 .sort_values("stock", ascending=False))
+        out[code] = [{"code": w, "qty": round(float(q), 3)} for w, q in zip(rows["warehouse"], rows["stock"])]
+    return out
 from phaseE2_pilot_recompute import load_division_scope, pull_raw_sales, build_monthly_series
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
@@ -57,6 +99,19 @@ DISABLED_DIVISIONS = {
 }
 
 
+FULFILMENT_SEGMENTATION_DIVISIONS = ["PEM101", "PEM107"]  # task 2b Part 2 scope; PEM103 unaffected
+
+
+def _load_fulfilment_segmentation(division: str) -> pd.DataFrame:
+    """METRICS.md Sec.23, computed by src/investigations/task2b_part2_fulfilment_segmentation.py
+    (task 2b Part 2) -- supersedes section 15 for G2 item eligibility on PEM101/PEM107. Returns one
+    row per FORECAST-STATUS item (144 PEM101 / 112 PEM107 -- the full universe, wider than the
+    128/136-item pilot scopes the pre-existing forecast/unit_cost pipeline covers)."""
+    path = os.path.join(SUMMARY_DIR, "task2b_part2_item_level.csv")
+    df = pd.read_csv(path)
+    return df[df["division"] == division].set_index("code")
+
+
 def _build_curve_target_pem101() -> dict:
     """METRICS.md Sec.22 selectable not_late target data for PEM101, added 2026-09-24 (Phase 23,
     Part 5) -- reads the already-computed dense grid (output/summary/phase23_dense_grid_PEM101.json,
@@ -65,7 +120,13 @@ def _build_curve_target_pem101() -> dict:
     range_ratio, carrying no item-level information -- see output/summary/phase23_modeler_report.md).
     """
     with open(os.path.join(SUMMARY_DIR, "phase23_dense_grid_PEM101.json"), encoding="utf-8") as f:
-        return json.load(f)
+        data = json.load(f)
+    # task 2b Part 3 (METRICS.md Sec.24): relative_service_cost ratio grid, computed by
+    # src/investigations/task2b_part3_relative_service_cost.py from the SAME 80-member curve
+    # points as the section-22 curve above, no database access.
+    with open(os.path.join(SUMMARY_DIR, "task2b_part3_ratio_grid_PEM101.json"), encoding="utf-8") as f:
+        data["relative_service_cost"] = json.load(f)
+    return data
 
 
 def _build_pem101_division(config: dict) -> dict:
@@ -82,24 +143,48 @@ def _build_pem101_division(config: dict) -> dict:
     fc_all = topdown_item_forecast(scope, series, fit_end=len(next(iter(series.values()))[0]),
                                     horizon=FORECAST_HORIZON_MONTHS)
 
+    # Task 2b Part 2 (METRICS.md Sec.23): item universe is now every PEM101 FORECAST-STATUS item
+    # (144), classified stock_policy/confirmed_to_order/conflict -- superseding section 15's
+    # finished_goods_stock/component_stock_ato policy for WHICH items get a Min/Max. The
+    # pre-existing forecast/unit_cost pipeline (policy_df/unit_cost_df/inv_summary/series) still
+    # only covers the older 128-item Fuse/Surge-Arrester pilot (PROJECT_GRAPH.md D3) -- 10 of the
+    # 82 stock_policy items fall outside it and get min_max_computable=False rather than a
+    # fabricated number (AGENTS.md rule 1/3: never guess, report the gap).
+    seg = _load_fulfilment_segmentation("PEM101")
+    codes_for_inv = list(seg.index)
+    inv_raw = _persist_and_reload(query_inventory_exact(codes_for_inv, allow_empty=True), "PEM101_inventory")
+    by_wh = _by_warehouse_map(inv_raw)
+    policy_by_code = policy_df.set_index("code")["type"].to_dict()  # type/category still section-15-sourced, unaffected
+
     items = []
-    for _, r in policy_df.iterrows():
-        code = r["code"]
-        if r["policy"] not in ("finished_goods_stock", "component_stock_ato"):
-            continue
+    for code, seg_row in seg.iterrows():
+        fulfilment_class = seg_row["class"]
+        in_pilot_scope = code in unit_cost_df["itemcode"].values
         uc_row = unit_cost_df[unit_cost_df["itemcode"] == code]
         oh_row = inv_summary[inv_summary["code"] == code]
         qty_hist = series[code][0].tolist() if code in series else []
-        forecast = fc_all.get(code, np.zeros(FORECAST_HORIZON_MONTHS)).tolist()
+        forecast = fc_all.get(code, np.zeros(FORECAST_HORIZON_MONTHS)).tolist() if code in series else []
         items.append({
-            "code": code, "type": r["type"], "policy": r["policy"],
+            "code": code, "type": seg_row["type"] if pd.notna(seg_row.get("type")) else policy_by_code.get(code),
+            "policy": fulfilment_class,
+            "fulfilment_label": seg_row["label"], "S1": bool(seg_row["S1"]) if pd.notna(seg_row["S1"]) else None,
+            "S2": (bool(seg_row["S2"]) if pd.notna(seg_row["S2"]) else None), "S2_computable": bool(seg_row["S2_computable"]),
+            "S3": bool(seg_row["S3"]) if pd.notna(seg_row["S3"]) else None,
+            "min_max_computable": in_pilot_scope,
             "actual_history": [round(x, 3) for x in qty_hist],
             "forecast": [round(x, 3) for x in forecast],
             "unit_cost": float(uc_row["unit_cost"].iloc[0]) if len(uc_row) and pd.notna(uc_row["unit_cost"].iloc[0]) else None,
             "unit_cost_fallback": bool(uc_row["unit_cost_fallback"].iloc[0]) if len(uc_row) else None,
             "no_unit_cost_item": bool(uc_row["no_unit_cost_item"].iloc[0]) if len(uc_row) else True,
             "on_hand_sellable": float(oh_row["sellable_stock"].iloc[0]) if len(oh_row) else 0.0,
+            "by_warehouse": by_wh.get(code, []),
         })
+
+    n_stock_policy_outside_pilot = sum(
+        1 for it in items if it["policy"] == "stock_policy" and not it["min_max_computable"])
+    logger.info("[PEM101] %d stock_policy items are outside the 128-item pilot's forecast/"
+                "unit_cost pipeline -- Min/Max not computable this task (min_max_computable=False).",
+                n_stock_policy_outside_pilot)
 
     current_mm_path = os.path.join(SUMMARY_DIR, "phaseE1fix_2_current_minmax.csv")
     current_mm = {}
@@ -112,7 +197,12 @@ def _build_pem101_division(config: dict) -> dict:
         it["current_min"] = cm["current_min"]
         it["current_max"] = cm["current_max"]
 
-    no_policy = policy_df[policy_df["policy"].isin(["placeholder", "excluded"])][["code", "type", "policy"]].to_dict("records")
+    # task 2b Part 2: "no policy" now means status_category != 'forecast' (placeholder/excluded
+    # from the full 445-item registry), not the old 128-item-pilot-scoped policy_df list.
+    status_df = pd.read_csv(os.path.join(SUMMARY_DIR, "phaseC_step1revised_item_status_445.csv"))
+    non_forecast = status_df[(status_df["division"] == "PEM101") & (status_df["status_category"] != "forecast")]
+    no_policy = [{"code": r["itemcode"], "type": policy_by_code.get(r["itemcode"], ""), "policy": r["status_category"]}
+                 for _, r in non_forecast.iterrows()]
 
     return {
         "items": items, "no_policy_items": no_policy,
@@ -141,34 +231,72 @@ def _build_pilot_division(config: dict, division: str, raw: pd.DataFrame) -> dic
     policy_df = pd.read_csv(os.path.join(SUMMARY_DIR, f"phaseE2pilot_{division}_1_item_policy.csv"))
     detail_df = pd.read_csv(os.path.join(SUMMARY_DIR, f"phaseE2pilot_{division}_2_minmax_stockvalue_twogroup.csv"))
 
-    inv = query_inventory_exact(codes)
+    inv = _persist_and_reload(query_inventory_exact(codes), f"{division}_inventory")
     current_mm = current_minmax_per_item(inv, codes)
     current_mm_by_code = {row["itemcode"]: {"current_min": row["current_total_min"], "current_max": row["current_total_max"]}
                           for _, row in current_mm.iterrows()}
+    by_wh = _by_warehouse_map(inv)  # task 2b Part 1: same-connection reuse, no extra query
+
+    seg = _load_fulfilment_segmentation(division) if division in FULFILMENT_SEGMENTATION_DIVISIONS else None
+    policy_by_code = policy_df.set_index("code")["type"].to_dict()
 
     items = []
-    for _, r in policy_df.iterrows():
-        code = r["code"]
-        if r["policy"] not in ("finished_goods_stock", "component_stock_ato"):
-            continue
-        d_row = detail_df[detail_df["code"] == code]
-        qty_hist = series[code][0].tolist() if code in series else []
-        forecast = fc_all.get(code, np.zeros(FORECAST_HORIZON_MONTHS)).tolist()
-        unit_cost = float(d_row["unit_cost"].iloc[0]) if len(d_row) and "unit_cost" in d_row and pd.notna(d_row["unit_cost"].iloc[0]) else None
-        no_cost = bool(d_row["no_unit_cost_item"].iloc[0]) if len(d_row) and "no_unit_cost_item" in d_row else (unit_cost is None)
-        cm = current_mm_by_code.get(code, {"current_min": None, "current_max": None})
-        items.append({
-            "code": code, "type": r["type"], "policy": r["policy"],
-            "actual_history": [round(x, 3) for x in qty_hist],
-            "forecast": [round(x, 3) for x in forecast],
-            "unit_cost": unit_cost, "unit_cost_fallback": None, "no_unit_cost_item": no_cost,
-            "on_hand_sellable": float(d_row["sellable_stock"].iloc[0]) if len(d_row) else 0.0,
-            "current_min": cm["current_min"], "current_max": cm["current_max"],
-        })
+    no_policy = []
+    if seg is not None:
+        # task 2b Part 2 (METRICS.md Sec.23): item universe is this division's forecast-status
+        # items (112 for PEM107), classified stock_policy/confirmed_to_order/conflict, superseding
+        # section 15. PEM107's existing forecast/unit_cost pipeline already covers its full
+        # division scope (136 codes, confirmed this task), so unlike PEM101 there is no coverage
+        # gap here -- every forecast-status item's Min/Max is computable.
+        for code, seg_row in seg.iterrows():
+            d_row = detail_df[detail_df["code"] == code]
+            qty_hist = series[code][0].tolist() if code in series else []
+            forecast = fc_all.get(code, np.zeros(FORECAST_HORIZON_MONTHS)).tolist()
+            unit_cost = float(d_row["unit_cost"].iloc[0]) if len(d_row) and "unit_cost" in d_row and pd.notna(d_row["unit_cost"].iloc[0]) else None
+            no_cost = bool(d_row["no_unit_cost_item"].iloc[0]) if len(d_row) and "no_unit_cost_item" in d_row else (unit_cost is None)
+            cm = current_mm_by_code.get(code, {"current_min": None, "current_max": None})
+            items.append({
+                "code": code, "type": seg_row["type"] if pd.notna(seg_row.get("type")) else policy_by_code.get(code),
+                "policy": seg_row["class"],
+                "fulfilment_label": seg_row["label"], "S1": bool(seg_row["S1"]) if pd.notna(seg_row["S1"]) else None,
+                "S2": (bool(seg_row["S2"]) if pd.notna(seg_row["S2"]) else None), "S2_computable": bool(seg_row["S2_computable"]),
+                "S3": bool(seg_row["S3"]) if pd.notna(seg_row["S3"]) else None,
+                "min_max_computable": True,
+                "actual_history": [round(x, 3) for x in qty_hist],
+                "forecast": [round(x, 3) for x in forecast],
+                "unit_cost": unit_cost, "unit_cost_fallback": None, "no_unit_cost_item": no_cost,
+                "on_hand_sellable": float(d_row["sellable_stock"].iloc[0]) if len(d_row) else 0.0,
+                "current_min": cm["current_min"], "current_max": cm["current_max"],
+                "by_warehouse": by_wh.get(code, []),
+            })
+        status_df = pd.read_csv(os.path.join(SUMMARY_DIR, "phaseC_step1revised_item_status_445.csv"))
+        non_forecast = status_df[(status_df["division"] == division) & (status_df["status_category"] != "forecast")]
+        no_policy = [{"code": r["itemcode"], "type": policy_by_code.get(r["itemcode"], ""), "policy": r["status_category"]}
+                     for _, r in non_forecast.iterrows()]
+    else:
+        for _, r in policy_df.iterrows():
+            code = r["code"]
+            if r["policy"] not in ("finished_goods_stock", "component_stock_ato"):
+                continue
+            d_row = detail_df[detail_df["code"] == code]
+            qty_hist = series[code][0].tolist() if code in series else []
+            forecast = fc_all.get(code, np.zeros(FORECAST_HORIZON_MONTHS)).tolist()
+            unit_cost = float(d_row["unit_cost"].iloc[0]) if len(d_row) and "unit_cost" in d_row and pd.notna(d_row["unit_cost"].iloc[0]) else None
+            no_cost = bool(d_row["no_unit_cost_item"].iloc[0]) if len(d_row) and "no_unit_cost_item" in d_row else (unit_cost is None)
+            cm = current_mm_by_code.get(code, {"current_min": None, "current_max": None})
+            items.append({
+                "code": code, "type": r["type"], "policy": r["policy"],
+                "actual_history": [round(x, 3) for x in qty_hist],
+                "forecast": [round(x, 3) for x in forecast],
+                "unit_cost": unit_cost, "unit_cost_fallback": None, "no_unit_cost_item": no_cost,
+                "on_hand_sellable": float(d_row["sellable_stock"].iloc[0]) if len(d_row) else 0.0,
+                "current_min": cm["current_min"], "current_max": cm["current_max"],
+                "by_warehouse": by_wh.get(code, []),
+            })
 
-    logger.info("[%s] Embedded %d finished_goods_stock/component_stock_ato items.", division, len(items))
+    logger.info("[%s] Embedded %d items.", division, len(items))
     return {
-        "items": items, "no_policy_items": [],
+        "items": items, "no_policy_items": no_policy,
         "sellable_warehouse_codes": e1["sellable_warehouse_codes"][division],
         "segment_policy": {"p50_annual_value_thb": None, "note": "computed per-division, see output/summary/phaseE2pilot_report.md"},
         "snapshot_pull_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S") + " (live pull, not a frozen file)",
@@ -195,6 +323,22 @@ def _division_calibration_note(division: str) -> str:
     return ""
 
 
+def _load_pem107_alert() -> dict:
+    with open(os.path.join(SUMMARY_DIR, "task2b_part4_pem107_alert.json"), encoding="utf-8") as f:
+        alert = json.load(f)
+    items = pd.read_csv(os.path.join(SUMMARY_DIR, "task2b_part4_pem107_alert_items.csv"))
+    # BUG FIX (task 2b Part 4/8, found by the Part 8 visual check): pandas re-introduces NaN for
+    # items with zero rows in a period (e.g. not_late_from_may_pct when a code has no post-May
+    # deliveries at all) even though the source script wrote None -- json.dumps() serializes a
+    # bare float NaN as the literal token `NaN`, which is NOT valid JSON and made the WHOLE
+    # embedded data block (not just this one field) fail JSON.parse() client-side, silently
+    # blanking every number on the page. Converted to None (-> JSON null) here, once, for every
+    # column, rather than trusting each column to already be clean.
+    items = items.astype(object).where(pd.notna(items), None)
+    alert["items"] = items.to_dict("records")
+    return alert
+
+
 def build_data() -> dict:
     with open(CONFIG_PATH, "r", encoding="utf-8") as f:
         config = yaml.safe_load(f)
@@ -206,7 +350,7 @@ def build_data() -> dict:
     for division in ["PEM103", "PEM107"]:
         scope = load_division_scope(config, division)
         pilot_codes.extend(scope["code"].tolist())
-    raw = pull_raw_sales(config, sorted(set(pilot_codes)))
+    raw = _persist_and_reload(pull_raw_sales(config, sorted(set(pilot_codes))), "PEM103_PEM107_sales")
     for division in ["PEM103", "PEM107"]:
         divisions[division] = _build_pilot_division(config, division, raw)
 
@@ -242,6 +386,10 @@ def build_data() -> dict:
             "holding_cost_rate_annual": [0.05, 0.40], "obsolescence_threshold_months": [1, 12],
         },
         "divisions": divisions,
+        # task 2b Part 4: PEM107 delivery-decline alert, precomputed by
+        # src/investigations/task2b_part4_pem107_alert.py (Cube_CES, no live DB access from this
+        # builder itself -- reads that script's already-written JSON).
+        "pem107_alert": _load_pem107_alert(),
     }
     logger.info("Built multi-division data: %s", {k: len(v["items"]) for k, v in divisions.items()})
     return data

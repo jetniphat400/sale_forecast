@@ -99,13 +99,20 @@ def test_inventory_page_rebuild_still_has_every_note_axis_title_and_disabled_con
         "this pinned Plotly build silently ignores it (title never renders); use title: {text: ...}."
     )
 
-    assert page_html.count("ยังไม่ทำงาน — อยู่ระหว่างแก้ไข") == 2, (
-        "Rebuilt inventory.html must still label exactly two disabled controls (obsolescence "
-        "slider, warehouse checklist) as not working."
+    # RE-ENABLED, task 2b Part 1 (METRICS.md Sec.40): both controls now compute something real
+    # (excess flag / recomputed on_hand_sellable) -- superseding the earlier task's "not working"
+    # labels, which this test used to require. See tests/test_inventory_parity.py for the
+    # warehouse-selection/threshold parity coverage that replaces this disabled-state check.
+    assert "ยังไม่ทำงาน — อยู่ระหว่างแก้ไข" not in page_html, (
+        "Rebuilt inventory.html still shows the 'not working' label -- task 2b re-enabled both "
+        "controls; this label should no longer appear anywhere on the page."
     )
     assert 'id="ctrl-obsolescence_threshold_months"' in page_html
-    assert "disabled" in page_html.split('id="ctrl-obsolescence_threshold_months"')[1][:80], (
-        "The obsolescence slider must still render with the disabled attribute after a rebuild."
+    assert "disabled" not in page_html.split('id="ctrl-obsolescence_threshold_months"')[1][:120], (
+        "The obsolescence slider must render WITHOUT the disabled attribute (task 2b re-enabled it)."
+    )
+    assert 'class="wh-check"' in page_html and 'onchange="onControlChange()"' in page_html, (
+        "The warehouse checklist checkboxes must be wired to onControlChange() (task 2b re-enabled them)."
     )
 
 

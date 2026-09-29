@@ -118,30 +118,67 @@ function computeItemMinMax(item, controls) {
            meanMonthlyForecast, replenishment: replen };
 }
 
+// Task 2b Part 1: on_hand_sellable is now recomputed from item.by_warehouse (per-warehouse qty,
+// embedded by src/build_inventory_page_data.py) restricted to whichever warehouse codes are
+// CURRENTLY CHECKED on the page -- checkedWarehouses defaults to the division's full
+// sellable_warehouse_codes list (the same total the page showed before this control did anything),
+// so calling computeAll with no third argument reproduces the exact old behaviour. Min/Max never
+// read on_hand at all (see computeItemMinMax above) and are UNCHANGED by this control, by
+// construction, not by a special case here.
+function onHandSellableFor(item, checkedWarehouses) {
+  const set = checkedWarehouses instanceof Set ? checkedWarehouses : new Set(checkedWarehouses);
+  return (item.by_warehouse || []).filter(w => set.has(w.code)).reduce((s, w) => s + w.qty, 0);
+}
+
 // METRICS.md Sec.6/9: stock_value = Sum(Min x unit_cost) over finished_goods_stock items with a
 // usable unit_cost. months_of_cover = on_hand_sellable / mean monthly forecast (protection-period
 // horizon mean, Inf when forecast=0). holding_cost = stock_value x holding_cost_rate_annual.
+// METRICS.md Sec.40 (excess_stock_flag): excess = months_of_cover > obsolescence_threshold_months;
+// a zero-forecast item (infinite cover) is flagged excess only if on_hand_sellable > 0, and is
+// additionally marked noForecastDemand so the page can list it separately.
 // Takes divisionData explicitly (not a module-level DATA.items) so the SAME function serves
 // whichever division is currently selected.
-function computeAll(controls, divisionData) {
+// task 2b Part 2 (METRICS.md Sec.23): 'stock_policy' is the new (PEM101/PEM107) class name for
+// what section 15 called 'finished_goods_stock'; PEM103 has no segmentation (task 2b Part 2 scope)
+// and keeps the original 'finished_goods_stock'/'component_stock_ato' strings unchanged. Either
+// spelling gets a Min/Max; 'confirmed_to_order'/'conflict' NEVER do, even if the item happens to
+// have enough history that computeItemMinMax could technically produce a number for it -- the
+// computation is skipped outright, not computed then hidden.
+function getsMinMax(item) {
+  return item.policy === 'finished_goods_stock' || item.policy === 'stock_policy';
+}
+
+function computeAll(controls, divisionData, checkedWarehouses) {
+  const checked = checkedWarehouses || divisionData.sellable_warehouse_codes;
+  const checkedSet = checked instanceof Set ? checked : new Set(checked);
   let stockValue = 0;
   const perItem = [];
   for (const item of divisionData.items) {
-    const r = computeItemMinMax(item, controls);
-    const inFg = item.policy === 'finished_goods_stock';
+    const inFg = getsMinMax(item);
+    const r = inFg ? computeItemMinMax(item, controls) : { min: null, max: null, unreliable: true };
     const contribution = (inFg && !item.no_unit_cost_item && r.min !== null) ? r.min * item.unit_cost : 0;
     if (inFg) stockValue += contribution;
-    const monthsOfCover = (r.meanMonthlyForecast && r.meanMonthlyForecast > 0)
-      ? item.on_hand_sellable / r.meanMonthlyForecast : Infinity;
+    const onHandSellable = onHandSellableFor(item, checkedSet);
+    const hasForecast = r.meanMonthlyForecast && r.meanMonthlyForecast > 0;
+    const monthsOfCover = hasForecast ? onHandSellable / r.meanMonthlyForecast : Infinity;
+    const noForecastDemand = !hasForecast;
+    const excess = noForecastDemand
+      ? onHandSellable > 0
+      : monthsOfCover > controls.obsolescence_threshold_months;
     perItem.push({ code: item.code, policy: item.policy, min: r.min, max: r.max,
                    stockValueContribution: contribution, monthsOfCover, unreliable: r.unreliable,
                    currentMin: item.current_min, currentMax: item.current_max,
-                   unitCost: item.unit_cost, noUnitCost: item.no_unit_cost_item });
+                   unitCost: item.unit_cost, noUnitCost: item.no_unit_cost_item,
+                   onHandSellable, excess, noForecastDemand,
+                   // task 2b Part 2 (METRICS.md Sec.23) -- undefined for PEM103 (no segmentation)
+                   label: item.fulfilment_label, S1: item.S1, S2: item.S2,
+                   S2_computable: item.S2_computable, S3: item.S3, type: item.type });
   }
   const holdingCost = stockValue * controls.holding_cost_rate_annual;
-  return { stockValue, holdingCost, perItem };
+  const excessCount = perItem.filter(r => r.excess).length;
+  return { stockValue, holdingCost, perItem, excessCount };
 }
-if (typeof module !== 'undefined') { module.exports = { computeLTD, rollingWindowSums, percentile, computeItemMinMax, computeAll, DATA }; }
+if (typeof module !== 'undefined') { module.exports = { computeLTD, rollingWindowSums, percentile, computeItemMinMax, onHandSellableFor, computeAll, DATA }; }
 // END_RECOMPUTE_JS
 """
 
@@ -155,27 +192,18 @@ def build_page() -> str:
         if not data["divisions"].get(div, {}).get("items"):
             raise InventoryPageError(f"Division {div} has zero embedded items -- refusing to render "
                                       f"a page with an empty enabled division.")
-    data_json = json.dumps(data)
+    # allow_nan=False (task 2b Part 8): fail the BUILD loudly if any float NaN/Infinity ever
+    # reaches this point again, instead of silently emitting the invalid-JSON `NaN` token that
+    # broke JSON.parse() client-side and blanked the entire page (found by this task's own visual
+    # check -- see _load_pem107_alert()'s fix, the actual source of the NaN this caught).
+    data_json = json.dumps(data, allow_nan=False)
 
     defaults = data["tier_a_defaults"]
     ranges = data["tier_a_ranges"]
 
-    def slider(key, label, step, suffix="", disabled=False):
+    def slider(key, label, step, suffix=""):
         lo, hi = ranges[key]
         val = defaults[key]
-        # DISABLED, this task (2b's own job to implement, not this one -- Part 1 instruction:
-        # "Do not implement them here"): this control computed nothing on the page even before
-        # being disabled (confirmed by reading onControlChange()/computeAll() -- neither ever
-        # reads obsolescence_threshold_months for anything beyond its own on-screen label). It is
-        # now disabled and labelled so a user cannot mistake a dead control for a working one.
-        if disabled:
-            return f"""
-        <div class="ctrl-row disabled">
-          <label for="ctrl-{key}">{label}: <span id="val-{key}">{val}{suffix}</span>
-            <span class="disabled-flag">ยังไม่ทำงาน — อยู่ระหว่างแก้ไข</span></label>
-          <input type="range" id="ctrl-{key}" min="{lo}" max="{hi}" step="{step}" value="{val}"
-                 disabled aria-disabled="true">
-        </div>"""
         return f"""
         <div class="ctrl-row">
           <label for="ctrl-{key}">{label}: <span id="val-{key}">{val}{suffix}</span></label>
@@ -189,7 +217,9 @@ def build_page() -> str:
         slider("review_interval_days", "Review interval (days)", 1, "d"),
         slider("cycle_service_level", "Cycle service level", 0.01),
         slider("holding_cost_rate_annual", "Annual holding cost rate", 0.01),
-        slider("obsolescence_threshold_months", "Obsolescence threshold (months)", 1, "mo", disabled=True),
+        # RE-ENABLED, task 2b Part 1 (METRICS.md Sec.40, excess_stock_flag): now drives the
+        # item table's Excess column and the totals box's excess count, recomputed live.
+        slider("obsolescence_threshold_months", "Obsolescence threshold (months)", 1, "mo"),
     ])
 
     division_options = "".join(
@@ -226,12 +256,14 @@ def build_page() -> str:
   h1 {{ font-size: 22px; margin: 0 0 4px; }}
   h2 {{ font-size: 17px; margin: 32px 0 10px; border-bottom: 1px solid var(--border); padding-bottom: 6px; }}
   p.hint, p.scope-note, span.hint, span.scope-note {{ font-size: 12px; color: var(--muted); }}
-  .ctrl-row.disabled {{ opacity: 0.55; }}
-  .ctrl-row .disabled-flag {{ color: var(--series-2); font-weight: 600; }}
   p.note-box {{ font-size: 12.5px; color: var(--text-secondary); background: #eef4fb;
     border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px; }}
   a.back-link {{ color: var(--series-1); text-decoration: none; font-size: 13px; }}
   .plotly-chart {{ width:100%; min-height: 320px; margin: 6px 0 14px; }}
+  .alert-banner {{ background:#fdecea; border:2px solid #d03b3b; border-radius:8px; padding:14px 18px; margin:12px 0; }}
+  .alert-banner-title {{ font-size:15px; font-weight:700; color:#8f2b2b; margin-bottom:8px; }}
+  .alert-banner .report-table {{ background:#fff; }}
+  .alert-banner .hint {{ color:#8f2b2b; }}
   .division-panel {{ display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin: 10px 0; }}
   .division-panel select {{ font-size: 14px; padding: 5px 8px; border-radius: 6px; border:1px solid var(--border); }}
   ul.disabled-note-list {{ font-size: 12px; color: var(--muted); margin: 4px 0 0; padding-left: 18px; }}
@@ -262,6 +294,21 @@ def build_page() -> str:
   </div>
   <ul class="disabled-note-list" id="disabled-note-list">{disabled_notes}</ul>
   <p class="scope-note" id="scope-note"></p>
+
+  <div id="pem107-alert" class="alert-banner" style="display:none" role="alert">
+    <div class="alert-banner-title">⚠ PEM107 — Omni Channel delivery decline since May 2026</div>
+    <div id="pem107-alert-headline"></div>
+    <table class="report-table" id="pem107-alert-table">
+      <thead><tr>
+        <th>Product Type</th><th>Product Description</th><th>Product Code</th>
+        <th>Units ordered (from May 2026)</th><th>Units late</th>
+        <th>not_late (from May 2026)</th><th>not_late (before May 2026)</th><th>Share of all late units</th>
+      </tr></thead>
+      <tbody id="pem107-alert-table-body"></tbody>
+    </table>
+    <p class="hint" id="pem107-alert-source"></p>
+    <p class="hint" id="pem107-alert-limitations"></p>
+  </div>
   <p class="note-box"><b>หมายเหตุสำคัญ:</b> ตัวเลขในหน้านี้เป็น <b>ค่าสถานการณ์ (scenario values) ภายใต้สมมติฐานที่ระบุไว้เท่านั้น
     ไม่ใช่คำแนะนำการสั่งซื้อ (purchase recommendation)</b> — การเปลี่ยนตัวควบคุมด้านล่างเปลี่ยนเฉพาะสิ่งที่แสดงผล ไม่ใช่ตัวแบบพยากรณ์
     (Tier A). การเปลี่ยนแปลงเชิงโครงสร้าง (Tier B, เช่น segment_policy) ต้องแก้ไข <code>config.yaml</code> และรัน pipeline ใหม่.
@@ -284,8 +331,9 @@ def build_page() -> str:
   <div class="ctrl-panel">
     {controls_html}
   </div>
-  <p>คลังสินค้าที่นับเป็น sellable สำหรับ division ที่เลือก (เปลี่ยนตาม division):
-    <span class="disabled-flag" id="warehouse-checklist-flag"></span></p>
+  <p>คลังสินค้าที่นับเป็น sellable สำหรับ division ที่เลือก (เปลี่ยนตาม division) — เลือก/ยกเลิกคลังเพื่อคำนวณ
+    on-hand sellable, months of cover, value at risk และ excess flag ใหม่ทันที
+    (<b>ไม่มีผลกับ Min/Max</b> — สูตร Min/Max ไม่อ่านค่าสต็อคคงเหลือเลย, METRICS.md §5):</p>
   <div class="item-check-list" id="warehouse-checklist"></div>
 
   <div id="curve-target-section" style="display:none;">
@@ -305,6 +353,7 @@ def build_page() -> str:
       <input type="range" id="notlate-slider" step="0.01" style="width:100%;">
     </div>
     <div class="totals-box" id="curve-target-totals"></div>
+    <p class="note-box" id="relative-service-cost-note">METRICS.md §24 relative_service_cost — คำนวณเมื่อเลือกเป้าหมายด้านบน</p>
     <table class="report-table" id="curve-item-table">
       <thead><tr>
         <th>Item</th><th>Min</th><th>Max (median)</th><th>Max range (across members)</th>
@@ -318,6 +367,7 @@ def build_page() -> str:
     <div class="stat">Stock value (Σ Min×unit_cost)<b id="tot-stock-value">-</b></div>
     <div class="stat">Holding cost (annual)<b id="tot-holding-cost">-</b></div>
     <div class="stat">Items with a Min/Max<b id="tot-n-items">-</b></div>
+    <div class="stat">Excess stock items (METRICS.md §40)<b id="tot-excess-count">-</b></div>
   </div>
 
   <h2>Trade-off: Stock value vs. Cycle Service Level</h2>
@@ -330,15 +380,37 @@ def build_page() -> str:
   {render_notes_html('inventory.html', 'chart-min-vs-current')}
 
   <h2>ตารางรายรายการ (เรียงตาม Value at Risk ได้)</h2>
-  <p class="hint">Value at risk = max(0, current_min − scenario_min) × unit_cost — ค่าประมาณความเสี่ยงจากสต็อคปัจจุบันต่ำกว่าสถานการณ์นี้</p>
+  <p class="hint">Value at risk = max(0, current_min − scenario_min) × unit_cost — ค่าประมาณความเสี่ยงจากสต็อคปัจจุบันต่ำกว่าสถานการณ์นี้
+    · Excess = months of cover เกิน obsolescence threshold ด้านบน (METRICS.md §40), คำนวณใหม่ทุกครั้งที่เปลี่ยนคลังที่เลือกหรือ threshold</p>
+  <p class="hint" id="segmentation-note" style="display:none">Policy = METRICS.md §23 class (stock_policy/confirmed_to_order/conflict) for PEM101/PEM107 — supersedes section 15.
+    Only <b>stock_policy</b> items receive a Min/Max here; <b>confirmed_to_order</b> and <b>conflict</b> items are listed with no Min/Max in the
+    separate table below. Label = dominant manufacturing_type (MTS/MTO/ETO/mixed). Signals = S1 (on-hand stock) / S2 (batch-before-PO ≥50%) / S3 (median notice ≤14d),
+    ✓/✗/– (– = S2 could not be computed, S1+S3 both required instead).</p>
   <table class="report-table" id="item-table">
     <thead><tr>
       <th onclick="sortTable(0)">Item</th><th onclick="sortTable(1)">Policy</th>
-      <th onclick="sortTable(2)">Min</th><th onclick="sortTable(3)">Max</th>
-      <th onclick="sortTable(4)">Current Min</th><th onclick="sortTable(5)">Months of cover</th>
-      <th onclick="sortTable(6)">Value at risk (THB)</th>
+      <th onclick="sortTable(2)">Label</th><th onclick="sortTable(3)">Signals (S1/S2/S3)</th>
+      <th onclick="sortTable(4)">Min</th><th onclick="sortTable(5)">Max</th>
+      <th onclick="sortTable(6)">Current Min</th><th onclick="sortTable(7)">Months of cover</th>
+      <th onclick="sortTable(8)">Value at risk (THB)</th><th onclick="sortTable(9)">Excess</th>
     </tr></thead>
     <tbody id="item-table-body"></tbody>
+  </table>
+
+  <h2>Confirmed-to-order / Conflict รายการ (ไม่มี Min/Max, METRICS.md §23)</h2>
+  <p class="hint" id="class-table-note">รายการที่จัดเป็น confirmed_to_order หรือ conflict — ไม่ได้รับ Min/Max ไม่ว่าจะมีประวัติขายมากแค่ไหนก็ตาม
+    (เฉพาะ PEM101/PEM107 เท่านั้น ที่มีการจัดกลุ่มนี้ — ถ้าเลือก PEM103 ตารางนี้จะว่างเปล่า)</p>
+  <table class="report-table" id="class-table">
+    <thead><tr><th>Item</th><th>Type</th><th>Label</th><th>Class</th><th>S1 (on-hand)</th><th>S2 (batch-before-PO)</th><th>S3 (notice ≤14d)</th></tr></thead>
+    <tbody id="class-table-body"></tbody>
+  </table>
+
+  <h2>สต็อคที่ไม่มียอดพยากรณ์ (on-hand exists, no forecast demand)</h2>
+  <p class="hint">รายการที่ mean monthly forecast = 0 ในช่วง protection period ปัจจุบัน (months of cover = ∞ ตาม METRICS.md §9) — แยกออกมาต่างหาก
+    ตามที่ METRICS.md §40 กำหนด แทนที่จะปนอยู่ในตารางหลัก ถ้าไม่มีแถวด้านล่างนี้ แปลว่าไม่มีรายการแบบนี้ใน division ที่เลือก</p>
+  <table class="report-table" id="no-forecast-table">
+    <thead><tr><th>Item</th><th>Policy</th><th>On-hand sellable</th><th>Excess</th></tr></thead>
+    <tbody id="no-forecast-table-body"></tbody>
   </table>
 
   <h2>Placeholder / Excluded รายการ (ไม่มี Min/Max)</h2>
@@ -367,17 +439,73 @@ function readControls() {{
 
 function fmtTHB(x) {{ return 'THB ' + Math.round(x).toLocaleString(); }}
 
+function excessBadge(r) {{
+  return r.excess ? '<span style="color:#c0392b;font-weight:700">เกิน</span>' : '<span style="color:var(--muted)">-</span>';
+}}
+
+function signalMark(v) {{
+  if (v === null || v === undefined) return '&ndash;';
+  return v ? '<span style="color:#1baf7a">&#10003;</span>' : '<span style="color:#c0392b">&#10007;</span>';
+}}
+
+function signalsCell(r) {{
+  if (r.label === undefined) return '<span style="color:var(--muted)">n/a</span>'; // PEM103: no segmentation
+  const s2 = r.S2_computable ? signalMark(r.S2) : '&ndash;';
+  return `S1 ${{signalMark(r.S1)}} &nbsp; S2 ${{s2}} &nbsp; S3 ${{signalMark(r.S3)}}`;
+}}
+
 function renderTable(perItem) {{
+  // task 2b Part 1 (METRICS.md Sec.40): items with no_forecast_demand move to the separate
+  // "stock with no forecast demand" table instead of showing months of cover = ∞ in this one.
+  // task 2b Part 2 (METRICS.md Sec.23): confirmed_to_order/conflict items move to the class table
+  // instead -- this table only ever shows Min/Max for stock_policy/finished_goods_stock items.
   const tbody = document.getElementById('item-table-body');
   tbody.innerHTML = '';
+  const noteEl = document.getElementById('segmentation-note');
+  const segmented = perItem.some(r => r.label !== undefined);
+  noteEl.style.display = segmented ? 'block' : 'none';
   for (const r of perItem) {{
+    if (r.noForecastDemand) continue;
+    if (r.policy === 'confirmed_to_order' || r.policy === 'conflict') continue;
     const var_ = (r.currentMin && r.min !== null && r.unitCost) ? Math.max(0, r.currentMin - r.min) * r.unitCost : 0;
     const tr = document.createElement('tr');
-    tr.innerHTML = `<td>${{r.code}}</td><td>${{r.policy}}</td><td>${{r.min !== null ? Math.round(r.min).toLocaleString() : '-'}}</td>` +
+    tr.innerHTML = `<td>${{r.code}}</td><td>${{r.policy}}</td>` +
+      `<td>${{r.label !== undefined ? (r.label ?? '-') : '&ndash;'}}</td>` +
+      `<td>${{signalsCell(r)}}</td>` +
+      `<td>${{r.min !== null ? Math.round(r.min).toLocaleString() : '-'}}</td>` +
       `<td>${{r.max !== null ? Math.round(r.max).toLocaleString() : '-'}}</td>` +
       `<td>${{r.currentMin !== null && r.currentMin !== undefined ? Math.round(r.currentMin).toLocaleString() : '-'}}</td>` +
       `<td>${{isFinite(r.monthsOfCover) ? r.monthsOfCover.toFixed(1) : '&#8734;'}}</td>` +
-      `<td data-var="${{var_}}">${{fmtTHB(var_)}}</td>`;
+      `<td data-var="${{var_}}">${{fmtTHB(var_)}}</td>` +
+      `<td data-var="${{r.excess ? 1 : 0}}">${{excessBadge(r)}}</td>`;
+    tbody.appendChild(tr);
+  }}
+}}
+
+function renderNoForecastTable(perItem) {{
+  const tbody = document.getElementById('no-forecast-table-body');
+  tbody.innerHTML = '';
+  for (const r of perItem) {{
+    if (!r.noForecastDemand) continue;
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${{r.code}}</td><td>${{r.policy}}</td>` +
+      `<td>${{Math.round(r.onHandSellable).toLocaleString()}}</td>` +
+      `<td>${{excessBadge(r)}}</td>`;
+    tbody.appendChild(tr);
+  }}
+}}
+
+function renderClassTable(perItem) {{
+  // task 2b Part 2 (METRICS.md Sec.23): confirmed_to_order/conflict items -- no Min/Max under
+  // any circumstance, listed here with their signals for transparency. Empty for PEM103 (no
+  // segmentation) and for divisions where every item happens to be stock_policy.
+  const tbody = document.getElementById('class-table-body');
+  tbody.innerHTML = '';
+  for (const r of perItem) {{
+    if (r.policy !== 'confirmed_to_order' && r.policy !== 'conflict') continue;
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${{r.code}}</td><td>${{r.type ?? '-'}}</td><td>${{r.label ?? '-'}}</td><td>${{r.policy}}</td>` +
+      `<td>${{signalMark(r.S1)}}</td><td>${{r.S2_computable ? signalMark(r.S2) : '&ndash; (คำนวณไม่ได้)'}}</td><td>${{signalMark(r.S3)}}</td>`;
     tbody.appendChild(tr);
   }}
 }}
@@ -393,21 +521,22 @@ function renderNoPolicyTable(divisionData) {{
 }}
 
 function renderWarehouseChecklist(divisionData) {{
-  // DISABLED, this task (2b's own job to implement, not this one -- Part 1 instruction: "Do not
-  // implement them here"): unchecking a box here computed nothing even before being disabled --
-  // no function in this file ever read a .wh-check's checked state (confirmed by a full-file
-  // search). Now disabled and labelled so a user cannot mistake a dead control for a working one.
-  // Also corrects config.yaml's now-inaccurate comment claiming this control was made live.
+  // RE-ENABLED, task 2b Part 1: each checkbox's checked state now feeds onHandSellableFor()
+  // (see RECOMPUTE_JS's computeAll) via checkedWarehouseCodes() below -- toggling one recomputes
+  // on_hand_sellable, months_of_cover, value_at_risk and the excess flag for every item. Min/Max
+  // are unaffected by construction (computeItemMinMax never reads on-hand at all).
   const el = document.getElementById('warehouse-checklist');
   el.innerHTML = '';
   for (const w of divisionData.sellable_warehouse_codes) {{
     const label = document.createElement('label');
     label.className = 'item-check';
-    label.innerHTML = `<input type="checkbox" class="wh-check" value="${{w}}" checked disabled aria-disabled="true"> ${{w}}`;
+    label.innerHTML = `<input type="checkbox" class="wh-check" value="${{w}}" checked onchange="onControlChange()"> ${{w}}`;
     el.appendChild(label);
   }}
-  const flag = document.getElementById('warehouse-checklist-flag');
-  if (flag) flag.textContent = 'ยังไม่ทำงาน — อยู่ระหว่างแก้ไข';
+}}
+
+function checkedWarehouseCodes() {{
+  return Array.from(document.querySelectorAll('#warehouse-checklist .wh-check:checked')).map(cb => cb.value);
 }}
 
 let sortDir = {{}};
@@ -485,6 +614,24 @@ function lerpGridPoints(a, b, t) {{
     items,
   }};
 }}
+// task 2b Part 3 (METRICS.md Sec.24): interpolates the pre-computed ratio_e grid (median/min/max
+// across the 80 distinct ensemble members) at an arbitrary target not_late -- same linear
+// interpolation convention as interpolateGridAtNotLate above, on a separate (finer, 0.25pp-step)
+// grid built by src/investigations/task2b_part3_relative_service_cost.py. Returns null outside
+// the grid's own range (never extrapolated).
+function interpolateRatioGrid(rsc, targetNotLate) {{
+  if (!rsc || !rsc.grid || !rsc.grid.length) return null;
+  const g = rsc.grid;
+  if (targetNotLate < g[0].not_late_pct || targetNotLate > g[g.length - 1].not_late_pct) return null;
+  for (let i = 0; i < g.length - 1; i++) {{
+    const a = g[i], b = g[i + 1];
+    if (targetNotLate >= a.not_late_pct && targetNotLate <= b.not_late_pct) {{
+      const t = (b.not_late_pct === a.not_late_pct) ? 0 : (targetNotLate - a.not_late_pct) / (b.not_late_pct - a.not_late_pct);
+      return {{ median: lerp(a.median, b.median, t), min: lerp(a.min, b.min, t), max: lerp(a.max, b.max, t) }};
+    }}
+  }}
+  return g[g.length - 1];
+}}
 // END_CURVE_INTERP_JS
 
 let curCurveTarget = null;
@@ -506,6 +653,30 @@ function applyCurveTarget(targetNotLate) {{
     <div class="stat">Stock value band (min–max)<b>${{fmtTHB(result.stock_value_min)}} – ${{fmtTHB(result.stock_value_max)}}</b></div>
     <div class="stat">Change vs today's on-hand<b style="color:${{diff>=0?'#c0392b':'#1baf7a'}}">${{diff>=0?'+':''}}${{fmtTHB(diff)}} (${{diffPct>=0?'+':''}}${{diffPct.toFixed(1)}}%)</b></div>
   `;
+
+  // task 2b Part 3 (METRICS.md Sec.24): ratio_e across the 80 distinct members, at THIS target,
+  // relative to today's REAL not_late (state.rsc.today_not_late_pct) -- never each member's own
+  // simulated-at-today point (Sec.24's own reasoning: the unidentifiable reorder level cancels
+  // WITHIN a member's ratio of two points on its own curve).
+  const rscNote = document.getElementById('relative-service-cost-note');
+  const ratio = interpolateRatioGrid(state.rsc, result.not_late_median_pct);
+  if (!ratio) {{
+    rscNote.innerHTML = 'METRICS.md §24 relative_service_cost: ไม่มีข้อมูลสมาชิก ensemble ที่ครอบคลุมเป้าหมายนี้ (นอกช่วงที่คำนวณไว้)';
+  }} else {{
+    const pct = v => (100 * (v - 1));
+    const sign = v => (v >= 0 ? '+' : '');
+    const ratioBandPctOfMedian = ratio.median ? 100 * (ratio.max - ratio.min) / ratio.median : null;
+    const absBandPctOfMedian = result.stock_value_median ? 100 * (result.stock_value_max - result.stock_value_min) / result.stock_value_median : null;
+    const narrower = (ratioBandPctOfMedian !== null && absBandPctOfMedian !== null && ratioBandPctOfMedian < absBandPctOfMedian);
+    const bandNote = (ratioBandPctOfMedian === null || absBandPctOfMedian === null) ? ''
+      : narrower
+        ? ` <span style="color:#1baf7a">ช่วงของอัตราส่วนนี้ (${{ratioBandPctOfMedian.toFixed(1)}}% ของค่ากลาง) แคบกว่าช่วงมูลค่า stock สัมบูรณ์ด้านบน (${{absBandPctOfMedian.toFixed(1)}}%) — เชื่อถือได้มากกว่า</span>`
+        : ` <span style="color:#c0392b">ช่วงของอัตราส่วนนี้ (${{ratioBandPctOfMedian.toFixed(1)}}% ของค่ากลาง) ไม่แคบกว่าช่วงมูลค่า stock สัมบูรณ์ (${{absBandPctOfMedian.toFixed(1)}}%) — ห้ามนำเสนอว่าแน่นอนกว่า</span>`;
+    rscNote.innerHTML =
+      `<b>METRICS.md §24:</b> stock ${{sign(pct(ratio.median))}}${{pct(ratio.median).toFixed(1)}}% ` +
+      `(range ${{sign(pct(ratio.min))}}${{pct(ratio.min).toFixed(1)}}% to ${{sign(pct(ratio.max))}}${{pct(ratio.max).toFixed(1)}}%) ` +
+      `to move not_late from today's level (${{state.rsc.today_not_late_pct}}%) to ${{result.not_late_median_pct.toFixed(2)}}%.` + bandNote;
+  }}
 
   const tbody = document.getElementById('curve-item-table-body');
   tbody.innerHTML = '';
@@ -534,7 +705,7 @@ function renderCurveTarget(divisionData) {{
   const ct = divisionData.curve_target;
   if (!ct) {{ section.style.display = 'none'; curCurveTarget = null; return; }}
   section.style.display = '';
-  curCurveTarget = {{ ct, grid: ct.grid }};
+  curCurveTarget = {{ ct, grid: ct.grid, rsc: ct.relative_service_cost }};
 
   document.getElementById('curve-target-summary').innerHTML =
     `<b>${{ct.n_distinct_members}} distinct ensemble members</b> (deduplicated on reorder level, order-up-to level, ` +
@@ -582,11 +753,58 @@ function renderPageTimestamps() {{
     'ข้อมูลถึงเดือน ' + mc.last_month_of_data + ' <span style="color:#898781">(' + mc.source + ')</span>';
 }}
 
+function renderPem107Alert(division) {{
+  // task 2b Part 4: alert banner, PEM107 view only. All figures come from DATA.pem107_alert,
+  // computed at build time by src/investigations/task2b_part4_pem107_alert.py from Cube_CES --
+  // nothing here is typed.
+  const banner = document.getElementById('pem107-alert');
+  const a = DATA.pem107_alert;
+  if (division !== 'PEM107' || !a) {{ banner.style.display = 'none'; return; }}
+  banner.style.display = 'block';
+
+  const fmtPct = v => (v === null || v === undefined) ? 'n/a' : v.toFixed(1) + '%';
+  document.getElementById('pem107-alert-headline').innerHTML =
+    `<b>not_late (unit-weighted, Omni Channel) ก่อน ${{a.split_date}}: ${{fmtPct(a.not_late_before_may_2026_pct)}}</b> ` +
+    `(n=${{a.units_before_may_2026.toLocaleString()}} ชิ้น, ตั้งแต่ ${{a.before_window_start}}) ` +
+    `&rarr; <b>ตั้งแต่ ${{a.split_date}}: ${{fmtPct(a.not_late_from_may_2026_pct)}}</b> ` +
+    `(n=${{a.units_from_may_2026.toLocaleString()}} ชิ้น)`;
+
+  const tbody = document.getElementById('pem107-alert-table-body');
+  tbody.innerHTML = '';
+  const byType = {{}};
+  for (const it of a.items) {{
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${{it.product_type ?? '-'}}</td><td>${{it.product_description ?? '-'}}</td><td>${{it.product_code}}</td>` +
+      `<td>${{Math.round(it.units_ordered_from_may).toLocaleString()}}</td>` +
+      `<td>${{Math.round(it.units_late).toLocaleString()}}</td>` +
+      `<td>${{fmtPct(it.not_late_from_may_pct)}}</td><td>${{fmtPct(it.not_late_before_may_pct)}}</td>` +
+      `<td>${{fmtPct(it.share_of_all_late_units_pct)}}</td>`;
+    tbody.appendChild(tr);
+    byType[it.product_type] = byType[it.product_type] || {{ord:0, late:0}};
+    byType[it.product_type].ord += it.units_ordered_from_may;
+    byType[it.product_type].late += it.units_late;
+  }}
+  for (const [type, sub] of Object.entries(byType)) {{
+    const tr = document.createElement('tr');
+    tr.style.fontWeight = '700'; tr.style.background = '#f7e0de';
+    tr.innerHTML = `<td colspan="3">Subtotal: ${{type ?? '-'}}</td>` +
+      `<td>${{Math.round(sub.ord).toLocaleString()}}</td><td>${{Math.round(sub.late).toLocaleString()}}</td>` +
+      `<td colspan="3"></td>`;
+    tbody.appendChild(tr);
+  }}
+
+  document.getElementById('pem107-alert-source').innerHTML =
+    `แหล่งที่มา: ${{a.source.pricelist}} · ${{a.source.delivery}} · ${{a.source.metric}} · ข้อมูลดึงเมื่อ ${{a.data_pulled_at}}`;
+  document.getElementById('pem107-alert-limitations').innerHTML =
+    'ข้อจำกัด: ' + a.limitations.map(x => '&bull; ' + x).join('<br>');
+}}
+
 function onDivisionChange() {{
   currentDivision = document.getElementById('division-select').value;
   const divisionData = getDivisionData(currentDivision);
   document.getElementById('page-title').textContent = 'แผนสต็อค — Inventory Min/Max Scenario (' + currentDivision + ', ' + divisionData.n_items_label + ')';
   document.getElementById('scope-note').textContent = divisionData.warehouse_scope_note;
+  renderPem107Alert(currentDivision);
   const builtAt = parseYmdHm(DATA.page_built_at);
   const pulledAt = parseYmdHm(divisionData.snapshot_pull_date);
   let staleNote = '';
@@ -615,11 +833,15 @@ function onControlChange() {{
   document.getElementById('val-obsolescence_threshold_months').textContent = controls.obsolescence_threshold_months + 'mo';
 
   const divisionData = getDivisionData(currentDivision);
-  const result = computeAll(controls, divisionData);
+  const checked = checkedWarehouseCodes();
+  const result = computeAll(controls, divisionData, checked);
   document.getElementById('tot-stock-value').textContent = fmtTHB(result.stockValue);
   document.getElementById('tot-holding-cost').textContent = fmtTHB(result.holdingCost);
   document.getElementById('tot-n-items').textContent = result.perItem.filter(r => r.policy === 'finished_goods_stock' && r.min !== null).length;
+  document.getElementById('tot-excess-count').textContent = result.excessCount;
   renderTable(result.perItem);
+  renderNoForecastTable(result.perItem);
+  renderClassTable(result.perItem);
   renderTradeoff(controls, divisionData);
   renderMinVsCurrent(result.perItem);
 }}
