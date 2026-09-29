@@ -130,6 +130,10 @@
   date on a page is typed by hand; the hand-maintained usable-range end date in config.yaml,
   which the factsheet found stale, is an example of what this rule forbids.
 
+## Reader-facing text (added 2026-09-29)
+
+Reader-facing text. Any text a dashboard reader can see is written for PEM's sales, planning and management staff, in Thai, following .claude/skills/reader-text/SKILL.md. File names, code paths, line numbers, METRICS or DATA_MAP section numbers, and config keys never appear on screen; keep them in HTML comments. When a prompt supplies finished Thai text, use it verbatim.
+
 ## Project map (added 2026-09-24)
 
 - **Every task begins by reading `DATA_MAP.md` and `PROJECT_GRAPH.md`, in addition to `STATUS.md`,
