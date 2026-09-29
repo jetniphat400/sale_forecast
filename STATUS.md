@@ -55,7 +55,7 @@ and where it says "Phase 4," that refers to what is now Phases D/E.
 
 ## 2. Phase Status
 
-### Current Status Summary (2026-09-25)
+### Current Status Summary (2026-09-29)
 
 **PROJECT_GRAPH.md is the authoritative source for goal/question/node status; this summary is a
 regenerated snapshot of it, not an independent status record kept by hand.**
@@ -93,7 +93,15 @@ regenerated snapshot of it, not an independent status record kept by hand.**
   service level is NOT distinguishable from zero, given both the trade-off curve's own very wide
   across-member band (119-148% of the median) and METRICS.md §20's ±15% tolerance — independently
   confirmed by a Validator. PEM101 is operating on the efficient curve within the model's
-  resolution.** (PROJECT_GRAPH.md, node G2.)
+  resolution.** **Item eligibility superseded, task 2b (2026-09-28): METRICS.md §23
+  fulfilment_segmentation now decides which items get a Min/Max (only `stock_policy`-class items),
+  replacing section 15's `finished_goods_stock` criterion for PEM101/PEM107. Warehouse checklist
+  and obsolescence-threshold slider are now live (§40 excess flag); §24 relative_service_cost shows
+  live on the PEM101 curve-target section. Not recalibrated on the new item set this task — see G2
+  detail note below and DATA_MAP.md's Task 2b entries for full figures and the independent
+  Validator's verdict. **PEM107's §23 figures were corrected 2026-09-29 (a real bug in the S2
+  signal, not a recalibration) — see the PEM107 bullet below and STATUS.md §13.**
+  (PROJECT_GRAPH.md, node G2.)
 - **G3 (operations plan)** — blocked on a person for the parts still needing business input; three
   of five question nodes now have usable partial answers as of 2026-09-24. **Q17 (batch
   cadence/size)**: `cube_final`'s itemcode join is confirmed working (DATA_MAP.md §4 Trap 7
@@ -114,7 +122,13 @@ regenerated snapshot of it, not an independent status record kept by hand.**
   information and was replaced by a not_late-target selector — the business now picks a target
   directly on the inventory page, with per-item Min/Max, stock value and its envelope band, and
   the change vs today's on-hand shown live. The apparent saving at today's service level is not
-  distinguishable from zero (see G2 above). (PROJECT_GRAPH.md, nodes Q10, G2.)
+  distinguishable from zero (see G2 above). **METRICS.md §23 (task 2b, 2026-09-28): 82 of 144
+  forecast items now classify `stock_policy` (up from 76 `finished_goods_stock`, net +6 on 18
+  added/12 removed) — 10 of the 82 fall outside the existing 128-item pilot's forecast/unit_cost
+  pipeline and show no Min/Max yet (gap, not fabricated). §24 relative_service_cost: moving from
+  today's 98.28% not_late to the 99% stretch preset costs stock +24.2% (range +10.4% to +36.6%
+  across the 80 distinct ensemble members) — this ratio's own band is much narrower than the
+  absolute stock-value band at the same target, per METRICS.md §24's own reasoning.** (PROJECT_GRAPH.md, nodes Q10, G2.)
 - **PEM102** — covered only by the project-wide G1 forecasting-method decision (D2, Top-down
   Combination); PROJECT_GRAPH.md carries no division-specific open question for PEM102.
 - **PEM103** — moved out of G2. Q22: answered (level A) — transformers/tendering-pipeline
@@ -159,7 +173,20 @@ regenerated snapshot of it, not an independent status record kept by hand.**
   Oct/Nov 2024 batch-sharing finding (level V2), which still answers a different, narrower
   question (when batch-sharing itself stopped). Q23: the 2026 channel-mix reversal is a business
   change, not a recording change; the capacity-diversion hypothesis survives, at level H, not
-  proven. (PROJECT_GRAPH.md, nodes Q10, Q23.)
+  proven. **Task 2b (2026-09-28, figures corrected 2026-09-29): a visible alert banner now shows on
+  `forecast/inventory.html`'s PEM107 view, computed at build time from Cube_CES — Omni Channel
+  not_late (unit-weighted) fell from 87.1% (n=41,495 units, 2024-01-01 onward) before 2026-05-01 to
+  57.7% (n=2,702 units) from that date, with a per-item table (top 3 by units late:
+  RS-F-99-070002, CT-F-99-020501, RS-F-99-070003/RS-F-99-070006, all Current Transformer types) and
+  the same undetermined-cause limitations already established above, restated on the banner itself
+  — independently confirmed exact by a Validator (level V2). METRICS.md §23 fulfilment_segmentation
+  finds PEM107's Min/Max-eligible item count falls from 68 to **4** (corrected 2026-09-29 from a
+  first-reported 9 — a bug in the §23 Modeler script's S2 signal, which never actually queried
+  `cube_final`, wrongly gave 5 items `stock_policy`; fixed and independently re-confirmed exact by
+  both the Validator and a targeted reconciliation agent, level V2; STATUS.md §13 for full account).
+  78 of 112 forecast items are MTO-dominant `confirmed_to_order` (unchanged by the fix) — consistent
+  with, not new evidence for, the diversion-toward-Tendering/MTO hypothesis above.** (PROJECT_GRAPH.md,
+  nodes Q10, Q23.)
 - **CI101** — covered only by the project-wide G1 forecasting-method decision (D2); PROJECT_GRAPH.md
   carries no division-specific open question for CI101.
 
@@ -5992,14 +6019,19 @@ commits cited inline below are on `main`.**
    `config.yaml`'s `date_range.end` was removed as a display source (its only consumer,
    `build_report.py`, confirmed by grep); a new test (`tests/test_page_timestamps.py`) fails if a
    displayed date is read from a hand-maintained config value.
-4. **OPEN — deferred to task 2b** (`forecast/inventory.html` scope). `forecast/inventory.html`'s
-   "Obsolescence threshold (months)" Tier A slider has zero effect on any number shown on the page
-   (factsheet Part 5 item 4).
-5. **OPEN — deferred to task 2b.** `forecast/inventory.html`'s sellable-warehouse checklist
-   checkboxes have zero effect on any number shown on the page (factsheet Part 5 item 5).
-6. **OPEN — deferred to task 2b.** `forecast/inventory.html`'s per-item table shows Min/Max for
-   `component_stock_ato` items, contradicting METRICS.md §5's explicit statement that only
-   `finished_goods_stock` items receive a Min/Max (factsheet Part 5 item 6).
+4. **DONE (task 2b, 2026-09-28).** `forecast/inventory.html`'s "Obsolescence threshold (months)"
+   Tier A slider now drives METRICS.md §40's excess_stock_flag (item-table column + totals-box
+   count), recomputed live as the slider moves (factsheet Part 5 item 4).
+5. **DONE (task 2b, 2026-09-28).** `forecast/inventory.html`'s sellable-warehouse checklist now
+   recomputes on_hand_sellable/months_of_cover/value_at_risk/excess for whichever warehouses are
+   checked; Min/Max are unchanged by construction (they never read on-hand) and this is stated
+   beside the checklist. Parity tests cover 2 warehouse selections × 2 thresholds × 3 divisions
+   (factsheet Part 5 item 5).
+6. **DONE (task 2b, 2026-09-28).** `component_stock_ato` no longer receives a Min/Max on PEM101/
+   PEM107 (METRICS.md §23 fulfilment_segmentation supersedes section 15's policy split for these
+   two divisions — only `stock_policy`-class items get a Min/Max now; PEM103, out of §23's scope,
+   is unchanged). `confirmed_to_order`/`conflict` items are listed in a separate table with their
+   S1/S2/S3 signals and no Min/Max (factsheet Part 5 item 6).
 7. **PARTIALLY DONE.** The `index.html` half is **DONE (task 2a, commits `8650cac`/`9109f59`)**:
    the stock panel now shows on-hand split into sellable / staging (QA, FMTS, FMTO) / elsewhere per
    item and per division, with totals — independently confirmed exact by the Validator against a
@@ -6014,10 +6046,15 @@ commits cited inline below are on `main`.**
 9. **OPEN — deferred to task 2b.** The division-selector's exclusion reasons for CI101/PEM102/
    PEM104 on `forecast/inventory.html` are only reliably accessible via the redundant `<ul>` list,
    not the `<select>`'s `title` tooltips alone (factsheet Part 5 item 9).
-10. **OPEN — deferred to task 2b.** "Product-type segmentation," "relative cost display," and
-    "PEM107 alert" — three elements the next code task is expected to change — do not exist
-    anywhere in the current codebase under these names; the manual's section for them should not
-    be drafted until task 2b lands (factsheet Part 5 item 10).
+10. **DONE (task 2b, 2026-09-28).** "Product-type segmentation" (METRICS.md §23, item Class/Label/
+    Signals column + confirmed_to_order/conflict table), "relative cost display" (METRICS.md §24,
+    live on the PEM101 curve-target section) and "PEM107 alert" (visible banner, PEM107 view) all
+    now exist. The manual (`docs/user_manual.md`, `config/manual_notes.yaml`) has had only the
+    statements this task made false removed (the two "not working" labels, the component_stock_ato
+    Min/Max warning) — new prose describing these three features is NOT yet written, per this
+    task's own instruction ("do not rewrite the manual's prose... the user's assistant will write
+    that text") — listed as an open item for that follow-up, not for a future code task (factsheet
+    Part 5 item 10).
 
 **Three additional items, added the prior task — now resolved:**
 
@@ -6194,6 +6231,13 @@ refresh work) — all three RESOLVED, task 2cfix (2026-09-25), see Section 12 fo
   `<text>` element) was fixed and re-verified. Screenshots from the Part 5 CDP visual check (an
   isolated Edge instance on a temp profile, closed by PID afterward) are in
   `output/charts/manual_verification/` (gitignored, not committed).
+
+**Update, 2026-09-29: task 2b's remaining scope (Parts 0, 1, 2, 3, 4, 5, 6 implemented 2026-09-28;
+Parts 7-8 — independent Validator, a targeted reconciliation that found and fixed a real bug in
+Part 2's §23 implementation, full test suite, visual check, and commit — completed 2026-09-29).
+Full detail in the new Section 13 below; items 4-6 and 10 above are DONE as stated there, with one
+correction: item 6's class counts changed after the 2026-09-29 bug fix (PEM107 `stock_policy` is
+4, not the 9 first reported) — see Section 13.**
 
 ## 11. Forward test ready for 30 September + monthly runner (this task, 2026-09-25)
 
@@ -6456,6 +6500,119 @@ reading none of the implementing agent's files -- all 3 checks MATCH, no discrep
    `snapshot_pull_date` values independently read and confirmed to match the freshly-rendered
    report's displayed dates to the minute, even when the rebuild ran several minutes after the
    files were regenerated. **Level V2**.
+
+## 13. Task 2b — dashboard controls, §23/§24 segmentation, PEM107 alert, snapshots (2026-09-28/29)
+
+Target nodes: D1 (PEM101/PEM107), D2, Q10's PEM107 branch, `forecast/inventory.html` (PROJECT_GRAPH.md).
+Modeler implemented Parts 0-6 on 2026-09-28 (file-mtime evidence); a separate Validator (Part 7),
+a targeted reconciliation agent, a bug-fix agent, and this file's own commit/push (Part 8) closed
+the task on 2026-09-29 (`date` confirmed both dates directly, per CONVENTIONS.md).
+
+**Part 0 (METRICS.md §40 excess_stock_flag) — DONE.** Definition appended verbatim, as specified.
+
+**Part 1 (warehouse checklist + obsolescence threshold, `forecast/inventory.html`) — DONE.** Both
+Tier A controls recompute `on_hand_sellable`/`months_of_cover`/`value_at_risk`/`excess_stock_flag`
+live, client-side, from the page's own embedded per-warehouse quantities; Min/Max never read
+on-hand (by construction) and this is stated beside the checklist. "ยังไม่ทำงาน" labels removed,
+both controls re-enabled. Parity: `tests/test_inventory_parity.py`, JS-vs-Python exact match across
+2 warehouse selections × 2 thresholds × 3 divisions (18/18 passed).
+
+**Part 2 (METRICS.md §23 fulfilment_segmentation, PEM101/PEM107) — DONE, with a bug found and
+fixed 2026-09-29.** Corrected class counts (`output/summary/task2b_part2_class_counts.csv`,
+regenerated 2026-09-29): **PEM101 82 stock_policy / 21 confirmed_to_order / 41 conflict; PEM107 4
+stock_policy / 78 confirmed_to_order / 30 conflict** — level V2 for PEM107 (independently confirmed
+exact by both the Validator and the reconciliation agent's separate recomputations), level V1 for
+PEM101's 21/41 split (see the unresolved 1-item note below). Eligibility change vs the current
+section-15 `finished_goods_stock` set: PEM101 76→82 (net +6); **PEM107 68→4** (a materially larger
+reduction than the first-reported 68→9, same direction and same underlying MTO/Tendering-shift
+explanation, PROJECT_GRAPH.md Q10 PEM107/Q23). The PEM101 trade-off curve/ensemble remain
+calibrated on the pre-§23 item set — not recalibrated this task, scheduled as follow-up, per the
+task's own scope instruction.
+- **Bug found (Validator + a targeted reconciliation agent, not caught by any Python-side test):**
+  `src/investigations/task2b_part2_fulfilment_segmentation.py`'s S2 signal ("≥50% of delivered
+  contracts trace to a `cube_final` batch that existed before the PO", METRICS.md §23) never
+  actually queried `cube_final` — it reused a self-referential `Cube_CES`-only proxy left over from
+  before `cube_final` was confirmed queryable (DATA_MAP.md §4 Trap 7), instead of the later, correct
+  join already used elsewhere in this codebase (`phase25_analyst3_analysis.py`). This wrongly gave 5
+  PEM107 items (`VT-F-99-010721`, `VT-F-99-010819`, `CT-F-99-020502`, `CT-F-99-020505`,
+  `CT-F-99-020507` — all MTS-labelled, S1-only) a `stock_policy` classification, and a Min/Max on
+  the live page, when the correct method puts them at `conflict`. **Fixed**: S2 now joins
+  `cube_final` for real; `forecast/inventory.html` rebuilt; the 5 items confirmed showing `conflict`
+  with no Min/Max in the rebuilt page's embedded JSON. Full account: `output/summary/
+  task2b_validator_report.md`, `output/summary/task2b_part7b_reconciliation_report.md`,
+  DATA_MAP.md's amended Task 2b §23 entry.
+- **METRICS.md §23 amended**, 2026-09-29: it previously stated the S2-missing fallback only for
+  `stock_policy` and was silent for `confirmed_to_order`/`conflict` — a genuine ambiguity, not a
+  bug, that the Validator and Modeler had each read differently. Now states the fallback explicitly
+  (recommended reading: "at most 1 of {S1,S3}", the structural mirror of the existing
+  `stock_policy` fallback), with the stricter alternate ("at most 0 of {S1,S3}") recorded as
+  considered-not-adopted, per AGENTS.md rule 9.
+- **Unresolved, flagged not decided by this task**: PEM101 confirmed_to_order/conflict is 21/41
+  under this task's own (post-fix) computation vs. **20/42** under the Validator's fully independent
+  one (8/54 vs. 9/53 under the stricter alternate reading) — a 1-item difference traced to item
+  `CA-F-99-020102`'s manufacturing_type label, itself caused by a separate divergence in how each
+  script's `compute_label()` handles rows with a missing `manufacturing_type` in the qty
+  denominator (dropped vs. kept). Independent of the S2/`cube_final` bug fixed above; not part of
+  this task's mandated fix. Both figures stand, per AGENTS.md rule 9 — see DATA_MAP.md for full
+  detail. **A future targeted task should resolve `compute_label()`'s missing-value handling.**
+
+**Part 3 (METRICS.md §24 relative_service_cost, PEM101) — DONE, Validator MATCH (exact).**
+`today_lowest_stock` preset: ratio median 1.000 (min=max=1.000, by construction) — Validator: 1.000,
+exact match. `stretch_99pct` preset: ratio median 1.242 (range 1.104-1.366) — Validator: 1.2426
+(range 1.1051-1.3676), match within rounding (~0.05-0.2%). Both presets' ratio band is materially
+narrower than the absolute stock-value band at the same target (7.9%/21.1% of median vs. 110.9%) —
+stated plainly, per METRICS.md §24's own instruction, rather than presenting the ratio as more
+certain than it is.
+
+**Part 4 (PEM107 alert banner) — DONE, Validator MATCH (exact).** Omni Channel not_late
+(unit-weighted, `Cube_CES`, 2024-01-01 onward): 87.1% (n=41,495 units) before 2026-05-01 → 57.7%
+(n=2,702 units) from that date — Validator: 87.1358%/41,495 → 57.6610%/2,702, exact match. Top 3
+Product Codes by units late (post-May window), Validator exact match: RS-F-99-070002 (160 units
+late), CT-F-99-020501 (153), RS-F-99-070003/RS-F-99-070006 tied (100 each) — all Current
+Transformer types. Banner visible on the PEM107 view with the source line (pricelist file,
+Cube_CES delivery against ForecastDelDate, METRICS.md §19, data-pull time) and the three stated
+limitations (small post-May volume, undetermined cause, unconfirmed May-2026 separation),
+unchanged from the existing PROJECT_GRAPH.md Q10/Q23 findings.
+
+**Part 5 (snapshots and persistence) — DONE.** `src/snapshot_daily.py` now also records each
+item's on-hand quantity per warehouse from `Cube_Inventory_Exact` once per day, gitignored, under
+`output/snapshots/inventory_daily_YYYY-MM-DD.csv` (~112 KB/day at current scope, full 445/446-code
+pricelist registry). `forecast/inventory.html`'s PEM103/PEM107 live pulls are now each written to a
+dated file (`output/snapshots/inventory_page_pull_<DIV>_<kind>_YYYY-MM-DD.csv`) before the page is
+built from it, so every figure can be re-verified afterward — confirmed exercised twice this task
+(2026-09-28 and 2026-09-29 builds both wrote fresh dated files; ~940 KB/day total across all 5
+per-day files at current scope). Kept out of git (`output/` is gitignored, confirmed via
+`git check-ignore`).
+
+**Part 6 (manual) — DONE.** `docs/user_manual.md`: removed only the two "ยังไม่ทำงาน" control rows
+and the `component_stock_ato` warning line (both now false) — no other prose touched.
+`config/manual_notes.yaml` needed no change (neither string was present in it). **Passages needing
+new text, for the user's assistant to write, not drafted by this task**: (1) the warehouse
+checklist and obsolescence-threshold slider's actual live behaviour (Part 1); (2) the §23
+class/label/signals column and the separate confirmed_to_order/conflict table (Part 2); (3) the
+§24 relative-cost display under the curve-target section (Part 3); (4) the PEM107 alert banner
+(Part 4).
+
+**Part 7 (independent Validator) — DONE.** Dispatched as a fresh agent reading none of the
+Modeler's Part 2-4 scripts or their outputs, working from METRICS.md's own definitions plus
+pre-existing (pre-task-2b) infrastructure. Verdict table: §23 PEM101 stock_policy MATCH (82=82);
+§23 PEM107 class counts DISCREPANCY (led to the Part-2 bug fix above, now resolved to Validator's
+own correct figure); on_hand_sellable/excess at warehouse=[FG01]-only, threshold=3mo, PEM101 — a
+fresh finding with no prior Modeler figure to compare (112,909 units total on-hand; 25/128 items
+flagged excess); §24 both presets MATCH; PEM107 alert both figures MATCH exact. Full report:
+`output/summary/task2b_validator_report.md`.
+
+**Part 8 (visual check, tests, commit) — DONE.** CDP visual check (isolated Edge, temp profile,
+closed by PID) on 2026-09-28: 8 screenshots in `output/charts/task2b_verification/` covering
+PEM101 (full page, warehouse-unchecked recompute, curve-target stretch-99 preset, item-table class
+column, class table) and PEM107 (full page, alert banner, alert headline) — all render correctly;
+found and fixed one bug this way (a `NaN` in the PEM107 alert's per-item percentages broke
+`JSON.parse()` and silently blanked the whole page — fixed via `allow_nan=False` at build time plus
+`NaN→None` at the source, `src/build_inventory_page_data.py::_load_pem107_alert()`). Full test
+suite re-run 2026-09-29 after the Part 2 bug fix: **165 passed**; `git status` confirmed clean of
+any stray tracked-file regeneration both before and after. Commit hashes: `6cd3cdf` (METRICS.md/
+DATA_MAP.md), `57f256a` (inventory.html + build/reference/test code), `a32ce34` (task 2b
+investigation + Validator scripts), `823741a` (snapshot persistence), `7f4649a` (manual edits).
 
 ---
 
