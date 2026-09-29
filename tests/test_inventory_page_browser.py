@@ -89,6 +89,18 @@ def test_left_panel_stays_in_view_after_scrolling_to_the_bottom(desktop):
     assert box["pos"] == "sticky" and box["h"] > 200
     assert 0 <= box["top"] < box["vh"] - 100, f"panel not in view after scrolling: {box}"
     assert 0 <= box["selTop"] and box["selBottom"] <= box["vh"], f"division selector not in view: {box}"
+    # everything in the panel is visible at once at 1440x900 (no inner scrolling, nothing covered), for both divisions
+    for division in ("PEM101", "PEM107"):
+        e.ev(f"document.getElementById('division-select').value='{division}'; onDivisionChange(); 1")
+        e.pump(0.4)
+        fit = e.ev("(function(){var c=document.getElementById('control-panel');"
+                   "var w=document.querySelector('#warehouse-checklist').getBoundingClientRect();"
+                   "var hit=document.elementFromPoint(w.left+10,w.top+w.height/2);"
+                   "return {sh:c.scrollHeight,ch:c.clientHeight,coveredBySummary:!!(hit&&hit.closest('#summary-box')),"
+                   "sel:document.getElementById('division-select').getBoundingClientRect().top}})()")
+        assert fit["sh"] <= fit["ch"] + 1, f"{division}: panel needs inner scrolling at 1440x900: {fit}"
+        assert not fit["coveredBySummary"], f"{division}: the summary box covers the warehouse checklist"
+        assert fit["sel"] >= 0, f"{division}: division selector out of view"
     assert not e.errors, e.errors
 
 
@@ -224,6 +236,8 @@ def test_phone_width_panel_is_collapsible_and_page_does_not_scroll_sideways(edge
     assert edge.ev("window.innerWidth") <= 400
     assert edge.ev("getComputedStyle(document.getElementById('panel-toggle')).display") != "none"
     assert edge.ev("getComputedStyle(document.getElementById('panel-body')).display") == "none", "panel should start collapsed on a phone"
+    arrow = edge.ev("getComputedStyle(document.getElementById('panel-toggle'),'::after').content")
+    assert "▸" in arrow, f"toggle arrow does not render as the intended glyph: {arrow!r}"
     assert edge.ev("document.documentElement.scrollWidth <= window.innerWidth + 1"), "page scrolls sideways (collapsed)"
     edge.ev("document.getElementById('panel-toggle').click(); 1")
     edge.pump(0.3)

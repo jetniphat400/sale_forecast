@@ -293,26 +293,32 @@ def build_page(**data_sources) -> str:
   .control-panel {{ background:#f0efec; border-radius:8px; padding:10px 14px; margin: 10px 0; }}
   .panel-toggle {{ display:block; width:100%; text-align:left; font: inherit; font-size: 16px; font-weight:700;
     background:none; border:none; padding: 4px 0; cursor:pointer; color: var(--text-primary); }}
-  .panel-toggle::after {{ content: " \25BE"; }}
-  .control-panel.collapsed .panel-toggle::after {{ content: " \25B8"; }}
+  .panel-toggle::after {{ content: " \\25BE"; }}
+  .control-panel.collapsed .panel-toggle::after {{ content: " \\25B8"; }}
   .control-panel.collapsed #panel-body {{ display: none; }}
   .division-panel {{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin: 8px 0; }}
   .division-panel select {{ font-size: 14px; padding: 5px 8px; border-radius: 6px; border:1px solid var(--border); max-width: 100%; }}
   .ctrl-panel {{ display:grid; grid-template-columns: 1fr; gap: 8px; margin: 8px 0 10px; }}
-  .ctrl-row label {{ font-size: 13px; }}
+  .ctrl-row label {{ font-size: 12.5px; display: flex; justify-content: space-between; gap: 6px; }}
+  .ctrl-row input[type=range] {{ margin: 0; height: 16px; }}
+  .ctrl-panel {{ gap: 4px; }}
+  #panel-body p {{ margin: 4px 0; }}
+  #panel-body p.hint {{ font-size: 11.5px; line-height: 1.4; }}
+  .division-panel {{ margin: 4px 0; }}
   .ctrl-row input[type=range] {{ width: 100%; }}
-  .summary-box {{ background:#fff; border:1px solid var(--border); border-radius:8px; padding:8px 10px; margin: 10px 0 4px;
-    position: sticky; bottom: 0; box-shadow: 0 -4px 8px rgba(0,0,0,0.06); }}
+  .summary-box {{ background:#fff; border:1px solid var(--border); border-radius:8px; padding:8px 10px; margin: 10px 0 4px; }}
   .summary-title {{ font-weight:700; font-size: 14px; margin-bottom: 4px; }}
-  .summary-box .totals-box {{ display:grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 4px 0; }}
-  .summary-box .stat {{ font-size: 12px; padding: 6px 8px; }}
-  .summary-box .stat b {{ font-size: 15px; overflow-wrap: anywhere; }}
+  .summary-box .totals-box {{ display:block; margin: 4px 0; }}
+  .summary-box .stat {{ display:flex; justify-content: space-between; align-items: baseline; gap: 8px;
+    font-size: 12px; padding: 3px 4px; border: 0; border-bottom: 1px solid var(--border); border-radius: 0; }}
+  .summary-box .stat b {{ display:inline; font-size: 14px; white-space: nowrap; }}
   .content {{ min-width: 0; }}
   @keyframes flash-change {{ from {{ background: #ffe27a; }} to {{ background: transparent; }} }}
   .flash {{ animation: flash-change 1s ease-out; }}
   @media (min-width: 900px) {{
     .layout {{ display: grid; grid-template-columns: 340px minmax(0, 1fr); gap: 24px; align-items: start; }}
-    .control-panel {{ position: sticky; top: 8px; max-height: calc(100vh - 100px); overflow-y: auto; margin-top: 0; }}
+    .control-panel {{ position: sticky; top: 8px; max-height: calc(100vh - 40px); overflow-y: auto; margin-top: 0; }}
+    .wrap {{ padding-bottom: 24px; }}
     .panel-toggle {{ pointer-events: none; cursor: default; }}
     .panel-toggle::after, .control-panel.collapsed .panel-toggle::after {{ content: ""; }}
     .control-panel.collapsed #panel-body {{ display: block; }}
@@ -338,7 +344,6 @@ def build_page(**data_sources) -> str:
         <label for="division-select"><b>Division:</b></label>
         <select id="division-select" onchange="onDivisionChange()">{division_options}</select>
       </div>
-      <ul class="disabled-note-list" id="disabled-note-list">{disabled_notes}</ul>
       <p class="hint">ใช้สมมติฐานมาตรฐาน ยังไม่ได้เทียบกับผลจริง ใช้ดูทิศทางเท่านั้น · ถ้าจะใช้ตัวเลข ใช้ส่วน PEM101 ด้านล่างซึ่งเทียบกับผลจริงแล้ว</p>
       <!-- source: config.yaml phase_e1_assumptions (defaults), segment_policy (Tier B, not editable here) -->
       <div class="ctrl-panel">
@@ -365,6 +370,7 @@ def build_page(**data_sources) -> str:
 
   <main class="content">
   <p class="scope-note" id="scope-note"></p>
+  <ul class="disabled-note-list" id="disabled-note-list">{disabled_notes}</ul>
 
   <div id="pem107-alert" class="alert-banner" style="display:none" role="alert">
     <!-- previously: PEM107 — Omni Channel delivery decline since May 2026 -->
