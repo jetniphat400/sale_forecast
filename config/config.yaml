@@ -1056,9 +1056,9 @@ phase_e1_assumptions:
 # ============================================================
 # Reader text below may hold {braced} names: src/build_report.py fills each at build time from data,
 # config or a recorded output (src/reader_values.py), never from a typed number (CONVENTIONS.md
-# "Dynamic values"). Known typed numbers still in this block, with no verified source yet:
-# the 74% of items with intermittent or lumpy sales (why_not_ml) and the "ต.ค. 2569" first
-# scoring round (next_steps).
+# "Dynamic values"). {intermittent_lumpy_share_pct}: METRICS.md Sec.29 classification of the forecast-
+# status items; {first_scoring_month}: the forward-test log's first eligible date; {paired_t_threshold}:
+# report_statistics below, checked against b3_paired_significance.csv.
 report:
   # Plain-language description of Top-down combination forecasting, for a non-technical reader.
   # Source: STATUS.md Locked Decisions, "Final forecasting method: Top-down combination".
@@ -1081,7 +1081,7 @@ report:
   # Average, then Croston and SBA. TensorFlow and Prophet are excluded...".
   why_not_ml: >-
     ไม่ใช้ Neural Network (เช่น TensorFlow) หรือ Prophet เนื่องจากมีข้อมูลย้อนหลังเพียง {history_months} เดือน
-    และ 74% ของรหัสสินค้ามีลักษณะการขายแบบ Intermittent หรือ Lumpy (ขายไม่สม่ำเสมอ ไม่ต่อเนื่อง)
+    และ {intermittent_lumpy_share_pct}% ของรหัสสินค้ามีลักษณะการขายแบบ Intermittent หรือ Lumpy (ขายไม่สม่ำเสมอ ไม่ต่อเนื่อง)
     ทำให้ Neural Network มีความเสี่ยงสูงที่จะ Overfit กับข้อมูลจำนวนน้อย และ Prophet มีสมมติฐาน
     ว่าข้อมูลต่อเนื่อง (continuous) ซึ่งไม่ตรงกับลักษณะข้อมูลจริงของโครงการนี้
 
@@ -1094,7 +1094,7 @@ report:
     - "ไม่มีข้อมูลประวัติของ Price List เวอร์ชันเก่า จึงไม่สามารถตรวจสอบได้ว่าการจัดฝ่าย/ประเภท
       สินค้าเคยเปลี่ยนแปลงไปจากอดีตหรือไม่ (cannot be determined จากข้อมูลที่มีอยู่ในปัจจุบัน)"
     - "ยอดขายนับจาก PO ที่ลูกค้าสั่งจริงเท่านั้น จึงไม่เห็นความต้องการที่ไม่ได้กลายเป็น PO เช่น ลูกค้าที่ไม่สั่งเพราะรู้ว่าไม่มีของ"
-    - "ความได้เปรียบของ Top-down เทียบกับ Direct และ Naive ไม่มีนัยสำคัญทางสถิติ (paired t-test, |t| ต่ำกว่า 2 ในทุกคู่เปรียบเทียบ) เลือกใช้ Top-down เพราะเป็นแนวทางที่ตรงไปตรงมาที่สุดในเชิงโครงสร้าง ไม่ใช่เพราะพิสูจน์แล้วว่าให้ผลแม่นยำที่สุด"
+    - "ความได้เปรียบของ Top-down เทียบกับ Direct และ Naive ไม่มีนัยสำคัญทางสถิติ (paired t-test, |t| ต่ำกว่า {paired_t_threshold} ในทุกคู่เปรียบเทียบ) เลือกใช้ Top-down เพราะเป็นแนวทางที่ตรงไปตรงมาที่สุดในเชิงโครงสร้าง ไม่ใช่เพราะพิสูจน์แล้วว่าให้ผลแม่นยำที่สุด"
     - "ไม่มีข้อมูลเวลาประกอบหลังได้ชิ้นส่วน ตัวเลขนี้ในการวางแผน stock เป็นค่าสมมติ"
     - "Min/Max ที่ตั้งอยู่ในระบบตอนนี้ใช้คำนวณไม่ได้ {n_no_minmax} จาก {n_scope_items} รายการไม่ได้ตั้ง และค่าที่มีไม่สอดคล้องกัน ใช้ได้แค่เป็นตัวเทียบ"
   # Standing next-step items, each pulled from an already-recorded open item in STATUS.md.
@@ -1102,7 +1102,7 @@ report:
     # The earlier next-step items (first forward-test scoring round, analogue codes for
     # placeholders, service-level definition, database password reset policy) are project-team
     # items, not reader items; they remain in git history (commit 1f87b6e) and STATUS.md.
-    - "ทุกเดือนระบบจะเทียบการทายกับยอดขายจริงเดือนล่าสุด ผลรอบแรกต้นเดือน ต.ค. 2569"
+    - "ทุกเดือนระบบจะเทียบการทายกับยอดขายจริงเดือนล่าสุด ผลรอบแรกต้นเดือน {first_scoring_month}"
 
 # ============================================================
 # Three-tier parameter classification (documented 2026-09-19, Phase G intent -- NOT implemented
@@ -1318,3 +1318,26 @@ backtest:
 # ============================================================
 page_timestamps:
   staleness_threshold_days: 7
+
+# ============================================================
+# Statistics wording (src/reader_values.py::paired_t_threshold): the conventional |t| criterion used in
+# the sales report's significance statement. An assumption (owner: Modeler, conventional value); the build
+# stops if a recorded paired t (output/summary/b3_paired_significance.csv) is not below it.
+# ============================================================
+report_statistics:
+  paired_t_threshold: 2
+
+# ============================================================
+# Min-Max page (forecast/inventory.html): slider ranges of the scenario controls and the step of the
+# service-level axis of its trade-off chart. Assumptions (owner: Modeler default, no business figure
+# exists); read by src/build_inventory_page_data.py, and the page's chart and notes follow them.
+# ============================================================
+inventory_page:
+  tier_a_ranges:
+    procurement_lead_time_days: [30, 90]
+    assembly_time_days: [0, 20]
+    review_interval_days: [7, 90]
+    cycle_service_level: [0.80, 0.99]
+    holding_cost_rate_annual: [0.05, 0.40]
+    obsolescence_threshold_months: [1, 12]
+  service_level_chart_step: 0.02

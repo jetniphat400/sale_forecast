@@ -37,6 +37,7 @@
   li { margin-bottom: 6px; }
   a.back-link { color: var(--series-1); text-decoration: none; font-size: 13px; }
   .plotly-chart { width:100%; min-height: 260px; margin: 6px 0 14px; }
+  .chart-fail { padding: 24px 12px; text-align: center; background: #f0efec; border-radius: 6px; }
   .controls { display:flex; gap:16px; flex-wrap:wrap; margin: 10px 0; font-size:13px; }
   .controls select { margin-left:4px; padding:3px 6px; }
   .controls-note { background:#eef4fb; border:1px solid var(--border); border-radius:6px;
@@ -53,7 +54,7 @@
   
     <details class="note-box" style="margin:10px 0">
       <summary style="cursor:pointer"><!-- data_pulled_at --><b>ข้อมูลดึงเมื่อ:</b> 2026-09-25 11:51:56 ICT (UTC+7)
-        (เก่าที่สุดในหน้านี้, ดูรายละเอียดต่อส่วนด้านล่าง) &nbsp;|&nbsp; <!-- page_built_at --><b>หน้าสร้างเมื่อ:</b> 2026-09-29 15:45 ICT (UTC+7)
+        (เก่าที่สุดในหน้านี้, ดูรายละเอียดต่อส่วนด้านล่าง) &nbsp;|&nbsp; <!-- page_built_at --><b>หน้าสร้างเมื่อ:</b> 2026-09-29 16:26 ICT (UTC+7)
         &nbsp;<!-- source: src/build_report.py gather_freshness()/datetime.now(), this build run --></summary>
       <h3 style="margin-top:10px">ข้อมูลแต่ละส่วนดึงเมื่อ</h3>
       <table class="report-table" style="margin-top:8px">
@@ -210,6 +211,14 @@
 const REPORT_DATA = JSON.parse(document.getElementById('report-data').textContent);
 const MODEL_COLORS = {"Naive": "#898781", "MA3": "#eda100", "MA6": "#c98400", "MA12": "#a56c00", "Croston": "#eb6834", "SBA": "#c94e1f", "Combination": "#2a78d6", "Top-down": "#1baf7a"};
 const PLOT_CONFIG = {responsive: true, displaylogo: false};
+const CHART_FAIL_MSG = 'กราฟโหลดไม่ได้ เครือข่ายอาจบล็อกไลบรารีกราฟ · ตัวเลขและตารางยังใช้ได้ตามปกติ';
+// Text, tables and the data-date table never depend on the charting library: when it did not load, each chart
+// area shows the message instead and the rest of the page carries on.
+function chartLibraryOk(id) {
+  if (typeof Plotly !== 'undefined') return true;
+  document.getElementById(id).innerHTML = '<p class="hint chart-fail">' + CHART_FAIL_MSG + '</p>';
+  return false;
+}
 const LAYOUT_BASE = {
   font: {family: 'system-ui, sans-serif', size: 12, color: '#0b0b0b'},
   // b:40 -> b:80 (this task): the old margin only fit tick labels + the horizontal legend row;
@@ -223,6 +232,7 @@ const LAYOUT_BASE = {
 };
 
 function drawNotice() {
+  if (!chartLibraryOk('chart-notice')) return;
   Plotly.newPlot('chart-notice', [{
     x: REPORT_DATA.notice.labels, y: REPORT_DATA.notice.values, type: 'bar',
     marker: {color: '#eb6834'}, hovertemplate: '%{x}: %{y:.1f}%<extra></extra>'
@@ -230,6 +240,7 @@ function drawNotice() {
 }
 
 function drawOntime() {
+  if (!chartLibraryOk('chart-ontime')) return;
   Plotly.newPlot('chart-ontime', [
     {
       x: REPORT_DATA.ontime.years, y: REPORT_DATA.ontime.values, type: 'scatter', mode: 'lines+markers',
@@ -245,6 +256,7 @@ function drawOntime() {
 }
 
 function drawModelChart() {
+  if (!chartLibraryOk('chart-model')) return;
   const items = REPORT_DATA.focus_items;
   const models = REPORT_DATA.base_models.concat(['Combination', 'Top-down']);
   const traces = models.map(m => ({
@@ -292,6 +304,7 @@ function drawPrimaryTable() {
 }
 
 function drawRollingChart() {
+  if (!chartLibraryOk('chart-rolling')) return;
   const div = currentDivision(), typ = currentType();
   const filtered = REPORT_DATA.rolling_origin.filter(r =>
     (div === '__all__' || r.division === div) && (typ === '__all__' || r.type === typ));
@@ -315,6 +328,7 @@ function selectedFvaItems() {
 }
 
 function drawFvaChart() {
+  if (!chartLibraryOk('chart-fva')) return;
   const origin = parseInt(document.getElementById('filterOrigin').value, 10);
   const items = selectedFvaItems();
   const traces = [];

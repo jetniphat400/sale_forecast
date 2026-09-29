@@ -7,30 +7,33 @@
 # generator, so its entries below are the source an editor copies into the static HTML by hand;
 # tests/test_manual_notes_sync.py checks the two stay in sync so a drift is caught, not silent.
 #
-# Every line here must appear verbatim (character-for-character) in docs/user_manual.md, under the
-# matching page/chart heading -- do not edit the wording here without also editing the manual.
+# Every line here must appear in docs/user_manual.md, under the matching page/chart heading -- do not edit
+# the wording here without also editing the manual. A {braced} name stands for a number that describes the
+# data or a control; the builder fills it at build time (src/manual_notes.py, values passed by
+# src/build_report.py and src/build_inventory_page.py). The manual file keeps the number as typed text (a
+# manual number list is assigned to Phase F in STATUS.md); numbers written as examples ("สมมติ ...") stay fixed.
 
 sales_report.html:
   chart-notice:
     - "▸ ลูกค้าสั่งของล่วงหน้านานแค่ไหนก่อนวันที่ต้องส่ง"
-    - "▸ แกน X = ระยะแจ้งล่วงหน้าขั้นต่ำ (≥30 วัน, ≥60 วัน … ≥180 วัน) · แกน Y = % ของออเดอร์ทั้งหมด"
+    - "▸ แกน X = ระยะแจ้งล่วงหน้าขั้นต่ำ (≥{notice_bucket_first} วัน, ≥{notice_bucket_second} วัน … ≥{notice_bucket_last} วัน) · แกน Y = % ของออเดอร์ทั้งหมด"
     - "▸ สมมติแท่ง ≥30 วันสูง 6% หมายถึงออเดอร์ 100 ใบ มีแค่ 6 ใบที่แจ้งล่วงหน้าเกิน 30 วัน"
   chart-ontime:
     - "▸ ส่งของให้ลูกค้าทันวันนัดกี่ % ต่อปี"
     - "▸ แกน X = ปี · แกน Y = % (0-100)"
-    - "▸ 2 เส้น ส่งไม่ช้า (ทันหรือก่อนวันนัด) กับ ส่งตรงวันพอดี ใช้เส้นส่งไม่ช้าถ้าจะตอบว่าลูกค้าได้ของทันไหม"
+    - "▸ {n_delivery_lines} เส้น ส่งไม่ช้า (ทันหรือก่อนวันนัด) กับ ส่งตรงวันพอดี ใช้เส้นส่งไม่ช้าถ้าจะตอบว่าลูกค้าได้ของทันไหม"
     - "▸ เส้นส่งตรงวันพอดีต่ำกว่าเสมอเพราะไม่นับที่ส่งก่อน อย่าเอาไปรายงานเป็นอัตราส่งทัน"
   chart-model:
     - "▸ แต่ละวิธีทายสินค้าหลัก 3 ตัวพลาดแค่ไหน"
-    - "▸ แกน X = รหัสสินค้า 3 ตัว · แกน Y = MAE (ชิ้นต่อเดือน) แท่งต่ำ = ทายแม่นกว่า"
+    - "▸ แกน X = รหัสสินค้า {n_focus_items} ตัว · แกน Y = MAE (ชิ้นต่อเดือน) แท่งต่ำ = ทายแม่นกว่า"
     - "▸ แต่ละสีคือหนึ่งวิธี คลิกชื่อใน legend เพื่อซ่อนหรือแสดง"
   chart-rolling:
     - "▸ แต่ละวิธีทายแม่นสม่ำเสมอไหม ในการทดสอบแต่ละรอบ"
-    - "▸ แกน X = รอบทดสอบที่ 1-7 เรียงตามเวลา · แกน Y = MAE เฉลี่ย (ชิ้นต่อเดือน)"
+    - "▸ แกน X = รอบทดสอบที่ 1-{n_rounds} เรียงตามเวลา · แกน Y = MAE เฉลี่ย (ชิ้นต่อเดือน)"
     - "▸ เส้นที่ต่ำและนิ่ง = ดี เส้นที่กระโดดขึ้นลง = บางช่วงทายได้ บางช่วงพลาดหนัก"
   chart-fva:
     - "▸ ทายไว้เทียบกับของจริง สินค้าที่เลือก ในรอบทดสอบที่เลือก"
-    - "▸ แกน X = เดือนที่ 1-6 หลังจุดตัดข้อมูล · แกน Y = จำนวน (ชิ้น)"
+    - "▸ แกน X = เดือนที่ 1-{holdout_months} หลังจุดตัดข้อมูล · แกน Y = จำนวน (ชิ้น)"
     - "▸ เส้นทึบ = ยอดจริง เส้นประ = ที่ทายไว้ เส้นประอยู่ใต้เส้นทึบ = ทายต่ำไป"
     - "▸ กราฟนี้มีเฉพาะสินค้า PEM101 ตัวกรองฝ่ายไม่มีผล"
 
@@ -39,10 +42,10 @@ inventory.html:
     - "▸ ถ้าอยากส่งทันระดับนี้ ต้องถือ stock มูลค่าเท่าไหร่"
     - "▸ แกน X = % ส่งไม่ช้า · แกน Y = มูลค่า stock (บาท)"
     - "▸ เส้นกลาง = ค่ากลาง แถบรอบเส้น = ช่วงที่เป็นไปได้ ดาว = จุดที่เราอยู่วันนี้ เพชร = เป้าที่เลือก"
-    - "▸ ใช้ปุ่มเป้าสำเร็จรูป 3 ปุ่ม หรือเลื่อน slider เพื่อเลือกเป้า"
+    - "▸ ใช้ปุ่มเป้าสำเร็จรูป {n_presets} ปุ่ม หรือเลื่อน slider เพื่อเลือกเป้า"
   chart-tradeoff:
     - "▸ ยิ่งอยากไม่ขาดของ ต้องถือของเพิ่มแค่ไหน"
-    - "▸ แกน X = cycle service level (0.80-0.99) · แกน Y = มูลค่า stock (บาท)"
+    - "▸ แกน X = cycle service level ({sl_min}-{sl_max}) · แกน Y = มูลค่า stock (บาท)"
     - "▸ เส้นชันขึ้นช่วงท้าย = ช่วงที่เพิ่ม service อีกนิดต้องจ่ายแพงมาก"
   chart-min-vs-current:
     - "▸ Min ที่จำลองได้ เทียบกับ Min ที่ตั้งอยู่ในระบบตอนนี้"
@@ -61,7 +64,7 @@ inventory.html:
     - "▸ ถ้าจะขยับการส่งทันจากวันนี้ไปถึงเป้า ต้องเพิ่ม stock กี่ %"
     - '▸ สมมติขึ้น "+20.0% (ช่วง +10.0% ถึง +30.0%)" หมายถึงต้องถือของเพิ่มประมาณ 1 ใน 5 จากที่ถืออยู่ แย่สุด 30%'
   pem107-alert:
-    - "▸ การส่งทันของช่องทาง Omni ก่อนและหลัง พ.ค. 2569 พร้อมจำนวนชิ้นที่ใช้คำนวณ"
+    - "▸ การส่งทันของช่องทาง Omni ก่อนและหลัง {split_label} พร้อมจำนวนชิ้นที่ใช้คำนวณ"
     - "▸ ตารางด้านล่างเรียงสินค้าที่ส่งช้ามากสุดก่อน มียอดรวมตามประเภทสินค้า ใช้ดูว่าช้ากระจุกที่ไม่กี่ตัวหรือทั้งฝ่าย"
 
 # index.html has no generator -- these are hand-copied into the static HTML (invPanel's sellable

@@ -429,6 +429,8 @@ def apply_reader_text(data: dict) -> dict:
     data["disabled_division_labels"] = DISABLED_DIVISION_LABELS
     data["model_calibrated_at"] = MODEL_CALIBRATED_AT
     data["staleness_threshold_days"] = rv.staleness_threshold_days(config)
+    data["tier_a_ranges"] = config["inventory_page"]["tier_a_ranges"]
+    data["service_level_chart_step"] = config["inventory_page"]["service_level_chart_step"]
     data["fulfilment_notice_days"] = rv.fulfilment_notice_threshold_days()
     data["fulfilment_signal_count"] = rv.fulfilment_signal_count()
     for division, dd in data["divisions"].items():
@@ -454,6 +456,7 @@ def build_data(inventory_source=None, sales_source=None, pull_labels: dict = Non
     with open(CONFIG_PATH, "r", encoding="utf-8") as f:
         config = yaml.safe_load(f)
     e1 = config["phase_e1_assumptions"]
+    e1_page = config["inventory_page"]
 
     divisions = {"PEM101": _build_pem101_division(config, inventory_source)}
 
@@ -489,11 +492,8 @@ def build_data(inventory_source=None, sales_source=None, pull_labels: dict = Non
             "holding_cost_rate_annual": e1["holding_cost_rate_annual"],
             "obsolescence_threshold_months": e1["obsolescence_threshold_months"],
         },
-        "tier_a_ranges": {
-            "procurement_lead_time_days": [30, 90], "assembly_time_days": [0, 20],
-            "review_interval_days": [7, 90], "cycle_service_level": [0.80, 0.99],
-            "holding_cost_rate_annual": [0.05, 0.40], "obsolescence_threshold_months": [1, 12],
-        },
+        "tier_a_ranges": e1_page["tier_a_ranges"],
+        "service_level_chart_step": e1_page["service_level_chart_step"],
         "divisions": divisions,
         # task 2b Part 4: PEM107 delivery-decline alert, precomputed by
         # src/investigations/task2b_part4_pem107_alert.py (Cube_CES, no live DB access from this

@@ -27,7 +27,7 @@ def load_manual_notes() -> dict:
         return yaml.safe_load(f) or {}
 
 
-def render_notes_html(page: str, chart_id: str, css_class: str = "hint") -> str:
+def render_notes_html(page: str, chart_id: str, css_class: str = "hint", values: dict = None) -> str:
     """Renders config/manual_notes.yaml's ▸ lines for this page/chart as one <p> using an EXISTING
     page class (default 'hint', matching this project's 'p.hint'/'p.note-box' CSS convention for
     small text under a chart -- both sales_report.html and inventory.html style these as `p.hint`/
@@ -40,5 +40,8 @@ def render_notes_html(page: str, chart_id: str, css_class: str = "hint") -> str:
             f"config/manual_notes.yaml has no notes for page={page!r} chart_id={chart_id!r}. "
             f"Add the entry (see docs/user_manual.md for the approved wording) before building."
         )
-    body = "<br>".join(html.escape(line) for line in lines)
+    # {braced} names in a line are numbers that describe the data or a control: the builder passes their
+    # values (computed at build time, CONVENTIONS.md "Dynamic values"). A name with no value stops the build.
+    filled = [line.format(**values) if values is not None else line for line in lines]
+    body = "<br>".join(html.escape(line) for line in filled)
     return f'<p class="{css_class}">{body}</p>'

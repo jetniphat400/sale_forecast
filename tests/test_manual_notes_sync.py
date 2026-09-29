@@ -11,6 +11,7 @@ other is caught here rather than silently drifting.
 """
 import html
 import os
+import re
 
 import yaml
 
@@ -26,6 +27,16 @@ def load_notes() -> dict:
         return yaml.safe_load(f)
 
 
+def _present(line: str, text: str) -> bool:
+    """True when `line` is in `text`. A {braced} name in a configured line stands for a number that the
+    builder fills at build time, so it matches any run of characters without a space."""
+    if "{" not in line:
+        return html.escape(line) in text
+    pattern = re.escape(html.escape(line))
+    pattern = re.sub(r"\\{[a-z_]+\\}", r"[^<]+?", pattern)
+    return re.search(pattern, text) is not None
+
+
 def test_manual_notes_yaml_has_expected_pages():
     notes = load_notes()
     assert set(notes.keys()) == {"sales_report.html", "inventory.html", "index.html"}
@@ -37,7 +48,7 @@ def test_sales_report_html_contains_every_configured_note():
         text = f.read()
     for chart_id, lines in notes.items():
         for line in lines:
-            assert html.escape(line) in text, (
+            assert _present(line, text), (
                 f"sales_report.html is missing the configured note for {chart_id!r}: {line!r} "
                 f"-- re-run `python src/build_report.py`."
             )
@@ -49,7 +60,7 @@ def test_inventory_html_contains_every_configured_note():
         text = f.read()
     for chart_id, lines in notes.items():
         for line in lines:
-            assert html.escape(line) in text, (
+            assert _present(line, text), (
                 f"inventory.html is missing the configured note for {chart_id!r}: {line!r} "
                 f"-- re-run `python src/build_inventory_page.py`."
             )

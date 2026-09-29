@@ -189,9 +189,9 @@ def gather_business_findings(config: dict) -> dict:
     ontime = load_csv("delivery_by_year.csv", "Business findings §3, on-time trend")
     require_col(ontime, "year", "delivery_by_year.csv", "on-time trend")
     require_col(ontime, "pct_on_time", "delivery_by_year.csv", "on-time trend")
-    ontime = ontime[ontime["year"].isin([2023, 2024, 2025, 2026])].sort_values("year")
+    ontime = ontime.sort_values("year")   # every year present in the data
     if ontime.empty:
-        raise ReportSourceError("delivery_by_year.csv has no rows for 2023-2026.")
+        raise ReportSourceError("delivery_by_year.csv has no rows.")
 
     lead_grid = require_config_path(config, "phase_e1_assumptions.procurement_lead_time_days_grid")
     lead_default = require_config_path(config, "phase_e1_assumptions.procurement_lead_time_days_default")
@@ -398,7 +398,7 @@ def gather_notlate() -> pd.DataFrame:
     df = load_csv("delivery_not_late_by_year.csv", "Business findings §3, not_late trend")
     for col in ["year", "not_late_pct_unit_weighted", "not_late_pct_row_weighted"]:
         require_col(df, col, "delivery_not_late_by_year.csv", "not_late trend")
-    return df[df["year"].isin([2023, 2024, 2025, 2026])].sort_values("year")
+    return df.sort_values("year")   # every year present in the data
 
 
 # ============================= EMBEDDED JSON DATA (client-side charts read only this) ========
@@ -540,11 +540,20 @@ def render_page(config: dict) -> str:
     ontime_2026_val = biz["ontime_by_year"][biz["ontime_by_year"]["year"] == ontime_last_year]["pct_on_time"].iloc[0]
     ontime_2023_val = biz["ontime_by_year"][biz["ontime_by_year"]["year"] == ontime_first_year]["pct_on_time"].iloc[0]
     n_rounds = rv.backtest_rounds(config)
+    buckets = sorted(int(d) for d in biz["buckets"]["min_notice_days"])
+    note_values = {
+        "notice_bucket_first": buckets[0], "notice_bucket_second": buckets[1], "notice_bucket_last": buckets[-1],
+        "n_delivery_lines": len([1 for series in (biz["ontime_by_year"], notlate) if len(series)]),
+        "n_focus_items": len(FOCUS_ITEMS), "n_rounds": n_rounds, "holdout_months": config["backtest"]["holdout_months"],
+    }
     n_no_minmax, n_scope_items = rv.count_no_current_minmax()
     report_values = {
         "forecast_date_revision_share_pct": f"{rv.forecast_date_disagreement_pct():.1f}",
         "n_no_minmax": n_no_minmax, "n_scope_items": n_scope_items,
         "history_months": rv.total_history_months(config), "n_base_models": len(BASE_MODELS),
+        "intermittent_lumpy_share_pct": f"{rv.intermittent_lumpy_share_pct():.0f}",
+        "first_scoring_month": rv.first_scoring_month_label(config),
+        "paired_t_threshold": rv.paired_t_threshold(config),
     }
 
     # ---- Section 1: Executive summary ----
@@ -601,14 +610,14 @@ def render_page(config: dict) -> str:
       <h3>การกระจายของระยะเวลาแจ้งล่วงหน้า (Notice period)</h3>
       {cite('leadtime_notice_buckets_overall.csv', 'min_notice_days / pct_of_orders')}
       <div id="chart-notice" class="plotly-chart"></div>
-      {render_notes_html('sales_report.html', 'chart-notice')}
+      {render_notes_html('sales_report.html', 'chart-notice', values=note_values)}
       <h3>สัดส่วนส่งมอบตรงวันครบกำหนดเป๊ะ vs. ส่งไม่ล่าช้า ({ontime_first_year}-{ontime_last_year})</h3>
       <!-- Previous wording, kept off screen: on_time_exact = delivered exactly on the due date (PlanDelDate), counted by number of orders (row-weighted), PEM101 128 items -- src/investigations/delivery_performance.py:71-75 (classify_delay) and lines 155-161 (by_year aggregation, column pct_on_time); METRICS.md §19 forbids using this figure alone as a fill-rate benchmark (the earlier 73.2% incident), so not_late is shown alongside. not_late = delivered on or before ForecastDelDate, unit-weighted (ActualQty), not by order count; unit-weighted because METRICS.md §10 (fill_rate) is defined as unit-based, not order-based, and the figure is read alongside fill_rate/service level (src/investigations/task2a_delivery_notlate_by_year.py, computed from the same Cube_CES data as on_time_exact, no new pull). -->
       <p class="hint">เส้นส่งไม่ช้านับเป็นชิ้น เพราะสิ่งที่ลูกค้าสนใจคือได้ของครบทันไหม ไม่ใช่จำนวนใบสั่ง</p>
       {cite('delivery_by_year.csv', 'year / pct_on_time')}
       {cite('delivery_not_late_by_year.csv', 'year / not_late_pct_unit_weighted')}
       <div id="chart-ontime" class="plotly-chart"></div>
-      {render_notes_html('sales_report.html', 'chart-ontime')}
+      {render_notes_html('sales_report.html', 'chart-ontime', values=note_values)}
     </section>"""
 
     # ---- Section 4: Data ----
@@ -644,7 +653,7 @@ def render_page(config: dict) -> str:
       <p class="hint">คลิกที่ legend เพื่อซ่อน/แสดงแต่ละโมเดล</p>
       {cite('focus_items_test_all.csv', 'model / MAE')}
       <div id="chart-model" class="plotly-chart"></div>
-      {render_notes_html('sales_report.html', 'chart-model')}
+      {render_notes_html('sales_report.html', 'chart-model', values=note_values)}
     </section>"""
 
     # ---- Section 6: Results (Plotly, with Division/Type/Item/Origin controls) ----
@@ -690,7 +699,7 @@ def render_page(config: dict) -> str:
       <h3>Rolling-origin MAE (Type level) — คลิก legend เพื่อซ่อน/แสดงแต่ละโมเดล</h3>
       {cite('phaseC_step2_rolling_origin_qty.csv', 'origin / model / MAE')}
       <div id="chart-rolling" class="plotly-chart"></div>
-      {render_notes_html('sales_report.html', 'chart-rolling')}
+      {render_notes_html('sales_report.html', 'chart-rolling', values=note_values)}
       <h3>Forecast เทียบกับ Actual — เลือกสินค้าและ rolling origin</h3>
       <!-- Previous wording, kept off screen: scope of this chart is the PEM101 pilot group ({len(fva_items)} codes, Fuse Cutout + Surge Arrester), the standard 7 rolling origins used across the project (get_origins(31,6), src/backtest_rekeyed.py), not the earlier 9 origins. -->
       <p class="scope-note">ทดสอบ {n_rounds} รอบแบบเดียวกับตารางด้านบน · มีเฉพาะสินค้า PEM101 กลุ่มนำร่อง</p>
@@ -701,7 +710,7 @@ def render_page(config: dict) -> str:
       <div class="item-check-list">{item_checkboxes}</div>
       {cite('report_item_forecast_vs_actual_by_origin.csv', 'origin / month_in_horizon / actual_qty / forecast_qty')}
       <div id="chart-fva" class="plotly-chart"></div>
-      {render_notes_html('sales_report.html', 'chart-fva')}
+      {render_notes_html('sales_report.html', 'chart-fva', values=note_values)}
       {cite('b3_paired_significance.csv', 'paired_t_stat')}
       <!-- Recorded finding, kept off screen: Top-down's advantage over Direct is not statistically significant (paired t = {fmt_num(sig['paired_t_stat'], 3)}, |t| < 2, mean difference {fmt_num(sig['mean_diff_b_minus_a'], 2)}); Top-down was chosen as the most structurally direct approach, not because it was proven more accurate. -->
       <p>Top-down ทายพลาดน้อยกว่าวิธี Direct เล็กน้อย แต่ต่างกันไม่มากพอจะยืนยันทางสถิติ ที่เลือกใช้เพราะทำได้ทั้งระบบและผลนิ่งกว่า</p>
@@ -768,6 +777,7 @@ def render_page(config: dict) -> str:
   li {{ margin-bottom: 6px; }}
   a.back-link {{ color: var(--series-1); text-decoration: none; font-size: 13px; }}
   .plotly-chart {{ width:100%; min-height: 260px; margin: 6px 0 14px; }}
+  .chart-fail {{ padding: 24px 12px; text-align: center; background: #f0efec; border-radius: 6px; }}
   .controls {{ display:flex; gap:16px; flex-wrap:wrap; margin: 10px 0; font-size:13px; }}
   .controls select {{ margin-left:4px; padding:3px 6px; }}
   .controls-note {{ background:#eef4fb; border:1px solid var(--border); border-radius:6px;
@@ -804,6 +814,14 @@ def render_client_js() -> str:
 const REPORT_DATA = JSON.parse(document.getElementById('report-data').textContent);
 const MODEL_COLORS = """ + json.dumps(MODEL_COLORS) + """;
 const PLOT_CONFIG = {responsive: true, displaylogo: false};
+const CHART_FAIL_MSG = 'กราฟโหลดไม่ได้ เครือข่ายอาจบล็อกไลบรารีกราฟ · ตัวเลขและตารางยังใช้ได้ตามปกติ';
+// Text, tables and the data-date table never depend on the charting library: when it did not load, each chart
+// area shows the message instead and the rest of the page carries on.
+function chartLibraryOk(id) {
+  if (typeof Plotly !== 'undefined') return true;
+  document.getElementById(id).innerHTML = '<p class="hint chart-fail">' + CHART_FAIL_MSG + '</p>';
+  return false;
+}
 const LAYOUT_BASE = {
   font: {family: 'system-ui, sans-serif', size: 12, color: '#0b0b0b'},
   // b:40 -> b:80 (this task): the old margin only fit tick labels + the horizontal legend row;
@@ -817,6 +835,7 @@ const LAYOUT_BASE = {
 };
 
 function drawNotice() {
+  if (!chartLibraryOk('chart-notice')) return;
   Plotly.newPlot('chart-notice', [{
     x: REPORT_DATA.notice.labels, y: REPORT_DATA.notice.values, type: 'bar',
     marker: {color: '#eb6834'}, hovertemplate: '%{x}: %{y:.1f}%<extra></extra>'
@@ -824,6 +843,7 @@ function drawNotice() {
 }
 
 function drawOntime() {
+  if (!chartLibraryOk('chart-ontime')) return;
   Plotly.newPlot('chart-ontime', [
     {
       x: REPORT_DATA.ontime.years, y: REPORT_DATA.ontime.values, type: 'scatter', mode: 'lines+markers',
@@ -839,6 +859,7 @@ function drawOntime() {
 }
 
 function drawModelChart() {
+  if (!chartLibraryOk('chart-model')) return;
   const items = REPORT_DATA.focus_items;
   const models = REPORT_DATA.base_models.concat(['Combination', 'Top-down']);
   const traces = models.map(m => ({
@@ -886,6 +907,7 @@ function drawPrimaryTable() {
 }
 
 function drawRollingChart() {
+  if (!chartLibraryOk('chart-rolling')) return;
   const div = currentDivision(), typ = currentType();
   const filtered = REPORT_DATA.rolling_origin.filter(r =>
     (div === '__all__' || r.division === div) && (typ === '__all__' || r.type === typ));
@@ -909,6 +931,7 @@ function selectedFvaItems() {
 }
 
 function drawFvaChart() {
+  if (!chartLibraryOk('chart-fva')) return;
   const origin = parseInt(document.getElementById('filterOrigin').value, 10);
   const items = selectedFvaItems();
   const traces = [];

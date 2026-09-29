@@ -38,6 +38,15 @@ def load_notes(page: str) -> dict:
         return yaml.safe_load(f)[page]
 
 
+def _present(line, text):
+    """True when the configured note line is in the page; a {braced} name is a number the builder filled."""
+    import re
+    if "{" not in line:
+        return html.escape(line) in text
+    pattern = re.sub(r"\\{[a-z_]+\\}", r"[^<]+?", re.escape(html.escape(line)))
+    return re.search(pattern, text) is not None
+
+
 def test_sales_report_rebuild_still_has_every_note_and_axis_title(tmp_path):
     out_path = build_report.build_report(output_path=os.path.join(str(tmp_path), "sales_report.html"))
     with open(out_path, "r", encoding="utf-8") as f:
@@ -46,7 +55,7 @@ def test_sales_report_rebuild_still_has_every_note_and_axis_title(tmp_path):
     notes = load_notes("sales_report.html")
     for chart_id, lines in notes.items():
         for line in lines:
-            assert html.escape(line) in text, (
+            assert _present(line, text), (
                 f"Rebuilt sales_report.html lost the note for {chart_id!r}: {line!r}"
             )
 
@@ -85,7 +94,7 @@ def test_inventory_page_rebuild_still_has_every_note_axis_title_and_disabled_con
     notes = load_notes("inventory.html")
     for chart_id, lines in notes.items():
         for line in lines:
-            assert html.escape(line) in page_html, (
+            assert _present(line, page_html), (
                 f"Rebuilt inventory.html lost the note for {chart_id!r}: {line!r}"
             )
 

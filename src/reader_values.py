@@ -112,12 +112,66 @@ def pipeline_gap_pct(pem101: dict, controls: dict, days_per_month: float) -> flo
     return abs(100.0 * (page_total - ref_total) / ref_total)
 
 
-THAI_MONTH_ABBR = {5: "พ.ค."}  # only the month the approved wording names; anything else stops the build
+# Standard Thai month abbreviations (used for the month names of dates computed at build time). The year
+# printed with them is the Gregorian year plus 543.
+THAI_MONTH_ABBR = {1: "ม.ค.", 2: "ก.พ.", 3: "มี.ค.", 4: "เม.ย.", 5: "พ.ค.", 6: "มิ.ย.",
+                   7: "ก.ค.", 8: "ส.ค.", 9: "ก.ย.", 10: "ต.ค.", 11: "พ.ย.", 12: "ธ.ค."}
 
 
 def thai_month_year(iso_date: str) -> str:
-    """'2026-05-01' -> 'พ.ค. 2569' (Buddhist year = Gregorian + 543). Only May has approved wording."""
+    """'2026-05-01' -> 'พ.ค. 2569' (Buddhist year = Gregorian + 543)."""
     y, m = int(iso_date[:4]), int(iso_date[5:7])
-    if m not in THAI_MONTH_ABBR:
-        raise ReaderValueError(f"No approved Thai wording for month {m} (date {iso_date})")
     return f"{THAI_MONTH_ABBR[m]} {y + 543}"
+
+
+def intermittent_lumpy_share_pct() -> float:
+    """Share (percent) of forecast-status items whose demand is Intermittent or Lumpy, by METRICS.md
+    Sec.29 (ADI = months / months with sales; CV2 = population variance of the non-zero months over
+    their mean squared; Intermittent ADI >= 1.32 and CV2 < 0.49, Lumpy ADI >= 1.32 and CV2 >= 0.49).
+    Computed from output/data/processed_all_divisions_monthly_qty.csv (Actual+MPS quantity, the 31
+    months of the series) for the items with status_category == 'forecast' in
+    output/summary/phaseC_step1revised_item_status_445.csv. Items with no sales in the window
+    (no ADI) are left out of the denominator. The Sec.29 formula was checked item by item against the
+    dashboard's own classification (0 mismatches, METRICS.md Sec.29)."""
+    monthly = pd.read_csv(os.path.join(PROJECT_ROOT, "output", "data", "processed_all_divisions_monthly_qty.csv"))
+    status = _read_csv("phaseC_step1revised_item_status_445.csv")
+    forecast_codes = set(status[status["status_category"] == "forecast"]["itemcode"])
+    n_classified = n_hit = 0
+    for _code, g in monthly[monthly["itemcode"].isin(forecast_codes)].groupby("itemcode"):
+        q = g["qty"].to_numpy(dtype=float)
+        nonzero = q[q > 0]
+        if len(nonzero) == 0:
+            continue
+        adi = len(q) / len(nonzero)
+        cv2 = float(nonzero.var() / nonzero.mean() ** 2)
+        n_classified += 1
+        if adi >= 1.32:
+            n_hit += 1        # Intermittent (CV2 < 0.49) or Lumpy (CV2 >= 0.49)
+    if not n_classified:
+        raise ReaderValueError("no forecast-status item has sales in the monthly series")
+    return 100.0 * n_hit / n_classified
+
+
+def first_scoring_month_label(config: dict) -> str:
+    """Thai month and year of the first forward-test scoring round: the month of the first day after the
+    first target month of output/summary/forward_test_log_all_divisions.csv has closed plus the leakage
+    margin (config.yaml leakage_guard.min_margin_days), the same date step 6 of src/monthly_refresh.py
+    reports as first_eligible_date."""
+    log = pd.read_csv(os.path.join(SUMMARY_DIR, "forward_test_log_all_divisions.csv"), usecols=["target_month"])
+    first_target = sorted(log["target_month"].unique())[0]
+    window_end = pd.Period(first_target, freq="M").end_time.normalize()
+    eligible = window_end + pd.Timedelta(int(config["leakage_guard"]["min_margin_days"]), unit="D")
+    return thai_month_year(str((eligible + pd.Timedelta(1, unit="D")).date()))
+
+
+def paired_t_threshold(config: dict) -> int:
+    """config.yaml report_statistics.paired_t_threshold (the conventional |t| criterion, an assumption), after
+    checking against output/summary/b3_paired_significance.csv (column paired_t_stat) that every recorded
+    paired t stays below it, so the sentence 'every |t| is below the threshold' is true of the data."""
+    threshold = config["report_statistics"]["paired_t_threshold"]
+    sig = _read_csv("b3_paired_significance.csv")
+    worst = float(sig["paired_t_stat"].abs().max())
+    if worst >= threshold:
+        raise ReaderValueError(f"a recorded paired t ({worst:.3f}) is not below the threshold {threshold}; "
+                               f"the significance sentence would be false")
+    return int(threshold) if float(threshold).is_integer() else threshold

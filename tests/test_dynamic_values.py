@@ -65,12 +65,36 @@ def _extra_signal_and_fewer_stock_policy(df):
     return df
 
 
-def _on_time_2023_up(df):
-    if "year" not in df.columns or "pct_on_time" not in df.columns:
+def _drop_first_year(df):
+    """Removes the earliest year from a by-year table (the year range shown follows the data)."""
+    if "year" not in df.columns:
+        return df
+    return df[df["year"] != df["year"].min()].copy()
+
+
+def _all_items_smooth(df):
+    """Every item sells the same quantity every month: no item is Intermittent or Lumpy any more."""
+    if "qty" not in df.columns or "itemcode" not in df.columns:
         return df
     df = df.copy()
-    df.loc[df["year"] == 2023, "pct_on_time"] = df.loc[df["year"] == 2023, "pct_on_time"] + 10.0
+    df["qty"] = 5.0
     return df
+
+
+def _later_target_months(df):
+    if "target_month" not in df.columns:
+        return df
+    df = df.copy()
+    df["target_month"] = [str(pd.Period(m, freq="M") + 3) for m in df["target_month"]]
+    return df
+
+
+def _extra_notice_bucket(df):
+    if "min_notice_days" not in df.columns:
+        return df
+    extra = df.iloc[[-1]].copy()
+    extra["min_notice_days"] = 240
+    return pd.concat([df, extra], ignore_index=True)
 
 
 def _fewer_calibrated_items(df):
@@ -83,8 +107,11 @@ def _fewer_calibrated_items(df):
 
 
 CSV_TRANSFORMS = {STOCK_VALUE_FILE: _scale_stock_value, NO_MINMAX_FILE: _more_missing_minmax, DISAGREE_FILE: _double_rows,
-                  ITEM_LEVEL_FILE: _extra_signal_and_fewer_stock_policy, ON_TIME_FILE: _on_time_2023_up,
-                  POLICY_FILE: _fewer_calibrated_items}
+                  ITEM_LEVEL_FILE: _extra_signal_and_fewer_stock_policy, ON_TIME_FILE: _drop_first_year,
+                  "delivery_not_late_by_year.csv": _drop_first_year, POLICY_FILE: _fewer_calibrated_items,
+                  "processed_all_divisions_monthly_qty.csv": _all_items_smooth,
+                  "forward_test_log_all_divisions.csv": _later_target_months,
+                  "leadtime_notice_buckets_overall.csv": _extra_notice_bucket}
 
 
 def _perturb_grid(d):
@@ -92,6 +119,7 @@ def _perturb_grid(d):
     d["n_distinct_members"] = d["n_distinct_members"] + 1000
     d["today_point"]["not_late_pct"] = 91.37
     d["today_point"]["stock_value_thb"] = d["today_point"]["stock_value_thb"] * 2
+    d["presets"]["extra_preset"] = copy.deepcopy(d["presets"]["stretch_99pct"])
     return d
 
 
@@ -100,6 +128,7 @@ def _perturb_alert(d):
     d["not_late_before_may_2026_pct"] = 12.3
     d["units_before_may_2026"] = 987654
     d["units_from_may_2026"] = 4321
+    d["split_date"] = "2026-06-01"
     return d
 
 
@@ -115,8 +144,11 @@ JSON_TRANSFORMS = {"phase23_dense_grid_PEM101.json": _perturb_grid, "task2b_part
 
 def _perturb_config(cfg):
     cfg = copy.deepcopy(cfg)
-    cfg["backtest"]["min_train_months"] = cfg["backtest"]["min_train_months"] + 2
+    cfg["backtest"]["min_train_months"] = cfg["backtest"]["min_train_months"] + 4
     cfg["page_timestamps"]["staleness_threshold_days"] = 1
+    cfg["report_statistics"]["paired_t_threshold"] = 3
+    cfg["backtest"]["holdout_months"] = 5
+    cfg["inventory_page"]["tier_a_ranges"]["cycle_service_level"] = [0.85, 0.97]
     return cfg
 
 
@@ -161,6 +193,9 @@ class Build:
             seg_copy = self.tmp / "segmentation_copy.py"
             seg_copy.write_text(re.sub(r"^S3_THRESHOLD_DAYS\s*=\s*\d+", "S3_THRESHOLD_DAYS = 21", text, flags=re.M), encoding="utf-8")
             mp.setattr(rv, "SEGMENTATION_SCRIPT", str(seg_copy))
+            mp.setattr(build_report, "FOCUS_ITEMS", list(build_report.FOCUS_ITEMS[:2]))
+            real_notlate = build_report.gather_notlate
+            mp.setattr(build_report, "gather_notlate", lambda: real_notlate().iloc[0:0])
         suffix = "perturbed" if self.perturbed else "base"
         self.sales_path = build_report.build_report(output_path=str(self.tmp / f"sales_{suffix}.html"))
         data = fresh_inventory_data()
@@ -206,8 +241,7 @@ def test_sales_report_numbers_follow_their_sources(two_builds):
     fb, fp = float(_first(r"กระทบประมาณ ([\d.]+)% ของรายการ", b)), float(_first(r"กระทบประมาณ ([\d.]+)% ของรายการ", p))
     assert fp == pytest.approx(2 * fb, abs=0.11), (fb, fp)
     # on-time 2023 value in the executive summary
-    ob, op = float(_first(r"ปรับตัวขึ้นจาก ([\d.]+)% \(\d{4}\)", b)), float(_first(r"ปรับตัวขึ้นจาก ([\d.]+)% \(\d{4}\)", p))
-    assert op == pytest.approx(ob + 10.0, abs=0.11)
+    assert _first(r"ปรับตัวขึ้นจาก [\d.]+% \((\d{4})\)", b) == "2023" and _first(r"ปรับตัวขึ้นจาก [\d.]+% \((\d{4})\)", p) == "2024"
     # staleness threshold from config
     assert "เก่ากว่า 1 วัน" in p and "เก่ากว่า 1 วัน" not in b
 
@@ -225,13 +259,13 @@ def test_inventory_page_numbers_follow_their_sources(two_builds):
     assert re.findall(r"\d+", nb) != re.findall(r"\d+", npt), "calibrated / stock-policy item counts are typed"
     assert pert.data["staleness_threshold_days"] == 1 and base.data["staleness_threshold_days"] != 1
     # PEM107 split month is read from the alert data, with wording only for the month approved
-    assert pert.data["pem107_alert"]["split_label"] == base.data["pem107_alert"]["split_label"]
+    assert base.data["pem107_alert"]["split_label"] != pert.data["pem107_alert"]["split_label"]
 
 
-def test_month_wording_stops_the_build_for_a_month_without_approved_text():
-    with pytest.raises(rv.ReaderValueError):
-        rv.thai_month_year("2026-06-01")
-    assert rv.thai_month_year("2026-05-01").endswith("2569")
+def test_thai_month_names_cover_every_month():
+    assert rv.thai_month_year("2026-05-01") == "พ.ค. 2569"
+    assert rv.thai_month_year("2026-10-01") == "ต.ค. 2569"
+    assert len({rv.thai_month_year(f"2026-{m:02d}-01") for m in range(1, 13)}) == 12
 
 
 def test_backtest_rounds_match_the_backtest_module():
@@ -239,6 +273,39 @@ def test_backtest_rounds_match_the_backtest_module():
     with open(os.path.join(rv.PROJECT_ROOT, "config", "config.yaml"), encoding="utf-8") as f:
         cfg = yaml.safe_load(f)
     assert rv.backtest_rounds(cfg) == len(bk.get_origins(bk.TOTAL_MONTHS, bk.HOLDOUT))
+
+
+# ------------------------------------------------------------------ W-rest numbers
+
+def test_numbers_from_the_remaining_typed_list_follow_their_sources(two_builds):
+    base, pert = two_builds
+    b, p = base.sales_html, pert.sales_html
+    # share of items with intermittent or lumpy demand (METRICS.md Sec.29 classification of the data)
+    sb, sp_ = int(_first(r"และ (\d+)% ของรหัสสินค้ามีลักษณะการขายแบบ", b)), int(_first(r"และ (\d+)% ของรหัสสินค้ามีลักษณะการขายแบบ", p))
+    assert sb == round(rv.intermittent_lumpy_share_pct()) and sp_ == 0, (sb, sp_)
+    # first scoring month from the forward-test log
+    with open(os.path.join(rv.PROJECT_ROOT, "config", "config.yaml"), encoding="utf-8") as f:
+        real_cfg = yaml.safe_load(f)
+    assert f"ผลรอบแรกต้นเดือน {rv.first_scoring_month_label(real_cfg)}" in b
+    lb, lp = _first(r"ผลรอบแรกต้นเดือน ([^<]+)<", b), _first(r"ผลรอบแรกต้นเดือน ([^<]+)<", p)
+    assert lb != lp, "first scoring month is typed"
+    # |t| threshold
+    assert _first(r"\|t\| ต่ำกว่า (\d+) ในทุกคู่", b) == "2" and _first(r"\|t\| ต่ำกว่า (\d+) ในทุกคู่", p) == "3"
+    # year range in the delivery section follows the years present
+    assert "(2023-2026)" in b and "(2024-2026)" in p and "(2023-2026)" not in p
+    # numbers inside the manual notes that describe the data or a control
+    assert "≥30 วัน, ≥60 วัน … ≥180 วัน" in b and "≥30 วัน, ≥60 วัน … ≥240 วัน" in p
+    assert "รหัสสินค้า 3 ตัว" in b and "รหัสสินค้า 2 ตัว" in p
+    assert "รอบทดสอบที่ 1-7 " in b and "รอบทดสอบที่ 1-7 " not in p
+    assert "เดือนที่ 1-6 หลังจุด" in b and "เดือนที่ 1-5 หลังจุด" in p
+    assert "▸ 2 เส้น ส่งไม่ช้า" in b and "▸ 1 เส้น ส่งไม่ช้า" in p
+    ib, ip = base.inventory_html, pert.inventory_html
+    assert "cycle service level (0.80-0.99)" in ib and "cycle service level (0.85-0.97)" in ip
+    assert "ใช้ปุ่มเป้าสำเร็จรูป 3 ปุ่ม" in ib and "ใช้ปุ่มเป้าสำเร็จรูป 4 ปุ่ม" in ip
+    assert "ก่อนและหลัง พ.ค. 2569 พร้อม" in ib and "ก่อนและหลัง มิ.ย. 2569 พร้อม" in ip
+    assert "ตั้งแต่ พ.ค. 2569</div>" in ib and "ตั้งแต่ มิ.ย. 2569</div>" in ip
+    # the chart axis of the trade-off follows the configured range
+    assert base.data["tier_a_ranges"]["cycle_service_level"] == [0.8, 0.99] and pert.data["tier_a_ranges"]["cycle_service_level"] == [0.85, 0.97]
 
 
 # ------------------------------------------------------------------ lines the page's script fills in

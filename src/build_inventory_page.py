@@ -207,6 +207,13 @@ def build_page(**data_sources) -> str:
     signal_count = data["fulfilment_signal_count"]
     split_label = data["pem107_alert"]["split_label"]
 
+    note_values = {
+        "sl_min": f"{data['tier_a_ranges']['cycle_service_level'][0]:.2f}",
+        "sl_max": f"{data['tier_a_ranges']['cycle_service_level'][1]:.2f}",
+        "n_presets": len(data["divisions"]["PEM101"]["curve_target"]["presets"]),
+        "split_label": split_label,
+    }
+
     defaults = data["tier_a_defaults"]
     ranges = data["tier_a_ranges"]
 
@@ -352,7 +359,7 @@ def build_page(**data_sources) -> str:
       <!-- Previous wording, kept off screen: warehouses counted as sellable for the selected division (changes with the division); ticking or unticking recomputes on-hand sellable, months of cover, value at risk and the excess flag at once (no effect on Min/Max, the Min/Max formulas never read on-hand stock, METRICS.md §5). -->
       <p>เลือกคลังที่นับเป็นของขายได้ · Min/Max ไม่เปลี่ยน เพราะคำนวณจากยอดขาย ไม่ได้ใช้ stock ปัจจุบัน</p>
       <div class="item-check-list" id="warehouse-checklist"></div>
-      {render_notes_html('inventory.html', 'warehouse-checklist')}
+      {render_notes_html('inventory.html', 'warehouse-checklist', values=note_values)}
       <p class="hint" id="control-scope">ตัวควบคุมชุดนี้มีผลกับ Min/Max ผลรวม ตาราง และกราฟด้านขวา · ไม่มีผลกับกราฟเป้าการส่งทันของ PEM101</p>
       <!-- previously: ผลรวม (Totals) heading and stat boxes in the page body, recomputed every time a control or the division changes -->
       <div class="summary-box" id="summary-box">
@@ -386,7 +393,7 @@ def build_page(**data_sources) -> str:
     </table></div>
     <p class="hint" id="pem107-alert-source"></p>
     <p class="hint" id="pem107-alert-limitations"></p>
-    {render_notes_html('inventory.html', 'pem107-alert')}
+    {render_notes_html('inventory.html', 'pem107-alert', values=note_values)}
   </div>
   <!-- Previous wording, kept off screen: changing the controls below changes only what is displayed, not the forecasting model (Tier A); structural changes (Tier B, e.g. segment_policy) need an edit to config.yaml and a pipeline re-run. The sellable-warehouse list of every division (PEM101 included) is a business assumption, not a fact confirmed from data: the sales rows carry no warehouse field, so the reverse direction cannot be checked (STATUS.md, Phase E2 Part 1). -->
   <p class="note-box"><b>หมายเหตุสำคัญ:</b> ตัวเลขในหน้านี้เป็น <b>ค่าสถานการณ์ (scenario values) ภายใต้สมมติฐานที่ระบุไว้เท่านั้น
@@ -399,11 +406,11 @@ def build_page(**data_sources) -> str:
   <h2>ตารางรายรายการ (เรียงตาม Value at Risk ได้)</h2>
   <!-- Formula: Value at risk = max(0, current_min − scenario_min) × unit_cost, the earlier on-screen hint described the opposite direction (current stock below the scenario) although the formula measures a system Min above the simulated one. Excess = months of cover above the obsolescence threshold set above (METRICS.md §40), recomputed whenever the ticked warehouses or the threshold change. -->
   <p class="hint">Value at risk = ถ้า Min ในระบบสูงกว่าที่จำลอง ส่วนเกินคิดเป็นเงินเท่าไหร่<br>ของค้าง = stock พอขายเกินจำนวนเดือนที่ตั้งไว้ด้านบน</p>
-  {render_notes_html('inventory.html', 'excess-threshold')}
+  {render_notes_html('inventory.html', 'excess-threshold', values=note_values)}
   <!-- Previous wording of the class caption, kept off screen: Policy = METRICS.md §23 class (stock_policy/confirmed_to_order/conflict) for PEM101/PEM107, supersedes section 15. Only stock_policy items receive a Min/Max here; confirmed_to_order and conflict items are listed with no Min/Max in the separate table below. Label = dominant manufacturing_type (MTS/MTO/ETO/mixed). Signals = S1 (on-hand stock) / S2 (batch-before-PO share) / S3 (median notice, days), check/cross/dash (dash = S2 could not be computed, S1+S3 both required instead). The number of signals and the notice threshold below are read at build time: src/reader_values.py fulfilment_signal_count (task2b_part2_item_level.csv) and fulfilment_notice_threshold_days (S3_THRESHOLD_DAYS in src/investigations/task2b_part2_fulfilment_segmentation.py). -->
   <div id="policy-class-notes" style="display:none">
     <p class="hint" id="segmentation-note">ประเภทสินค้า: เก็บ stock / ผลิตตามสั่ง / ยังไม่ชัด · ดูจากป้ายในระบบ (MTS / MTO / ETO) คู่กับพฤติกรรมจริง {signal_count} อย่าง: มีของในคลัง · ผลิตเป็น batch ก่อนลูกค้าสั่ง · ส่งได้ภายใน {notice_days} วัน · ✓ ตรง ✗ ไม่ตรง – คำนวณไม่ได้</p>
-    {render_notes_html('inventory.html', 'item-policy-classes')}
+    {render_notes_html('inventory.html', 'item-policy-classes', values=note_values)}
   </div>
   <div class="table-scroll"><table class="report-table" id="item-table">
     <thead><tr>
@@ -441,12 +448,12 @@ def build_page(**data_sources) -> str:
   <h2>Trade-off: Stock value vs. Cycle Service Level</h2>
   <p class="hint">เส้นแสดง stock_value ที่ระดับ service level ต่างๆ (ค่าควบคุมอื่นคงที่ตามที่ตั้งไว้ด้านบน) สำหรับ division ที่เลือก</p>
   <div id="chart-tradeoff" class="plotly-chart"></div>
-  {render_notes_html('inventory.html', 'chart-tradeoff')}
+  {render_notes_html('inventory.html', 'chart-tradeoff', values=note_values)}
 
   <!-- previously: Min เทียบกับค่าปัจจุบัน (current_min_max) — รายรายการ -->
   <h2>Min ที่จำลอง เทียบกับ Min ที่ตั้งในระบบตอนนี้</h2>
   <div id="chart-min-vs-current" class="plotly-chart"></div>
-  {render_notes_html('inventory.html', 'chart-min-vs-current')}
+  {render_notes_html('inventory.html', 'chart-min-vs-current', values=note_values)}
 
   <div id="curve-target-section" style="display:none;">
     <!-- Previous heading: PEM101 — Trade-off Curve Target (METRICS.md Sec.22) — PARTIALLY CALIBRATED. Previous note: the data cannot identify the correct reorder level on its own (every item gives the same range ratio, no item-level information); choosing the not_late target is what fixes the reorder level (METRICS.md Sec.22). -->
@@ -455,7 +462,7 @@ def build_page(**data_sources) -> str:
     <p class="note-box" id="curve-target-summary"></p>
     <p class="hint">ข้อมูลบอกไม่ได้ว่าบริษัทสั่งเติมเมื่อของเหลือกี่เดือน เป้าการส่งทันที่เลือกคือสิ่งที่กำหนดตัวนี้</p>
     <div id="chart-robust-curve" class="plotly-chart"></div>
-    {render_notes_html('inventory.html', 'chart-robust-curve')}
+    {render_notes_html('inventory.html', 'chart-robust-curve', values=note_values)}
     <div class="preset-controls" style="display:flex; gap:10px; flex-wrap:wrap; margin:10px 0;">
       <button type="button" id="preset-today-lowest" class="preset-btn"></button>
       <button type="button" id="preset-highest-at-today" class="preset-btn"></button>
@@ -468,7 +475,7 @@ def build_page(**data_sources) -> str:
     <div class="totals-box" id="curve-target-totals"></div>
     <!-- previously: METRICS.md §24 relative_service_cost, computed when a target is chosen above -->
     <p class="note-box" id="relative-service-cost-note">ต้องเพิ่ม stock กี่ % เพื่อไปถึงเป้าที่เลือก</p>
-    {render_notes_html('inventory.html', 'relative-service-cost')}
+    {render_notes_html('inventory.html', 'relative-service-cost', values=note_values)}
     <div class="table-scroll"><table class="report-table" id="curve-item-table">
       <thead><tr>
         <th>Item</th><th>Min</th><th>Max (median)</th><th>Max range (across members)</th>
@@ -693,7 +700,8 @@ function sortTable(col) {{
 
 function renderTradeoff(controls, divisionData) {{
   const slValues = [];
-  for (let s = 0.80; s <= 0.991; s += 0.02) slValues.push(Math.round(s * 100) / 100);
+  const [slLo, slHi] = DATA.tier_a_ranges.cycle_service_level, slStep = DATA.service_level_chart_step;
+  for (let s = slLo; s <= slHi + 1e-9; s += slStep) slValues.push(Math.round(s * 100) / 100);
   const values = slValues.map(sl => computeAll({{...controls, cycle_service_level: sl}}, divisionData).stockValue);
   const selectedValue = computeAll(controls, divisionData).stockValue;
   plotSafe('chart-tradeoff', () => Plotly.newPlot('chart-tradeoff', [
