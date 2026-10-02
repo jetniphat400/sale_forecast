@@ -55,7 +55,93 @@ and where it says "Phase 4," that refers to what is now Phases D/E.
 
 ## 2. Phase Status
 
-### Current Status Summary (2026-09-29)
+### Current Status Summary (2026-10-02, regenerated from PROJECT_GRAPH.md)
+
+PROJECT_GRAPH.md is the authority; this is a snapshot of its Node table, not a hand-kept record. The
+previous hand-written summary (2026-09-29) is kept below under its own heading as history.
+
+- **G1 (sales forecast): in progress.** Method locked (Top-down Combination, D1-D4). Time track T1 (forward
+  test) is in progress: the first scoreable target month, 2026-08, became eligible on 2026-09-30; the first real
+  monthly run on 2026-10-02 did not complete (phase C2 below), so no score exists yet.
+- **G2 (inventory policy): uncalibrated** (D5 uncalibrated; Q10 narrowed per division: PEM101 partially
+  calibrated, PEM107 not calibratable, PEM103 moved to G3; Q15, Q17 in progress). Covers PEM101 and PEM107.
+- **G3 (purchasing and production plan): blocked on a person** (Q19 assembly time, Q20 capacity; Q21 partial).
+  Covers PEM103 (tender pipeline, Q22 answered) and PEM107.
+- **Evidence, decisions, dead ends:** E1-E13, E17, E18, D1-D4 and D6-D9, Q1-Q4, Q6-Q9, Q11-Q13, Q16, Q18, Q22
+  and Q23 are done; Q5, Q15, Q10, Q17, Q21 in progress; Q14 blocked on data; EF1 (external factors) blocked on
+  data; DE1-DE4 closed. T2 (posting-delay measurement, started 2026-09-22) in progress, due about 2026-11-21.
+- **Critical path:** E11 -> E12 -> Q10 (unchanged). **Operational path:** the monthly runner (phase C) is not yet
+  running in production: see C2 below.
+
+### Phase C2 -- first real monthly run, 2026-10-02: NOT COMPLETE (stopped at a gate)
+
+- Pre-flight (all on 2026-10-02 07:45): date on or after the first eligible date 2026-09-30 (first target month
+  2026-08 + 30-day margin); `git status` clean and HEAD equal to `origin/main` (`d659d20`); no vintage in
+  October yet (vintage 1 run 2026-09-07, 2340 rows); forward-test log SHA-256 before the run
+  `7BA4A3A45A975E04A52935D62036995E1C02DB93D52FC9C24E8028D3182DFA2C`; latest daily stock snapshot
+  `inventory_daily_2026-09-28.csv`, load time 2026-09-27 21:41:30; scheduled task `SaleForecastMonthlyRefresh`
+  exists, Ready, next run 05/10/2569 07:00.
+- Run: `"C:\Users\jetniphat.boo\AppData\Local\Programs\Python\Python312\python.exe" "D:\sale_forecast\src\monthly_refresh.py"`,
+  started 07:45:36, ended 07:46:28 (exit 1). Steps 1 (pull), 2 (validate), 3 (frozen snapshot), 4 (backtest and
+  analysis inputs: all refreshed) and 5 (new vintage) completed. **Step 6 stopped at its consistency gate:**
+  `ForwardTestConsistencyError`, "vintage 2: row_integrity_hash mismatch -- recorded e7303e4b0194a75a..., recomputed
+  from the log's CURRENT rows 65aef3e9e5d8c3d4...". The error was an uncaught exception, so **no run log was
+  written**, and steps 7-11 did not run: no page was rebuilt, nothing was committed or pushed, no score exists.
+- State left behind (real, untracked under `output/`): the forward-test log and its metadata now hold **vintage 2**
+  (2340 rows, forecast_run_date 2026-10-02, data_cutoff_date 2026-10-02, first target month 2026-09); the log's
+  SHA-256 is now `4C0F850852D3EAACB549911365C6E1C880193A430B8717C3C36B147228C66AC5`. **Vintage 1 is unchanged**:
+  its 2340 rows recompute to its recorded integrity hash `160eefcd8bf45a61...`. The analysis inputs under `output/`
+  were refreshed from the new pull.
+- Cause (inferred from the evidence): vintage 2's integrity hash was computed from in-memory rows, where Category
+  rows have an empty `type`; read back from CSV the same 90 cells are NaN and hash as "nan". Vintage 1's hash was
+  computed from CSV-read rows, so it passes. The dry runs never hit this because a dry run keeps the new rows in
+  memory and never writes then re-reads the log.
+- **Consequence for 5 October:** the scheduled run will find a vintage for October (the one-vintage-per-month
+  guard), skip step 5, and stop at the same step-6 gate. C3 would fail for the same reason.
+- Not done because the run did not complete: the run log, step 10 figures, pages' data_pulled_at/page_built_at,
+  first forward-test scores, the Validator re-score, and the published-page check.
+
+### Work plan, decided 2026-10-02
+
+The user's decision, 2026-10-02: any task a person was to do that has no real constraint is done by Claude Code;
+people do only what Claude Code cannot.
+
+| Priority | Phase | Task | Owner |
+|---|---|---|---|
+| P0 | C — runner in production | C2 first real run, first forward-test score for August, published-page check | Claude Code |
+| P0 | C | C3 check the log of the scheduled run on 5 October and confirm it ran unattended | Claude Code |
+| P0 | C | C4 summarise the forward-test result | chat assistant |
+| P1 | W3 — index.html readable and correct | S&OP tab text per the provenance verdict; stock panel; Trend tab; the unsupported "Naive" claim on the sales report; the "3%" in the manual | Claude Code |
+| P2 | E — act on decisions | E1 move PEM107's 41 viable items to made-to-order planning | Claude Code |
+| P2 | E | E2 prepare confirmation packs for the business: PEM107's 66 items, PEM101's 20 undetermined items, and the question of what was separated in May 2026 | Claude Code prepares; the user sends |
+| P2 | E | E3 classify PEM101's 21 leaning items from data, labelled pending confirmation | Claude Code |
+| P3 | W-polish | English preset labels, fractional year ticks, blank gap under failed charts, the 0.80–0.99 note against a chart ending at 0.98, the typed "1 เดือน" | Claude Code |
+| P4 | K — recalibration | PEM101 on the 82-item stock_policy set | Claude Code |
+| P5 | D — refactor | after phase C passes | Claude Code |
+| P6 | F — index generator | Trend tab on the 445-code basis; dynamic numbers in the manual | Claude Code |
+| P7 | G — purchasing and production plan | draft for PEM103 and PEM107 | Claude Code drafts; production team supplies inputs |
+| Ongoing | — | monthly log review; leakage-margin review around 21 November; PEM107 recalibration when post-May data suffices | Claude Code |
+| Future | — | S&OP tab on real data; an app with a backend if pages grow too heavy | Claude Code |
+
+People only:
+- approve scopes and text
+- on the 5th of each month, keep the laptop on, logged in and on the organisation network in the morning, since the task runs only while logged on and the database is reachable only from that network
+- push when the Claude Code permission classifier refuses
+- send the E2 packs to the business and return the answers
+- supply PEM103 tender data, assembly time and production capacity, which the database does not hold
+
+**Found on 2026-10-02, assigned (not fixed), phase C, before 5 October:**
+- **C2b (Claude Code, P0, blocks C2, C3 and C4):** make the forward-test integrity hash identical whether computed
+  from memory or from the log read back from CSV (the empty `type` of Category rows); decide how vintage 2 is
+  handled (it exists in the log with an unverifiable hash; vintage 1 stays untouched); and make a dry run
+  exercise the write-and-reread path so this cannot pass a dry run again.
+- **C5 (Claude Code, P0):** the scheduled task `SaleForecast_PostingDelaySnapshot` (daily 06:00 stock and
+  posting-delay snapshot) last ran 02/10/2569 07:33 with result -2147020576 and has written no daily stock
+  snapshot since 2026-09-28; the inventory page's stock section therefore shows load time 2026-09-27 21:41:30.
+  It also affects phase G2's Current Min/Max source (the snapshot has no minimum/maximum columns until the next
+  good run).
+
+### Previous Current Status Summary (2026-09-29), superseded by the one above
 
 **PROJECT_GRAPH.md is the authoritative source for goal/question/node status; this summary is a
 regenerated snapshot of it, not an independent status record kept by hand.**
