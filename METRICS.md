@@ -143,6 +143,16 @@ and whether any part is a configurable assumption.
 - Undefined when the in-sample naive MAE is 0 (constant or all-zero
   history). Such items are reported as `MASE_undefined` and excluded from
   MASE averages, never assigned 0 or ∞.
+- Aggregation, one definition for the backtest and the forward test
+  (`src/backtest_rekeyed.py` `compute_metrics`; `src/transferability_all_divisions.py`;
+  `src/forward_test_scoring.py`, definition id `backtest_item_mean_v1`):
+  the scale is the mean absolute first difference of the series the forecast
+  was fitted on; MASE is computed per item and per window (a backtest window
+  is an origin's six forecast months, a forward-test window is one target
+  month at one horizon); a division's MASE is the plain mean of its items'
+  MASE, undefined items left out of that mean. An item whose fitted series is
+  all zero is not scored. Pooling items before dividing, or pooling horizons,
+  is a different quantity and is never reported under this name.
 
 ## 14. forecast_consumption
 
@@ -486,6 +496,10 @@ always stated.
     RMSE  = sqrt(mean((forecast − actual)²))
 
 - Both in quantity units, over the same window and series as bias.
+- The backtest's division RMSE is the mean of the items' own RMSE; one forecast
+  month per item gives an item RMSE equal to |error|, so the forward-test score
+  record keeps two columns: `RMSE` (the backtest's mean of per-item RMSE) and
+  `RMSE_pooled` (the formula above taken over all the division's items).
 - MASE follows section 13. Where it is undefined, any output shown to a
   user displays MASE_undefined, never NaN, 0 or infinity.
 
@@ -530,7 +544,21 @@ Every dashboard page and panel displays, near its title:
     scoring          : per vintage and per horizon, using section 25 metrics,
                        only over eligible months
 
+- `data_cutoff_date` holds the PULL DATE: the day the data the vintage was
+  fitted on was pulled (vintage 1: 2026-09-07; vintage 2: 2026-10-02). It is
+  not the last month of data. `fit_last_month` holds the last month of
+  actuals the fit used (vintage 1: 2026-07; vintage 2: 2026-08). Wherever a
+  page or report shows a vintage's cutoff it shows `fit_last_month`, labelled
+  as the last month of data used. No existing row was edited to change this.
 - The log in existence today is vintage 1 and keeps its original cutoff.
+- Scores are kept in `output/summary/forward_test_scores.csv`, append-only: one
+  row per vintage, division or focus code, target month and horizon, with
+  MAE, RMSE, RMSE_pooled, Bias, MASE, item count, run id and the definition id
+  of section 13. Each run's rows carry an integrity hash in
+  `forward_test_scores_integrity.json`, computed after the rows were written
+  and read back, and verified before any row is appended. Existing rows are
+  never edited. A score uses the vintage's own fit series, rebuilt from the
+  raw pull; items whose fit series is all zero are not scored.
 - A monthly run appends one new vintage. Comparing vintages over time is
   the forward test; no single scored month is treated as proof.
 

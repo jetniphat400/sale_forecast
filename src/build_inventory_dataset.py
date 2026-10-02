@@ -654,7 +654,9 @@ def classify_warehouse_roles(tran: pd.DataFrame, all_warehouses: list) -> pd.Dat
 def build_json(classified: pd.DataFrame, by_warehouse: dict, warehouse_roles: pd.DataFrame,
                snapshot_meta: dict, source_table: str, backlog_meta: dict,
                backlog_rows: dict, sellable_split: dict, sellable_totals: dict,
-               sellable_warehouse_codes_by_division: dict) -> dict:
+               sellable_warehouse_codes_by_division: dict, generated_at: str = None) -> dict:
+    """`generated_at` (UTC, ...Z) is the moment the data was pulled when the build runs from saved pulls (--from-pulls);
+    left empty, it is now, as before (a live build pulls and builds in the same minute)."""
     warehouses = [{"code": r["code"], "role": r["role"]} for _, r in warehouse_roles.iterrows()]
 
     known = classified[classified["available"].notna()]
@@ -712,7 +714,7 @@ def build_json(classified: pd.DataFrame, by_warehouse: dict, warehouse_roles: pd
         "snapshot": {
             "source_table": source_table,
             "loaded_at": snapshot_meta["min_timestamp"],
-            "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "generated_at": generated_at or datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
             "refresh_cadence": "unknown",
         },
         "backlog": backlog_meta,
@@ -878,7 +880,59 @@ def report_movement(previous: dict, new_totals: dict, new_on_hand: float,
           f"{new_on_hand:>14,.0f}{_delta(new_on_hand, previous['on_hand_total']):>14}")
 
 
+PULL_NAMES = ("inventory", "backlog_cube", "backlog_ces", "transfer_pairs")
+PULL_META = "pull_meta.json"
+
+
+def save_pulls(pull_dir: str, item_codes: list) -> dict:
+    """The only part of this script that touches the database when run with --save-pulls: the four pulls, written
+    as they came back (pickles keep every dtype) with the time they were pulled (C-fix Part 1)."""
+    os.makedirs(pull_dir, exist_ok=True)
+    started = datetime.now(timezone.utc)
+    frames = {"inventory": query_inventory_exact(item_codes), "backlog_cube": query_backlog(item_codes),
+              "backlog_ces": query_backlog_ces(item_codes), "transfer_pairs": query_transfer_pairs(item_codes)}
+    pulled = datetime.now(timezone.utc)
+    for name, df in frames.items():
+        df.to_pickle(os.path.join(pull_dir, f"{name}.pkl"))
+    meta = {"pulled_at_utc": pulled.strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "pulled_at_local": pulled.astimezone().strftime("%Y-%m-%d %H:%M:%S"),
+            "pull_started_utc": started.strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "n_item_codes": len(item_codes), "rows": {k: int(len(v)) for k, v in frames.items()},
+            "written_by": "src/build_inventory_dataset.py --save-pulls"}
+    with open(os.path.join(pull_dir, PULL_META), "w", encoding="utf-8") as f:
+        json.dump(meta, f, indent=2)
+    return meta
+
+
+def load_pulls(pull_dir: str) -> tuple:
+    """(frames, meta) from a directory written by save_pulls; raises FileNotFoundError naming what is missing."""
+    meta_path = os.path.join(pull_dir, PULL_META)
+    missing = [n for n in PULL_NAMES if not os.path.exists(os.path.join(pull_dir, f"{n}.pkl"))]
+    if missing or not os.path.exists(meta_path):
+        raise FileNotFoundError(f"saved pull incomplete in {pull_dir}: missing "
+                                f"{missing + ([PULL_META] if not os.path.exists(meta_path) else [])}")
+    with open(meta_path, encoding="utf-8") as f:
+        meta = json.load(f)
+    return {n: pd.read_pickle(os.path.join(pull_dir, f"{n}.pkl")) for n in PULL_NAMES}, meta
+
+
+def _parse_args(argv=None):
+    import argparse
+    ap = argparse.ArgumentParser(description="Builds data/inventory.json (live pull by default).")
+    g = ap.add_mutually_exclusive_group()
+    g.add_argument("--save-pulls", metavar="DIR", help="pull the four tables from the database into DIR and stop")
+    g.add_argument("--from-pulls", metavar="DIR", help="build from the pulls saved in DIR; makes no database connection")
+    ap.add_argument("--out", metavar="PATH", default=None, help="write the JSON here instead of data/inventory.json "
+                                                                "(for tests and dry runs; only with --from-pulls)")
+    return ap.parse_args(argv)
+
+
 if __name__ == "__main__":
+    args = _parse_args()
+    if args.out:
+        if not args.from_pulls:
+            raise SystemExit("--out is only allowed with --from-pulls")
+        OUTPUT_PATH = args.out
     config = load_config()
     previous_run = load_previous_run(OUTPUT_PATH)
 
@@ -900,7 +954,16 @@ if __name__ == "__main__":
     print("STEP 2 — JOIN TO ON-HAND STOCK (Cube_Inventory_Exact)")
     print("=" * 78)
     item_codes = sorted(registry["code"].unique())
-    inv = query_inventory_exact(item_codes)
+    if args.save_pulls:
+        print(json.dumps(save_pulls(args.save_pulls, item_codes), indent=2))
+        raise SystemExit(0)
+    if args.from_pulls:
+        saved, pull_meta = load_pulls(args.from_pulls)
+        pull_generated_at = pull_meta["pulled_at_utc"]
+        print(f"Building from the saved pull of {pull_meta['pulled_at_local']} (no database connection).")
+    else:
+        saved, pull_generated_at = None, None
+    inv = saved["inventory"] if saved else query_inventory_exact(item_codes)
     classified = classify_stock_state(registry, inv)
     snapshot_meta = report_snapshot_timestamp(inv)
 
@@ -924,7 +987,7 @@ if __name__ == "__main__":
 
     # ---- BEFORE: the old Cube_Backlog-based figure, for a direct, cited before/after comparison
     # (never written to the JSON -- comparison only). ----
-    old_backlog_rows = query_backlog(item_codes)
+    old_backlog_rows = saved["backlog_cube"] if saved else query_backlog(item_codes)
     old_backlog_per_code = aggregate_backlog(old_backlog_rows)
     old_total = float(old_backlog_per_code["backlog"].sum()) if len(old_backlog_per_code) else 0.0
     old_by_code = dict(zip(old_backlog_per_code["code"], old_backlog_per_code["backlog"]))
@@ -933,7 +996,7 @@ if __name__ == "__main__":
 
     # ---- AFTER: Cube_CES Status='Backlog', deduplicated on (contract, item) per METRICS.md
     # Sec.14's literal text -- the new, adopted Reserved source. ----
-    ces_backlog_raw = query_backlog_ces(item_codes)
+    ces_backlog_raw = saved["backlog_ces"] if saved else query_backlog_ces(item_codes)
     backlog_per_code, backlog_detail = dedup_and_aggregate_ces_backlog(ces_backlog_raw)
     classified = add_backlog_and_available(classified, backlog_per_code)
 
@@ -1022,7 +1085,7 @@ if __name__ == "__main__":
     print("=" * 78)
     by_warehouse = build_by_warehouse(inv)
     all_warehouses = sorted(inv["warehouse"].dropna().unique().tolist())
-    tran = query_transfer_pairs(item_codes)
+    tran = saved["transfer_pairs"] if saved else query_transfer_pairs(item_codes)
     warehouse_roles = classify_warehouse_roles(tran, all_warehouses)
 
     stock_by_wh = inv.groupby("warehouse", as_index=False)["stock"].sum()
@@ -1085,7 +1148,8 @@ if __name__ == "__main__":
               f"elsewhere={t['elsewhere_total']:>10,.0f}")
 
     payload = build_json(classified, by_warehouse, warehouse_roles, snapshot_meta, SOURCE_TABLE,
-                         backlog_meta, backlog_detail, sellable_split, sellable_totals, sellable_by_division)
+                         backlog_meta, backlog_detail, sellable_split, sellable_totals, sellable_by_division,
+                         generated_at=pull_generated_at)
     os.makedirs(os.path.dirname(OUTPUT_PATH), exist_ok=True)
     with open(OUTPUT_PATH, "w", encoding="utf-8") as f:
         json.dump(payload, f, ensure_ascii=False, indent=2)

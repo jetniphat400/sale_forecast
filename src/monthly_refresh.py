@@ -77,6 +77,7 @@ from backtest_rekeyed import TOTAL_MONTHS
 from forward_test import config_version
 from forward_test_all_divisions import (build_category_series_div, build_item_series_div,
                                          build_type_series_div)
+import forward_test_scoring as fts
 from forward_test_common import (append_vintage_and_hash, compute_scope_hash, load_metadata,
                                  read_forward_test_log, save_metadata)
 from item_level_reconciliation import forecast_all_approaches
@@ -102,6 +103,11 @@ FORWARD_TEST_METADATA_PATH = os.path.join(SUMMARY_DIR, "forward_test_log_all_div
 PER_DIVISION_SUMMARY_PATH = os.path.join(SUMMARY_DIR, "phaseC_step2_per_division_summary_qty.csv")
 TRANSFERABILITY_PATH = os.path.join(SUMMARY_DIR, "phaseC_step2_transferability_per_division.csv")
 INVENTORY_JSON_PATH = os.path.join(PROJECT_ROOT, "data", "inventory.json")
+SCORE_RECORD_PATH = os.path.join(SUMMARY_DIR, "forward_test_scores.csv")
+SCORE_INTEGRITY_PATH = os.path.join(SUMMARY_DIR, "forward_test_scores_integrity.json")
+RAW_HISTORY_PATH = os.path.join(PROJECT_ROOT, "output", "data", "raw_all_divisions_sales.csv")
+INVENTORY_PULL_DIR = os.path.join(PROJECT_ROOT, "output", "data", "inventory_pull")
+PILOT_MONTHLY_PATH = os.path.join(PROJECT_ROOT, "output", "data", "processed_full_category_sales_monthly_forecastDate.csv")
 SALES_REPORT_PATH = os.path.join(FORECAST_DIR, "sales_report.html")
 
 SENSITIVE_PATTERNS = [
@@ -154,11 +160,28 @@ def check_tcp_reachable(host: str, port: int, timeout: float = 5.0) -> tuple:
         return False, str(e)
 
 
+def _pull_stage(label: str, script: str, output_path: str, args: list = None) -> dict:
+    """One pull script of step 1 beyond the main pull. refreshed is True only if the script exited 0 and its
+    output file is newer than before it ran."""
+    before = os.path.getmtime(output_path) if os.path.exists(output_path) else None
+    proc = run_script(script, args)
+    after = os.path.getmtime(output_path) if os.path.exists(output_path) else None
+    ok = proc.returncode == 0 and after is not None and after != before
+    out = {"label": label, "script": script, "returncode": proc.returncode, "refreshed": ok}
+    if not ok:
+        out["not_refreshed_reason"] = (f"script exited {proc.returncode}" if proc.returncode else "output file not rewritten")
+        out["stderr_tail"] = proc.stderr[-1500:]
+        logger.warning("Step 1: %s NOT refreshed (%s); the earlier file stays in place.", label, out["not_refreshed_reason"])
+    return out
+
+
 def step1_pull_data(dry_run: bool, offline: bool = False) -> dict:
     if offline:
         # Test/offline mode: no connection at all; the data already under output/data is used as this run's pull.
         monthly = pd.read_csv(os.path.join(DATA_DIR, "processed_all_divisions_monthly_qty.csv"))
         return {"offline_reused_existing_pull": True, "rows_pulled": len(monthly),
+                "pilot_128item_refresh": {"refreshed": False, "not_refreshed_reason": "offline mode: no database connection"},
+                "inventory_pull": {"refreshed": False, "not_refreshed_reason": "offline mode: no database connection"},
                 "snapshot_pull_date": str(monthly["snapshot_pull_date"].iloc[0]),
                 "n_items": monthly["itemcode"].nunique(), "n_divisions": monthly["division"].nunique()}
     from dotenv import load_dotenv
@@ -185,19 +208,6 @@ def step1_pull_data(dry_run: bool, offline: bool = False) -> dict:
             f"({db_err}). Never retrying the database (DATABASE ACCESS rule)."
         )
 
-    # The 128-item PEM101 pilot dataset feeds only sales_report.html's 'Usable range' display --
-    # reused as-is if already refreshed TODAY by another process, to respect the one-connection-
-    # attempt-per-agent/session rule (see module docstring).
-    pilot_path = os.path.join(DATA_DIR, "processed_full_category_sales_monthly_forecastDate.csv")
-    pilot_fresh_today = (os.path.exists(pilot_path) and
-                          datetime.fromtimestamp(os.path.getmtime(pilot_path)).date() == datetime.now().date())
-    result["pilot_128item_pull_skipped_already_fresh_today"] = pilot_fresh_today
-    if not pilot_fresh_today:
-        logger.warning("output/data/processed_full_category_sales_monthly_forecastDate.csv is not "
-                        "fresh as of today -- sales_report.html's 'Usable range' text may be stale. "
-                        "Not re-pulled this run (one-connection-attempt-per-session budget spent on "
-                        "the 335-item all-division pull below).")
-
     # ---- THE one real DB connection attempt this run makes: the 335-item, 5-division pull ----
     proc = run_script("load_data_all_divisions.py")
     result["load_data_all_divisions_returncode"] = proc.returncode
@@ -215,6 +225,12 @@ def step1_pull_data(dry_run: bool, offline: bool = False) -> dict:
     result["snapshot_pull_date"] = str(monthly["snapshot_pull_date"].iloc[0])
     result["n_items"] = monthly["itemcode"].nunique()
     result["n_divisions"] = monthly["division"].nunique()
+    # ---- the other pulls the pages need, in the same pull stage (C-fix Parts 1 and 2). Each is recorded and
+    # never aborts the run: a failure leaves the older file in place and the run log says "not refreshed".
+    result["pilot_128item_refresh"] = _pull_stage("128-item pilot monthly file", "load_data_full.py", PILOT_MONTHLY_PATH)
+    result["inventory_pull"] = _pull_stage("inventory.json pulls", "build_inventory_dataset.py",
+                                           os.path.join(INVENTORY_PULL_DIR, "pull_meta.json"),
+                                           args=["--save-pulls", INVENTORY_PULL_DIR])
     return result
 
 
@@ -278,6 +294,48 @@ def step3_frozen_snapshot() -> dict:
 # Step 4: re-run the sales-model backtest; record each division's change against the previous run
 # ---------------------------------------------------------------------------------------------
 
+def run_log_records_success(log: dict) -> bool:
+    """True only for a real run that completed every step and pushed (C-fix Part 4). A dry run, a run that aborted
+    or failed, and a run whose gates held the commit back never count: their outputs were not accepted."""
+    if not isinstance(log, dict) or log.get("dry_run") or log.get("dry_run_in_temporary_copy"):
+        return False
+    if "aborted_at_step" in log or "failed_step" in log:
+        return False
+    steps = log.get("steps", {})
+    if [k for k in STEP_ORDER if steps.get(k, {}).get("status") == "ok"] != STEP_ORDER:
+        return False
+    final = steps["11_commit_and_push"].get("result", {})
+    return final.get("pushed") is True or final.get("nothing_to_commit") is True
+
+
+def find_last_successful_run(runs_dir: str = None) -> dict:
+    """The most recent run log (by its own started_at) that records success, or None. Runs that left no log (the
+    2026-10-02 07:45 run failed before failure logs existed) are not successes."""
+    runs_dir = runs_dir or RUNS_DIR
+    best = None
+    if not os.path.isdir(runs_dir):
+        return None
+    for name in os.listdir(runs_dir):
+        if not (name.startswith("monthly_refresh_") and name.endswith(".json")):
+            continue
+        try:
+            with open(os.path.join(runs_dir, name), encoding="utf-8") as f:
+                log = json.load(f)
+        except (OSError, ValueError):
+            continue
+        if run_log_records_success(log) and (best is None or log.get("started_at", "") > best.get("started_at", "")):
+            best = log
+    return best
+
+
+def baseline_from_run_log(log: dict) -> dict:
+    """{division: {MAE, RMSE, Bias, MASE}} -- the Top-down backtest figures the given successful run produced
+    (its step 4's `new_*` values), i.e. the figures that were live after that run."""
+    comparison = log["steps"]["4_backtest"]["result"]["per_division_comparison_topdown"]
+    return {e["division"]: {"MAE": float(e["new_MAE"]), "RMSE": float(e["new_RMSE"]),
+                            "Bias": float(e["new_Bias"]), "MASE": float(e["new_MASE"])} for e in comparison}
+
+
 def _archive_if_exists(path: str, run_id: str) -> str:
     if not os.path.exists(path):
         return None
@@ -325,8 +383,13 @@ def _run_regeneration_step(label: str, script_name: str, output_rel_path: str, s
 
 
 def step4_backtest(run_id: str, offline: bool = False) -> dict:
-    prev_per_division = pd.read_csv(PER_DIVISION_SUMMARY_PATH) if os.path.exists(PER_DIVISION_SUMMARY_PATH) else None
-    prev_transferability = pd.read_csv(TRANSFERABILITY_PATH) if os.path.exists(TRANSFERABILITY_PATH) else None
+    # The comparison base is the figures of the most recent run whose log records success (C-fix Part 4), never the
+    # current output files: a failed run in between may already have overwritten those (task C2, 2026-10-02).
+    last_success = find_last_successful_run()
+    baseline = baseline_from_run_log(last_success) if last_success else None
+    baseline_note = (f"compared with the outputs of run {last_success['run_id']} (started {last_success['started_at']}), "
+                     f"the most recent run whose log records success" if last_success else
+                     "no earlier run log records success: nothing to compare with, change percentages are empty")
 
     archived_per_division = _archive_if_exists(PER_DIVISION_SUMMARY_PATH, run_id)
     archived_transferability = _archive_if_exists(TRANSFERABILITY_PATH, run_id)
@@ -347,16 +410,14 @@ def step4_backtest(run_id: str, offline: bool = False) -> dict:
         div = row["division"]
         entry = {"division": div, "new_MAE": row["MAE"], "new_RMSE": row["RMSE"],
                   "new_Bias": row["Bias"], "new_MASE": row["MASE"]}
-        if prev_transferability is not None:
-            prev_row = prev_transferability[(prev_transferability["division"] == div) &
-                                             (prev_transferability["approach"] == "Top-down")]
-            if len(prev_row):
-                entry["previous_MAE"] = float(prev_row["MAE"].iloc[0])
-                entry["previous_RMSE"] = float(prev_row["RMSE"].iloc[0])
-                entry["previous_Bias"] = float(prev_row["Bias"].iloc[0])
-                entry["previous_MASE"] = float(prev_row["MASE"].iloc[0])
-                entry["MAE_change_pct"] = (100 * (entry["new_MAE"] - entry["previous_MAE"]) / entry["previous_MAE"]
-                                           if entry["previous_MAE"] else None)
+        if baseline is not None and div in baseline:
+            prev = baseline[div]
+            entry["previous_MAE"] = prev["MAE"]
+            entry["previous_RMSE"] = prev["RMSE"]
+            entry["previous_Bias"] = prev["Bias"]
+            entry["previous_MASE"] = prev["MASE"]
+            entry["MAE_change_pct"] = (100 * (entry["new_MAE"] - entry["previous_MAE"]) / entry["previous_MAE"]
+                                       if entry["previous_MAE"] else None)
         comparison.append(entry)
 
     # ---- Also regenerate every OTHER analysis input forecast/sales_report.html displays that
@@ -386,6 +447,13 @@ def step4_backtest(run_id: str, offline: bool = False) -> dict:
                                 "delivery_by_year.csv",
                                 skip_reason="offline mode: this script opens its own database connection" if offline else None),
     ]
+    # Pilot-scope inputs derived from the 128-item monthly file step 1 refreshed (C-fix Part 2); no database.
+    analysis_inputs_refreshed.append(
+        _run_regeneration_step("Item forecast vs actual by origin (report_item_forecast_vs_actual_by_origin.csv)",
+                                "build_report_data.py", "report_item_forecast_vs_actual_by_origin.csv"))
+    analysis_inputs_refreshed.append(
+        _run_regeneration_step("Item-level reconciliation, paired significance (b3_paired_significance.csv)",
+                                "item_level_reconciliation.py", "b3_paired_significance.csv"))
     # not_late (delivery_not_late_by_year.csv) reuses delivery_performance.py's OWN raw pull
     # (output/data/raw_cube_ces_delivery_128items.csv) -- no new DB call -- so it must run AFTER
     # delivery_performance.py above, never before/independently.
@@ -396,6 +464,8 @@ def step4_backtest(run_id: str, offline: bool = False) -> dict:
     )
 
     return {
+        "comparison_base": baseline_note,
+        "comparison_base_run_id": last_success["run_id"] if last_success else None,
         "archived_previous_per_division_summary": archived_per_division,
         "archived_previous_transferability": archived_transferability,
         "per_division_comparison_topdown": comparison,
@@ -631,7 +701,19 @@ def step5_new_vintage(dry_run: bool, force_new_vintage: bool = False) -> dict:
 # Step 6: fill actual_qty and score any months that became eligible
 # ---------------------------------------------------------------------------------------------
 
-def step6_fill_and_score(dry_run: bool, computed_vintage: dict = None, offline: bool = False) -> dict:
+def step6_fill_and_score(dry_run: bool, computed_vintage: dict = None, offline: bool = False, run_id: str = None) -> dict:
+    """Fills actual_qty for every month that is safe to score, then appends the forward-test scores of every fully
+    actualised (vintage, target month, horizon) not yet in the append-only score record (C-fix Part 5)."""
+    result = _fill_actuals(dry_run, computed_vintage, offline)
+    log = read_forward_test_log(FORWARD_TEST_LOG_PATH)
+    result["score_record"] = fts.record_scores(log, load_metadata(FORWARD_TEST_METADATA_PATH),
+                                               run_id or datetime.now().strftime("%Y%m%dT%H%M%S"),
+                                               raw_path=RAW_HISTORY_PATH, scores_path=SCORE_RECORD_PATH,
+                                               integrity_path=SCORE_INTEGRITY_PATH)
+    return result
+
+
+def _fill_actuals(dry_run: bool, computed_vintage: dict = None, offline: bool = False) -> dict:
     config = load_config()
     metadata = load_metadata(FORWARD_TEST_METADATA_PATH)
     existing_log = read_forward_test_log(FORWARD_TEST_LOG_PATH)
@@ -677,6 +759,31 @@ def step6_fill_and_score(dry_run: bool, computed_vintage: dict = None, offline: 
 # module docstring for scope)
 # ---------------------------------------------------------------------------------------------
 
+def regenerate_inventory_json(step1_result: dict = None) -> dict:
+    """Rebuilds data/inventory.json from the pulls step 1 saved (C-fix Part 1), so index.html's stock panel shows this
+    run's pull time. Without a saved pull the file is left as it is and the run log says so."""
+    meta_path = os.path.join(INVENTORY_PULL_DIR, "pull_meta.json")
+    pull = (step1_result or {}).get("inventory_pull", {})
+    if not os.path.exists(meta_path):
+        return {"regenerated": False, "reason": "no saved inventory pull exists (output/data/inventory_pull): "
+                                                "data/inventory.json left as it was"}
+    if not pull.get("refreshed") and not (step1_result or {}).get("offline_reused_existing_pull"):
+        return {"regenerated": False, "reason": "step 1 did not refresh the inventory pull this run "
+                                                f"({pull.get('not_refreshed_reason', 'not attempted')}): data/inventory.json left as it was"}
+    with open(meta_path, encoding="utf-8") as f:
+        meta = json.load(f)
+    proc = run_script("build_inventory_dataset.py", ["--from-pulls", INVENTORY_PULL_DIR])
+    if proc.returncode != 0:
+        return {"regenerated": False, "reason": f"build_inventory_dataset.py exited {proc.returncode}",
+                "stderr_tail": proc.stderr[-1500:]}
+    with open(INVENTORY_JSON_PATH, encoding="utf-8") as f:
+        written = json.load(f)["snapshot"]["generated_at"]
+    if written != meta["pulled_at_utc"]:
+        raise MonthlyRefreshAbort(f"Step 7 ABORTED: data/inventory.json says it was generated at {written}, the saved "
+                                  f"pull is from {meta['pulled_at_utc']}.")
+    return {"regenerated": True, "data_pulled_at_utc": written, "data_pulled_at_local": meta.get("pulled_at_local")}
+
+
 def step7_rebuild_pages(dry_run: bool, staged_dir: str, step1_result: dict = None) -> dict:
     """Rebuilds forecast/sales_report.html and forecast/inventory.html (METRICS.md Sec.28 step 7).
 
@@ -690,6 +797,7 @@ def step7_rebuild_pages(dry_run: bool, staged_dir: str, step1_result: dict = Non
     import build_inventory_page
     import build_report
     import inventory_page_sources
+    inventory_json = regenerate_inventory_json(step1_result)
     if dry_run:
         out_path = build_report.build_report(output_path=os.path.join(staged_dir, "sales_report.html"))
     else:
@@ -703,7 +811,8 @@ def step7_rebuild_pages(dry_run: bool, staged_dir: str, step1_result: dict = Non
     inv_path = os.path.join(staged_dir, "inventory.html") if dry_run else build_inventory_page.OUT_PATH
     with open(inv_path, "w", encoding="utf-8") as f:
         f.write(page)
-    return {"rendered_path": out_path, "inventory_rendered_path": inv_path,
+    return {"inventory_json": inventory_json,
+            "rendered_path": out_path, "inventory_rendered_path": inv_path,
             "inventory_sales_pull_time": str(pull_time),
             "inventory_pilot_pull_label": sources["pull_labels"]["PEM103"],
             "inventory_stock_snapshot": sources["stock_meta"],
@@ -850,6 +959,31 @@ def step10_change_magnitude(config: dict, step4_result: dict, step5_result: dict
 # Step 11: commit and push only if steps 8 to 10 all pass
 # ---------------------------------------------------------------------------------------------
 
+# The only tracked files a run generates (step 7; step 11 stages exactly these, never `git add -A`).
+GENERATED_PATHS = ["forecast/sales_report.html", "forecast/inventory.html", "data/inventory.json"]
+
+
+def _git_status_lines() -> list:
+    out = subprocess.run(["git", "status", "--porcelain", "--untracked-files=no"], cwd=PROJECT_ROOT,
+                         capture_output=True, text=True, encoding="utf-8", errors="replace", check=True).stdout
+    return [line for line in out.splitlines() if line.strip()]
+
+
+def _porcelain_path(line: str) -> str:
+    path = line[3:]
+    return path.split(" -> ")[-1].strip().strip('"').replace("\\", "/")
+
+
+def stray_changes_outside_generated_list() -> list:
+    """Tracked paths that are staged, modified, deleted or renamed and are not in GENERATED_PATHS (untracked files
+    are never staged by an explicit add, so they are not stray here)."""
+    return sorted({_porcelain_path(l) for l in _git_status_lines()} - set(GENERATED_PATHS))
+
+
+def _git_path_changed(path: str) -> bool:
+    return any(_porcelain_path(l) == path for l in _git_status_lines())
+
+
 def step11_commit_and_push(dry_run: bool, step8: dict, step9: dict, step10: dict) -> dict:
     gates_passed = bool(step8["passed"] and step9["passed"] and step10["passed"])
     if dry_run:
@@ -868,7 +1002,17 @@ def step11_commit_and_push(dry_run: bool, step8: dict, step9: dict, step10: dict
     github_reachable, github_err = check_tcp_reachable("github.com", 443)
     if not github_reachable:
         return {"pushed": False, "reason": f"GitHub unreachable ({github_err}) -- held, not pushed."}
-    subprocess.run(["git", "add", "-A"], cwd=PROJECT_ROOT, check=True)
+    stray = stray_changes_outside_generated_list()
+    if stray:
+        raise MonthlyRefreshAbort(
+            "Step 11 STOPPED before staging: these paths are staged or modified but are not on the list of files the "
+            "run generates (GENERATED_PATHS): " + ", ".join(stray) + ". Nothing was staged, committed or pushed; "
+            "a person must look at them.")
+    to_stage = [p for p in GENERATED_PATHS if _git_path_changed(p)]
+    if not to_stage:
+        return {"pushed": False, "committed": False, "nothing_to_commit": True,
+                "reason": "nothing the run generates has changed -- no commit."}
+    subprocess.run(["git", "add", "--"] + to_stage, cwd=PROJECT_ROOT, check=True)
     subprocess.run(["git", "commit", "-m", "Automated monthly refresh"], cwd=PROJECT_ROOT, check=True)
     push = subprocess.run(["git", "push", "origin", "main"], cwd=PROJECT_ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace")
     return {"pushed": push.returncode == 0, "reason": push.stdout + push.stderr}
@@ -908,6 +1052,15 @@ def _copy_project(dst: str) -> None:
             shutil.copy2(src, os.path.join(dst, name))
 
 
+def _copy_run_logs(dst: str) -> None:
+    """Step 10 and step 4 read the last successful run's log: the temporary copy gets the real run logs (read-only use)."""
+    out = os.path.join(dst, "output", "runs")
+    os.makedirs(out, exist_ok=True)
+    for name in os.listdir(RUNS_DIR) if os.path.isdir(RUNS_DIR) else []:
+        if name.startswith("monthly_refresh_") and name.endswith(".json"):
+            shutil.copy2(os.path.join(RUNS_DIR, name), os.path.join(out, name))
+
+
 def run_dry_run_in_sandbox(force_new_vintage: bool = False, offline: bool = False, skip_tests: bool = False) -> dict:
     """A dry run: everything runs inside a temporary copy of the project; only the run log is written to the real output/runs/."""
     run_id = datetime.now().strftime("%Y%m%dT%H%M%S")
@@ -915,6 +1068,7 @@ def run_dry_run_in_sandbox(force_new_vintage: bool = False, offline: bool = Fals
     logger.info("Dry run: working in a temporary copy at %s (removed afterwards).", temp_root)
     try:
         _copy_project(temp_root)
+        _copy_run_logs(temp_root)
         cmd = [sys.executable, os.path.join(temp_root, "src", "monthly_refresh.py"), "--dry-run", "--in-sandbox",
                "--run-id", run_id, "--run-log-dir", RUNS_DIR]
         if force_new_vintage:
@@ -984,7 +1138,7 @@ def main(dry_run: bool, force_new_vintage: bool = False, sandbox: bool = False, 
     step4 = record("4_backtest", step4_backtest, run_id, offline)
     step5 = record("5_new_forward_test_vintage", step5_new_vintage, steps_dry, force_new_vintage)
     computed_vintage_for_preview = _LAST_COMPUTED_VINTAGE if steps_dry else None
-    record("6_fill_and_score", step6_fill_and_score, steps_dry, computed_vintage_for_preview, offline)
+    record("6_fill_and_score", step6_fill_and_score, steps_dry, computed_vintage_for_preview, offline, run_id)
     record("7_rebuild_pages", step7_rebuild_pages, steps_dry, staged_dir, step1)
     step8 = record("8_run_tests", step8_run_tests, skip_tests)
     step9 = record("9_scan_sensitive_content", step9_scan_sensitive_content, started_mtime if sandbox else None)

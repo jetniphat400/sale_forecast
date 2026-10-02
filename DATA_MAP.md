@@ -997,6 +997,37 @@ produced a wrong result, with the correct handling and the report that found it.
     monthly task's settings (start when available, run on battery) applied; the gap is recorded in STATUS.md (T2's posting-delay
     measurement has coarser timing resolution over the gap). **V2** (task settings and event log read directly).
 
+30. **Step 10's "change since the previous run" compared the run with itself.** Naive reading: the comparison base is the
+    previous month's figures. Reality: step 10 and step 4 read the base from `output/summary/phaseC_step2_transferability_per_division.csv`
+    before step 4 rewrote it, so a run that had already refreshed the file (the failed 2026-10-02 07:45 run) left the next run
+    (`20261002T081225`, 08:12) comparing the new figures with themselves: every division's backtest MAE change was 0.0%, a gate that
+    could not fail (`src/monthly_refresh.py` `step4_backtest` before 2026-10-02; STATUS.md C6). **Correct handling (task C-fix, Part 4)**:
+    the base is the Top-down figures recorded in the log of the most recent run that records success (real run, every step ok,
+    pushed or nothing to commit; never a dry run, a failed or held run): `find_last_successful_run`, `baseline_from_run_log`.
+    **V2** (logic tested with a failed run between two successes in `tests/test_cfix_runner_and_scores.py`; the Validator confirmed
+    which run it picks from the real logs).
+31. **The runner's step 11 committed everything that was uncommitted.** Naive reading: the automated commit holds only what the run
+    rebuilt. Reality: `git add -A` staged any change in the working tree, so the 2026-10-02 08:18 push carried three earlier
+    commits' worth of unrelated work (commit `4719c04`, message "Automated monthly refresh"; STATUS.md C10). **Correct handling
+    (task C-fix, Part 7)**: step 11 stages only `GENERATED_PATHS` (`forecast/sales_report.html`, `forecast/inventory.html`,
+    `data/inventory.json`) by explicit path; if any other tracked path is staged or modified it stops, writes the run log and neither
+    commits nor pushes. **V2** (tested against a scratch git repository).
+32. **Forward-test scores were not on the backtest's MASE definition and were not kept.** Naive reading: the forward test's MASE is
+    comparable with the backtest's. Reality: the backtest averages each item's MASE over a six-month window per origin with the scale
+    from the series the forecast was fitted on (`src/backtest_rekeyed.py` `compute_metrics`, lines 105-116;
+    `src/transferability_all_divisions.py`), while the forward scoring code (`src/score_forward_test_all_divisions.py`
+    `score_and_summarize`) computed MAE, RMSE, Bias only, and the first MASE figures were computed ad hoc outside the repository.
+    The structure (per-item MASE, plain mean per division, undefined left out) is identical; the window is not (one target month at
+    horizon 1 against six-month windows), so a forward MASE is not the same quantity as the backtest's number. **Correct handling (task
+    C-fix, Parts 3 and 5)**: `src/forward_test_scoring.py` uses the same `compute_metrics`; METRICS.md Sec.13 states the definition;
+    scores are kept append-only in `output/summary/forward_test_scores.csv` with a read-back hash. **V2** (August figures recomputed by
+    an independent Validator).
+33. **`data_cutoff_date` is the pull date, not the last month of data.** Naive reading (METRICS.md Sec.27 before 2026-10-02): the
+    cutoff is the last month of data. Reality: vintage 1 holds 2026-09-07, vintage 2 holds 2026-10-02 (the days the data was pulled);
+    `fit_last_month` holds the last month of actuals used (2026-07, 2026-08). **Correct handling (task C-fix, Part 6)**: both
+    meanings are stated in METRICS.md Sec.27 and a page shows `fit_last_month` when it shows a cutoff (none does today). No row was
+    edited. **V1** (rows read directly).
+
 ---
 
 ## 5. Unknowns
