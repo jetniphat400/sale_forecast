@@ -64,6 +64,7 @@ import socket
 import subprocess
 import sys
 import tempfile
+import traceback
 import urllib.parse
 from datetime import datetime
 
@@ -76,7 +77,8 @@ from backtest_rekeyed import TOTAL_MONTHS
 from forward_test import config_version
 from forward_test_all_divisions import (build_category_series_div, build_item_series_div,
                                          build_type_series_div)
-from forward_test_common import compute_row_integrity_hash, compute_scope_hash, load_metadata, save_metadata
+from forward_test_common import (append_vintage_and_hash, compute_scope_hash, load_metadata,
+                                 read_forward_test_log, save_metadata)
 from item_level_reconciliation import forecast_all_approaches
 from leakage_guard import LeakageGuardError, check_window_closed, load_min_margin_days
 from models import combination_forecast
@@ -109,6 +111,11 @@ SENSITIVE_PATTERNS = [
     (r"AKIA[0-9A-Z]{16}", "AWS access key id pattern"),
     (r"(?i)password\s*[:=]\s*['\"][^'\"]{4,}['\"]", "hardcoded password literal"),
 ]
+
+
+STEP_ORDER = ["1_pull_data", "2_validate", "3_frozen_snapshot", "4_backtest", "5_new_forward_test_vintage",
+              "6_fill_and_score", "7_rebuild_pages", "8_run_tests", "9_scan_sensitive_content",
+              "10_change_magnitude", "11_commit_and_push"]
 
 
 class MonthlyRefreshAbort(Exception):
@@ -521,13 +528,13 @@ def compute_new_vintage() -> dict:
     if (rows_df["forecast_qty"] < 0).any():
         raise MonthlyRefreshAbort("Step 5 ABORTED: negative forecast_qty produced for the new vintage.")
 
-    row_integrity_hash = compute_row_integrity_hash(rows_df)
     metadata_entry = {
         "log_file": os.path.relpath(FORWARD_TEST_LOG_PATH, PROJECT_ROOT).replace("\\", "/"),
         "generated_by_script": "src/monthly_refresh.py (compute_new_vintage)",
         "forecast_run_date": run_date, "config_version": cfg_ver, "date_key": "forecastDate",
         "item_level_approach": approach_label, "scope_hash": scope_hash, "scope_n_items": n_scope_items,
-        "vintage_id": next_vintage_id, "row_integrity_hash": row_integrity_hash,
+        "vintage_id": next_vintage_id,    # row_integrity_hash and row_hash_scheme are added by append_vintage_and_hash
+                                          # after the rows are written to the log and read back
         "fit_first_month": fit_first_month, "fit_last_month": fit_last_month, "fit_n_months": n_fit_months,
         "horizon_months": horizon, "target_months": target_months,
         "leakage_guard_min_margin_days": min_margin_days, "leakage_guard_actual_margin_days": actual_margin_days,
@@ -536,6 +543,23 @@ def compute_new_vintage() -> dict:
     six_month_totals_by_division = rows_df[rows_df["level"] == "Item"].groupby("division")["forecast_qty"].sum().to_dict()
     return {"vintage_id": next_vintage_id, "rows_df": rows_df, "metadata_entry": metadata_entry,
             "n_rows": len(rows_df), "six_month_item_forecast_total_by_division": six_month_totals_by_division}
+
+
+def rehearse_vintage_write_and_reread(computed: dict) -> dict:
+    """Dry runs: append the new vintage to a TEMPORARY copy of the forward-test log, read it back from the file,
+    record its hash from the read-back rows, and run the same verification step 6 runs on the real log. The
+    real log and metadata are never touched. A failure raises, exactly as it would in a real run."""
+    from score_forward_test_all_divisions import verify_consistency
+    with tempfile.TemporaryDirectory(prefix="vintage_rehearsal_") as tmp:
+        tmp_log = os.path.join(tmp, "forward_test_log_all_divisions.csv")
+        if os.path.exists(FORWARD_TEST_LOG_PATH):
+            shutil.copy2(FORWARD_TEST_LOG_PATH, tmp_log)
+        entry = append_vintage_and_hash(tmp_log, computed["rows_df"], computed["metadata_entry"])
+        metadata = {**load_metadata(FORWARD_TEST_METADATA_PATH), str(computed["vintage_id"]): entry}
+        verify_consistency(read_forward_test_log(tmp_log), metadata)
+    return {"verified": True, "vintage_id": computed["vintage_id"], "row_hash_scheme": entry["row_hash_scheme"],
+            "note": "the new vintage was appended to a temporary copy of the log, read back and verified; "
+                    "the real log was not touched."}
 
 
 _LAST_COMPUTED_VINTAGE = None  # cache so step 6 (dry-run preview) never recomputes step 5's
@@ -588,16 +612,18 @@ def step5_new_vintage(dry_run: bool, force_new_vintage: bool = False) -> dict:
         result["overridden_existing_vintage_id"] = existing_this_month["vintage_id"]
         result["overridden_existing_forecast_run_date"] = existing_this_month["forecast_run_date"]
     if dry_run:
-        result["note"] = "dry-run: vintage computed but NOT appended to the forward-test log."
+        result["note"] = "dry-run: vintage computed but NOT appended to the real forward-test log."
+        result["rehearsal"] = rehearse_vintage_write_and_reread(computed)
         return result
 
-    existing_log = pd.read_csv(FORWARD_TEST_LOG_PATH)
-    combined = pd.concat([existing_log, computed["rows_df"]], ignore_index=True)
-    combined.to_csv(FORWARD_TEST_LOG_PATH, index=False)
+    # Write the rows, read the log back, and compute the integrity hash from what was read back, so the stored
+    # hash is the one verification will recompute (task C2b).
+    entry = append_vintage_and_hash(FORWARD_TEST_LOG_PATH, computed["rows_df"], computed["metadata_entry"])
     metadata = load_metadata(FORWARD_TEST_METADATA_PATH)
-    metadata[str(computed["vintage_id"])] = computed["metadata_entry"]
+    metadata[str(computed["vintage_id"])] = entry
     save_metadata(FORWARD_TEST_METADATA_PATH, metadata)
     result["written"] = True
+    result["row_hash_scheme"] = entry["row_hash_scheme"]
     return result
 
 
@@ -608,23 +634,8 @@ def step5_new_vintage(dry_run: bool, force_new_vintage: bool = False) -> dict:
 def step6_fill_and_score(dry_run: bool, computed_vintage: dict = None, offline: bool = False) -> dict:
     config = load_config()
     metadata = load_metadata(FORWARD_TEST_METADATA_PATH)
-    existing_log = pd.read_csv(FORWARD_TEST_LOG_PATH, dtype=str)
-    existing_log["forecast_qty"] = existing_log["forecast_qty"].astype(float)
-    existing_log["horizon"] = existing_log["horizon"].astype(int)
-    existing_log["vintage_id"] = existing_log["vintage_id"].astype(int)
-    existing_log["scope_n_items"] = existing_log["scope_n_items"].astype(int)
-
-    if dry_run and computed_vintage is not None:
-        # Include the not-yet-written new vintage (rows AND its metadata entry) in the
-        # consistency/eligibility check so the dry run genuinely exercises what step 6 WOULD see
-        # once step 5 actually appends it -- neither is written to disk in dry-run mode.
-        preview_rows = computed_vintage["rows_df"].copy()
-        preview_rows["actual_qty"] = ""
-        log_for_check = pd.concat([existing_log, preview_rows], ignore_index=True)
-        metadata = {**metadata, str(computed_vintage["vintage_id"]): computed_vintage["metadata_entry"]}
-    else:
-        log_for_check = existing_log
-
+    existing_log = read_forward_test_log(FORWARD_TEST_LOG_PATH)
+    log_for_check = existing_log
     verify_consistency(log_for_check, metadata)
 
     min_margin_days = load_min_margin_days(config)
@@ -944,13 +955,25 @@ def main(dry_run: bool, force_new_vintage: bool = False, sandbox: bool = False, 
                "started_at": datetime.now().isoformat(timespec="seconds"), "steps": {}}
 
     def record(step_name, fn, *args, **kwargs):
+        """Runs one step. Any failure -- a deliberate abort or an uncaught exception -- ends the run with a run
+        log naming the failed step, the error and the steps not run (METRICS.md Sec.28: a failed run is reported
+        in the log, never silently skipped); nothing is committed or pushed; the exception is re-raised so the
+        process exits non-zero."""
         try:
             outcome = fn(*args, **kwargs)
             run_log["steps"][step_name] = {"status": "ok", **({"result": outcome} if outcome is not None else {})}
             return outcome
-        except MonthlyRefreshAbort as e:
-            run_log["steps"][step_name] = {"status": "ABORTED", "reason": str(e)}
+        except Exception as e:      # noqa: BLE001 -- every failure must reach the run log
+            aborted = isinstance(e, MonthlyRefreshAbort)
+            run_log["steps"][step_name] = {"status": "ABORTED" if aborted else "FAILED",
+                                           "reason" if aborted else "error": str(e)}
             run_log["aborted_at_step"] = step_name
+            run_log["failed_step"] = step_name
+            run_log["error"] = {"type": type(e).__name__, "message": str(e)[:4000],
+                                "traceback_tail": traceback.format_exc()[-3000:]}
+            run_log["steps_not_run"] = STEP_ORDER[STEP_ORDER.index(step_name) + 1:]
+            run_log["committed"] = False
+            run_log["pushed"] = False
             run_log["finished_at"] = datetime.now().isoformat(timespec="seconds")
             _write_run_log(run_log, run_id, run_log_dir)
             raise
@@ -983,7 +1006,9 @@ def _write_run_log(run_log: dict, run_id: str, run_log_dir: str = None) -> str:
     return path
 
 
-if __name__ == "__main__":
+def cli(argv=None) -> int:
+    """Command line entry. Exit code 0 only for a run that completed every step; any abort or failure returns 1
+    (the run log has already been written by main())."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--dry-run", action="store_true",
                          help="Exercise every step's logic without writing/committing/pushing anything tracked.")
@@ -999,11 +1024,16 @@ if __name__ == "__main__":
                               "output/data and the regenerations that connect are skipped and recorded.")
     parser.add_argument("--skip-tests", action="store_true",
                          help="Skip step 8 (for tests of the runner itself; recorded in the run log).")
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
     try:
         log = main(dry_run=args.dry_run, force_new_vintage=args.force_new_vintage, sandbox=args.in_sandbox,
                    run_id=args.run_id, run_log_dir=args.run_log_dir, offline=args.offline, skip_tests=args.skip_tests)
-        print(json.dumps(log, indent=2, default=str))
-    except MonthlyRefreshAbort as e:
-        logger.error("MONTHLY REFRESH ABORTED: %s", e)
-        sys.exit(1)
+    except Exception as e:      # noqa: BLE001 -- the run log was written where the failure happened
+        logger.error("MONTHLY REFRESH FAILED: %s: %s", type(e).__name__, e)
+        return 1
+    print(json.dumps(log, indent=2, default=str))
+    return 1 if "aborted_at_step" in log else 0
+
+
+if __name__ == "__main__":
+    sys.exit(cli())

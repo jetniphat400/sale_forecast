@@ -18,6 +18,8 @@ import pandas as pd
 import pytest
 
 import monthly_refresh as mr
+from forward_test_common import append_vintage_and_hash, save_metadata
+from test_forward_test_integrity import base_entry, make_rows
 
 
 def _write_log(path: str, forecast_run_date_by_vintage: dict) -> None:
@@ -99,17 +101,26 @@ def test_step5_new_vintage_guard_blocks_same_month_append_real_run_writes_nothin
 def _fake_computed_vintage(vintage_id: int) -> dict:
     return {
         "vintage_id": vintage_id,
-        "rows_df": pd.DataFrame([{"vintage_id": vintage_id, "forecast_qty": 1.0}]),
-        "metadata_entry": {"vintage_id": vintage_id, "note": "synthetic test vintage"},
-        "n_rows": 1,
+        "rows_df": make_rows(vintage_id),
+        "metadata_entry": base_entry(vintage_id),
+        "n_rows": 9,
         "six_month_item_forecast_total_by_division": {"PEM101": 100.0},
     }
 
 
-def test_step5_new_vintage_force_flag_overrides_guard_dry_run(tmp_path, monkeypatch):
+def _full_log(tmp_path, monkeypatch, vintage_1_date):
+    """A synthetic log and metadata holding a complete vintage 1 (the dry run now writes and re-reads the log)."""
     log_path = os.path.join(str(tmp_path), "log.csv")
-    _write_log(log_path, {1: THIS_MONTH_DATE})
+    metadata_path = os.path.join(str(tmp_path), "metadata.json")
+    entry = append_vintage_and_hash(log_path, make_rows(1, vintage_1_date, "2026-07"), base_entry(1))
+    save_metadata(metadata_path, {"1": entry})
     monkeypatch.setattr(mr, "FORWARD_TEST_LOG_PATH", log_path)
+    monkeypatch.setattr(mr, "FORWARD_TEST_METADATA_PATH", metadata_path)
+    return log_path, metadata_path
+
+
+def test_step5_new_vintage_force_flag_overrides_guard_dry_run(tmp_path, monkeypatch):
+    log_path, _meta = _full_log(tmp_path, monkeypatch, THIS_MONTH_DATE)
     monkeypatch.setattr(mr, "compute_new_vintage", lambda: _fake_computed_vintage(2))
 
     result = mr.step5_new_vintage(dry_run=True, force_new_vintage=True)
@@ -120,17 +131,11 @@ def test_step5_new_vintage_force_flag_overrides_guard_dry_run(tmp_path, monkeypa
     assert result["vintage_id"] == 2
     assert result["written"] is False  # dry-run: computed, not appended
     on_disk = pd.read_csv(log_path)
-    assert on_disk["vintage_id"].tolist() == [1]  # dry-run never writes
+    assert set(on_disk["vintage_id"]) == {1}  # dry-run never writes to the real log
 
 
 def test_step5_new_vintage_force_flag_overrides_guard_real_run_appends(tmp_path, monkeypatch):
-    log_path = os.path.join(str(tmp_path), "log.csv")
-    metadata_path = os.path.join(str(tmp_path), "metadata.json")
-    _write_log(log_path, {1: THIS_MONTH_DATE})
-    with open(metadata_path, "w", encoding="utf-8") as f:
-        json.dump({}, f)
-    monkeypatch.setattr(mr, "FORWARD_TEST_LOG_PATH", log_path)
-    monkeypatch.setattr(mr, "FORWARD_TEST_METADATA_PATH", metadata_path)
+    log_path, metadata_path = _full_log(tmp_path, monkeypatch, THIS_MONTH_DATE)
     monkeypatch.setattr(mr, "compute_new_vintage", lambda: _fake_computed_vintage(2))
 
     result = mr.step5_new_vintage(dry_run=False, force_new_vintage=True)
@@ -138,7 +143,7 @@ def test_step5_new_vintage_force_flag_overrides_guard_real_run_appends(tmp_path,
     assert result["written"] is True
     assert result["force_override_used"] is True
     on_disk = pd.read_csv(log_path)
-    assert sorted(on_disk["vintage_id"].tolist()) == [1, 2]
+    assert set(on_disk["vintage_id"]) == {1, 2}
     with open(metadata_path, "r", encoding="utf-8") as f:
         saved_meta = json.load(f)
     assert "2" in saved_meta
@@ -148,9 +153,7 @@ def test_step5_new_vintage_no_same_month_row_computes_normally_without_force(tmp
     """Sanity check on the non-guard path: when nothing in the log matches the current calendar
     month, a normal (non-forced) run computes and (if not dry-run) appends, exactly as before this
     guard existed."""
-    log_path = os.path.join(str(tmp_path), "log.csv")
-    _write_log(log_path, {1: "2020-01-01"})
-    monkeypatch.setattr(mr, "FORWARD_TEST_LOG_PATH", log_path)
+    log_path, _meta = _full_log(tmp_path, monkeypatch, "2020-01-01")
     monkeypatch.setattr(mr, "compute_new_vintage", lambda: _fake_computed_vintage(2))
 
     result = mr.step5_new_vintage(dry_run=True, force_new_vintage=False)
