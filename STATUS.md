@@ -86,6 +86,27 @@ previous hand-written summary (2026-09-29) is kept below under its own heading a
 - **Part 9.** Independent Validator: August scores PASS, score rows and hash PASS, step 10 base PASS (no real failed-run log exists between successes), staging list PASS. Report: `output/summary/validator_cfix_report.md`.
 - **Found, not fixed:** (a) the 5 October run is the first to execute the new pull stages and `--from-pulls`; check its log (C3). (b) A tracked-but-modified file now stops the commit by design: keep the tree clean before the 5th (C3). (c) The index stock panel renders only when its tab is opened, so the visual check read `data/inventory.json` for that figure (W3). (d) The Part 2 "not refreshed" list (K / G2).
 
+### Phase R -- requirements audit against the original brief -- DONE, 2026-10-02 (P0; two read-only database sessions)
+
+Full findings: `output/summary/phaseR_requirements_audit.md`. Summary:
+- **Brief item 1** done on the old basis, tab not refreshed. **Item 2** partly done (the pilot scope; one Top-down method chosen, no stable winner per group). **Item 3.1** partly done (moving averages only inside the Combination). **Item 3.2** not done, blocked on data. **Item 4** partly done and uncalibrated: lead time is a 60-day assumption, no storms, no MRP export. **Settings line** applied only in the pilot (2026-08-31 to about 2026-09-04); the 445-code path (335 forecast codes) ignores `pilot_categories`, `pilot_item_codes` and the three-item constants except for reporting rows and charts.
+- **Vendor lead time is measurable.** `Cube_PO_Exact` with `Cube_ReceiveRM` and `Cube_Receipt` (joined on PO number and item) give 4,030 usable order-to-first-receipt lead times for 132 of the 209 raw materials the BOM links to PEM101's 82 stock_policy items: median 41 days (37 in 2025-26), p25 19, p75 60, p90 86. The model's 60 is about the observed p75. No finished good has all its raw materials observed.
+- **MRP.** `Cube_Inventory_Exact` carries `minimum` and `maximum` per item x warehouse x company; 1,941 items have a non-zero value (113 of the 445 project codes, in FG, FG01, FG11, WH01); 734 rows have a minimum and no maximum. The 128-item "current Min/Max" file equals this table. The project writes no Max-Min back.
+- **Freshness.** Cube_CES, Cube_BOM_Exact and Cube_Inventory_Aging last loaded 2026-09-28 06:15-07:00; the 17:00 and 21:45 groups on 2026-10-01. Cadence not established from overwritten snapshots; ETL questions in the audit file.
+- **External factors.** Nothing found for utility budgets, EGP bids, storms, Chinese or Thai holidays, shipping; pipeline and target tables (`Cube_OI`, `Cube_OI_SaleForecast`, `Cube_Enq`, `Cube_OQ`, `Cube_Target_PMIS`) exist and are not yet profiled.
+- Validator (no database): all five checks match. Both Part 2 and Part 3 results rest on the same saved query outputs.
+
+New work-plan rows (assigned from this audit; owners per the plan's convention):
+
+| Priority | Phase | Task | Owner |
+|---|---|---|---|
+| P1 | R1 | Decide whether per-category (drop, surge) and per-item (three items) model settings return to the 445-code path, and whether a standalone moving average with a per-group window is wanted; the August forward test has all three items worse than their backtest | The user decides; Claude Code implements |
+| P1 | K | Replace the assumed 60-day lead time with the observed order-to-receipt distribution (by material where the data allows); purchasing confirms which date starts the clock | Claude Code; purchasing team |
+| P2 | R2 | Max-Min hand-off to MRP: the ERP team answers the six questions in the audit file (Part 4), then Claude Code prepares the file | ERP team; Claude Code |
+| P2 | X1 | Profile `Cube_OI`, `Cube_OI_SaleForecast`, `Cube_Enq`, `Cube_OQ`, `Cube_Target_PMIS` (rows, dates, item links) in one read-only session; budgets, EGP bids, storms and holiday calendars need a supplier (sales team, purchasing) | Claude Code; people supply the data |
+| P2 | C3 | Add to the 5 October check: did Cube_CES, Cube_BOM_Exact and Cube_Inventory_Aging reload on 2026-10-05; ETL questions in the audit file | Claude Code; ETL team |
+| P6 | F | Item-1 trend tab: no generator, 2.7-year window, labelled stale | Claude Code |
+
 ### Phase C11 -- DONE, 2026-10-02 (P0; tests only; no database connection)
 
 - **Fix.** `tests/test_dynamic_values.py`: the PEM101 pilot file's data date is now set by the test (`set_pilot_data_date`: every pandas read of `processed_full_category_sales_monthly_forecastDate.csv` returns `snapshot_pull_date` as a chosen age before now; the file on disk is untouched). `test_sales_report_numbers_follow_their_sources` builds its base page with a data date of now and its perturbed (1-day threshold) page with one 5 days old. New `test_pilot_data_age_drives_the_staleness_notice_in_both_directions`: a 5-day-old date shows "เก่ากว่า 1 วัน" in the page's freshness row with that date, a current date shows "ใหม่".
@@ -220,7 +241,7 @@ people do only what Claude Code cannot.
 | Priority | Phase | Task | Owner |
 |---|---|---|---|
 | P0 | C — runner in production | C2 first real run, first forward-test score for August, published-page check | Claude Code |
-| P0 | C | C3 check the log of the scheduled run on 5 October and confirm it ran unattended | Claude Code |
+| P0 | C | C3 check the log of the scheduled run on 5 October and confirm it ran unattended; also whether Cube_CES, Cube_BOM_Exact and Cube_Inventory_Aging reloaded that day (phase R); ETL questions in the audit file | Claude Code; ETL team |
 | P0 | C | C4 summarise the forward-test result | chat assistant |
 | P1 | W3 — index.html readable and correct | S&OP tab text per the provenance verdict; stock panel; Trend tab; the unsupported "Naive" claim on the sales report; the "3%" in the manual | Claude Code |
 | P2 | E — act on decisions | E1 move PEM107's 41 viable items to made-to-order planning | Claude Code |
@@ -228,8 +249,12 @@ people do only what Claude Code cannot.
 | P2 | E | E3 classify PEM101's 21 leaning items from data, labelled pending confirmation | Claude Code |
 | P3 | W-polish | English preset labels, fractional year ticks, blank gap under failed charts, the 0.80–0.99 note against a chart ending at 0.98, the typed "1 เดือน" | Claude Code |
 | P4 | K — recalibration | PEM101 on the 82-item stock_policy set | Claude Code |
+| P1 | K | Replace the assumed 60-day procurement lead time with the observed order-to-receipt distribution (phase R: median 41 days, p75 60); purchasing confirms which date starts the clock | Claude Code; purchasing team |
+| P1 | R1 — brief settings | Decide whether per-category (drop, surge) and per-item (three items) model settings return to the 445-code path, and whether a standalone moving average with a per-group window is wanted | The user decides; Claude Code implements |
+| P2 | R2 — MRP hand-off | Max-Min to MRP: the ERP team answers the six questions in `output/summary/phaseR_requirements_audit.md` Part 4, then Claude Code prepares the file | ERP team; Claude Code |
+| P2 | X1 — external factors | Profile Cube_OI, Cube_OI_SaleForecast, Cube_Enq, Cube_OQ, Cube_Target_PMIS in one read-only session; budgets, EGP bids, storms and holiday calendars need a supplier | Claude Code; people supply the data |
 | P5 | D — refactor | after phase C passes | Claude Code |
-| P6 | F — index generator | Trend tab on the 445-code basis; dynamic numbers in the manual | Claude Code |
+| P6 | F — index generator | Trend tab on the 445-code basis; dynamic numbers in the manual; the item-1 trend tab has no generator, a 2.7-year window and is labelled stale (phase R) | Claude Code |
 | P7 | G — purchasing and production plan | draft for PEM103 and PEM107 | Claude Code drafts; production team supplies inputs |
 | Ongoing | — | monthly log review; leakage-margin review around 21 November; PEM107 recalibration when post-May data suffices | Claude Code |
 | Future | — | S&OP tab on real data; an app with a backend if pages grow too heavy | Claude Code |
