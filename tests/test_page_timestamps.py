@@ -7,6 +7,7 @@ enough to catch a regression (a future edit reverting to a hand-typed date, or t
 without costing another connection attempt every time the suite runs.
 """
 import hashlib
+import sys
 import json
 import os
 import re
@@ -53,19 +54,27 @@ FROZEN_FORWARD_TEST_LOG_SHA256 = (
 # (1) forward-test log is unchanged by a pipeline refresh
 # ---------------------------------------------------------------------------------------------
 
-def test_forward_test_log_hash_matches_frozen_value():
-    """The T1 forward-test log (output/summary/forward_test_log_all_divisions.csv,
-    src/forward_test_all_divisions.py) must never change once generated -- METRICS.md Sec.26's
-    own rule, added the same task this test was added in. A future pipeline run that
-    (incorrectly) touches this file will change its hash and fail this test."""
+# UPDATED 2026-10-02 (task C2b): the log is no longer one frozen file. METRICS.md Sec.27/28 have the monthly run APPEND a
+# vintage each month (vintage 2 was appended on 2026-10-02), so the whole-file hash above (kept for the record) can no longer
+# be the invariant. What stays frozen is every vintage's own forecast rows: vintage 1's rows (all columns except
+# actual_qty, the one column allowed to be filled in later) must still hash to the value recorded at the 2026-09-25
+# migration. Read back from the file, under the read-back scheme vintage 1's metadata uses.
+FROZEN_VINTAGE_1_ROW_HASH = "160eefcd8bf45a61f7a1a0b3e9c08faadb5564ad601eec53e9205ebf5ef0d8f3"
+
+
+def test_vintage_1_rows_in_the_forward_test_log_are_unchanged():
+    """Vintage 1 is never rewritten (METRICS.md Sec.26/27). Later vintages are appended; actual_qty may be filled."""
     assert os.path.exists(FORWARD_TEST_LOG), (
         f"{FORWARD_TEST_LOG} does not exist -- cannot verify the forward-test log is frozen."
     )
-    with open(FORWARD_TEST_LOG, "rb") as f:
-        actual_hash = hashlib.sha256(f.read()).hexdigest()
-    assert actual_hash == FROZEN_FORWARD_TEST_LOG_SHA256, (
-        "forward_test_log_all_divisions.csv has changed since it was last recorded as frozen "
-        "(task 2a, Part 1) -- METRICS.md Sec.26 says it must never be refreshed or rewritten."
+    sys.path.insert(0, os.path.join(PROJECT_ROOT, "src"))
+    from forward_test_common import HASH_SCHEME_CSV_READBACK, compute_row_integrity_hash, read_forward_test_log
+    log = read_forward_test_log(FORWARD_TEST_LOG)
+    vintage_1 = log[log["vintage_id"] == 1]
+    assert len(vintage_1) == 2340
+    assert compute_row_integrity_hash(vintage_1, HASH_SCHEME_CSV_READBACK) == FROZEN_VINTAGE_1_ROW_HASH, (
+        "vintage 1's rows in forward_test_log_all_divisions.csv have changed since the 2026-09-25 migration "
+        "-- METRICS.md Sec.26 says a vintage must never be refreshed or rewritten."
     )
 
 

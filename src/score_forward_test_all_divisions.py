@@ -34,7 +34,7 @@ import yaml
 sys.path.insert(0, os.path.dirname(__file__))
 from db import run_query
 from forward_test import config_version
-from forward_test_common import (ForwardTestConsistencyError, compute_row_integrity_hash,
+from forward_test_common import (DEFAULT_HASH_SCHEME, HASH_SCHEMES, ForwardTestConsistencyError, compute_row_integrity_hash,
                                   compute_scope_hash, load_metadata)
 from leakage_guard import LeakageGuardError, check_window_closed, load_min_margin_days
 
@@ -113,13 +113,26 @@ def verify_consistency(log: pd.DataFrame, metadata: dict) -> None:
         if not recorded_hash:
             failures.append(f"vintage {vkey}: metadata has no recorded row_integrity_hash to check against.")
         else:
-            current_hash = compute_row_integrity_hash(vintage_rows)
+            scheme = vmeta.get("row_hash_scheme", DEFAULT_HASH_SCHEME)
+            if scheme not in HASH_SCHEMES:
+                failures.append(f"vintage {vkey}: metadata records an unknown row_hash_scheme {scheme!r} "
+                                f"(known: {list(HASH_SCHEMES)}).")
+                continue
+            current_hash = compute_row_integrity_hash(vintage_rows, scheme)
             if current_hash != recorded_hash:
-                failures.append(
-                    f"vintage {vkey}: row_integrity_hash mismatch -- recorded {recorded_hash[:16]}..., "
-                    f"recomputed from the log's CURRENT rows {current_hash[:16]}.... This vintage's "
-                    f"rows (excluding actual_qty) have changed since generation, or were corrupted."
-                )
+                other = [x for x in HASH_SCHEMES if x != scheme and
+                         compute_row_integrity_hash(vintage_rows, x) == recorded_hash]
+                if other:
+                    failures.append(
+                        f"vintage {vkey}: row_hash_scheme mismatch -- the recorded hash matches the rows under "
+                        f"scheme {other[0]!r}, but this vintage's metadata says {scheme!r}. The rows are intact; "
+                        f"the recorded scheme is wrong.")
+                else:
+                    failures.append(
+                        f"vintage {vkey}: row_integrity_hash mismatch under its recorded scheme {scheme!r} -- "
+                        f"recorded {recorded_hash[:16]}..., recomputed from the log's CURRENT rows "
+                        f"{current_hash[:16]}.... This vintage's rows (excluding actual_qty) have changed since "
+                        f"generation, or were corrupted.")
 
     if failures:
         raise ForwardTestConsistencyError(
