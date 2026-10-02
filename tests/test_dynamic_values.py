@@ -152,6 +152,29 @@ def _perturb_config(cfg):
     return cfg
 
 
+PILOT_FILE = "processed_full_category_sales_monthly_forecastDate.csv"
+PILOT_AGE_PERTURBED_DAYS = 5      # older than the perturbed 1-day threshold (the build counts whole days, so >= 2 is stale)
+PILOT_AGE_BASE_DAYS = 0
+
+
+def set_pilot_data_date(monkeypatch, age_days: float):
+    """C11 (2026-10-02): the PEM101 pilot file's data date is set BY THE TEST, never taken from the real file, whose
+    age changes with every run (the monthly runner now refreshes it). Every read of that file through pandas returns
+    its snapshot_pull_date as `age_days` before now; the real file on disk is not touched."""
+    from datetime import datetime, timedelta
+    stamp = (datetime.now() - timedelta(days=age_days)).strftime("%Y-%m-%d %H:%M:%S")
+    orig = pd.read_csv
+
+    def read_csv(path, *a, **k):
+        df = orig(path, *a, **k)
+        if os.path.basename(str(path)) == PILOT_FILE and "snapshot_pull_date" in df.columns:
+            df = df.copy()
+            df["snapshot_pull_date"] = stamp
+        return df
+    monkeypatch.setattr(pd, "read_csv", read_csv)
+    return stamp
+
+
 class Build:
     """One build of both pages, optionally with perturbed sources."""
 
@@ -166,6 +189,7 @@ class Build:
         import build_report
         mp = self.mp
         seg_copy = None
+        set_pilot_data_date(mp, PILOT_AGE_PERTURBED_DAYS if self.perturbed else PILOT_AGE_BASE_DAYS)
         if self.perturbed:
             orig_read = pd.read_csv
             orig_load = json.load
@@ -244,6 +268,27 @@ def test_sales_report_numbers_follow_their_sources(two_builds):
     assert _first(r"ปรับตัวขึ้นจาก [\d.]+% \((\d{4})\)", b) == "2023" and _first(r"ปรับตัวขึ้นจาก [\d.]+% \((\d{4})\)", p) == "2024"
     # staleness threshold from config
     assert "เก่ากว่า 1 วัน" in p and "เก่ากว่า 1 วัน" not in b
+
+
+def _pilot_row(html_text):
+    """(shown data date, status) of the 'ช่วงข้อมูลหลัก' row of the page's per-section freshness table."""
+    m = re.search(r"<td><!-- source: [^>]*-->ช่วงข้อมูลหลัก</td><td>([^<]*)</td><td>([^<]*)</td>", html_text)
+    assert m, "the freshness table has no row for the pilot section"
+    return m.group(1), m.group(2)
+
+
+@pytest.mark.parametrize("age_days,expect_notice", [(5, True), (0, False)])
+def test_pilot_data_age_drives_the_staleness_notice_in_both_directions(tmp_path, monkeypatch, age_days, expect_notice):
+    """With a 1-day threshold: a pilot data date 5 days old shows the notice with its date; one from now shows none.
+    The pilot file's data date is set by the test (set_pilot_data_date), whatever the real file's age."""
+    import build_report
+    stamp = set_pilot_data_date(monkeypatch, age_days)
+    monkeypatch.setattr(rv, "staleness_threshold_days", lambda config: 1)
+    path = build_report.build_report(output_path=str(tmp_path / "sales.html"))
+    with open(path, encoding="utf-8") as f:
+        shown, status = _pilot_row(f.read())
+    assert shown == stamp, "the page must show the data date the test set"
+    assert status == ("เก่ากว่า 1 วัน" if expect_notice else "ใหม่")
 
 
 # ------------------------------------------------------------------ inventory page (static text and data)

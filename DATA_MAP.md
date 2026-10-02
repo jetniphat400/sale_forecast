@@ -1027,6 +1027,7 @@ produced a wrong result, with the correct handling and the report that found it.
     `fit_last_month` holds the last month of actuals used (2026-07, 2026-08). **Correct handling (task C-fix, Part 6)**: both
     meanings are stated in METRICS.md Sec.27 and a page shows `fit_last_month` when it shows a cutoff (none does today). No row was
     edited. **V1** (rows read directly).
+34. **A test that read the age of a real pilot file started failing the day the runner refreshed it.** Naive reading: the pilot file is always old, so a test may expect its staleness notice. Reality: `tests/test_dynamic_values.py::test_sales_report_numbers_follow_their_sources` expected "เก่ากว่า 1 วัน" (threshold perturbed to 1 day) because the real `output/data/processed_full_category_sales_monthly_forecastDate.csv` was 6.9 days old; once task C-fix made the runner refresh it every run, the live dry run (20261002T093436, 09:34) failed step 8 on it, which would have held the 5 October commit. **Correct handling (task C11)**: a test that depends on a data date sets it itself (`set_pilot_data_date`), never reads a real file's age; checked in both directions. **V2** (all tests grepped for age, mtime and today dependencies; suite run as is and with the clock moved to 2026-10-05 and 2026-11-05).
 
 ---
 
