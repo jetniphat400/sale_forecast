@@ -73,7 +73,90 @@ previous hand-written summary (2026-09-29) is kept below under its own heading a
 - **Critical path:** E11 -> E12 -> Q10 (unchanged). **Operational path:** the monthly runner (phase C) is not yet
   running in production: see C2 below.
 
-### Phase C2 -- first real monthly run, 2026-10-02: NOT COMPLETE (stopped at a gate)
+### Phases C2b, C5 and C2 -- DONE, 2026-10-02 (second real run)
+
+**C2b -- vintage hash, failure log, dry run (done).**
+- **Cutoff check (done first).** No leakage. Vintage 2 was fitted on the 31 months 2024-02 to 2026-08 (`fit_last_month`
+  2026-08; the series ends at 2026-08, nothing later). Its leakage margin was 32 days against the 30-day minimum
+  (`src/monthly_refresh.py` `compute_new_vintage`, `check_window_closed`; the window itself is built by
+  `src/load_data_all_divisions.py`, which keeps only createDate-complete months that clear the margin). Only the label
+  differs from the wording in METRICS.md Sec.27: `data_cutoff_date` holds the **pull date** for both vintages
+  (vintage 1: 2026-09-07 with `fit_last_month` 2026-07; vintage 2: 2026-10-02 with `fit_last_month` 2026-08), not the last
+  month of data. The definition question is assigned to phase C (C7, below). No row was edited.
+- **Hash fix, rows untouched.** Archive taken first (`output/summary/archive/forward_test_log_all_divisions_pre_C2b_20261002T075354.csv`,
+  SHA-256 `4c0f8508...c66ac5`). Vintage 1's hash was computed from CSV-read rows (empty `type` hashed as "nan", by
+  `src/migrate_forward_test_vintage.py`); vintage 2's from in-memory rows (empty `type` hashed as ""). Each vintage now records
+  its scheme in its own metadata (`row_hash_scheme`: `csv_readback_v1` for vintage 1, `in_memory_empty_string_v1` for vintage 2,
+  written by `src/migrate_forward_test_hash_scheme.py`) and verification re-computes under the recorded scheme
+  (`src/score_forward_test_all_divisions.py`). Proof: the log is byte-for-byte identical to the archive (equal SHA-256, all 4680
+  rows equal), and both vintages verify. From now on a new vintage's hash is computed only after the rows are written and read
+  back (`append_vintage_and_hash`, `src/forward_test_common.py`). Tests: `tests/test_forward_test_integrity.py`.
+- **A failed run still writes its log.** Every step failure, including an uncaught exception, now ends the run with a run log
+  (failed step, error, steps not run, committed false, pushed false) and a non-zero exit (`record`, `cli` in
+  `src/monthly_refresh.py`); `tests/test_monthly_refresh_failure_log.py`.
+- **Dry runs exercise write and re-read.** A dry run appends the new vintage to a temporary copy of the log, reads it back and runs
+  step 6's verification (`rehearse_vintage_write_and_reread`); the test that simulates the pre-fix behaviour fails as it did on the
+  real run. Full suite before the real run: 253 passed.
+
+**C5 -- daily snapshot task (done).**
+- Cause: the task's last result -2147020576 is 0x800710E0; Task Scheduler event 153 on 2026-09-29 07:26 and 2026-10-02 07:33
+  says "did not launch task ... as it missed its schedule" because `StartWhenAvailable` was False and the laptop was off or logged
+  out at 06:00. Evidence: `Get-ScheduledTask` settings and the TaskScheduler/Operational log. Power Management was also "No Start On Batteries".
+- Fix: the same settings as the monthly task (StartWhenAvailable, start and continue on battery) were applied; the change was not refused.
+  The snapshot script was then run once (first authorised connection): `inventory_daily_2026-10-02.csv`, 2491 rows, load time
+  2026-10-01 21:45:43, now with `minimum`, `maximum`, `reserve_bywa`.
+- Gap: `posting_delay.csv` has runs for 2026-09-22, 23, 24, 28 and 10-02; no snapshot for 09-25, 26, 27, 29, 30 and 10-01 (events show
+  at least two missed schedules; the other days have no event). Each snapshot carries the last 60 days of per-createDate counts, so a
+  gap loses timing resolution (a row can only be dated to the span between two snapshots), not data; six of eleven days so far have
+  that coarser resolution for the measurement due about 2026-11-21 (T2).
+
+**C2 -- first real run (done).** Run `20261002T081225`, 08:12:25 to 08:18:22, exact scheduled command, exit 0.
+- Steps 1-4 ok (pull 10385 rows, 335 items; all four analysis inputs refreshed). Step 5: skipped by the one-vintage-per-month guard
+  ("a vintage already exists for 2026-10 (vintage_id=2, forecast_run_date=2026-10-02)"). Step 6: verified both vintages and filled
+  390 `actual_qty` rows for 2026-08. Step 7: both pages rebuilt (sales report; inventory from the 2026-10-02 snapshot). Step 8:
+  253 passed. Step 9: no findings. Step 10: no violations (all five divisions' backtest MAE change 0.0%; see C6). Step 11: committed
+  `4719c04` and pushed (978709a..4719c04); the permission classifier did not refuse.
+- Pages (published, cache bypassed, 08:20): `page_built_at` 2026-10-02 08:13; inventory PEM103/PEM107 `data_pulled_at` 2026-10-02
+  08:12:31; stock section 2026-10-01 21:45:43 (all three divisions); sales report headline and PEM101's series 2026-09-25 11:51:56
+  (the 128-item pilot file, not refreshed by the runner, 6.9 days old, so no notice yet; see C8). Screenshots:
+  `output/charts/c2b_verification/`.
+- **First forward-test scores (vintage 1, target month 2026-08, horizon 1, item level), recomputed independently by a Validator
+  (all figures match):**
+
+| Division / code | n items | MAE | RMSE | Bias (forecast - actual) | MASE | backtest MAE (Top-down, latest) | backtest MASE |
+|---|---|---|---|---|---|---|---|
+| CI101 | 13 | 9.761 | 21.446 | -3.694 | 0.866 | 11.037 | 0.716 |
+| PEM101 | 144 | 348.763 | 862.149 | -45.993 | 7.122 | 315.434 | 1.615 |
+| PEM102 | 16 | 1.169 | 1.975 | -0.232 | 0.975 | 1.194 | 1.182 |
+| PEM103 | 50 (MASE 48; 2 undefined) | 5.883 | 14.460 | -0.391 | 3.503 | 2.853 | 1.312 |
+| PEM107 | 112 | 6.100 | 14.935 | 2.761 | 0.743 | 11.317 | 1.019 |
+| EEE-F-FC-1040010002 | 1 | 5353.257 | 5353.257 | -5353.257 | 10.030 | 1986.275 | 4.366 |
+| HS-F-99-02110 | 1 | 2678.558 | 2678.558 | -2678.558 | 21.630 | 935.209 | 14.081 |
+| HS-F-99-0213 | 1 | 1279.344 | 1279.344 | -1279.344 | 12.425 | 442.210 | 5.175 |
+
+  Higher than the backtest: PEM101 MAE and MASE, PEM103 MAE and MASE, and all three focus codes on MAE and MASE. Lower than the
+  backtest: CI101, PEM102 and PEM107 MAE, and CI101, PEM102 and PEM107 MASE. (The backtest figures are item-by-origin means over six
+  forecast months, test months 2025-03 to 2026-08 from the refreshed backtest; the forward test is one month at horizon 1; pooled RMSE
+  per METRICS Sec.25 against the backtest's mean of per-item RMSE.) The runner fills `actual_qty` but does not save these scores
+  (assigned C9). MASE uses the 31-month fit series 2024-01 to 2026-07 of the raw pull.
+
+**C3 (next):** the scheduled run on Monday 2026-10-05 07:00. Its step 5 will skip under the one-vintage-per-month guard (vintage 2
+already belongs to October), step 6 will verify both vintages (scoring nothing new until 2026-09 becomes eligible on 2026-10-31).
+The task is Ready with StartWhenAvailable on.
+
+**Found, assigned, not fixed (phase C unless stated):**
+- **C6:** step 10's comparison base is read from `output/` before step 4 overwrites it; after the failed 07:45 run had already
+  refreshed the files, the real run compared against itself (0.0% everywhere). Read the base from an archived prior-month value.
+  The six-month forecast check is empty whenever step 5 skips.
+- **C7:** define `data_cutoff_date` (pull date today; METRICS.md Sec.27 implies the last month of data).
+- **C8:** the runner does not refresh the 128-item pilot file behind the sales report's headline date and PEM101's inventory series;
+  its notice trips on 2026-10-03 (age over 7 days).
+- **C9:** save the scored forward-test summary (the run only fills `actual_qty`), needed for C4.
+- **W3:** `index.html`'s stock panel reads `data/inventory.json` (generated 2026-09-25 12:13) which the runner does not regenerate.
+- **C10:** the runner's step 11 commit message is generic ("Automated monthly refresh") and it commits everything uncommitted
+  (it carried this task's three earlier commits to GitHub in one push); consider committing only what the run rebuilt.
+
+### Phase C2, first attempt 2026-10-02 07:45: stopped at a gate (history, superseded by the entry above)
 
 - Pre-flight (all on 2026-10-02 07:45): date on or after the first eligible date 2026-09-30 (first target month
   2026-08 + 30-day margin); `git status` clean and HEAD equal to `origin/main` (`d659d20`); no vintage in
@@ -130,7 +213,7 @@ People only:
 - send the E2 packs to the business and return the answers
 - supply PEM103 tender data, assembly time and production capacity, which the database does not hold
 
-**Found on 2026-10-02, assigned (not fixed), phase C, before 5 October:**
+**Found on 2026-10-02 (first attempt), assigned; C2b and C5 are done, see the entry above:**
 - **C2b (Claude Code, P0, blocks C2, C3 and C4):** make the forward-test integrity hash identical whether computed
   from memory or from the log read back from CSV (the empty `type` of Category rows); decide how vintage 2 is
   handled (it exists in the log with an unverifiable hash; vintage 1 stays untouched); and make a dry run

@@ -975,6 +975,28 @@ produced a wrong result, with the correct handling and the report that found it.
     Side effect, by design: PEM103's count also follows the rule (it previously counted rows that the
     item table does not list). Found by the task M1 Validator; **V2**.
 
+27. **A forward-test vintage's integrity hash depended on how its rows were held when it was computed.** Naive reading: one
+    hash scheme covers every vintage. Reality: vintage 1's hash was computed from rows read back from a CSV (an empty `type`,
+    the Category rows, is NaN and hashed as "nan"; `src/migrate_forward_test_vintage.py`), vintage 2's from rows in memory
+    (empty `type` hashed as ""; `src/monthly_refresh.py` `compute_new_vintage` before 2026-10-02), so verification refused to score
+    (first real run, 2026-10-02 07:46). **Correct handling (task C2b)**: each vintage records its `row_hash_scheme` in its metadata
+    and is verified under it (`src/score_forward_test_all_divisions.py`, `src/forward_test_common.py` `HASH_SCHEME_*`); a new
+    vintage's hash is taken only after its rows are written and read back (`append_vintage_and_hash`). No row was changed:
+    the log is byte-identical to its archive. **V2** (hashes and equality checked by the implementing task; the August scores that
+    depend on the verified log were recomputed by an independent Validator).
+28. **A failed monthly run wrote no run log.** Naive reading: every outcome of `src/monthly_refresh.py` is logged (METRICS.md
+    Sec.28). Reality: only a deliberate `MonthlyRefreshAbort` wrote one; an uncaught exception (the vintage-hash refusal) ended the run
+    with a traceback and no log, and had already appended vintage 2 to the real log in step 5. **Correct handling (task C2b)**:
+    every failure writes a log (failed step, error, steps not run, no commit or push) and exits non-zero (`record`, `cli` in
+    `src/monthly_refresh.py`), and a dry run rehearses step 5's write and re-read so this cannot pass a dry run
+    (`rehearse_vintage_write_and_reread`). **V1**.
+29. **The daily snapshot task silently missed its schedule.** Naive reading: a scheduled task registered "daily 06:00" runs daily.
+    Reality: `SaleForecast_PostingDelaySnapshot` had `StartWhenAvailable` False and runs only while the user is logged on, so every
+    day the laptop was off or logged out at 06:00 it did not run (Task Scheduler event 153, result 0x800710E0 = -2147020576);
+    `output/snapshots/posting_delay.csv` has runs for 2026-09-22, 23, 24, 28 and 10-02 only. **Correct handling (task C5)**: the
+    monthly task's settings (start when available, run on battery) applied; the gap is recorded in STATUS.md (T2's posting-delay
+    measurement has coarser timing resolution over the gap). **V2** (task settings and event log read directly).
+
 ---
 
 ## 5. Unknowns
