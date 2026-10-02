@@ -1,5 +1,7 @@
 # Phase R -- requirements audit against the original brief (2026-10-02)
 
+> **Correction, 2026-10-02:** the row for brief item 2 and the Part 2 wording below rest on a wrong reading. "drop" and "surge" in the brief are the product categories Drop-out Fuse Cutout and Surge Arrester (the pilot scope), so item 2 is DONE, as the pilot scope extended to 445 codes. See `audit_minmax_pem107_season.md` and STATUS.md.
+
 Scope: audit only; nothing in code, config, data or pages was changed. Two read-only database sessions (SELECT and metadata only; the second authorised by the user after the first was used for the catalog). Query outputs are saved outside the repository (scratch folder `phaseR_db`) and are not committed. Evidence levels: **V2** = checked by the auditor and independently re-derived by a separate Validator with no database access; **V1** = checked by the auditor only; **inferred** = reading of names or patterns.
 
 ## Part 1 -- Traceability
