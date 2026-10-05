@@ -165,15 +165,32 @@ def append_snapshot(snapshot: dict) -> None:
 
 
 def main():
+    """The posting-delay measurement and the stock snapshot, exactly as before, then the daily stock job (published
+    data files), all inside ONE database session (src/db.py session()). A failure of the stock job never loses the
+    measurement: the measurement is written first, and the stock job's failure is raised afterwards (non-zero exit,
+    log under output/runs/daily/)."""
+    import daily_stock_job as djob
+    from db import session
     config = load_config()
+    root_config = djob.load_config()
+    base = djob.load_base(PROJECT_ROOT, root_config)      # before today's snapshot file is written below
     try:
-        snapshot = take_snapshot(config)
-        inv_snapshot = take_inventory_snapshot()
-    except Exception as exc:
-        logger.error("DATABASE ACCESS RULE: first connection attempt failed, stopping. Error: %s", exc)
+        with session():
+            try:
+                snapshot = take_snapshot(config)
+                inv_snapshot = take_inventory_snapshot()
+            except Exception as exc:
+                logger.error("DATABASE ACCESS RULE: first connection attempt failed, stopping. Error: %s", exc)
+                raise
+            append_snapshot(snapshot)
+            write_inventory_snapshot(inv_snapshot)
+            djob.run(PROJECT_ROOT, base=base, config=root_config)
+    except djob.DailyFailure as exc:
+        logger.error("Daily stock job failed (%s): %s -- the posting-delay snapshot above was kept.", exc.gate or exc.step, exc)
+        raise SystemExit(1)
+    except Exception as exc:     # login failure or a failure of the measurement itself: no stock job log exists yet
+        djob.record_failure(PROJECT_ROOT, root_config, "database session or posting-delay snapshot", exc)
         raise
-    append_snapshot(snapshot)
-    write_inventory_snapshot(inv_snapshot)
 
 
 if __name__ == "__main__":

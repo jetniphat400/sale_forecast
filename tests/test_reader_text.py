@@ -143,7 +143,7 @@ def built_pages(tmp_path_factory):
     import build_report
     out = tmp_path_factory.mktemp("reader_text")
     sales = build_report.build_report(output_path=str(out / "sales_report.html"))
-    inv = build_inventory_html(str(out / "inventory.html"))
+    inv = build_inventory_html(str(out / "forecast" / "inventory.html"))
     return {"sales_report": sales, "inventory": inv}
 
 

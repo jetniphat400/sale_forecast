@@ -1,4 +1,5 @@
 """Database connection helper. Loads credentials from .env — never hardcode them here."""
+import contextlib
 import os
 import urllib.parse
 
@@ -47,8 +48,34 @@ def get_connection() -> Engine:
     return create_engine(connection_url)
 
 
+# One shared connection for a job that must stay inside a single database session (the daily stock job).
+# While a session() block is open, run_query reuses its connection instead of opening a new one per query;
+# outside a block every call behaves as before.
+_SHARED_CONNECTION = None
+
+
+@contextlib.contextmanager
+def session():
+    """Opens ONE connection (one attempt, no retry: a login failure raises to the caller) and makes run_query use
+    it until the block ends."""
+    global _SHARED_CONNECTION
+    if _SHARED_CONNECTION is not None:
+        raise RuntimeError("a database session is already open")
+    engine = get_connection()
+    conn = engine.connect()
+    _SHARED_CONNECTION = conn
+    try:
+        yield conn
+    finally:
+        _SHARED_CONNECTION = None
+        conn.close()
+        engine.dispose()
+
+
 def run_query(sql: str) -> pd.DataFrame:
     """Run a read-only SQL query and return the result as a DataFrame."""
+    if _SHARED_CONNECTION is not None:
+        return pd.read_sql(sql, _SHARED_CONNECTION)
     engine = get_connection()
     with engine.connect() as conn:
         return pd.read_sql(sql, conn)

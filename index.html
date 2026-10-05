@@ -8017,6 +8017,14 @@ function omniShowTab(n){
     return ict.getUTCFullYear()+'-'+pad(ict.getUTCMonth()+1)+'-'+pad(ict.getUTCDate())+' '+pad(ict.getUTCHours())+':'+pad(ict.getUTCMinutes());
   }
 
+  // d MMM yy HH:mm in Thai with the Buddhist year, from 'YYYY-MM-DD HH:MM[:SS]' (this machine's own clock, ICT).
+  const INV_THAI_MONTHS = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+  function invThaiDateTime(s){
+    const m = /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})/.exec(s || '');
+    if(!m) return 'ไม่ทราบ';
+    return Number(m[3]) + ' ' + INV_THAI_MONTHS[Number(m[2]) - 1] + ' ' + String(Number(m[1]) + 543).slice(-2) + ' ' + m[4] + ':' + m[5];
+  }
+
   const INV_NUM_KEYS = ['qty', 'sellable_qty', 'staging_qty', 'elsewhere_qty', 'backlog', 'available'];
 
   function invFmtQty(v){
@@ -8057,16 +8065,14 @@ function omniShowTab(n){
   function invRenderAll(data){
     document.getElementById('invContent').style.display = 'block';
 
-    const loadedDate = (data.snapshot.loaded_at || '').slice(0, 10);
+    // The three dates this panel shows, all from data/inventory.json: the source table's own load times and the pull time.
     document.getElementById('invSnapshotLabel').textContent =
-      'ข้อมูลสต็อค ณ วันที่ ' + loadedDate + ' (รอบการอัปเดตของฐานข้อมูลต้นทาง: ไม่ทราบแน่ชัด / unknown)';
+      'ข้อมูล stock ในระบบ ณ ' + invThaiDateTime(data.snapshot.loaded_at);
 
     const bl = data.backlog || {};
-    const blDate = (bl.loaded_at || '').slice(0, 10);
     const blScope = (bl.sale_company_filter || []).join(' และ ');
     document.getElementById('invBacklogLabel').innerHTML =
-      'Reserved จาก ' + invEsc(bl.source_table || '—') + ' (Status=' + invEsc(bl.status_filter || '—')
-      + ') ณ วันที่ ' + invEsc(blDate) + ' — คนละรอบการโหลดกับข้อมูลสต็อคด้านบน<br>'
+      'ยอดจองในระบบ ณ ' + invEsc(invThaiDateTime(bl.loaded_at)) + '<br>'
       + '<b>สลับจาก Cube_Backlog มาเป็น Cube_CES Status=\'Backlog\' แล้ว (task 2a Part 5, DATA_MAP.md Trap 23, '
       + 'METRICS.md §14), ตัดข้อมูลซ้ำ (dedup) ตาม contract+item</b><br>'
       + 'สูตร Available <b>ไม่ได้เปลี่ยน</b> (ยัง = สต็อคคงเหลือ − Reserved เหมือนเดิม, ยังไม่รวมสินค้าที่กำลังจะเข้า) — '
@@ -8085,11 +8091,7 @@ function omniShowTab(n){
     const backlogPulledAt = (bl.loaded_at || '').slice(0, 16);
     const INV_PAGE_BUILT_AT = invUtcIsoToIctString(data.snapshot.generated_at);
     document.getElementById('invPageTimestampNote').innerHTML =
-      '<b>data_pulled_at</b> (สต็อค): ' + invEsc(stockPulledAt) + ' ICT (UTC+7) &nbsp;|&nbsp; '
-      + '<b>data_pulled_at</b> (Reserved): ' + invEsc(backlogPulledAt) + ' ICT (UTC+7) &nbsp;|&nbsp; '
-      + '<b>page_built_at</b>: ' + invEsc(INV_PAGE_BUILT_AT || 'ไม่ทราบ') + ' ICT (UTC+7) '
-      + '(จาก data/inventory.json field snapshot.generated_at, เขียนโดย src/build_inventory_dataset.py '
-      + 'ตอนสร้างไฟล์นี้ — ไม่ใช่ค่าที่พิมพ์ไว้ในโค้ดอีกต่อไป)';
+      'ดึงข้อมูลเมื่อ ' + invEsc(invThaiDateTime(INV_PAGE_BUILT_AT));
 
     // METRICS.md Sec.26 (amended 2026-09-25, per-section staleness): the stock panel draws on
     // TWO independently-pulled inputs (on-hand stock, Reserved/backlog) -- each gets its OWN

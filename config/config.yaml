@@ -1341,3 +1341,29 @@ inventory_page:
     holding_cost_rate_annual: [0.05, 0.40]
     obsolescence_threshold_months: [1, 12]
   service_level_chart_step: 0.02
+
+# ============================================================
+# Daily stock job (src/daily_stock_job.py, run by src/snapshot_daily.py): the gates a daily pull must pass before it
+# publishes data/inventory.json and data/stock_daily.json. Every threshold is an assumption (owner: Modeler default,
+# no business figure exists), compared with the last successful daily run (output/runs/daily/last_success.json) or,
+# before one exists, with the latest daily stock snapshot.
+# ============================================================
+daily_stock:
+  # Number of (item, warehouse) rows in the stock pull. Stock rows move a little each day as items gain or lose a
+  # warehouse; a swing this large means a partial or empty load at the source, not a business change.
+  row_count_band_pct: 20
+  # Total on-hand units. Same threshold as the monthly gate (monthly_refresh.total_on_hand_stock_change_pct): a daily
+  # move of more than this is held for a person to look at.
+  on_hand_total_band_pct: 30
+  # Files the job may stage, commit and push; anything else it finds changed stops the run.
+  published_files:
+    - data/inventory.json
+    - data/stock_daily.json
+  # Commit message prefix; the pull time follows.
+  commit_message_prefix: "Daily stock refresh, pulled"
+  # Where each run writes its log, and where the last successful run's figures are kept (both untracked).
+  log_dir: output/runs/daily
+  last_success_file: output/runs/daily/last_success.json
+  # The monthly runner writes this file while it runs; the daily job skips publishing while it exists and its
+  # process is alive.
+  monthly_lock_file: output/runs/monthly_refresh.lock

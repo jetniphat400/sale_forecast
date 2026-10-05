@@ -603,6 +603,41 @@ Every dashboard page and panel displays, near its title:
   not refreshed.
 - The backtest in step 4 follows the rolling_origin_evaluation section.
 
+### Daily stock cycle (added 2026-10-05)
+
+The monthly cycle above is unchanged. Beside it, stock and reserved quantities refresh every day; forecasts, Min and
+Max and every sales-derived figure stay monthly.
+
+    scheduled task SaleForecast_PostingDelaySnapshot, 08:00 daily, start-when-available
+    src/snapshot_daily.py, one database session, in order:
+      1 posting-delay snapshot and the stock snapshot — exactly as before, written first
+      2 pull the four tables data/inventory.json needs (stock, Cube_CES backlog, old backlog, transfers)
+      3 build data/inventory.json and data/stock_daily.json from that one pull, in a temporary folder
+      4 gates (below)
+      5 publish: git pull; stop if any tracked file is modified or staged; stage only the two files; commit
+        naming the pull time; push
+    published files: data/inventory.json (index stock panel), data/stock_daily.json (Min-Max page stock figures)
+
+    gates, thresholds in config.yaml `daily_stock`, each an assumption:
+      row_count_band        (item, warehouse) rows of the stock pull within +/-20% of the last successful daily run
+      on_hand_total_band    total on-hand units within +/-30% of the last successful daily run
+      no_null_item_codes    no null or empty item code in the stock or the reserved pull
+      pull_newer_than_published   the pull time is later than the pull time of the published stock file
+
+- The base for the two bands is the last successful daily run (`output/runs/daily/last_success.json`); before one
+  exists, the latest daily stock snapshot.
+- `data/stock_daily.json` holds the on-hand quantity per item and warehouse and three times: the source load time of
+  the stock (earliest `timestamp` of the Cube_Inventory_Exact rows pulled), the source load time of the reserved
+  quantities (earliest `Timestamp` of the Cube_CES Status='Backlog' rows pulled), and the pull time. The page shows each
+  on its own line and states no load schedule. Stock and reserved load at different times, so the reserved date can be
+  older than the stock date; each is judged against the staleness threshold separately.
+- The monthly runner's step 7 writes the same file from its own saved pull with the same builder (`src/stock_daily.py`),
+  so one pull gives byte-identical JSON on both paths; step 11 stages it with the other generated files.
+- While the monthly runner runs (lock file `output/runs/monthly_refresh.lock` naming a live process) the daily job
+  publishes nothing and says so in its log.
+- Every run writes a log under `output/runs/daily/`. A failed gate or step writes the failed gate or step and the error,
+  makes no commit or push and exits non-zero; the posting-delay measurement written in step 1 is kept.
+
 ## 29. omni_trend_demand_classification
 
 **Drafted from the existing Trend Pricelist Omni tab's current implementation, pending user

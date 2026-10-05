@@ -221,9 +221,17 @@ def test_inventory_json_is_regenerated_from_the_saved_pull_and_must_carry_its_ti
     pull = tmp_path / "pull"
     pull.mkdir()
     (pull / "pull_meta.json").write_text(json.dumps({"pulled_at_utc": "2026-10-02T01:12:31Z", "pulled_at_local": "2026-10-02 08:12:31"}))
+    # the stock file is written from the same saved pull (src/stock_daily.py); the pull needs its tables, and the output
+    # goes to a temporary path, never to the tracked data/stock_daily.json
+    for name, df in (("inventory", pd.DataFrame({"itemcode": ["A"], "warehouse": ["W1"], "stock": [1.0], "timestamp": ["2026-10-01 21:45:00"]})),
+                     ("backlog_ces", pd.DataFrame({"Timestamp": ["2026-09-28 06:58:00"]})), ("backlog_cube", pd.DataFrame()),
+                     ("transfer_pairs", pd.DataFrame())):
+        df.to_pickle(pull / f"{name}.pkl")
     inv = tmp_path / "inventory.json"
+    stock_json = tmp_path / "stock_daily.json"
     monkeypatch.setattr(mr, "INVENTORY_PULL_DIR", str(pull))
     monkeypatch.setattr(mr, "INVENTORY_JSON_PATH", str(inv))
+    monkeypatch.setattr(mr, "STOCK_JSON_PATH", str(stock_json))
     calls = []
 
     def fake_run(script, args=None):
@@ -234,6 +242,9 @@ def test_inventory_json_is_regenerated_from_the_saved_pull_and_must_carry_its_ti
     out = mr.regenerate_inventory_json({"inventory_pull": {"refreshed": True}})
     assert out["regenerated"] is True and out["data_pulled_at_utc"] == "2026-10-02T01:12:31Z"
     assert calls == [("build_inventory_dataset.py", ["--from-pulls", str(pull)])]
+    stock = json.loads(stock_json.read_text(encoding="utf-8"))
+    assert stock["pull_time"] == "2026-10-02 08:12:31" and stock["items"] == {"A": [["W1", 1.0]]}
+    assert stock["stock_source_load_time"] == "2026-10-01 21:45:00" and stock["reserved_source_load_time"] == "2026-09-28 06:58:00"
     # a build that carries another time than the pull is refused
     inv.write_text("")
     monkeypatch.setattr(mr, "run_script", lambda *a, **k: (inv.write_text(json.dumps({"snapshot": {"generated_at": "2099-01-01T00:00:00Z"}})), _Proc())[1])

@@ -131,6 +131,18 @@ function onHandSellableFor(item, checkedWarehouses) {
   return (item.by_warehouse || []).filter(w => set.has(w.code)).reduce((s, w) => s + w.qty, 0);
 }
 
+// Stock arrives separately from the page: data/stock_daily.json (src/stock_daily.py) holds the on-hand quantity per item
+// and warehouse as [warehouse, qty] pairs and is loaded when the page opens. applyStock puts it into every division's
+// items as by_warehouse, the shape onHandSellableFor reads; src/stock_daily.py apply_to_data is the Python twin the tests use.
+function applyStock(data, payload) {
+  const byCode = payload.items || {};
+  for (const division of Object.keys(data.divisions)) {
+    for (const item of data.divisions[division].items) {
+      item.by_warehouse = (byCode[item.code] || []).map(p => ({ code: p[0], qty: p[1] }));
+    }
+  }
+}
+
 // METRICS.md Sec.6/9: stock_value = Sum(Min x unit_cost) over finished_goods_stock items with a
 // usable unit_cost. months_of_cover = on_hand_sellable / mean monthly forecast (protection-period
 // horizon mean, Inf when forecast=0). holding_cost = stock_value x holding_cost_rate_annual.
@@ -179,9 +191,26 @@ function computeAll(controls, divisionData, checkedWarehouses) {
   const excessCount = perItem.filter(r => r.excess).length;
   return { stockValue, holdingCost, perItem, excessCount };
 }
-if (typeof module !== 'undefined') { module.exports = { computeLTD, rollingWindowSums, percentile, computeItemMinMax, onHandSellableFor, computeAll, DATA }; }
+if (typeof module !== 'undefined') { module.exports = { computeLTD, rollingWindowSums, percentile, computeItemMinMax, onHandSellableFor, applyStock, computeAll, DATA }; }
 // END_RECOMPUTE_JS
 """
+
+
+# The stock file the page loads when it opens, relative to forecast/inventory.html (same site).
+STOCK_JSON_URL = "../data/stock_daily.json"
+
+
+def strip_stock(data: dict) -> dict:
+    """Takes every stock-dependent input out of the embedded data: per-warehouse stock, the sellable on-hand figure and the
+    stock pull time and metadata. They live in data/stock_daily.json and change daily; what stays embedded (Min, Max, the
+    current Min/Max settings, forecasts, every sales-derived input) changes monthly."""
+    for division in data["divisions"].values():
+        division.pop("stock_pulled_at", None)
+        for item in division["items"]:
+            item.pop("by_warehouse", None)
+            item.pop("on_hand_sellable", None)
+    data.pop("stock_meta", None)
+    return data
 
 
 def build_page(**data_sources) -> str:
@@ -195,6 +224,8 @@ def build_page(**data_sources) -> str:
         if not data["divisions"].get(div, {}).get("items"):
             raise InventoryPageError(f"Division {div} has zero embedded items -- refusing to render "
                                       f"a page with an empty enabled division.")
+    strip_stock(data)
+    stock_json_url_js = json.dumps(STOCK_JSON_URL)
     # allow_nan=False (task 2b Part 8): fail the BUILD loudly if any float NaN/Infinity ever
     # reaches this point again, instead of silently emitting the invalid-JSON `NaN` token that
     # broke JSON.parse() client-side and blanked the entire page (found by this task's own visual
@@ -404,6 +435,8 @@ def build_page(**data_sources) -> str:
   <p class="note-box" id="proration-note">ตัวเลขบนหน้านี้คำนวณจากยอดขายรายเดือนเพื่อให้หน้าโหลดเร็ว จึงต่างจากที่ระบบคำนวณเต็มจากข้อมูลรายวันประมาณ {gap_pct}% (PEM101)</p>
 
   <h2>ตารางรายรายการ (เรียงตาม Value at Risk ได้)</h2>
+  <!-- Stock figures (Months of cover, ของค้าง, the stock-with-no-forecast table, the count in the summary box) come from the stock file loaded when the page opens; the three dates below describe that file. -->
+  <p class="note-box" id="stock-labels" style="display:none"></p>
   <!-- Formula: Value at risk = max(0, current_min − scenario_min) × unit_cost, the earlier on-screen hint described the opposite direction (current stock below the scenario) although the formula measures a system Min above the simulated one. Excess = months of cover above the obsolescence threshold set above (METRICS.md §40), recomputed whenever the ticked warehouses or the threshold change. -->
   <p class="hint">Value at risk = ถ้า Min ในระบบสูงกว่าที่จำลอง ส่วนเกินคิดเป็นเงินเท่าไหร่<br>ของค้าง = stock พอขายเกินจำนวนเดือนที่ตั้งไว้ด้านบน</p>
   {render_notes_html('inventory.html', 'excess-threshold', values=note_values)}
@@ -485,7 +518,6 @@ def build_page(**data_sources) -> str:
   </div>
 
   <p class="scope-note" id="snapshot-note"></p>
-  <p class="scope-note" id="stock-note" style="display:none"></p>
   </main>
   </div>
 </div>
@@ -618,9 +650,9 @@ function renderTable(perItem) {{
       `<td>${{r.min !== null ? Math.round(r.min).toLocaleString() : '-'}}</td>` +
       `<td>${{r.max !== null ? Math.round(r.max).toLocaleString() : '-'}}</td>` +
       `<td>${{r.currentMin !== null && r.currentMin !== undefined ? Math.round(r.currentMin).toLocaleString() : '-'}}</td>` +
-      `<td>${{isFinite(r.monthsOfCover) ? r.monthsOfCover.toFixed(1) : '&#8734;'}}</td>` +
+      `<td>${{!STOCK_OK ? STOCK_UNKNOWN : isFinite(r.monthsOfCover) ? r.monthsOfCover.toFixed(1) : '&#8734;'}}</td>` +
       `<td data-var="${{var_}}">${{fmtTHB(var_)}}</td>` +
-      `<td data-var="${{r.excess ? 1 : 0}}">${{excessBadge(r)}}</td>`;
+      `<td data-var="${{STOCK_OK && r.excess ? 1 : 0}}">${{STOCK_OK ? excessBadge(r) : STOCK_UNKNOWN}}</td>`;
     tbody.appendChild(tr);
   }}
 }}
@@ -632,8 +664,8 @@ function renderNoForecastTable(perItem) {{
     if (!r.noForecastDemand) continue;
     const tr = document.createElement('tr');
     tr.innerHTML = `<td>${{r.code}}</td><td>${{policyLabel(r.policy)}}</td>` +
-      `<td>${{Math.round(r.onHandSellable).toLocaleString()}}</td>` +
-      `<td>${{excessBadge(r)}}</td>`;
+      `<td>${{STOCK_OK ? Math.round(r.onHandSellable).toLocaleString() : STOCK_UNKNOWN}}</td>` +
+      `<td>${{STOCK_OK ? excessBadge(r) : STOCK_UNKNOWN}}</td>`;
     tbody.appendChild(tr);
   }}
 }}
@@ -984,24 +1016,6 @@ function onDivisionChange() {{
   const pullNote = String(divisionData.snapshot_pull_date).slice(pullShown.length).trim();
   document.getElementById('snapshot-note').innerHTML =
     htmlComment('data_pulled_at') + '<b>ข้อมูลดึงเมื่อ:</b> ' + pullShown + ' ICT (UTC+7)' + (pullNote ? htmlComment(pullNote) : '') + staleNote;
-  // The stock section has its own pull time (the daily stock snapshot's load time) and its own staleness notice.
-  const stockEl = document.getElementById('stock-note');
-  if (divisionData.stock_pulled_at) {{
-    const stockAt = parseYmdHm(divisionData.stock_pulled_at);
-    let stockStale = '';
-    if (builtAt && stockAt) {{
-      const stockAge = (builtAt - stockAt) / 86400000;
-      if (stockAge > DATA.staleness_threshold_days) {{
-        stockStale = ' <span class="note-box" style="display:inline;padding:2px 8px;">&#9888; ข้อมูลเก่ากว่า ' + DATA.staleness_threshold_days + ' วัน (' +
-          stockAge.toFixed(1) + ' วัน) เทียบกับหน้าสร้างเมื่อ</span>';
-      }}
-    }}
-    stockEl.innerHTML = htmlComment('stock section, daily snapshot load time') + '<b>ข้อมูลดึงเมื่อ (stock):</b> ' +
-      divisionData.stock_pulled_at + ' ICT (UTC+7)' + stockStale;
-    stockEl.style.display = '';
-  }} else {{
-    stockEl.style.display = 'none';
-  }}
   renderWarehouseChecklist(divisionData);
   renderNoPolicyTable(divisionData);
   renderCurveTarget(divisionData);
@@ -1024,7 +1038,7 @@ function onControlChange(noFlash) {{
   document.getElementById('tot-stock-value').textContent = fmtTHB(result.stockValue);
   document.getElementById('tot-holding-cost').textContent = fmtTHB(result.holdingCost);
   document.getElementById('tot-n-items').textContent = result.perItem.filter(showsMinMax).length;
-  document.getElementById('tot-excess-count').textContent = result.excessCount;
+  document.getElementById('tot-excess-count').textContent = STOCK_OK ? result.excessCount : STOCK_UNKNOWN;
   renderTable(result.perItem);
   renderNoForecastTable(result.perItem);
   renderClassTable(result.perItem);
@@ -1033,13 +1047,76 @@ function onControlChange(noFlash) {{
   if (prevCells) flashChanged(prevCells);
 }}
 
-renderPageTimestamps();
-document.getElementById('division-select').value = DATA.default_division;
-if (window.matchMedia('(max-width: 899px)').matches) {{
-  document.getElementById('control-panel').classList.add('collapsed');
-  document.getElementById('panel-toggle').setAttribute('aria-expanded', 'false');
+// Stock file (data/stock_daily.json): loaded once when the page opens, from the same site. Everything that does not
+// depend on stock is drawn whether or not it loads; the stock figures then show STOCK_UNKNOWN and a message.
+const STOCK_JSON_URL = {stock_json_url_js};
+const STOCK_FAIL_MSG = 'โหลดข้อมูล stock ไม่ได้ · ตัวเลขอื่นในหน้านี้ยังใช้ได้ตามปกติ';
+const STOCK_UNKNOWN = '–';
+const THAI_MONTHS = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+let STOCK = null, STOCK_OK = false;
+
+function thaiDateTime(s) {{
+  // 'YYYY-MM-DD HH:MM[:SS]' (this machine's own clock, ICT) as d MMM yy HH:mm with the Buddhist year.
+  const m = /^(\\d{{4}})-(\\d{{2}})-(\\d{{2}})[ T](\\d{{2}}):(\\d{{2}})/.exec(s || '');
+  if (!m) return 'ไม่ทราบ';
+  return Number(m[3]) + ' ' + THAI_MONTHS[Number(m[2]) - 1] + ' ' + String(Number(m[1]) + 543).slice(-2) + ' ' + m[4] + ':' + m[5];
 }}
-onDivisionChange();
+
+function loadStock(done) {{
+  let finished = false;
+  function finish(payload) {{
+    if (finished) return;
+    finished = true;
+    STOCK_OK = !!payload;
+    STOCK = payload || null;
+    if (payload) applyStock(DATA, payload);
+    done();
+  }}
+  const xhr = new XMLHttpRequest();
+  xhr.onload = function() {{
+    try {{
+      if (!(xhr.status === 200 || (xhr.status === 0 && xhr.responseText))) throw new Error('status ' + xhr.status);
+      const p = JSON.parse(xhr.responseText);
+      if (p.format_version !== 1 || !p.items || typeof p.items !== 'object' || !p.pull_time || !p.stock_source_load_time) throw new Error('format');
+      finish(p);
+    }} catch (e) {{ finish(null); }}
+  }};
+  xhr.onerror = xhr.ontimeout = function() {{ finish(null); }};
+  xhr.open('GET', STOCK_JSON_URL + '?t=' + Date.now());
+  xhr.timeout = 15000;
+  xhr.send();
+}}
+
+function renderStockLabels() {{
+  const el = document.getElementById('stock-labels');
+  el.style.display = '';
+  if (!STOCK_OK) {{ el.textContent = STOCK_FAIL_MSG; return; }}
+  const pull = parseYmdHm(STOCK.pull_time);
+  function stale(t) {{
+    const at = parseYmdHm(t);
+    if (!pull || !at) return '';
+    const age = (pull - at) / 86400000;
+    return age > DATA.staleness_threshold_days
+      ? ' <span style="color:#c0392b">&#9888; ข้อมูลเก่ากว่า ' + DATA.staleness_threshold_days + ' วัน (' + age.toFixed(1) + ' วัน) เทียบกับเวลาที่ดึง</span>' : '';
+  }}
+  el.innerHTML =
+    '<span id="stock-label-stock">ข้อมูล stock ในระบบ ณ ' + thaiDateTime(STOCK.stock_source_load_time) + '</span>' + stale(STOCK.stock_source_load_time) + '<br>' +
+    '<span id="stock-label-reserved">ยอดจองในระบบ ณ ' + thaiDateTime(STOCK.reserved_source_load_time) + '</span>' +
+      (STOCK.reserved_source_load_time ? stale(STOCK.reserved_source_load_time) : '') + '<br>' +
+    '<span id="stock-label-pulled">ดึงข้อมูลเมื่อ ' + thaiDateTime(STOCK.pull_time) + '</span>';
+}}
+
+function startPage() {{
+  renderPageTimestamps();
+  renderStockLabels();
+  document.getElementById('division-select').value = DATA.default_division;
+  if (window.matchMedia('(max-width: 899px)').matches) {{
+    document.getElementById('control-panel').classList.add('collapsed');
+    document.getElementById('panel-toggle').setAttribute('aria-expanded', 'false');
+  }}
+  onDivisionChange();
+}}
+loadStock(startPage);
 </script>
 </body>
 </html>

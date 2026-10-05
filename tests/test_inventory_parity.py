@@ -22,7 +22,9 @@ PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(PROJECT_ROOT, "src"))
 INVENTORY_HTML = os.path.join(PROJECT_ROOT, "forecast", "inventory.html")
 
+import stock_daily
 from inventory_recompute_reference import compute_all as python_compute_all
+from page_helpers import load_stock_payload
 
 DEFAULT_CONTROLS = {"procurement_lead_time_days": 60, "assembly_time_days": 3,
                     "review_interval_days": 30, "cycle_service_level": 0.95,
@@ -63,7 +65,9 @@ def _run_js_compute_all(division: str, controls: dict, tmp_path, checked_warehou
         "const DATA = JSON.parse(document.getElementById('inventory-data').textContent);",
         f"const DATA = {json.dumps(data)};")
     wh_arg = json.dumps(checked_warehouses) if checked_warehouses is not None else "undefined"
-    runner = (f"\nconsole.log(JSON.stringify(computeAll({json.dumps(controls)}, "
+    # the page loads its stock file when it opens; here the page's own applyStock puts the tracked file's stock into DATA
+    runner = (f"\napplyStock(DATA, {json.dumps(load_stock_payload())});\n"
+              f"console.log(JSON.stringify(computeAll({json.dumps(controls)}, "
               f"DATA.divisions[{json.dumps(division)}], {wh_arg})));\n")
     js_path = tmp_path / f"inventory_recompute_extracted_{division}.js"
     js_path.write_text(js_block + runner, encoding="utf-8")
@@ -113,7 +117,8 @@ def _compare(js_result: dict, py_result: dict, label: str, check_excess: bool = 
 
 @pytest.fixture(scope="module")
 def embedded_data():
-    return _extract_embedded_data()
+    # the page embeds no stock; the Python side takes it from the same tracked stock file the page loads
+    return stock_daily.apply_to_data(_extract_embedded_data(), load_stock_payload())
 
 
 @pytest.mark.parametrize("division", DIVISIONS)

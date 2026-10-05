@@ -2,7 +2,7 @@
 snapshot (src/snapshot_daily.py), shows that snapshot's load time as the stock section's data-pulled
 time, and shows the staleness notice when it is older than the configured threshold.
 
-No database and, except for the last test, no browser is needed.
+No database and no browser is needed. The stock figures and their dates are tested in tests/test_daily_stock_page.py.
 """
 import json
 import os
@@ -11,8 +11,6 @@ import sys
 
 import pandas as pd
 import pytest
-
-from page_helpers import Edge, fresh_inventory_data, require_browser
 
 import inventory_page_sources as ips
 
@@ -56,44 +54,20 @@ def test_snapshot_daily_keeps_the_settings_columns():
     assert '["itemcode", "warehouse", "stock", "minimum", "maximum", "reserve_bywa"]' in text
 
 
-def test_page_built_from_the_daily_snapshot_carries_its_load_time():
+def test_page_embeds_no_stock_the_stock_file_carries_it():
+    """The monthly runner builds the page from the latest daily snapshot for the Min and Max settings, but every
+    stock-dependent input lives in data/stock_daily.json (src/stock_daily.py), which the page loads when it opens."""
     import build_inventory_page as bp
     sources = ips.daily_snapshot_sources("2026-09-29 12:13:32")
     page = bp.build_page(**sources)
     data = json.loads(re.search(r'id="inventory-data">(.*?)</script>', page, re.S).group(1))
     assert sources["stock_pulled_at"] == sources["stock_meta"]["load_time"]
     for division, dd in data["divisions"].items():
-        assert dd["stock_pulled_at"] == sources["stock_meta"]["load_time"], division
-    assert data["stock_meta"]["snapshot_file"].startswith("inventory_daily_")
-    assert 'id="stock-note"' in page
-
-
-def test_stale_stock_snapshot_shows_the_staleness_notice_and_a_fresh_one_does_not(tmp_path):
-    exe = require_browser()
-    import build_inventory_page as bp
-    data = fresh_inventory_data()
-    threshold = data["staleness_threshold_days"]
-    built = pd.Timestamp(data["page_built_at"][:16])
-    mp = pytest.MonkeyPatch()
-    mp.setattr(bp, "build_data", lambda **kw: data)
-    edge = Edge(exe)
-    try:
-        results = {}
-        for name, age_days in (("fresh", 1), ("stale", threshold + 5)):
-            stock_time = (built - pd.Timedelta(days=int(age_days))).strftime("%Y-%m-%d %H:%M:%S")
-            for dd in data["divisions"].values():
-                dd["stock_pulled_at"] = stock_time
-            path = str(tmp_path / f"{name}.html")
-            with open(path, "w", encoding="utf-8") as f:
-                f.write(bp.build_page())
-            edge.open(path)
-            results[name] = (stock_time, edge.ev("document.getElementById('stock-note').textContent"),
-                             edge.ev("getComputedStyle(document.getElementById('stock-note')).display"))
-            assert not edge.errors, edge.errors
-    finally:
-        edge.close()
-        mp.undo()
-    fresh_time, fresh_text, fresh_display = results["fresh"]
-    stale_time, stale_text, _ = results["stale"]
-    assert fresh_time in fresh_text and "ข้อมูลเก่ากว่า" not in fresh_text and fresh_display != "none"
-    assert stale_time in stale_text and f"ข้อมูลเก่ากว่า {threshold} วัน" in stale_text
+        assert "stock_pulled_at" not in dd, division
+        for it in dd["items"]:
+            assert "by_warehouse" not in it and "on_hand_sellable" not in it, (division, it["code"])
+    assert "stock_meta" not in data
+    assert 'id="stock-labels"' in page and "data/stock_daily.json" in page
+    # Min, Max and the current settings stay embedded
+    first = next(iter(data["divisions"].values()))["items"][0]
+    assert "current_min" in first and "forecast" in first

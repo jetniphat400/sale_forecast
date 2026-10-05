@@ -45,8 +45,28 @@ def fresh_inventory_data() -> dict:
     return data
 
 
-def build_inventory_html(out_path: str) -> str:
-    """Builds the inventory page with build_inventory_page.build_page() to out_path (no database)."""
+TRACKED_STOCK_JSON = os.path.join(PROJECT_ROOT, "data", "stock_daily.json")
+
+
+def load_stock_payload() -> dict:
+    """The tracked stock file the Min-Max page loads (data/stock_daily.json, written by the daily job and the monthly runner)."""
+    import stock_daily
+    if not os.path.exists(TRACKED_STOCK_JSON):
+        pytest.skip("SKIPPED, not passed: data/stock_daily.json does not exist yet (the daily job or the monthly runner writes it)")
+    return stock_daily.read_payload(TRACKED_STOCK_JSON)
+
+
+def write_stock_file(site_dir: str, payload: dict) -> str:
+    """Writes payload as <site_dir>/data/stock_daily.json, where a page at <site_dir>/forecast/inventory.html loads it from."""
+    import stock_daily
+    return stock_daily.write_payload(payload, os.path.join(site_dir, "data", "stock_daily.json"))
+
+
+def build_inventory_html(out_path: str, stock="tracked") -> str:
+    """Builds the inventory page with build_inventory_page.build_page() to out_path (no database), in a temporary site
+    layout: the stock file the page loads at runtime is written to ../data/stock_daily.json next to the page's folder.
+    stock = "tracked" (the repository's own stock file), a payload dict, or None (no stock file: the page shows its
+    'could not load' message)."""
     import build_inventory_page as bp
     mp = pytest.MonkeyPatch()
     data = fresh_inventory_data()
@@ -55,8 +75,12 @@ def build_inventory_html(out_path: str) -> str:
         page = bp.build_page()
     finally:
         mp.undo()
+    os.makedirs(os.path.dirname(os.path.abspath(out_path)), exist_ok=True)
     with open(out_path, "w", encoding="utf-8") as f:
         f.write(page)
+    if stock is not None:
+        payload = load_stock_payload() if isinstance(stock, str) else stock
+        write_stock_file(os.path.dirname(os.path.dirname(os.path.abspath(out_path))), payload)
     return out_path
 
 
@@ -180,7 +204,7 @@ class Edge:
         self.call("Fetch.enable", patterns=[{"urlPattern": "*cdnjs.cloudflare.com*"}])
         if cdn == "stub":
             self.call("Page.addScriptToEvaluateOnNewDocument", source=PLOTLY_STUB)
-        self.call("Page.navigate", url=file_url(path))
+        self.call("Page.navigate", url=path if str(path).startswith("http://127.0.0.1") else file_url(path))
         for _ in range(80):
             if self.ev("document.readyState") == "complete":
                 break

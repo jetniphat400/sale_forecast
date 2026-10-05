@@ -55,6 +55,7 @@ step's outcome, step-10's figures, and whether it pushed (and why not, if applic
 METRICS.md Sec.28's own requirement.
 """
 import argparse
+import contextlib
 import json
 import logging
 import os
@@ -103,6 +104,7 @@ FORWARD_TEST_METADATA_PATH = os.path.join(SUMMARY_DIR, "forward_test_log_all_div
 PER_DIVISION_SUMMARY_PATH = os.path.join(SUMMARY_DIR, "phaseC_step2_per_division_summary_qty.csv")
 TRANSFERABILITY_PATH = os.path.join(SUMMARY_DIR, "phaseC_step2_transferability_per_division.csv")
 INVENTORY_JSON_PATH = os.path.join(PROJECT_ROOT, "data", "inventory.json")
+STOCK_JSON_PATH = os.path.join(PROJECT_ROOT, "data", "stock_daily.json")       # the Min-Max page's stock file (src/stock_daily.py)
 SCORE_RECORD_PATH = os.path.join(SUMMARY_DIR, "forward_test_scores.csv")
 SCORE_INTEGRITY_PATH = os.path.join(SUMMARY_DIR, "forward_test_scores_integrity.json")
 RAW_HISTORY_PATH = os.path.join(PROJECT_ROOT, "output", "data", "raw_all_divisions_sales.csv")
@@ -781,7 +783,21 @@ def regenerate_inventory_json(step1_result: dict = None) -> dict:
     if written != meta["pulled_at_utc"]:
         raise MonthlyRefreshAbort(f"Step 7 ABORTED: data/inventory.json says it was generated at {written}, the saved "
                                   f"pull is from {meta['pulled_at_utc']}.")
-    return {"regenerated": True, "data_pulled_at_utc": written, "data_pulled_at_local": meta.get("pulled_at_local")}
+    import stock_daily
+    write_stock_json(INVENTORY_PULL_DIR, meta, STOCK_JSON_PATH)
+    return {"regenerated": True, "data_pulled_at_utc": written, "data_pulled_at_local": meta.get("pulled_at_local"),
+            "stock_json_written": stock_daily.STOCK_JSON_RELATIVE}
+
+
+def write_stock_json(pull_dir: str, meta: dict, path: str = None) -> str:
+    """The Min-Max page's stock file (data/stock_daily.json), from the same saved pull and the same builder
+    (src/stock_daily.py) the daily job uses, so the same pull gives byte-identical JSON on both paths."""
+    import stock_daily
+    payload = stock_daily.from_pulls(pull_dir)
+    if payload["pull_time"] != str(meta["pulled_at_local"])[:19]:
+        raise MonthlyRefreshAbort(f"Step 7 ABORTED: the stock file would say it was pulled at {payload['pull_time']}, the saved "
+                                  f"pull is from {meta['pulled_at_local']}.")
+    return stock_daily.write_payload(payload, path or stock_daily.STOCK_JSON_PATH)
 
 
 def step7_rebuild_pages(dry_run: bool, staged_dir: str, step1_result: dict = None) -> dict:
@@ -960,7 +976,7 @@ def step10_change_magnitude(config: dict, step4_result: dict, step5_result: dict
 # ---------------------------------------------------------------------------------------------
 
 # The only tracked files a run generates (step 7; step 11 stages exactly these, never `git add -A`).
-GENERATED_PATHS = ["forecast/sales_report.html", "forecast/inventory.html", "data/inventory.json"]
+GENERATED_PATHS = ["forecast/sales_report.html", "forecast/inventory.html", "data/inventory.json", "data/stock_daily.json"]
 
 
 def _git_status_lines() -> list:
@@ -1160,6 +1176,26 @@ def _write_run_log(run_log: dict, run_id: str, run_log_dir: str = None) -> str:
     return path
 
 
+@contextlib.contextmanager
+def _runner_lock(real_run: bool):
+    """While a real run is in progress its lock file names its process, so the daily stock job can see the monthly
+    runner is running and skip publishing (config daily_stock.monthly_lock_file). Dry runs and offline runs write none."""
+    if not real_run:
+        yield
+        return
+    path = os.path.join(PROJECT_ROOT, load_config()["daily_stock"]["monthly_lock_file"])
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump({"pid": os.getpid(), "started_at": datetime.now().isoformat(timespec="seconds")}, f)
+    try:
+        yield
+    finally:
+        try:
+            os.remove(path)
+        except OSError:
+            pass
+
+
 def cli(argv=None) -> int:
     """Command line entry. Exit code 0 only for a run that completed every step; any abort or failure returns 1
     (the run log has already been written by main())."""
@@ -1180,8 +1216,9 @@ def cli(argv=None) -> int:
                          help="Skip step 8 (for tests of the runner itself; recorded in the run log).")
     args = parser.parse_args(argv)
     try:
-        log = main(dry_run=args.dry_run, force_new_vintage=args.force_new_vintage, sandbox=args.in_sandbox,
-                   run_id=args.run_id, run_log_dir=args.run_log_dir, offline=args.offline, skip_tests=args.skip_tests)
+        with _runner_lock(real_run=not (args.dry_run or args.in_sandbox or args.offline)):
+            log = main(dry_run=args.dry_run, force_new_vintage=args.force_new_vintage, sandbox=args.in_sandbox,
+                       run_id=args.run_id, run_log_dir=args.run_log_dir, offline=args.offline, skip_tests=args.skip_tests)
     except Exception as e:      # noqa: BLE001 -- the run log was written where the failure happened
         logger.error("MONTHLY REFRESH FAILED: %s: %s", type(e).__name__, e)
         return 1

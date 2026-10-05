@@ -59,7 +59,7 @@ def changed(a, b):
 
 @pytest.fixture(scope="module")
 def page_path(tmp_path_factory):
-    return build_inventory_html(str(tmp_path_factory.mktemp("inventory_browser") / "inventory.html"))
+    return build_inventory_html(str(tmp_path_factory.mktemp("inventory_browser") / "forecast" / "inventory.html"))
 
 
 @pytest.fixture(scope="module")
