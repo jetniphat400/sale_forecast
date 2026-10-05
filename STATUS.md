@@ -73,6 +73,16 @@ previous hand-written summary (2026-09-29) is kept below under its own heading a
 - **Critical path:** E11 -> E12 -> Q10 (unchanged). **Operational path:** the monthly runner (phase C) is not yet
   running in production: see C2 below.
 
+### Significance check -- is Top-down's advantage over Direct significant? -- DONE, 2026-10-05 (read-only; no database; Validator matched)
+
+Report: `output/summary/check_significance_topdown.md`. **The key G1 finding "Top-down's advantage over Direct is not statistically significant" is PARTLY CONFIRMED.** Sign everywhere: Top-down minus the other method on MAE, negative = Top-down better; threshold |t| >= 2 (config), p-values beside it.
+
+- **The two files do not contradict each other; they test different things.** `b3_paired_significance.csv` (`src/item_level_reconciliation.py`): the 128-item PEM101 pilot, 114 items with full history, ONE split (fit 25 months, score 2026-02 to 2026-07), items paired, Direct vs Top-down t = -1.555 (p 0.123), months that do not move. `phaseC_step2_transferability_significance.csv` (`src/transferability_all_divisions.py`): 335 forecast-status items, five divisions, seven rolling origins (2025-03 to 2026-08), each item's errors averaged over origins, then paired per division. Both reproduce exactly from their inputs (V2).
+- **Neither tests the production question exactly,** so the test was run on the current backtest rows (7,004 item x origin x approach rows): item-origin pairs, then item-level and Wilcoxon checks. Validator (read none of the checker's files) matched every n, mean difference, t and p.
+- **Top-down against Direct:** CI101, PEM102, PEM103 and PEM107 not significant on the t test (|t| <= 1.49); **PEM101 modestly better** (-1.4% MAE): |t| 1.98 (p 0.048) at item-origin level, **2.19 (p 0.030)** item level, Wilcoxon p 0.002. The Wilcoxon also calls a consistent but tiny advantage significant for PEM103 (p 5.5e-05) and PEM107 (p 9.4e-05), where the mean difference is dominated by a few items. **Top-down against Naive:** significantly better for PEM101 (|t| 4.04 to 5.40, -20% MAE), not significant elsewhere on t (PEM107 Wilcoxon p 0.011).
+- **"|t| ต่ำกว่า 2 ในทุกคู่เปรียบเทียบ"**: TRUE FOR SOME. True for four divisions under every t test and for PEM101 at item-origin level and in b3; false for PEM101 at item level (2.19). In its first wording ("Direct และ Naive") it was false (PEM101 against Naive). The sales report sentence was not edited by this task.
+- **Also found:** the earlier Phase C step 2 entry reads CI101 as significantly better than Direct (t -2.12); on today's data it is not (t -1.01 to -1.49). Assigned: reader wording from these facts, phase W3 follow-up, P1, the user's assistant; the b3 file's window does not move, phase C (C8), P2, Claude Code.
+
 ### Phase W3 -- index.html readable and correct -- DONE, 2026-10-05 (no database connection; text and labels only)
 
 `index.html` has no generator and was edited directly; embedded data is untouched (SHA-256 of the Trend tab's `MATCH` and `OMNI` lines equal to the version before this task, recorded in `tests/test_index_w3.py`; every number in the S&OP tables unchanged). Approved Thai text used verbatim.
@@ -4866,7 +4876,7 @@ which STATUS.md still records as "Proven, method locked" for its own scope.
   zero-inflation cut "to 0%" does NOT reproduce exactly at this 335-item, 5-division scope (25.59%/
   37.18%, not 0%) — a genuinely weaker result at the broader scope, reported honestly, not
   papered over.
-- **Part 3 — transferability, per division, moderate confidence throughout.** Top-down vs. Direct
+- **[Checked 2026-10-05, run on the current backtest: PARTLY CONFIRMED -- see "Significance check" near the top of this file.]** **Part 3 — transferability, per division, moderate confidence throughout.** Top-down vs. Direct
   vs. Naive, rolling-origin, all 335 items: **PEM101 holds its Top-down advantage cleanly** (beats
   both). **PEM102, PEM103, PEM107: Top-down beats Naive but its edge over Direct is thin and not
   statistically significant** (\|t\|<0.6 for all three) — the step 1 demand-mix flags for these
