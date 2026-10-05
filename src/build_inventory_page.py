@@ -180,7 +180,7 @@ function computeAll(controls, divisionData, checkedWarehouses) {
       : monthsOfCover > controls.obsolescence_threshold_months;
     perItem.push({ code: item.code, policy: item.policy, min: r.min, max: r.max,
                    stockValueContribution: contribution, monthsOfCover, unreliable: r.unreliable,
-                   currentMin: item.current_min, currentMax: item.current_max, currentHasRecord: item.current_has_record,
+                   currentMin: item.current_min, currentMax: item.current_max, currentHasRecord: item.current_has_record, classBasis: item.class_basis,
                    unitCost: item.unit_cost, noUnitCost: item.no_unit_cost_item,
                    onHandSellable, excess, noForecastDemand,
                    // task 2b Part 2 (METRICS.md Sec.23) -- undefined for PEM103 (no segmentation)
@@ -601,6 +601,11 @@ function statusLabel(p) {{
   return p;
 }}
 function policyLabel(p) {{ return POLICY_LABEL[p] || p; }}
+// Items whose class the user set from the data and that still await the business's confirmation carry a label beside the class.
+const CLASS_PENDING_LABEL = 'จัดตามข้อมูล รอยืนยัน';
+function policyCell(r) {{
+  return policyLabel(r.policy) + (r.classBasis ? '<br><span class="hint">' + CLASS_PENDING_LABEL + '</span>' : '');
+}}
 
 // Builds an HTML comment without a literal comment opener inside this script block.
 function htmlComment(t) {{ return '<' + '!-- ' + t + ' --' + '>'; }}
@@ -647,7 +652,7 @@ function renderTable(perItem) {{
     if (!isItemTableRow(r)) continue;
     const var_ = (r.currentMin && r.min !== null && r.unitCost) ? Math.max(0, r.currentMin - r.min) * r.unitCost : 0;
     const tr = document.createElement('tr');
-    tr.innerHTML = `<td>${{r.code}}</td><td>${{policyLabel(r.policy)}}</td>` +
+    tr.innerHTML = `<td>${{r.code}}</td><td>${{policyCell(r)}}</td>` +
       `<td>${{r.label !== undefined ? (r.label ?? '-') : '&ndash;'}}</td>` +
       `<td>${{signalsCell(r)}}</td>` +
       `<td>${{r.min !== null ? Math.round(r.min).toLocaleString() : '-'}}</td>` +
@@ -687,7 +692,7 @@ function renderNoForecastTable(perItem) {{
   for (const r of perItem) {{
     if (!r.noForecastDemand) continue;
     const tr = document.createElement('tr');
-    tr.innerHTML = `<td>${{r.code}}</td><td>${{policyLabel(r.policy)}}</td>` +
+    tr.innerHTML = `<td>${{r.code}}</td><td>${{policyCell(r)}}</td>` +
       `<td>${{STOCK_OK ? Math.round(r.onHandSellable).toLocaleString() : STOCK_UNKNOWN}}</td>` +
       `<td>${{STOCK_OK ? excessBadge(r) : STOCK_UNKNOWN}}</td>`;
     tbody.appendChild(tr);
@@ -703,7 +708,7 @@ function renderClassTable(perItem) {{
   for (const r of perItem) {{
     if (r.policy !== 'confirmed_to_order' && r.policy !== 'conflict') continue;
     const tr = document.createElement('tr');
-    tr.innerHTML = `<td>${{r.code}}</td><td>${{r.type ?? '-'}}</td><td>${{r.label ?? '-'}}</td><td>${{policyLabel(r.policy)}}</td>` +
+    tr.innerHTML = `<td>${{r.code}}</td><td>${{r.type ?? '-'}}</td><td>${{r.label ?? '-'}}</td><td>${{policyCell(r)}}</td>` +
       `<td>${{signalMark(r.S1)}}</td><td>${{r.S2_computable ? signalMark(r.S2) : '&ndash; (คำนวณไม่ได้)'}}</td><td>${{signalMark(r.S3)}}</td>`;
     tbody.appendChild(tr);
   }}

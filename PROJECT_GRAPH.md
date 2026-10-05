@@ -537,3 +537,5 @@ order-level) make-to-stock/make-to-order classification. None of this can be man
 tables already queried by this project; each needs either a successful deeper pull (the `cube_final`
 production-stage dates) or business input (capacity, BOM content read in full, assembly/inspection
 time, the real MTS/MTO/ETO split).
+
+**Phase E, 2026-10-05:** G3 for PEM107 now has a decided made-to-order list (41 codes, `fulfilment_class_decisions` in config); G2 for PEM101 has 21 more items classed from data (stock_policy 82 to 92) and still needs K to recalibrate on the 92-item set; PEM101's 20 undetermined items await the business's answer (evidence file `output/pem101_evidence/PEM101_undetermined_20261005.xlsx`, local).

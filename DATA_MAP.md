@@ -1866,3 +1866,14 @@ Source for all entries: `output/summary/check_v1_v2_v3.md` (one read-only databa
 - **PEM101 not_late: J3's 98.28% (validation, 128 items, from 2026-01) is reproduced exactly from J3's cached pull with J3's method (98.276%); today's pull gives 98.40%; against PlanDelDate 97.69% and 97.96%.** **V2.**
 - **PEM107's 9 items with most late units from May 2026 (same nine as the 2026-10-02 audit): 740 late units by ForecastDelDate, 676 by PlanDelDate; all 66 items 908 and 786.** **V2.**
 - **ActualDelDate falls on a Sunday in 0.06% of rows (0.00% of units) and a Saturday in 0.45% (0.06%).** **V1** (weak indication only).
+
+
+## Phase E decisions and PEM101's 20 undetermined items (2026-10-05): verified facts
+
+Sources: `output/summary/phaseA_pem107_g3_verification.md`, `output/summary/phaseA_pem101_conflict_lean.md`, `output/summary/task2b_part2_item_level.csv`; one read-only database session 2026-10-05 (Cube_CES, cube_Sale_APD, Cube_Inventory_Exact for the 20 codes); Validator independent recomputation from the saved pulls.
+
+- **All 41 codes of the G3 recommended subset are `confirmed_to_order` under METRICS 23 in `task2b_part2_item_level.csv` (PEM107).** Direct read. **V2** (Validator).
+- **PEM101 class counts with the user's overrides: stock_policy 92, confirmed_to_order 32, conflict 20 (before: 82, 21, 41).** Rendered page and embedded data. **V2.**
+- **For the 20 undetermined PEM101 items the median days from CtrDate to ActualDelDate and the number of delivered lines recomputed from today's Cube_CES pull equal the saved S3_median_days and S3_n for every item.** **V1.** On-hand stock matches the lean report's S1 (3 and 4 units for HS-F-99-0215 and ST-F-12-0007, 0 for the other 18). **V2** on five rows.
+- **S2 (production before the order) is not computable for any of the 20 undetermined items (no cube_final batch links).** `task2b_part2_item_level.csv`, S2_computable. **V1.**
+- **Trap:** the pilot divisions' `current_minmax_per_item` fills missing inventory rows with 0, so "no record" and "Max 0" look the same unless `n_warehouses` is read; the inventory page carries `current_has_record` for this.

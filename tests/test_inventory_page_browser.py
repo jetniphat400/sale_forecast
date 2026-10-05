@@ -364,3 +364,32 @@ def test_some_item_on_the_page_has_a_system_max_of_zero(desktop):
     from page_helpers import fresh_inventory_data
     data = fresh_inventory_data()["divisions"]
     assert any(i.get("current_has_record") and i.get("current_max") == 0 for d in data.values() for i in d["items"])
+
+
+# ------------------------------------------------------------------ the 21 items whose class the user set from the data
+PENDING_LABEL = "จัดตามข้อมูล รอยืนยัน"
+
+
+def test_each_of_the_21_decided_items_carries_the_label_beside_its_class_and_no_other_item_does(desktop):
+    from page_helpers import fresh_inventory_data
+    e = desktop
+    select_division(e, "PEM101")
+    items = {i["code"]: i for i in fresh_inventory_data()["divisions"]["PEM101"]["items"]}
+    decided = sorted(c for c, i in items.items() if i.get("class_basis"))
+    assert len(decided) == 21
+    # every table that shows an item's class: the item table, the no-forecast table, the class table
+    shown = {}
+    for table in ("item-table-body", "no-forecast-table-body", "class-table-body"):
+        for code, cell in e.ev(f"[...document.querySelectorAll('#{table} tr')].map(r=>[r.children[0].textContent.trim(), "
+                               f"(table => table === 'class-table-body' ? r.children[3] : r.children[1])('{table}').textContent])"):
+            shown.setdefault(code, []).append(cell)
+    for code in decided:
+        assert code in shown, f"{code} is shown in no table"
+        assert all(PENDING_LABEL in cell for cell in shown[code]), (code, shown[code])
+    others = [c for c in shown if c not in decided]
+    assert others and not [c for c in others if any(PENDING_LABEL in cell for cell in shown[c])]
+    # the new stock_policy count is the one the calibrated-target note states
+    n_stock = sum(1 for i in items.values() if i["policy"] == "stock_policy")
+    assert n_stock == 92
+    assert f"{n_stock} รายการ" in e.ev("document.body.textContent")
+    assert not [x for x in e.errors if x.startswith("exception")], e.errors

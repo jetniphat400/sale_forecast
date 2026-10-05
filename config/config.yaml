@@ -1368,3 +1368,82 @@ daily_stock:
   # The monthly runner writes this file while it runs; the daily job skips publishing while it exists and its
   # process is alive.
   monthly_lock_file: output/runs/monthly_refresh.lock
+
+# ---- Fulfilment class decisions made by the user, applied on top of METRICS.md Sec.23 (the rule itself is unchanged) ----
+fulfilment_class_decisions:
+  # E1, decided by the user 2026-10-05. Source: output/summary/phaseA_pem107_g3_verification.md, 'Recommended subset' (the 41 codes that passed every
+  # criterion). Planned as made-to-order under G3; the other PEM107 items get no Min/Max for now (option ก). Each is already confirmed_to_order
+  # under Sec.23; the data builder stops if one is not.
+  g3_made_to_order:
+    PEM107:
+      - CT-F-99-020513
+      - CT-F-99-020522
+      - CT-F-99-020529
+      - CT-F-99-020534
+      - CT-F-99-020701
+      - CT-F-99-020708
+      - CT-F-99-020709
+      - CT-F-99-020714
+      - CT-F-99-020718
+      - CT-F-99-020722
+      - RS-F-99-010114
+      - RS-F-99-010122
+      - RS-F-99-010123
+      - RS-F-99-010127
+      - RS-F-99-010128
+      - RS-F-99-010129
+      - RS-F-99-041002
+      - RS-F-99-041004
+      - RS-F-99-041006
+      - RS-F-99-041007
+      - RS-F-99-041010
+      - RS-F-99-041034
+      - RS-F-99-041035
+      - RS-F-99-050023
+      - RS-F-99-050128
+      - RS-F-99-070006
+      - RS-F-99-070007
+      - RS-F-99-070019
+      - RS-F-99-070021
+      - RS-F-99-070024
+      - RS-F-99-090002
+      - RS-F-99-090003
+      - RS-F-99-090026
+      - RS-F-99-090028
+      - RS-F-99-090038
+      - RS-F-99-090039
+      - RS-F-99-090041
+      - VT-F-99-010105
+      - VT-F-99-010615
+      - VT-F-99-010616
+      - VT-F-99-010722
+  # E3, decided by the user 2026-10-05. Source: output/summary/phaseA_pem101_conflict_lean.md (primary thresholds day_th=14, batch_th=0.50): the 10
+  # items leaning stock become stock_policy, the 11 leaning made-to-order become confirmed_to_order. A per-item override of the Sec.23 class, not
+  # a change of the rule; the page shows a 'arranged from the data, awaiting confirmation' label beside each. The 20 undetermined items are not listed.
+  class_overrides:
+    PEM101:
+      source: output/summary/phaseA_pem101_conflict_lean.md
+      decided_on: "2026-10-05"
+      stock_policy:
+        - CA-F-99-010201
+        - CA-F-99-010202
+        - CA-F-99-010203
+        - CA-F-99-010205
+        - CA-F-99-010211
+        - EEE-F-FC-1040011100NP
+        - FC-A-27-00203
+        - FC-A-38-00202
+        - HS-F-99-0061
+        - HS-F-99-1061
+      confirmed_to_order:
+        - CA-F-99-010212
+        - CA-F-99-020101
+        - CA-F-99-020104
+        - EEE-F-FL-5920-353-04100
+        - HS-F-99-0301H22
+        - HS-F-99-0331
+        - HS-F-99-0361
+        - HS-F-99-1121
+        - HS-F-99-3211
+        - HS-F-99-3301
+        - IS-F-99-0245CE0

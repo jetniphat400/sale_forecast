@@ -476,6 +476,15 @@ always stated.
   agent). See DATA_MAP.md's Task 2b (2026-09-28) entry for the item
   counts each reading produces for PEM101 (the only affected division at
   material scale) and the evidence behind preferring the first reading.
+- Per-item class decisions (E1 and E3, decided by the user 2026-10-05; the rule above is NOT changed). Config
+  `fulfilment_class_decisions` holds (a) PEM107's 41 G3 made-to-order codes (the recommended subset of
+  `phaseA_pem107_g3_verification.md`), each already `confirmed_to_order` under this section, the build stops if one is not;
+  the other PEM107 items get no Min/Max for now; and (b) per-item overrides of PEM101's conflict items from
+  `phaseA_pem101_conflict_lean.md` (day_th 14, batch_th 0.50): the 10 leaning stock become `stock_policy`, the 11 leaning
+  made-to-order become `confirmed_to_order`, the 20 undetermined stay `conflict`. PEM101 counts: stock_policy 82 to 92,
+  confirmed_to_order 21 to 32, conflict 41 to 20. The page labels each of the 21 beside its class (from
+  `class_basis` in the page data). The PEM101 calibration was fitted on the earlier 76-item set and is not recalibrated;
+  the calibrated-target note keeps saying so.
 - S1 uses any warehouse because sellability cannot be verified from data.
 - Thresholds of 60 percent, 50 percent and 14 days are assumptions. Report
   counts also at 50 and 70 percent, 40 and 60 percent, and 7 and 21 days.
@@ -575,6 +584,14 @@ Every dashboard page and panel displays, near its title:
   raw pull; items whose fit series is all zero are not scored.
 - A monthly run appends one new vintage. Comparing vintages over time is
   the forward test; no single scored month is treated as proof.
+- Fit series saved (decided 2026-10-05, from vintage 3 on; `src/vintage_series.py`). Vintages 1 and 2 cannot be
+  reproduced because `output/data/processed_all_divisions_monthly_qty.csv` is overwritten each month. Step 5 now
+  saves the bytes of that file exactly as the vintage read them, gzip-compressed (mtime 0), as
+  `output/forward_test/vintage_series/vintage_<id>_fit_series.csv.gz` before the vintage is appended (a file is never
+  overwritten), and records `fit_series_file`, `fit_series_sha256` (of the uncompressed bytes) and `fit_series_n_bytes`
+  in the vintage's metadata. Step 6 verifies every recorded hash before it scores and stops the run on a missing file or
+  a different hash. Vintages without a recorded hash (1 and 2) are listed as not saved, never as verified, and are not
+  touched. The folder is under `output/`, which git ignores, so the files live on the machine that runs the job.
 - Moving-average comparator (R1, decided by the user 2026-10-05; Top-down
   stays the production method). From vintage 3 on, every monthly run also
   stores a moving-average forecast for every forecast-status item

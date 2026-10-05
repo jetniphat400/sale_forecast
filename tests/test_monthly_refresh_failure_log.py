@@ -20,10 +20,14 @@ import pytest
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(PROJECT_ROOT, "src"))
 import monthly_refresh as mr
+import vintage_series
+
 from forward_test_common import (ForwardTestConsistencyError, append_vintage_and_hash, compute_row_integrity_hash,
                                  save_metadata)
 
 from test_forward_test_integrity import base_entry, make_rows
+
+FIT_SERIES = b"year_month,itemcode,qty\n2026-08,A-1,3\n"
 
 pytestmark = pytest.mark.skipif(os.environ.get("MONTHLY_REFRESH_SANDBOX") == "1",
                                 reason="already running inside a dry-run copy of the project")
@@ -114,12 +118,13 @@ def _setup_log(tmp_path, monkeypatch):
     monkeypatch.setattr(mr, "FORWARD_TEST_METADATA_PATH", meta)
     monkeypatch.setattr(mr, "COMPARATOR_LOG_PATH", str(tmp_path / "comparator_log.csv"))
     monkeypatch.setattr(mr, "COMPARATOR_METADATA_PATH", str(tmp_path / "comparator_metadata.json"))
+    monkeypatch.setattr(vintage_series, "SERIES_DIR", str(tmp_path / "vintage_series"))   # never the real folder
     return log, meta
 
 
 def _fake_computed(vintage_id=2):
-    return {"vintage_id": vintage_id, "rows_df": make_rows(vintage_id), "metadata_entry": base_entry(vintage_id),
-            "n_rows": 9, "six_month_item_forecast_total_by_division": {"PEM101": 1.0},
+    return {"vintage_id": vintage_id, "rows_df": make_rows(vintage_id), "metadata_entry": {**base_entry(vintage_id), **vintage_series.metadata_fields(FIT_SERIES, vintage_id)},
+            "fit_series_bytes": FIT_SERIES, "n_rows": 9, "six_month_item_forecast_total_by_division": {"PEM101": 1.0},
             "comparator_rows_df": make_rows(vintage_id), "comparator_metadata_entry": {**base_entry(vintage_id), "ma_window_by_division": {"PEM101": 3}}}
 
 

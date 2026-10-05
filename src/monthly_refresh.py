@@ -56,6 +56,7 @@ METRICS.md Sec.28's own requirement.
 """
 import argparse
 import contextlib
+import io
 import json
 import logging
 import os
@@ -83,6 +84,7 @@ from forward_test_common import (append_vintage_and_hash, compute_scope_hash, lo
                                  read_forward_test_log, save_metadata)
 from item_level_reconciliation import forecast_all_approaches
 import ma_comparator
+import vintage_series
 from leakage_guard import LeakageGuardError, check_window_closed, load_min_margin_days
 from models import combination_forecast
 from score_forward_test_all_divisions import (SCOPE_FILE, pull_actuals_forecastDate,
@@ -538,7 +540,10 @@ def compute_new_vintage() -> dict:
     min_margin_days = load_min_margin_days(config)
 
     scope = pd.read_csv(SCOPE_FILE)
-    monthly = pd.read_csv(os.path.join(DATA_DIR, "processed_all_divisions_monthly_qty.csv"))
+    # the vintage reads exactly these bytes, and step 5 saves them (src/vintage_series.py), so the series can be re-read and hash-checked
+    with open(os.path.join(DATA_DIR, "processed_all_divisions_monthly_qty.csv"), "rb") as f:
+        fit_series_bytes = f.read()
+    monthly = pd.read_csv(io.BytesIO(fit_series_bytes))
     pull_date = monthly["snapshot_pull_date"].iloc[0]
     months = sorted(monthly["year_month"].unique())
     n_fit_months = len(months)
@@ -637,6 +642,7 @@ def compute_new_vintage() -> dict:
         "horizon_months": horizon, "target_months": target_months,
         "leakage_guard_min_margin_days": min_margin_days, "leakage_guard_actual_margin_days": actual_margin_days,
         "n_total_rows": len(rows_df), "divisions": sorted(scope["division"].unique().tolist()),
+        **vintage_series.metadata_fields(fit_series_bytes, next_vintage_id),
     }
     six_month_totals_by_division = rows_df[rows_df["level"] == "Item"].groupby("division")["forecast_qty"].sum().to_dict()
     comparator_entry = {**metadata_entry, "log_file": os.path.relpath(COMPARATOR_LOG_PATH, PROJECT_ROOT).replace("\\", "/"),
@@ -651,6 +657,7 @@ def compute_new_vintage() -> dict:
     for k in ("n_type_rows", "n_category_rows", "n_items_with_history", "n_items_no_history_zero_forecast"):
         comparator_entry.pop(k, None)
     return {"vintage_id": next_vintage_id, "rows_df": rows_df, "metadata_entry": metadata_entry,
+            "fit_series_bytes": fit_series_bytes,
             "comparator_rows_df": comparator_df, "comparator_metadata_entry": comparator_entry,
             "ma_window_choice": window_choice,
             "n_rows": len(rows_df), "six_month_item_forecast_total_by_division": six_month_totals_by_division}
@@ -676,7 +683,13 @@ def rehearse_vintage_write_and_reread(computed: dict) -> dict:
         cmp_meta = {**(load_metadata(COMPARATOR_METADATA_PATH) if os.path.exists(COMPARATOR_METADATA_PATH) else {}),
                     str(computed["vintage_id"]): cmp_entry}
         verify_consistency(read_forward_test_log(tmp_cmp), cmp_meta)
-    return {"verified": True, "vintage_id": computed["vintage_id"], "row_hash_scheme": entry["row_hash_scheme"],
+        # the fit series the same way: saved to the temporary folder, then checked against the hash in the metadata entry
+        series_dir = os.path.join(tmp, "vintage_series")
+        vintage_series.save_series(computed["fit_series_bytes"], computed["vintage_id"], series_dir)
+        series_check = vintage_series.verify_series({str(computed["vintage_id"]): entry}, series_dir)
+        if series_check["verified"] != [computed["vintage_id"]]:
+            raise MonthlyRefreshAbort("Step 5 rehearsal: the vintage's saved fit series did not verify against its metadata")
+    return {"verified": True, "fit_series_verified": True, "vintage_id": computed["vintage_id"], "row_hash_scheme": entry["row_hash_scheme"],
             "comparator_verified": True, "comparator_row_hash_scheme": cmp_entry["row_hash_scheme"],
             "note": "the new vintage and its moving-average comparator rows were appended to temporary copies of the logs, "
                     "read back and verified; the real logs were not touched."}
@@ -740,6 +753,8 @@ def step5_new_vintage(dry_run: bool, force_new_vintage: bool = False) -> dict:
 
     # Write the rows, read the log back, and compute the integrity hash from what was read back, so the stored
     # hash is the one verification will recompute (task C2b).
+    vintage_series.save_series(computed["fit_series_bytes"], computed["vintage_id"])   # before the log: no vintage without its series
+    result["fit_series_file"] = computed["metadata_entry"]["fit_series_file"]
     entry = append_vintage_and_hash(FORWARD_TEST_LOG_PATH, computed["rows_df"], computed["metadata_entry"])
     metadata = load_metadata(FORWARD_TEST_METADATA_PATH)
     metadata[str(computed["vintage_id"])] = entry
@@ -767,6 +782,10 @@ def step6_fill_and_score(dry_run: bool, computed_vintage: dict = None, offline: 
     result = _fill_actuals(dry_run, computed_vintage, offline)
     log = read_forward_test_log(FORWARD_TEST_LOG_PATH)
     result["comparator"] = verify_comparator_log()
+    try:
+        result["fit_series"] = vintage_series.verify_series(load_metadata(FORWARD_TEST_METADATA_PATH))
+    except vintage_series.VintageSeriesError as e:
+        raise MonthlyRefreshAbort(f"Step 6 ABORTED: a vintage's saved fit series failed its hash check: {e}")
     comparator_log = comparator_meta = None
     if result["comparator"]["exists"]:
         comparator_log, comparator_meta = read_forward_test_log(COMPARATOR_LOG_PATH), load_metadata(COMPARATOR_METADATA_PATH)

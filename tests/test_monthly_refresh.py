@@ -18,8 +18,12 @@ import pandas as pd
 import pytest
 
 import monthly_refresh as mr
+import vintage_series
+
 from forward_test_common import append_vintage_and_hash, save_metadata
 from test_forward_test_integrity import base_entry, make_rows
+
+FIT_SERIES = b"year_month,itemcode,qty\n2026-08,A-1,3\n"
 
 
 def _write_log(path: str, forecast_run_date_by_vintage: dict) -> None:
@@ -102,7 +106,8 @@ def _fake_computed_vintage(vintage_id: int) -> dict:
     return {
         "vintage_id": vintage_id,
         "rows_df": make_rows(vintage_id),
-        "metadata_entry": base_entry(vintage_id),
+        "metadata_entry": {**base_entry(vintage_id), **vintage_series.metadata_fields(FIT_SERIES, vintage_id)},
+        "fit_series_bytes": FIT_SERIES,
         "n_rows": 9,
         "six_month_item_forecast_total_by_division": {"PEM101": 100.0},
         "comparator_rows_df": make_rows(vintage_id),
@@ -121,6 +126,7 @@ def _full_log(tmp_path, monkeypatch, vintage_1_date):
     # the moving-average comparator log lives beside the synthetic log, never at the real path
     monkeypatch.setattr(mr, "COMPARATOR_LOG_PATH", os.path.join(str(tmp_path), "comparator_log.csv"))
     monkeypatch.setattr(mr, "COMPARATOR_METADATA_PATH", os.path.join(str(tmp_path), "comparator_metadata.json"))
+    monkeypatch.setattr(vintage_series, "SERIES_DIR", os.path.join(str(tmp_path), "vintage_series"))   # never the real folder
     return log_path, metadata_path
 
 

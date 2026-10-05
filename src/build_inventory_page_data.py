@@ -132,7 +132,36 @@ def _load_fulfilment_segmentation(division: str) -> pd.DataFrame:
     128/136-item pilot scopes the pre-existing forecast/unit_cost pipeline covers)."""
     path = os.path.join(SUMMARY_DIR, "task2b_part2_item_level.csv")
     df = pd.read_csv(path)
+    df = apply_class_decisions(df, load_config().get("fulfilment_class_decisions", {}))
     return df[df["division"] == division].set_index("code")
+
+
+CLASS_BASIS_DECIDED = "decided_from_data_pending_confirmation"
+
+
+def apply_class_decisions(df: pd.DataFrame, decisions: dict) -> pd.DataFrame:
+    """The user's per-item class decisions on top of the Sec.23 rule (config `fulfilment_class_decisions`; the rule is not changed).
+    `class_overrides`: items moved to stock_policy or confirmed_to_order from output/summary/phaseA_pem101_conflict_lean.md; they get
+    class_basis = CLASS_BASIS_DECIDED so the page can label them. `g3_made_to_order`: PEM107's G3 list, which must already be
+    confirmed_to_order under Sec.23 -- a code that is not stops the build rather than being reclassified here."""
+    df = df.copy()
+    df["class_basis"] = ""
+    for division, codes in (decisions.get("g3_made_to_order") or {}).items():
+        have = df[(df["division"] == division) & df["code"].isin(codes)]
+        bad = sorted(set(codes) - set(have.loc[have["class"] == "confirmed_to_order", "code"]))
+        if bad:
+            raise ValueError(f"G3 made-to-order list for {division} holds code(s) not classed confirmed_to_order by Sec.23: {bad}")
+    for division, spec in (decisions.get("class_overrides") or {}).items():
+        for new_class in ("stock_policy", "confirmed_to_order"):
+            for code in spec.get(new_class, []):
+                hit = (df["division"] == division) & (df["code"] == code)
+                if hit.sum() != 1:
+                    raise ValueError(f"class override for {division} {code}: expected exactly one item, found {int(hit.sum())}")
+                if df.loc[hit, "class"].iloc[0] != "conflict":
+                    raise ValueError(f"class override for {division} {code}: the item is not in the conflict class today")
+                df.loc[hit, "class"] = new_class
+                df.loc[hit, "class_basis"] = CLASS_BASIS_DECIDED
+    return df
 
 
 def _build_curve_target_pem101() -> dict:
@@ -211,7 +240,7 @@ def _build_pem101_division(config: dict, inventory_source=None) -> dict:
         forecast = fc_all.get(code, np.zeros(FORECAST_HORIZON_MONTHS)).tolist() if code in series else []
         items.append({
             "code": code, "type": seg_row["type"] if pd.notna(seg_row.get("type")) else policy_by_code.get(code),
-            "policy": fulfilment_class,
+            "policy": fulfilment_class, "class_basis": seg_row["class_basis"],
             "fulfilment_label": seg_row["label"], "S1": bool(seg_row["S1"]) if pd.notna(seg_row["S1"]) else None,
             "S2": (bool(seg_row["S2"]) if pd.notna(seg_row["S2"]) else None), "S2_computable": bool(seg_row["S2_computable"]),
             "S3": bool(seg_row["S3"]) if pd.notna(seg_row["S3"]) else None,
@@ -309,7 +338,7 @@ def _build_pilot_division(config: dict, division: str, raw: pd.DataFrame, invent
             cm = current_mm_by_code.get(code, {"current_min": None, "current_max": None, "has_record": False})
             items.append({
                 "code": code, "type": seg_row["type"] if pd.notna(seg_row.get("type")) else policy_by_code.get(code),
-                "policy": seg_row["class"],
+                "policy": seg_row["class"], "class_basis": seg_row["class_basis"],
                 "fulfilment_label": seg_row["label"], "S1": bool(seg_row["S1"]) if pd.notna(seg_row["S1"]) else None,
                 "S2": (bool(seg_row["S2"]) if pd.notna(seg_row["S2"]) else None), "S2_computable": bool(seg_row["S2_computable"]),
                 "S3": bool(seg_row["S3"]) if pd.notna(seg_row["S3"]) else None,
