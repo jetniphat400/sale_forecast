@@ -2,7 +2,7 @@
   "snapshot": {
     "source_table": "[salewarehouse].[dbo].[Cube_Inventory_Exact]",
     "loaded_at": "2026-10-04 21:41:03.437000",
-    "generated_at": "2026-10-05T00:41:40Z",
+    "generated_at": "2026-10-05T04:12:26Z",
     "refresh_cadence": "unknown"
   },
   "backlog": {
