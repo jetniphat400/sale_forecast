@@ -246,10 +246,20 @@ def gather_results(config: dict) -> dict:
     if sig_row.empty:
         raise ReportSourceError("b3_paired_significance.csv has no Direct-vs-Top-down row.")
 
+    # Top-down against Naive: a paired test exists per division (phaseC_step2_transferability_significance.csv), not in
+    # b3_paired_significance.csv. The limitation sentence rests on the b3 pairs (Direct, Top-down, Reconciled) and does not
+    # name Naive; this table feeds the comment beside it, which states what the Naive pairs show.
+    naive = load_csv("phaseC_step2_transferability_significance.csv", "Results §7 comment on the Naive pairs")
+    for col in ["division", "approach_a", "approach_b", "t_stat"]:
+        require_col(naive, col, "phaseC_step2_transferability_significance.csv", "Naive pairs")
+    naive = naive[(naive["approach_a"] == "Top-down") & (naive["approach_b"] == "Naive")]
+
     return {
         "per_division": per_division,
         "rolling_type": rolling_type,
         "sig_row": sig_row.iloc[0],
+        "naive_pairs": naive,
+        "sig_pairs": sig,
     }
 
 
@@ -718,9 +728,23 @@ def render_page(config: dict) -> str:
 
     # ---- Section 7: Limitations ----
     limitations_html = "".join(f"<li>{html.escape(x.format(**report_values))}</li>" for x in report["limitations"])
+    # Kept off screen: what the recorded paired tests support. The significance sentence names Direct only. A Top-down
+    # against Naive test exists per division; its |t| is above the threshold in some divisions, so "no significance in every
+    # pair" would not hold for Naive and the sentence does not claim it.
+    naive = results["naive_pairs"]
+    sig_pairs = results["sig_pairs"]
+    t_limit = report_values["paired_t_threshold"]
+    above = naive[naive["t_stat"].abs() >= t_limit]
+    naive_comment = (
+        "<!-- Significance sentence below: b3_paired_significance.csv "
+        f"({len(sig_pairs)} pairs, largest |t| {sig_pairs['paired_t_stat'].abs().max():.2f}, threshold {t_limit}). Top-down against Naive: phaseC_step2_transferability_significance.csv, "
+        f"{len(naive)} divisions, |t| from {naive['t_stat'].abs().min():.2f} to {naive['t_stat'].abs().max():.2f}; "
+        f"{len(above)} division(s) at or above {t_limit} ({', '.join(above['division'])}). Naive is therefore not named in the sentence. -->"
+    )
     sec7 = f"""
     <section id="limitations">
       <h2>7. ข้อจำกัด (Limitations)</h2>
+      {naive_comment}
       <ul>{limitations_html}</ul>
     </section>"""
 

@@ -46,6 +46,8 @@ FILE_EXT = re.compile(r"\.(?:py|md|csv|yaml|yml|json|html|xlsx|js)\b", re.I)
 INTERNAL_WORDS = re.compile(r"METRICS|DATA_MAP|PROJECT_GRAPH|STATUS\.md|CONVENTIONS")
 SECTION_REF = re.compile(r"(?:§|\bSec\.|\bsection)\s*\d+", re.I)
 INTERNAL_NAMES = re.compile(r"\b(?:stock_policy|confirmed_to_order|finished_goods_stock|component_stock_ato)\b")
+TABLE_NAME = re.compile(r"\b[Cc]ube_\w+")
+TASK_REF = re.compile(r"\btask\s*\d+[a-z]?\b", re.I)
 MAX_NON_THAI_LINE = 60
 
 # No exceptions: every reader-facing line must pass the rules.
@@ -71,8 +73,10 @@ def _config_keys() -> set:
     return keys
 
 
-def violations(lines, config_keys) -> list:
-    """Every rule hit in `lines` (already stripped of scripts, styles and comments)."""
+def violations(lines, config_keys, english_exempt=frozenset()) -> list:
+    """Every rule hit in `lines` (already stripped of scripts, styles and comments). `english_exempt` holds lines that
+    are table cells (product names and descriptions from the price list): the English-only-line rule skips them, every
+    other rule still applies."""
     key_re = re.compile(r"(?<![A-Za-z0-9_])(?:" + "|".join(map(re.escape, sorted(config_keys, key=len, reverse=True))) + r")(?![A-Za-z0-9_])")
     found = []
     for raw in lines:
@@ -84,11 +88,11 @@ def violations(lines, config_keys) -> list:
             continue
         for name, pat in [("file extension", FILE_EXT), ("internal word", INTERNAL_WORDS),
                           ("section reference", SECTION_REF), ("internal status name", INTERNAL_NAMES),
-                          ("config key", key_re)]:
+                          ("table name", TABLE_NAME), ("task reference", TASK_REF), ("config key", key_re)]:
             m = pat.search(line)
             if m:
                 found.append(f"{name} {m.group(0)!r} in: {line[:120]}")
-        if len(line) > MAX_NON_THAI_LINE and not THAI.search(line):
+        if len(line) > MAX_NON_THAI_LINE and not THAI.search(line) and line not in english_exempt:
             found.append(f"line over {MAX_NON_THAI_LINE} chars with no Thai: {line[:120]}")
     return found
 
@@ -167,6 +171,11 @@ def test_guard_catches_each_rule():
     assert violations(["ตาม § 40"], keys)
     assert violations(["แก้ segment_policy ก่อน"], keys)
     assert violations(["x" * 30 + " " + "y" * 40], keys)
+    assert violations(["ข้อมูลจาก cube_Sale_APD"], keys)
+    assert violations(["ข้อมูลจาก Cube_CES"], keys)
+    assert violations(["เพิ่มเมื่อ task 2a"], keys)
+    long_cell = "3 Phase 1000kVA 22kV 400/230V Dyn11 Low Loss (Total Loss 1.2%) 008 PEA"
+    assert violations([long_cell], keys) and not violations([long_cell], keys, english_exempt={long_cell})
     assert not violations(["ตัวควบคุมด้านล่างเปลี่ยนแค่ตัวเลขบนหน้านี้ ไม่ได้เปลี่ยนการทายยอดขาย"], keys)
     assert not violations(["Min/Max ไม่เปลี่ยน เพราะคำนวณจากยอดขาย ไม่ได้ใช้ stock ปัจจุบัน " + "a" * 70], keys)
 
@@ -204,3 +213,86 @@ def test_rendered_text_is_reader_text(view, rendered_texts):
     assert len(lines) > 20, f"{view}: rendered text looks empty"
     found = violations(lines, _config_keys())
     assert not found, f"{view}: rendered reader-facing text carries project internals:\n" + "\n".join(found)
+
+
+# ------------------------------------------------------------------ index.html (phase W3): every tab, rendered
+# The S&OP tab's original-file figures are a documented exception to CONVENTIONS.md "Dynamic values" until phase S
+# rebuilds that tab from the database: they stay as they are and the tab says so in a notice at its top. The reader-text
+# rules below apply to that tab's text all the same. Product names and descriptions in table cells come from the price
+# list and are exempt from the English-only-line rule only; every other rule applies to them too.
+INDEX_VIEWS = {
+    "S&OP": ("origTab", None),
+    "Trend": ("omniTab", "omniShowTab(2)"),
+    "Manual": ("manualTab", "omniShowTab(3)"),
+    "Stock panel": ("invPanel", "omniShowTab(1); document.getElementById('invMenuRow').click()"),
+}
+
+
+def _make_index_site(site_dir):
+    """A temporary copy of what index.html loads at runtime: the page, the manual and the stock data file."""
+    import shutil
+    os.makedirs(os.path.join(site_dir, "docs"), exist_ok=True)
+    os.makedirs(os.path.join(site_dir, "data"), exist_ok=True)
+    shutil.copy(os.path.join(PROJECT_ROOT, "index.html"), os.path.join(site_dir, "index.html"))
+    shutil.copy(os.path.join(PROJECT_ROOT, "docs", "user_manual.md"), os.path.join(site_dir, "docs", "user_manual.md"))
+    shutil.copy(os.path.join(PROJECT_ROOT, "data", "inventory.json"), os.path.join(site_dir, "data", "inventory.json"))
+
+
+class _Quiet(__import__("http.server").server.SimpleHTTPRequestHandler):
+    def log_message(self, *a):
+        pass
+
+
+@pytest.fixture(scope="module")
+def index_url(tmp_path_factory):
+    import functools
+    import http.server
+    import threading
+    site = tmp_path_factory.mktemp("index_w3")
+    _make_index_site(str(site))
+    server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), functools.partial(_Quiet, directory=str(site)))
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    yield f"http://127.0.0.1:{server.server_address[1]}/index.html"
+    server.shutdown()
+
+
+@pytest.fixture(scope="module")
+def index_texts(index_url):
+    exe = require_browser()
+    texts, cells = {}, {}
+    edge = Edge(exe)
+    try:
+        edge.open(index_url)
+        time.sleep(1.5)
+        for view, (container, action) in INDEX_VIEWS.items():
+            if action:
+                edge.ev(action + "; 1")
+            deadline = time.time() + 30
+            while time.time() < deadline:
+                text = edge.ev(f"document.getElementById('{container}').innerText")
+                loading = ("กำลังโหลด" in text and container in ("manualTab", "invPanel")) or len(text) < 50
+                if not loading and (container != "invPanel" or edge.ev("document.getElementById('invContent').style.display") == "block"):
+                    break
+                time.sleep(0.5)
+            time.sleep(0.5)
+            texts[view] = edge.ev(f"document.getElementById('{container}').innerText")
+            cells[view] = set(edge.ev(f"[...document.querySelectorAll('#{container} td, #{container} th')].map(c => c.innerText.trim())"))
+            if container == "invPanel":     # the popup behind a Reserved figure is part of the panel
+                edge.ev("document.querySelector('.inv-bl-btn').click(); 1")
+                time.sleep(0.5)
+                texts["Stock panel popup"] = edge.ev("document.getElementById('invBlModal').innerText")
+                cells["Stock panel popup"] = set(edge.ev("[...document.querySelectorAll('#invBlModal td, #invBlModal th')].map(c => c.innerText.trim())"))
+        script_errors = [e for e in edge.errors if e.startswith("exception")]
+        assert not script_errors, f"script errors while rendering index.html: {script_errors}"
+    finally:
+        edge.close()
+    return texts, cells
+
+
+@pytest.mark.parametrize("view", ["S&OP", "Trend", "Manual", "Stock panel", "Stock panel popup"])
+def test_index_tab_rendered_text_is_reader_text(view, index_texts):
+    texts, cells = index_texts
+    lines = re.split(r"[\n\t]", texts[view])
+    assert len([x for x in lines if x.strip()]) > 8, f"{view}: rendered text looks empty"
+    found = violations(lines, _config_keys(), english_exempt=cells[view])
+    assert not found, f"index.html {view}: reader-facing text carries project internals:\n" + "\n".join(found)

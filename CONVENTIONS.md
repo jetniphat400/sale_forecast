@@ -140,7 +140,7 @@ Page layout. Before adding, removing or moving anything on a dashboard page, sta
 
 ## Dynamic values (added 2026-09-29)
 
-Dynamic values. Every number a dashboard reader sees is computed at build time from verified data, config or a verified recorded output file. No number is typed into reader text, config or code. The only exception is an illustrative example in the user manual, marked as an example.
+Dynamic values. Every number a dashboard reader sees is computed at build time from verified data, config or a verified recorded output file. No number is typed into reader text, config or code. The only exception is an illustrative example in the user manual, marked as an example. A second, documented exception (decided by the user, 2026-10-05): the figures of the S&OP tab in `index.html` that come from its original file stay as they are, labelled unverifiable by the notice at the top of that tab, until phase S rebuilds the tab from the database; `tests/test_index_w3.py` records the exception and checks that the notice is there.
 
 ## Project map (added 2026-09-24)
 
