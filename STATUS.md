@@ -55,7 +55,19 @@ and where it says "Phase 4," that refers to what is now Phases D/E.
 
 ## 2. Phase Status
 
-### Current Status Summary (2026-10-02, regenerated from PROJECT_GRAPH.md)
+### Current Status Summary (2026-10-05, regenerated from PROJECT_GRAPH.md)
+
+PROJECT_GRAPH.md is the authority; this is a snapshot of its Critical path and Node table, not a hand-kept record.
+
+- **Purpose (the user, 2026-10-05):** a sales forecast model, then an inventory model built on it, then operation planning. Unknowns are cut out for now, what is used in their place is shown, and the model is tuned later.
+- **G1 (sales forecast): in progress.** Method locked (Top-down Combination; R1 closed, the moving average is a comparator). The forward test (T1) runs monthly: vintages 1 and 2 exist, August scored, the comparator starts with vintage 3 (2026-11).
+- **G2 (inventory policy): in progress, Week 1 (2026-10-05 to 10-09).** Max-Min v1 with lead time per item from data and the source of each value labelled; PEM101 recalibrated on the 92-item stock_policy set. Covers PEM101 and PEM107; PEM107 recalibration is cut.
+- **G3 (operation planning): in scope, Weeks 2 and 3.** Operation plan v1 (six months) in Week 2, material plan v1 (BOM explosion) in Week 3, against the lower-bound capacity already recorded. It is no longer waiting on a person: unknowns are cut out and shown (Q19, Q20).
+- **Closed or cut:** R1 closed; R2 (MRP hand-off), the buyer reference page, V1, further PEM107 questions and PEM107 recalibration cut.
+- **Critical path:** Week 1 Max-Min v1 -> Week 2 operation plan v1 -> Week 3 material plan v1 -> Week 4 end-to-end check and executive summary. The earlier path E11 -> E12 -> Q10 is history (PROJECT_GRAPH.md).
+- **Operational path:** the daily stock refresh and the monthly runner (the 5th) are running; on 2026-10-12 check whether Cube_CES loads weekly.
+
+### Previous Current Status Summary (2026-10-02), superseded 2026-10-05
 
 PROJECT_GRAPH.md is the authority; this is a snapshot of its Node table, not a hand-kept record. The
 previous hand-written summary (2026-09-29) is kept below under its own heading as history.
@@ -72,6 +84,20 @@ previous hand-written summary (2026-09-29) is kept below under its own heading a
   data; DE1-DE4 closed. T2 (posting-delay measurement, started 2026-09-22) in progress, due about 2026-11-21.
 - **Critical path:** E11 -> E12 -> Q10 (unchanged). **Operational path:** the monthly runner (phase C) is not yet
   running in production: see C2 below.
+
+### Week 1 gap check, plan of 2026-10-05 and its Part 1 -- DONE, 2026-10-05 (one read-only database session; documentation only; Validator matched except one classification)
+
+Report: `output/summary/week1_gap_check.md` (queries saved outside the repository). DATA_MAP.md sections 1 and 3 updated.
+
+- **Part 1.** The user's decisions of 2026-10-05 recorded; the work plan replaced (Weeks 1 to 4, verbatim); the Current Status Summary and the critical path in PROJECT_GRAPH.md regenerated.
+- **2a.** 4 accessible databases, 137 readable objects, `salewarehouse` 111 (21 named in DATA_MAP). Newly profiled production and purchasing tables: Cube_Production_Control, Cube_production, Cube_Production_Order, Cube_JobCost(+Detail), Cube_BOM_Exact_V2, cube_po_bom, cube_pr_bom, Cube_Incoming*, Cube_Vendor_List and others, with item joins in both directions.
+- **2b.** DeliveryTime is a supplier-and-item quoted delivery time ("N Days"; 23.6% read 0 Days). Against observed PO-to-first-receipt time for the same supplier and item (151 pairs): r 0.70, observed 15 days shorter on median.
+- **2c.** Cube_Production_Control holds per-unit quality-control tolerance limits (mm, turns, %), not reorder points; no production start or finish date.
+- **2d.** Issue to production = type B with a job number; purchase receipt = type A matching a PO (88.6%); transfers = 150/151; H = return of issued material (inferred). **No receipt type holds finished-goods receipts for the scope items; assembly time per finished item is not estimable from the ledger.** Closest elapsed times: Production_Order start to cube_final final_date median 36 days (103 scope items); PEM107 made-to-order contract to final_date 23 days.
+- **2e.** `cube_final.ctrno` to `Cube_CES.ContractID` works: forward 97.2%, reverse 16.1% (production only); PEM107 made-to-order: contract to final record 23 days, final record to delivery 4 days.
+- **2f.** FG01 releases to FG02 for customer contracts and holds the stock (supported on 4 to 5 items with ledger movement); FG, FG11 and FG21 undetermined; WH21 not established. 87 of the 92 PEM101 stock items have no ledger movement.
+- **2g.** Classified 0 of 20 (investigator proposed 5, Validator found the rule unvalidated on PEM101; both positions in the report); the 5 are candidates for the business.
+- **Found, not done (assigned to a week):** Week 1: DeliveryTime only as a labelled fallback for materials without PO history; lead time and assembly time from contract-to-final with what is used shown. Week 3: compare Cube_BOM_Exact_V2 with Cube_BOM_Exact; Cube_JobCost for actual material use. Week 2: Cube_Production_Order as a candidate for current production load.
 
 ### Phase E (E1, E3), vintage series, manual text, PEM101 evidence file -- DONE, 2026-10-05 (one read-only database session, Part 5 only; offline dry run passed; Validator matched)
 
@@ -329,7 +355,35 @@ The task is Ready with StartWhenAvailable on.
 - Not done because the run did not complete: the run log, step 10 figures, pages' data_pulled_at/page_built_at,
   first forward-test scores, the Validator re-score, and the published-page check.
 
-### Work plan, decided 2026-10-02
+### Work plan, decided 2026-10-05
+
+**Decisions of the user, 2026-10-05** (recorded as the user's; they replace the plan of 2026-10-02 below):
+
+- **Purpose of the project:** a sales forecast model, then an inventory model built on it, then operation planning. G3, operation planning, is in scope.
+- **Approach:** where something is unknown, build the best model the available data allows, cut the unknown out for now, show what is used in its place, and tune later. Questions to people are asked only when the data cannot answer and only when the answer solves a problem in this purpose.
+- **Closed: R1.** Top-down stays the production method; the moving average is scored as a comparator; drop and surge were the pilot scope, not model settings.
+- **Cut:**
+  - the Max-Min hand-off to an MRP system (R2), since there is no system MRP and people order by hand;
+  - a buyer reference page, which nobody asked for;
+  - V1, the switch of due date to PlanDelDate, since no decision changes;
+  - further PEM107 questions to the business beyond the evidence already sent;
+  - PEM107 recalibration.
+- **Kept local for now:** the saved vintage series (`output/forward_test/vintage_series/`), until the user gives a backup path.
+
+**The plan** (replaces the work-plan table of 2026-10-02):
+
+| Week | Dates | Deliverable | Goal | Owner |
+|---|---|---|---|---|
+| 1 | 2026-10-05 to 10-09 | Max-Min v1: lead time per item from data (slowest material plus assembly time where the data allows); PEM101 recalibrated on the 92-item set; Max-Min v1 on the Min-Max page with the source of each value labelled; a page of assumptions in use; the PEM101 evidence file corrected | G2 | Claude Code |
+| 2 | 2026-10-12 to 10-16 | Operation plan v1, six months: replenishment production for stock items, production load for made-to-order items, against the lower-bound capacity already recorded | G3 | chat assistant designs, the user approves, Claude Code builds |
+| 3 | 2026-10-19 to 10-23 | Material plan v1: BOM explosion of the operation plan into materials and order dates by lead time | G3 | Claude Code |
+| 4 | 2026-10-26 to 10-30 | End-to-end check; executive summary v1 after checking target_data.xlsx | all | Claude Code |
+| Automatic | daily and monthly | daily stock; monthly run on the 5th; on 2026-10-12, whether Cube_CES loads weekly | G1, G2 | scheduled tasks; Claude Code checks |
+| After 30 Oct | — | external factors after the foundation criteria are met; Trend tab; W-polish; refactor; S&OP tab on real data; app on the organisation's server | — | Claude Code |
+
+Rows of the 2026-10-02 plan that are cut or closed by the decisions above (R1, R2, V1, the buyer reference page, the PEM107 questions, PEM107 recalibration) are not carried into this plan; K's lead-time item, the PEM101 recalibration (K) and the item-level comparison work now sit inside Week 1. The 2026-10-02 plan is kept below as history.
+
+### Work plan, decided 2026-10-02 -- SUPERSEDED 2026-10-05 by the plan above (kept as history)
 
 The user's decision, 2026-10-02: any task a person was to do that has no real constraint is done by Claude Code;
 people do only what Claude Code cannot.

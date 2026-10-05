@@ -10,7 +10,9 @@ status, it updates this file (CONVENTIONS.md, Part 4).
 
 ## Critical path
 
-**As of 2026-09-23, the critical path runs: E11 → E12 → Q10 → (blocks D9's resolution and every
+**As of 2026-10-05 (plan decided by the user), the critical path runs: Week 1 Max-Min v1 (lead time per item from data, PEM101 recalibrated on the 92-item stock_policy set, Max-Min v1 on the Min-Max page with the source of each value labelled) -> Week 2 operation plan v1, six months (G3) -> Week 3 material plan v1, BOM explosion (G3) -> Week 4 end-to-end check and executive summary v1.** Purpose: a sales forecast model, then an inventory model built on it, then operation planning; where something is unknown, build the best model the data allows, cut the unknown out for now, show what is used in its place and tune later. G3 is in scope and is no longer waiting on a person (Q19, Q20 are cut out and shown, not asked). Closed: R1. Cut: R2 (MRP hand-off), the buyer reference page, V1, further PEM107 questions, PEM107 recalibration. The plan table is in STATUS.md, "Work plan, decided 2026-10-05". The path below (E11 -> E12 -> Q10) is the earlier one, kept as history.
+
+**Earlier path, as of 2026-09-23 (history): the critical path ran: E11 → E12 → Q10 → (blocks D9's resolution and every
 downstream G2 figure).** Phase J found the Section 16 model fails calibration against actual
 delivery performance (E11); Phase J2's four Explorers each tested a candidate explanation and each
 falls short (E12); **how the business actually fulfils orders and how fast it replenishes (Q10)
@@ -412,7 +414,7 @@ behind it. METRICS.md §24 `relative_service_cost` and §40 `excess_stock_flag` 
 page. The PEM101 trade-off curve/ensemble below were calibrated on the PRE-§23 item set — not
 recalibrated this task (explicit scope decision); recalibrating on the new `stock_policy` set is
 scheduled as follow-up work, not yet done. **PEM101 value statement, refined 2026-09-24 (a later task, same day): the apparent 7.25% saving at today's service level (THB 16.93M model-median vs. THB 18.25M actual) is NOT distinguishable from zero, given both the trade-off curve's own very wide across-member band (119-148% of the median, depending on the exact reorder level) and METRICS.md §20's ±15% stock-value calibration tolerance — independently confirmed by a from-scratch Validator (band within 1-4% of the Modeler's own, same conclusion). PEM101 is operating on the efficient curve within the model's resolution — a statement about what the model can currently distinguish, not a claim that no real efficiency gain is possible. Cost of moving to a 99% stretch target: THB 4,372,760.99 (25.8% increase), itself well inside both presets' own wide bands. `output/summary/phase24_modeler_part2_report.md`, `phase24_validator_report.md` Sec.4, `phase24_synthesis_report.md`.** | data, pending J3 (Q10) — corrected 2026-09-23, was "person"; **the service-level choice, corrected 2026-09-24 (same day, later): the "option to be built" is now BUILT — PEM101's inventory page offers 3 presets plus a free not_late-target slider (interpolating a Python-precomputed dense grid, never simulating client-side), showing per-item Min/Max, total stock value with its envelope band, and the change vs today's on-hand for whatever target is selected. The business chooses directly on the page; nothing here blocks the pipeline any further.** |
-| **G3** | blocked on a person | Q17-Q21 | — | No question nodes existed before this task; all proposed, none answered | **person** |
+| **G3** | **in scope, planned Weeks 2-3 of the 2026-10-05 plan (operation plan v1, material plan v1); unknowns cut out and shown** | Q17-Q21 (unknowns cut out for now), Week 1 Max-Min v1 | — | The user's decision of 2026-10-05 (STATUS.md, "Work plan, decided 2026-10-05"). Previously: blocked on a person; no question nodes existed, all proposed, none answered | — |
 
 ## Time-bound tracks (detail)
 
