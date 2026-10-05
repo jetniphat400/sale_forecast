@@ -458,6 +458,7 @@ scheduled as follow-up work, not yet done. **PEM101 value statement, refined 202
   now also regenerates the order-notice distribution and delivery-timeliness-by-year inputs
   (previously up to 24 days stale), and both dashboards show per-section `data_pulled_at` with
   staleness evaluated per section (METRICS.md Sec.26).
+  **UPDATED 2026-10-05 (check V1-V3):** the first unattended scheduled run took place (2026-10-05 07:40, result 0, 11 of 11 steps, pushed `db1d04b`); see STATUS.md "Check V1, V2, V3" and `output/summary/check_v1_v2_v3.md`. Step 5 skipped under the one-vintage-per-month guard; the next new vintage is due in November.
 - **T2 -- posting-delay snapshot.** `src/snapshot_daily.py`, a Windows Scheduled Task, started
   **2026-09-22**; the leakage-guard margin cannot be revisited until **≥60 days of daily snapshots
   exist and the script's own p99 is known from that data** (STATUS.md, "Prospective posting-delay

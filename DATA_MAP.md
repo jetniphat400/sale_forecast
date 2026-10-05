@@ -1846,3 +1846,18 @@ Source for all entries: `output/summary/phaseW0_sop_provenance.md` (worker and V
 - **Trap:** a per-code match rate over all 426 codes is inflated by example codes where both tab and DB are 0
   (207 of 325); use the 204 real codes as the base.
 
+
+## Check V1, V2, V3 (2026-10-05): verified facts
+
+Source for all entries: `output/summary/check_v1_v2_v3.md` (one read-only database session 2026-10-05 08:1x; Validator independent recomputation from the same saved pulls, no database).
+
+- **The 5 October scheduled run executed unattended: started 07:40:43 (missed 07:00, StartWhenAvailable), result 0, 11 of 11 steps ok, step 5 skipped by the one-vintage-per-month guard, new pull stages ran against the database, pushed `c80d7a8..db1d04b`.** Task Scheduler operational log, `output/runs/monthly_refresh_20261005T074101.json`, `git show db1d04b`. **V2** (log, event log and git agree; published page also checked).
+- **Published stock panel dates after that run: stock 2026-10-04 21:41, Reserved 2026-10-05 07:35, page built 2026-10-05 07:41.** Own Edge, cache disabled. **V1.**
+- **Latest source loads: Cube_CES 2026-10-05 07:37:46, Cube_BOM_Exact 06:42:48, Cube_Inventory_Aging 06:39:02, Cube_Inventory_Exact 2026-10-04 21:42:24, cube_Sale_APD 2026-10-04 17:17:46.** MAX of each table's timestamp column. **V2.** Schedule of the 06:00-07:00 job: **not stopped, not daily, otherwise unclear** (inferred).
+- **PlanDelDate equals ForecastDelDate on 99.09% of units (95.45% of rows) in Cube_CES Omni/Actual/delivered/qty>0 rows with ForecastDelDate from 2024-01-01 (37,618 rows, 3,561,187 units); Plan later 0.47% and earlier 0.44% of units; PlanDelDate is never null in that population.** **V2.** Meaning of neither field is confirmed; the user's belief that Sales enters PlanDelDate is level A and untested.
+- **Of units late under ForecastDelDate, 81.42% have equal dates and 18.40% have Plan later.** **V1.**
+- **Join key `cube_Sale_APD (contractid, itemcode, planid)` = `Cube_CES (ContractID, ItemCode, PlanID)` is unique on both sides and joins 99.94% of units (99.89% of rows) in the 2024-02 to 2026-08 series window; `forecast_date` equals `ForecastDelDate` on 100% of joined units.** **V2.** (Earlier join on contract and item only; PlanID is the cleaner key.)
+- **Assigning months of sale by PlanDelDate would change the month of 0.17% of units overall (PEM101 0.15%, CI101 1.47%, PEM107 1.41%, PEM103 3.92%, PEM102 6.61%, PEM104 8.33%).** **V2.**
+- **PEM101 not_late: J3's 98.28% (validation, 128 items, from 2026-01) is reproduced exactly from J3's cached pull with J3's method (98.276%); today's pull gives 98.40%; against PlanDelDate 97.69% and 97.96%.** **V2.**
+- **PEM107's 9 items with most late units from May 2026 (same nine as the 2026-10-02 audit): 740 late units by ForecastDelDate, 676 by PlanDelDate; all 66 items 908 and 786.** **V2.**
+- **ActualDelDate falls on a Sunday in 0.06% of rows (0.00% of units) and a Saturday in 0.45% (0.06%).** **V1** (weak indication only).
