@@ -62,7 +62,7 @@ def _first_cover_row(edge, division="PEM101"):
     """(code, months of cover text) of the first item-table row whose cover is a finite number above zero."""
     edge.ev(f"document.getElementById('division-select').value='{division}'; onDivisionChange(); 1")
     edge.pump(0.4)
-    rows = edge.ev("[...document.querySelectorAll('#item-table-body tr')].map(r=>[r.children[0].textContent.trim(), r.children[7].textContent.trim()])")
+    rows = edge.ev("[...document.querySelectorAll('#item-table-body tr')].map(r=>[r.children[0].textContent.trim(), r.children[8].textContent.trim()])")
     for code, cover in rows:
         try:
             if float(cover) > 0:
@@ -157,7 +157,7 @@ def test_when_the_stock_file_cannot_load_the_page_says_so_and_everything_else_wo
     # figures that need no stock still render: Min and Max, the stock value in THB, the item table
     assert edge.ev("document.getElementById('tot-stock-value').textContent.trim()") not in ("", "-")
     rows = edge.ev("[...document.querySelectorAll('#item-table-body tr')].map(r=>[r.children[4].textContent.trim(), r.children[5].textContent.trim(), "
-                   "r.children[7].textContent.trim(), r.children[9].textContent.trim()])")
+                   "r.children[8].textContent.trim(), r.children[10].textContent.trim()])")
     assert rows and any(r[0] not in ("-", "") and r[1] not in ("-", "") for r in rows), "Min and Max are blank when the stock file fails"
     assert all(r[2] == "–" and r[3] == "–" for r in rows), "stock-dependent cells must not show a number without stock"
     assert not [x for x in edge.errors if x.startswith("exception")], edge.errors

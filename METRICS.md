@@ -108,6 +108,13 @@ and whether any part is a configurable assumption.
 - Source: Cube_Inventory_Exact `minimum` / `maximum`, summed across
   warehouses per item. Comparison baseline only; established as
   unreliable, never an input.
+- Max of 0 (2026-10-05): a system Max of 0 means nobody filled it in (stated by
+  the user, DATA_MAP level A). On forecast/inventory.html it shows as
+  `ไม่ได้กรอก`, the total of the system's Max leaves those rows out and says
+  how many (`ไม่รวม {n_max_not_filled} รายการที่ไม่ได้กรอก Max`), and an item
+  with no inventory record at all shows a dash. The pilot divisions' `fillna(0)`
+  had conflated "no record" with 0; the page now carries `current_has_record`
+  to tell them apart. No calculation that uses Min changed.
 
 ## 9. months_of_cover
 
@@ -502,6 +509,13 @@ always stated.
   `RMSE_pooled` (the formula above taken over all the division's items).
 - MASE follows section 13. Where it is undefined, any output shown to a
   user displays MASE_undefined, never NaN, 0 or infinity.
+- Moving-average comparator (R1, decided by the user 2026-10-05): the
+  comparator's forecasts are scored with exactly these metrics, one row per
+  vintage, division or focus code, target month and horizon, under the scopes
+  `comparator_division` and `comparator_focus_code` with key
+  `<division or code>|<model>` (for example `PEM101|MA12`), so the existing
+  score rows, keys and batch hashes are untouched. Top-down's rows are
+  unchanged.
 
 ## 26. page_timestamps
 
@@ -561,6 +575,27 @@ Every dashboard page and panel displays, near its title:
   raw pull; items whose fit series is all zero are not scored.
 - A monthly run appends one new vintage. Comparing vintages over time is
   the forward test; no single scored month is treated as proof.
+- Moving-average comparator (R1, decided by the user 2026-10-05; Top-down
+  stays the production method). From vintage 3 on, every monthly run also
+  stores a moving-average forecast for every forecast-status item
+  (`src/ma_comparator.py`) in `output/summary/forward_test_comparator_log.csv`
+  with integrity hashes in `forward_test_comparator_metadata.json`: the same
+  hash method as the log above (`csv_readback_v1`, computed after the rows are
+  written and read back, verified before any append). Append-only; the
+  forward-test log is never edited. The window per division is chosen on every
+  run from the CURRENT BACKTEST only: among the windows the backtest computes
+  (config `moving_average_windows`: 3, 6, 12), the one with the lowest mean
+  item-level MAE over the division's items and all rolling origins in
+  `output/summary/phaseC_step2_rolling_origin_qty.csv`; a tie goes to the shorter
+  window; never forward-test results. The choice and its source file are written
+  to `output/summary/ma_comparator_windows.csv` and into the vintage's
+  metadata. On the backtest of 2026-10-05: CI101 MA12, PEM101 MA12, PEM102 MA3,
+  PEM103 MA6, PEM107 MA3. The forecast is `models.moving_average_forecast`
+  (the backtest's own function), repeated across the horizon and clipped at 0;
+  items with no history get 0, as Top-down does. Vintages 1 and 2 were fitted
+  on monthly series that were not saved (the processed and raw files are
+  overwritten each month), so they are NOT reconstructed: the comparison starts
+  with vintage 3. Nothing is shown on any page.
 
 ## 28. monthly_refresh
 
@@ -602,6 +637,22 @@ Every dashboard page and panel displays, near its title:
   cannot regenerate is listed in the run log and labelled on its page as
   not refreshed.
 - The backtest in step 4 follows the rolling_origin_evaluation section.
+- Step 4 also regenerates `ma_comparator_windows.csv` (section 27); step 5 writes
+  the comparator log beside the vintage and step 6 fills its actual_qty from
+  the forward-test log and scores both methods.
+- Step 10 gates (changed 2026-10-05). Each of the three checks records
+  `passed`, `failed` or `not_tested` with a reason; a check that compared
+  nothing is never `passed`:
+      six_month_forecast  not tested when step 5 skipped (the one-vintage-per-month
+                          guard) or vintage 1 holds no total to compare with
+      backtest_mae        not tested when there is no earlier successful run log
+      on_hand_stock       the monthly pull's total on-hand units against the total
+                          the latest successful daily stock run published
+                          (`output/runs/daily/last_success.json`); not tested
+                          when there is no daily run or no saved pull
+  The step passes when no gate failed. The run log's `gate_outcomes` lists every
+  gate of the run (tests, sensitive-content scan, the three above) and counts
+  passed, failed and not tested separately; a skipped test run is not tested.
 
 ### Daily stock cycle (added 2026-10-05)
 

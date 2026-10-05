@@ -82,6 +82,7 @@ import forward_test_scoring as fts
 from forward_test_common import (append_vintage_and_hash, compute_scope_hash, load_metadata,
                                  read_forward_test_log, save_metadata)
 from item_level_reconciliation import forecast_all_approaches
+import ma_comparator
 from leakage_guard import LeakageGuardError, check_window_closed, load_min_margin_days
 from models import combination_forecast
 from score_forward_test_all_divisions import (SCOPE_FILE, pull_actuals_forecastDate,
@@ -105,6 +106,8 @@ PER_DIVISION_SUMMARY_PATH = os.path.join(SUMMARY_DIR, "phaseC_step2_per_division
 TRANSFERABILITY_PATH = os.path.join(SUMMARY_DIR, "phaseC_step2_transferability_per_division.csv")
 INVENTORY_JSON_PATH = os.path.join(PROJECT_ROOT, "data", "inventory.json")
 STOCK_JSON_PATH = os.path.join(PROJECT_ROOT, "data", "stock_daily.json")       # the Min-Max page's stock file (src/stock_daily.py)
+COMPARATOR_LOG_PATH = ma_comparator.COMPARATOR_LOG_PATH             # moving-average comparator, METRICS.md Sec.27
+COMPARATOR_METADATA_PATH = ma_comparator.COMPARATOR_METADATA_PATH
 SCORE_RECORD_PATH = os.path.join(SUMMARY_DIR, "forward_test_scores.csv")
 SCORE_INTEGRITY_PATH = os.path.join(SUMMARY_DIR, "forward_test_scores_integrity.json")
 RAW_HISTORY_PATH = os.path.join(PROJECT_ROOT, "output", "data", "raw_all_divisions_sales.csv")
@@ -456,6 +459,11 @@ def step4_backtest(run_id: str, offline: bool = False) -> dict:
     analysis_inputs_refreshed.append(
         _run_regeneration_step("Item-level reconciliation, paired significance (b3_paired_significance.csv)",
                                 "item_level_reconciliation.py", "b3_paired_significance.csv"))
+    # Moving-average window per division, chosen from the backtest just written (METRICS.md Sec.27); recorded for inspection,
+    # the vintage computation re-reads the backtest itself. No database.
+    analysis_inputs_refreshed.append(
+        _run_regeneration_step("Moving-average comparator window per division (ma_comparator_windows.csv)",
+                                "ma_comparator.py", "ma_comparator_windows.csv"))
     # Top-down against Direct and Naive, per division, on the backtest step 4 just wrote (METRICS.md Sec.41); the sales
     # report's significance block reads it. No database; runs in dry runs and offline runs too.
     analysis_inputs_refreshed.append(
@@ -605,6 +613,19 @@ def compute_new_vintage() -> dict:
     if (rows_df["forecast_qty"] < 0).any():
         raise MonthlyRefreshAbort("Step 5 ABORTED: negative forecast_qty produced for the new vintage.")
 
+    # Moving-average comparator (METRICS.md Sec.27): the window per division comes from the CURRENT backtest only.
+    window_choice = ma_comparator.current_choice(config)
+    windows_by_division = ma_comparator.chosen_windows(window_choice)
+    missing_divisions = set(scope["division"]) - set(windows_by_division)
+    if missing_divisions:
+        raise MonthlyRefreshAbort(f"Step 5 ABORTED: the backtest gives no moving-average window for {sorted(missing_divisions)}.")
+    comparator_records = ma_comparator.moving_average_rows(
+        item_series, item_to_info, windows_by_division, target_months,
+        lambda code, division, level, category, type_: {**base_row(code, division, level, category, type_, next_vintage_id),
+                                                         "provenance": "computed at the vintage's run"},
+        no_history_codes)
+    comparator_df = pd.DataFrame(comparator_records)
+
     metadata_entry = {
         "log_file": os.path.relpath(FORWARD_TEST_LOG_PATH, PROJECT_ROOT).replace("\\", "/"),
         "generated_by_script": "src/monthly_refresh.py (compute_new_vintage)",
@@ -618,7 +639,20 @@ def compute_new_vintage() -> dict:
         "n_total_rows": len(rows_df), "divisions": sorted(scope["division"].unique().tolist()),
     }
     six_month_totals_by_division = rows_df[rows_df["level"] == "Item"].groupby("division")["forecast_qty"].sum().to_dict()
+    comparator_entry = {**metadata_entry, "log_file": os.path.relpath(COMPARATOR_LOG_PATH, PROJECT_ROOT).replace("\\", "/"),
+                        "generated_by_script": "src/monthly_refresh.py (compute_new_vintage, moving-average comparator)",
+                        "model_family": "moving_average", "n_total_rows": len(comparator_df), "n_item_rows": len(comparator_df),
+                        "ma_window_by_division": windows_by_division,
+                        "ma_window_source_file": str(window_choice["source_file"].iloc[0]),
+                        "ma_window_source_pull_date": str(window_choice["snapshot_pull_date"].iloc[0]),
+                        "ma_window_rule": "lowest mean item-level MAE over the current backtest's rolling origins; a tie goes to the shorter window; "
+                                          "never chosen from forward-test results",
+                        "provenance": "computed at the vintage's run"}
+    for k in ("n_type_rows", "n_category_rows", "n_items_with_history", "n_items_no_history_zero_forecast"):
+        comparator_entry.pop(k, None)
     return {"vintage_id": next_vintage_id, "rows_df": rows_df, "metadata_entry": metadata_entry,
+            "comparator_rows_df": comparator_df, "comparator_metadata_entry": comparator_entry,
+            "ma_window_choice": window_choice,
             "n_rows": len(rows_df), "six_month_item_forecast_total_by_division": six_month_totals_by_division}
 
 
@@ -634,9 +668,18 @@ def rehearse_vintage_write_and_reread(computed: dict) -> dict:
         entry = append_vintage_and_hash(tmp_log, computed["rows_df"], computed["metadata_entry"])
         metadata = {**load_metadata(FORWARD_TEST_METADATA_PATH), str(computed["vintage_id"]): entry}
         verify_consistency(read_forward_test_log(tmp_log), metadata)
+        # the comparator log the same way, against its own metadata
+        tmp_cmp = os.path.join(tmp, "forward_test_comparator_log.csv")
+        if os.path.exists(COMPARATOR_LOG_PATH):
+            shutil.copy2(COMPARATOR_LOG_PATH, tmp_cmp)
+        cmp_entry = append_vintage_and_hash(tmp_cmp, computed["comparator_rows_df"], computed["comparator_metadata_entry"])
+        cmp_meta = {**(load_metadata(COMPARATOR_METADATA_PATH) if os.path.exists(COMPARATOR_METADATA_PATH) else {}),
+                    str(computed["vintage_id"]): cmp_entry}
+        verify_consistency(read_forward_test_log(tmp_cmp), cmp_meta)
     return {"verified": True, "vintage_id": computed["vintage_id"], "row_hash_scheme": entry["row_hash_scheme"],
-            "note": "the new vintage was appended to a temporary copy of the log, read back and verified; "
-                    "the real log was not touched."}
+            "comparator_verified": True, "comparator_row_hash_scheme": cmp_entry["row_hash_scheme"],
+            "note": "the new vintage and its moving-average comparator rows were appended to temporary copies of the logs, "
+                    "read back and verified; the real logs were not touched."}
 
 
 _LAST_COMPUTED_VINTAGE = None  # cache so step 6 (dry-run preview) never recomputes step 5's
@@ -679,6 +722,8 @@ def step5_new_vintage(dry_run: bool, force_new_vintage: bool = False) -> dict:
     _LAST_COMPUTED_VINTAGE = computed
 
     result = {"skipped": False, "vintage_id": computed["vintage_id"], "n_rows_computed": computed["n_rows"],
+              "comparator_n_rows_computed": int(len(computed["comparator_rows_df"])),
+              "ma_window_by_division": computed["comparator_metadata_entry"]["ma_window_by_division"],
               "six_month_item_forecast_total_by_division": computed["six_month_item_forecast_total_by_division"],
               "written": False, "force_new_vintage": force_new_vintage}
     if existing_this_month is not None:
@@ -701,6 +746,14 @@ def step5_new_vintage(dry_run: bool, force_new_vintage: bool = False) -> dict:
     save_metadata(FORWARD_TEST_METADATA_PATH, metadata)
     result["written"] = True
     result["row_hash_scheme"] = entry["row_hash_scheme"]
+    # the moving-average comparator rows of the same vintage, in their own append-only log with their own hashes
+    cmp_entry = append_vintage_and_hash(COMPARATOR_LOG_PATH, computed["comparator_rows_df"], computed["comparator_metadata_entry"])
+    cmp_meta = load_metadata(COMPARATOR_METADATA_PATH) if os.path.exists(COMPARATOR_METADATA_PATH) else {}
+    cmp_meta[str(computed["vintage_id"])] = cmp_entry
+    save_metadata(COMPARATOR_METADATA_PATH, cmp_meta)
+    result["comparator"] = {"written": True, "n_rows": int(len(computed["comparator_rows_df"])),
+                            "ma_window_by_division": computed["comparator_metadata_entry"]["ma_window_by_division"],
+                            "row_hash_scheme": cmp_entry["row_hash_scheme"]}
     return result
 
 
@@ -713,11 +766,48 @@ def step6_fill_and_score(dry_run: bool, computed_vintage: dict = None, offline: 
     actualised (vintage, target month, horizon) not yet in the append-only score record (C-fix Part 5)."""
     result = _fill_actuals(dry_run, computed_vintage, offline)
     log = read_forward_test_log(FORWARD_TEST_LOG_PATH)
+    result["comparator"] = verify_comparator_log()
+    comparator_log = comparator_meta = None
+    if result["comparator"]["exists"]:
+        comparator_log, comparator_meta = read_forward_test_log(COMPARATOR_LOG_PATH), load_metadata(COMPARATOR_METADATA_PATH)
     result["score_record"] = fts.record_scores(log, load_metadata(FORWARD_TEST_METADATA_PATH),
                                                run_id or datetime.now().strftime("%Y%m%dT%H%M%S"),
                                                raw_path=RAW_HISTORY_PATH, scores_path=SCORE_RECORD_PATH,
-                                               integrity_path=SCORE_INTEGRITY_PATH)
+                                               integrity_path=SCORE_INTEGRITY_PATH,
+                                               comparator_log=comparator_log, comparator_metadata=comparator_meta)
     return result
+
+
+def verify_comparator_log() -> dict:
+    """The moving-average comparator log against its own metadata (hash of its rows, internal consistency), and every vintage in it
+    must also exist in the forward-test log's metadata. No comparator log yet is a normal state: vintages 1 and 2 predate it and
+    the monthly series they were fitted on was not saved, so the comparison starts with the next vintage."""
+    if not os.path.exists(COMPARATOR_LOG_PATH):
+        return {"exists": False, "note": "no comparator vintage yet: the comparison starts with the next vintage "
+                                         "(vintages 1 and 2 predate it; their fitted series is not saved, so they are not reconstructed)"}
+    log = read_forward_test_log(COMPARATOR_LOG_PATH)
+    verify_consistency(log, load_metadata(COMPARATOR_METADATA_PATH))
+    main_meta = load_metadata(FORWARD_TEST_METADATA_PATH)
+    orphans = [int(v) for v in log["vintage_id"].unique() if str(int(v)) not in main_meta]
+    if orphans:
+        raise MonthlyRefreshAbort(f"the comparator log holds vintage(s) {orphans} that the forward-test log's metadata does not know")
+    return {"exists": True, "vintages": sorted(int(v) for v in log["vintage_id"].unique()), "verified": True}
+
+
+def fill_comparator_actuals(main_log: pd.DataFrame) -> dict:
+    """Copies each month's actual quantity from the forward-test log into the comparator log's empty actual_qty cells (the one column
+    allowed to change after a vintage is written); the actual of an item and month is the same whichever vintage forecast it."""
+    if not os.path.exists(COMPARATOR_LOG_PATH):
+        return {"filled": 0, "note": "no comparator log yet"}
+    items = main_log[(main_log["level"] == "Item") & main_log["actual_qty"].notna() & (main_log["actual_qty"].astype(str) != "")]
+    actual = {(r.itemcode, r.target_month): r.actual_qty for r in items.drop_duplicates(["itemcode", "target_month"]).itertuples()}
+    cmp_log = pd.read_csv(COMPARATOR_LOG_PATH)
+    empty = cmp_log["actual_qty"].isna() | (cmp_log["actual_qty"].astype(str) == "")
+    new = [actual.get((c, m)) for c, m in zip(cmp_log.loc[empty, "itemcode"], cmp_log.loc[empty, "target_month"])]
+    cmp_log["actual_qty"] = cmp_log["actual_qty"].astype(object)
+    cmp_log.loc[empty, "actual_qty"] = new
+    cmp_log.to_csv(COMPARATOR_LOG_PATH, index=False)
+    return {"filled": int(sum(v is not None for v in new)), "written": True}
 
 
 def _fill_actuals(dry_run: bool, computed_vintage: dict = None, offline: bool = False) -> dict:
@@ -758,6 +848,7 @@ def _fill_actuals(dry_run: bool, computed_vintage: dict = None, offline: bool = 
             scored.loc[eligible_mask, "actual_qty"])
         existing_log.to_csv(FORWARD_TEST_LOG_PATH, index=False)
         result["written"] = True
+        result["comparator_actuals"] = fill_comparator_actuals(existing_log)
     return result
 
 
@@ -914,66 +1005,140 @@ def step9_scan_sensitive_content(sandbox_started_at: float = None) -> dict:
 # Step 10: check change magnitude against the previous run
 # ---------------------------------------------------------------------------------------------
 
+GATE_PASSED, GATE_FAILED, GATE_NOT_TESTED = "passed", "failed", "not_tested"
+
+
+def _gate(status: str, reason: str, **extra) -> dict:
+    return {"status": status, "reason": reason, **extra}
+
+
+def count_gates(gates: dict) -> dict:
+    """{'passed': n, 'failed': n, 'not_tested': n} over a {name: gate} dict; a gate that tested nothing is never counted as passed."""
+    counts = {GATE_PASSED: 0, GATE_FAILED: 0, GATE_NOT_TESTED: 0}
+    for g in gates.values():
+        counts[g["status"]] += 1
+    return counts
+
+
+def last_daily_stock_baseline() -> dict:
+    """The on-hand total the latest successful daily stock run published (its sum of stock over the pull it published), or None
+    when no daily run has succeeded yet (output/runs/daily/last_success.json, written by src/daily_stock_job.py)."""
+    path = os.path.join(PROJECT_ROOT, load_config()["daily_stock"]["last_success_file"])
+    if not os.path.exists(path):
+        return None
+    with open(path, encoding="utf-8") as f:
+        rec = json.load(f)
+    return {"on_hand_total": float(rec["on_hand_total"]), "pull_time": rec.get("pull_time"), "run_id": rec.get("run_id")}
+
+
+def monthly_pull_on_hand_total() -> float:
+    """Total on-hand units of the stock pull this run's step 1 saved (output/data/inventory_pull), or None when there is none."""
+    path = os.path.join(INVENTORY_PULL_DIR, "inventory.pkl")
+    if not os.path.exists(path):
+        return None
+    return float(pd.read_pickle(path)["stock"].sum())
+
+
 def step10_change_magnitude(config: dict, step4_result: dict, step5_result: dict) -> dict:
+    """Three gates, each recorded as passed, failed or not tested with its reason (METRICS.md Sec.28). A gate that could not compare
+    anything is `not_tested`, never `passed`; the step passes when no gate failed, and the run log counts not-tested gates separately."""
     thresholds = config["monthly_refresh"]
     six_mo_threshold = thresholds["six_month_forecast_change_pct"]
     mae_threshold = thresholds["backtest_mae_change_pct"]
     stock_threshold = thresholds["total_on_hand_stock_change_pct"]
 
     violations = []
+    gates = {}
 
-    # ---- (a) six-month total forecast per division ----
+    # ---- (a) six-month total forecast per division, against vintage 1 ----
     new_totals = step5_result.get("six_month_item_forecast_total_by_division", {})
     six_mo_report = {}
-    if os.path.exists(FORWARD_TEST_LOG_PATH):
+    if step5_result.get("skipped"):
+        gates["six_month_forecast"] = _gate(GATE_NOT_TESTED, "step 5 skipped, so no new vintage was computed to compare: "
+                                            + str(step5_result.get("reason", ""))[:200])
+    elif not new_totals or not os.path.exists(FORWARD_TEST_LOG_PATH):
+        gates["six_month_forecast"] = _gate(GATE_NOT_TESTED, "no new six-month totals or no forward-test log to compare with")
+    else:
         existing_log = pd.read_csv(FORWARD_TEST_LOG_PATH)
         vintage_1 = existing_log[(existing_log["vintage_id"] == 1) & (existing_log["level"] == "Item")]
         prev_totals = vintage_1.groupby("division")["forecast_qty"].sum().to_dict()
+        failed = []
         for div, new_total in new_totals.items():
             prev_total = prev_totals.get(div)
             pct = 100 * (new_total - prev_total) / prev_total if prev_total else None
-            six_mo_report[div] = {"previous_vintage1_total": prev_total, "new_vintage_total": new_total,
-                                    "change_pct": pct}
+            six_mo_report[div] = {"previous_vintage1_total": prev_total, "new_vintage_total": new_total, "change_pct": pct}
             if pct is not None and abs(pct) > six_mo_threshold:
-                violations.append(f"{div}: six-month total forecast changed {pct:.1f}% "
-                                  f"(> {six_mo_threshold}% threshold)")
+                failed.append(f"{div}: six-month total forecast changed {pct:.1f}% (> {six_mo_threshold}% threshold)")
+        compared = [d for d, r in six_mo_report.items() if r["change_pct"] is not None]
+        violations += failed
+        gates["six_month_forecast"] = (_gate(GATE_FAILED, "; ".join(failed)) if failed else
+                                       _gate(GATE_PASSED, f"{len(compared)} divisions within {six_mo_threshold}% of vintage 1") if compared else
+                                       _gate(GATE_NOT_TESTED, "vintage 1 holds no total for any division in the new vintage"))
 
     # ---- (b) backtest MAE per division (Top-down, transferability primary table) ----
     mae_report = {}
+    mae_failed = []
     for entry in step4_result.get("per_division_comparison_topdown", []):
         div = entry["division"]
         pct = entry.get("MAE_change_pct")
         mae_report[div] = pct
         if pct is not None and abs(pct) > mae_threshold:
-            violations.append(f"{div}: backtest MAE changed {pct:.1f}% (> {mae_threshold}% threshold)")
+            mae_failed.append(f"{div}: backtest MAE changed {pct:.1f}% (> {mae_threshold}% threshold)")
+    violations += mae_failed
+    mae_compared = [d for d, p in mae_report.items() if p is not None]
+    gates["backtest_mae"] = (_gate(GATE_FAILED, "; ".join(mae_failed)) if mae_failed else
+                             _gate(GATE_PASSED, f"{len(mae_compared)} divisions within {mae_threshold}% of the last successful run") if mae_compared else
+                             _gate(GATE_NOT_TESTED, step4_result.get("comparison_base", "no earlier run log to compare with")))
 
-    # ---- (c) total on-hand stock across the pricelist scope ----
-    # LIMITATION (stated explicitly, not silently skipped): a fresh on-hand stock figure would
-    # require its OWN database pull (Cube_Inventory_Exact/Cube_CES via
-    # src/build_inventory_dataset.py) -- a SECOND connection attempt this run's single-connection
-    # design does not make (DATABASE ACCESS rule: one connection attempt per agent/session). The
-    # existing committed data/inventory.json figure (from whenever it was last generated) is
-    # carried forward unchanged, so this sub-check trivially reports 0% change and is not a
-    # meaningful test of a REAL stock movement until a generator that this runner calls exists.
-    stock_report = {"note": "not independently re-pulled this run (would need a second DB "
-                              "connection) -- existing data/inventory.json figure carried "
-                              "forward unchanged; this sub-check is not yet meaningful.",
-                     "change_pct": 0.0}
+    # ---- (c) total on-hand stock: this run's stock pull against the latest successful daily stock run's published stock ----
+    stock_report = {"threshold_pct": stock_threshold}
+    baseline = last_daily_stock_baseline()
+    new_total = monthly_pull_on_hand_total()
+    if baseline is None:
+        gates["on_hand_stock"] = _gate(GATE_NOT_TESTED, "no successful daily stock run is recorded (output/runs/daily/last_success.json), so there is no baseline")
+    elif new_total is None:
+        gates["on_hand_stock"] = _gate(GATE_NOT_TESTED, "this run saved no stock pull (output/data/inventory_pull), so there is no new total")
+    elif not baseline["on_hand_total"]:
+        gates["on_hand_stock"] = _gate(GATE_NOT_TESTED, "the daily baseline total is zero, so a change cannot be expressed as a percentage")
+    else:
+        pct = 100 * (new_total - baseline["on_hand_total"]) / baseline["on_hand_total"]
+        stock_report.update({"baseline_on_hand_total": baseline["on_hand_total"], "baseline_pull_time": baseline["pull_time"],
+                             "baseline_daily_run_id": baseline["run_id"], "new_on_hand_total": new_total, "change_pct": pct})
+        if abs(pct) > stock_threshold:
+            msg = f"total on-hand stock changed {pct:.1f}% against the daily run of {baseline['pull_time']} (> {stock_threshold}% threshold)"
+            violations.append(msg)
+            gates["on_hand_stock"] = _gate(GATE_FAILED, msg)
+        else:
+            gates["on_hand_stock"] = _gate(GATE_PASSED, f"{pct:+.1f}% against the daily run of {baseline['pull_time']} (threshold {stock_threshold}%)")
     if os.path.exists(INVENTORY_JSON_PATH):
         with open(INVENTORY_JSON_PATH, "r", encoding="utf-8") as f:
-            inv = json.load(f)
-        stock_report["current_totals"] = inv.get("totals")
+            stock_report["current_totals"] = json.load(f).get("totals")
 
+    counts = count_gates(gates)
     return {
         "thresholds": {"six_month_forecast_change_pct": six_mo_threshold,
                         "backtest_mae_change_pct": mae_threshold,
                         "total_on_hand_stock_change_pct": stock_threshold},
+        "gates": gates,
+        "gate_counts": counts,
         "six_month_forecast_by_division": six_mo_report,
         "backtest_mae_change_pct_by_division": mae_report,
         "total_on_hand_stock": stock_report,
         "violations": violations,
-        "passed": len(violations) == 0,
+        "passed": counts[GATE_FAILED] == 0,
     }
+
+
+def gate_outcomes(step8: dict, step9: dict, step10: dict) -> dict:
+    """Every gate of the run (tests, sensitive-content scan, the three change-magnitude gates) as passed, failed or not tested, with
+    the counts. A skipped test run is not tested, not passed."""
+    gates = {"tests": (_gate(GATE_NOT_TESTED, step8.get("summary_line", "tests skipped")) if step8.get("skipped") else
+                       _gate(GATE_PASSED if step8.get("passed") else GATE_FAILED, step8.get("summary_line", ""))),
+             "sensitive_content_scan": _gate(GATE_PASSED if step9.get("passed") else GATE_FAILED,
+                                             f"{len(step9.get('findings', []))} findings in {step9.get('n_changed_files_scanned', 0)} files")}
+    for name, g in step10.get("gates", {}).items():
+        gates["step10_" + name] = g
+    return {"gates": gates, "counts": count_gates(gates), "not_tested": sorted(n for n, g in gates.items() if g["status"] == GATE_NOT_TESTED)}
 
 
 # ---------------------------------------------------------------------------------------------
@@ -1080,6 +1245,12 @@ def _copy_run_logs(dst: str) -> None:
     for name in os.listdir(RUNS_DIR) if os.path.isdir(RUNS_DIR) else []:
         if name.startswith("monthly_refresh_") and name.endswith(".json"):
             shutil.copy2(os.path.join(RUNS_DIR, name), os.path.join(out, name))
+    # step 10's on-hand gate compares with the latest successful daily stock run (its last_success.json)
+    last_success = os.path.join(PROJECT_ROOT, load_config()["daily_stock"]["last_success_file"])
+    if os.path.exists(last_success):
+        target = os.path.join(dst, load_config()["daily_stock"]["last_success_file"])
+        os.makedirs(os.path.dirname(target), exist_ok=True)
+        shutil.copy2(last_success, target)
 
 
 def run_dry_run_in_sandbox(force_new_vintage: bool = False, offline: bool = False, skip_tests: bool = False) -> dict:
@@ -1166,6 +1337,7 @@ def main(dry_run: bool, force_new_vintage: bool = False, sandbox: bool = False, 
     step10 = record("10_change_magnitude", step10_change_magnitude, config, step4, step5)
     step11 = record("11_commit_and_push", step11_commit_and_push, dry_run, step8, step9, step10)
 
+    run_log["gate_outcomes"] = gate_outcomes(step8, step9, step10)
     run_log["finished_at"] = datetime.now().isoformat(timespec="seconds")
     _write_run_log(run_log, run_id, run_log_dir)
     return run_log

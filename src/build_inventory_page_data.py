@@ -241,6 +241,8 @@ def _build_pem101_division(config: dict, inventory_source=None) -> dict:
         cm = current_mm.get(it["code"], {"current_min": None, "current_max": None})
         it["current_min"] = cm["current_min"]
         it["current_max"] = cm["current_max"]
+        # a Max of 0 is "not filled in" only where the item has a record at all (src/build_inventory_page.py systemMaxText)
+        it["current_has_record"] = cm["current_max"] is not None
 
     # task 2b Part 2: "no policy" now means status_category != 'forecast' (placeholder/excluded
     # from the full 445-item registry), not the old 128-item-pilot-scoped policy_df list.
@@ -282,7 +284,8 @@ def _build_pilot_division(config: dict, division: str, raw: pd.DataFrame, invent
     else:
         inv = _persist_and_reload(query_inventory_exact(codes), f"{division}_inventory")
     current_mm = current_minmax_per_item(inv, codes)
-    current_mm_by_code = {row["itemcode"]: {"current_min": row["current_total_min"], "current_max": row["current_total_max"]}
+    current_mm_by_code = {row["itemcode"]: {"current_min": row["current_total_min"], "current_max": row["current_total_max"],
+                                            "has_record": bool(row["n_warehouses"] > 0)}
                           for _, row in current_mm.iterrows()}
     by_wh = _by_warehouse_map(inv)  # task 2b Part 1: same-connection reuse, no extra query
 
@@ -303,7 +306,7 @@ def _build_pilot_division(config: dict, division: str, raw: pd.DataFrame, invent
             forecast = fc_all.get(code, np.zeros(FORECAST_HORIZON_MONTHS)).tolist()
             unit_cost = float(d_row["unit_cost"].iloc[0]) if len(d_row) and "unit_cost" in d_row and pd.notna(d_row["unit_cost"].iloc[0]) else None
             no_cost = bool(d_row["no_unit_cost_item"].iloc[0]) if len(d_row) and "no_unit_cost_item" in d_row else (unit_cost is None)
-            cm = current_mm_by_code.get(code, {"current_min": None, "current_max": None})
+            cm = current_mm_by_code.get(code, {"current_min": None, "current_max": None, "has_record": False})
             items.append({
                 "code": code, "type": seg_row["type"] if pd.notna(seg_row.get("type")) else policy_by_code.get(code),
                 "policy": seg_row["class"],
@@ -315,7 +318,7 @@ def _build_pilot_division(config: dict, division: str, raw: pd.DataFrame, invent
                 "forecast": [round(x, 3) for x in forecast],
                 "unit_cost": unit_cost, "unit_cost_fallback": None, "no_unit_cost_item": no_cost,
                 "on_hand_sellable": float(d_row["sellable_stock"].iloc[0]) if len(d_row) else 0.0,
-                "current_min": cm["current_min"], "current_max": cm["current_max"],
+                "current_min": cm["current_min"], "current_max": cm["current_max"], "current_has_record": cm["has_record"],
                 "by_warehouse": by_wh.get(code, []),
             })
         status_df = pd.read_csv(os.path.join(SUMMARY_DIR, "phaseC_step1revised_item_status_445.csv"))
@@ -332,14 +335,14 @@ def _build_pilot_division(config: dict, division: str, raw: pd.DataFrame, invent
             forecast = fc_all.get(code, np.zeros(FORECAST_HORIZON_MONTHS)).tolist()
             unit_cost = float(d_row["unit_cost"].iloc[0]) if len(d_row) and "unit_cost" in d_row and pd.notna(d_row["unit_cost"].iloc[0]) else None
             no_cost = bool(d_row["no_unit_cost_item"].iloc[0]) if len(d_row) and "no_unit_cost_item" in d_row else (unit_cost is None)
-            cm = current_mm_by_code.get(code, {"current_min": None, "current_max": None})
+            cm = current_mm_by_code.get(code, {"current_min": None, "current_max": None, "has_record": False})
             items.append({
                 "code": code, "type": r["type"], "policy": r["policy"],
                 "actual_history": [round(x, 3) for x in qty_hist],
                 "forecast": [round(x, 3) for x in forecast],
                 "unit_cost": unit_cost, "unit_cost_fallback": None, "no_unit_cost_item": no_cost,
                 "on_hand_sellable": float(d_row["sellable_stock"].iloc[0]) if len(d_row) else 0.0,
-                "current_min": cm["current_min"], "current_max": cm["current_max"],
+                "current_min": cm["current_min"], "current_max": cm["current_max"], "current_has_record": cm["has_record"],
                 "by_warehouse": by_wh.get(code, []),
             })
 

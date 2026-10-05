@@ -180,7 +180,7 @@ function computeAll(controls, divisionData, checkedWarehouses) {
       : monthsOfCover > controls.obsolescence_threshold_months;
     perItem.push({ code: item.code, policy: item.policy, min: r.min, max: r.max,
                    stockValueContribution: contribution, monthsOfCover, unreliable: r.unreliable,
-                   currentMin: item.current_min, currentMax: item.current_max,
+                   currentMin: item.current_min, currentMax: item.current_max, currentHasRecord: item.current_has_record,
                    unitCost: item.unit_cost, noUnitCost: item.no_unit_cost_item,
                    onHandSellable, excess, noForecastDemand,
                    // task 2b Part 2 (METRICS.md Sec.23) -- undefined for PEM103 (no segmentation)
@@ -450,10 +450,12 @@ def build_page(**data_sources) -> str:
       <th onclick="sortTable(0)">Item</th><th onclick="sortTable(1)">Policy</th>
       <th onclick="sortTable(2)">Label</th><th onclick="sortTable(3)">Signals (S1/S2/S3)</th>
       <th onclick="sortTable(4)">Min</th><th onclick="sortTable(5)">Max</th>
-      <th onclick="sortTable(6)">Current Min</th><th onclick="sortTable(7)">Months of cover</th>
-      <th onclick="sortTable(8)">Value at risk (THB)</th><th onclick="sortTable(9)">ของค้าง</th>
+      <th onclick="sortTable(6)">Min (ค่าที่ตั้งในระบบ)</th><th onclick="sortTable(7)">Max (ค่าที่ตั้งในระบบ)</th>
+      <th onclick="sortTable(8)">Months of cover</th>
+      <th onclick="sortTable(9)">Value at risk (THB)</th><th onclick="sortTable(10)">ของค้าง</th>
     </tr></thead>
     <tbody id="item-table-body"></tbody>
+    <tfoot><tr class="total-row"><td colspan="7">Total</td><td id="item-total-system-max"></td><td colspan="3"></td></tr></tfoot>
   </table></div>
 
   <!-- previously: Confirmed-to-order / Conflict รายการ (ไม่มี Min/Max, METRICS.md §23); items classed confirmed_to_order or conflict get no Min/Max however much sales history they have (only PEM101/PEM107 have this grouping; PEM103 shows an empty table). -->
@@ -484,7 +486,8 @@ def build_page(**data_sources) -> str:
   {render_notes_html('inventory.html', 'chart-tradeoff', values=note_values)}
 
   <!-- previously: Min เทียบกับค่าปัจจุบัน (current_min_max) — รายรายการ -->
-  <h2>Min ที่จำลอง เทียบกับ Min ที่ตั้งในระบบตอนนี้</h2>
+  <!-- label changed: "Min ที่จำลอง เทียบกับ Min ที่ตั้งในระบบตอนนี้" ("ตอนนี้" called the system value current) -->
+  <h2>Min ที่จำลอง เทียบกับ Min ค่าที่ตั้งในระบบ</h2>
   <div id="chart-min-vs-current" class="plotly-chart"></div>
   {render_notes_html('inventory.html', 'chart-min-vs-current', values=note_values)}
 
@@ -650,11 +653,32 @@ function renderTable(perItem) {{
       `<td>${{r.min !== null ? Math.round(r.min).toLocaleString() : '-'}}</td>` +
       `<td>${{r.max !== null ? Math.round(r.max).toLocaleString() : '-'}}</td>` +
       `<td>${{r.currentMin !== null && r.currentMin !== undefined ? Math.round(r.currentMin).toLocaleString() : '-'}}</td>` +
+      `<td data-var="${{r.currentMax === 0 ? 0 : (r.currentMax || 0)}}">${{systemMaxText(r.currentMax, r.currentHasRecord)}}</td>` +
       `<td>${{!STOCK_OK ? STOCK_UNKNOWN : isFinite(r.monthsOfCover) ? r.monthsOfCover.toFixed(1) : '&#8734;'}}</td>` +
       `<td data-var="${{var_}}">${{fmtTHB(var_)}}</td>` +
       `<td data-var="${{STOCK_OK && r.excess ? 1 : 0}}">${{STOCK_OK ? excessBadge(r) : STOCK_UNKNOWN}}</td>`;
     tbody.appendChild(tr);
   }}
+  renderSystemMaxTotal(perItem.filter(isItemTableRow));
+}}
+
+// The system's Max (Cube_Inventory_Exact maximum, summed over warehouses). A value of 0 on an item that has a record means nobody
+// filled it in (stated by the user), so it is shown as ไม่ได้กรอก and left out of every sum; an item with no record at all shows a
+// dash and is left out too. Min is not touched.
+const MAX_NOT_FILLED = 'ไม่ได้กรอก';
+function systemMaxText(v, hasRecord) {{
+  if (v === null || v === undefined || hasRecord === false) return '-';
+  if (v === 0) return MAX_NOT_FILLED;
+  return Math.round(v).toLocaleString();
+}}
+
+function renderSystemMaxTotal(rows) {{
+  const withMax = rows.filter(r => r.currentHasRecord !== false && r.currentMax !== null && r.currentMax !== undefined && r.currentMax > 0);
+  const notFilled = rows.filter(r => r.currentHasRecord !== false && r.currentMax === 0).length;
+  const total = withMax.reduce((s, r) => s + r.currentMax, 0);
+  document.getElementById('item-total-system-max').innerHTML =
+    '<b id="system-max-total">' + Math.round(total).toLocaleString() + '</b><br>' +
+    '<span class="hint" id="system-max-note">ไม่รวม ' + notFilled + ' รายการที่ไม่ได้กรอก Max</span>';
 }}
 
 function renderNoForecastTable(perItem) {{
@@ -749,7 +773,7 @@ function renderMinVsCurrent(perItem) {{
   const withCurrent = perItem.filter(r => r.min !== null && r.currentMin !== null && r.currentMin !== undefined);
   plotSafe('chart-min-vs-current', () => Plotly.newPlot('chart-min-vs-current', [
     {{ x: withCurrent.map(r => r.code), y: withCurrent.map(r => r.min), name: 'Scenario Min', type: 'bar', marker: {{color:'#2a78d6'}} }},
-    {{ x: withCurrent.map(r => r.code), y: withCurrent.map(r => r.currentMin), name: 'Current Min', type: 'bar', marker: {{color:'#eda100'}} }}
+    {{ x: withCurrent.map(r => r.code), y: withCurrent.map(r => r.currentMin), name: 'Min (ค่าที่ตั้งในระบบ)', type: 'bar', marker: {{color:'#eda100'}} }}
   ], {{ margin: {{t:10, b:90, l:70}}, barmode: 'group',
        xaxis: {{title: {{text: 'รหัสสินค้า'}}, tickangle: -60, tickfont:{{size:8}}}},
        yaxis: {{title: {{text: 'จำนวน (ชิ้น)'}}}} }}, {{responsive: true}}));

@@ -105,6 +105,8 @@ def _fake_computed_vintage(vintage_id: int) -> dict:
         "metadata_entry": base_entry(vintage_id),
         "n_rows": 9,
         "six_month_item_forecast_total_by_division": {"PEM101": 100.0},
+        "comparator_rows_df": make_rows(vintage_id),
+        "comparator_metadata_entry": {**base_entry(vintage_id), "ma_window_by_division": {"PEM101": 3}},
     }
 
 
@@ -116,6 +118,9 @@ def _full_log(tmp_path, monkeypatch, vintage_1_date):
     save_metadata(metadata_path, {"1": entry})
     monkeypatch.setattr(mr, "FORWARD_TEST_LOG_PATH", log_path)
     monkeypatch.setattr(mr, "FORWARD_TEST_METADATA_PATH", metadata_path)
+    # the moving-average comparator log lives beside the synthetic log, never at the real path
+    monkeypatch.setattr(mr, "COMPARATOR_LOG_PATH", os.path.join(str(tmp_path), "comparator_log.csv"))
+    monkeypatch.setattr(mr, "COMPARATOR_METADATA_PATH", os.path.join(str(tmp_path), "comparator_metadata.json"))
     return log_path, metadata_path
 
 

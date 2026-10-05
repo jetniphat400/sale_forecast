@@ -76,8 +76,8 @@ def score_items(rows: pd.DataFrame, series: dict) -> pd.DataFrame:
         if fit is None or float(np.sum(fit)) == 0.0:
             continue
         m = compute_metrics(np.array([float(r["actual_qty"])]), np.array([float(r["forecast_qty"])]), fit)
-        out.append({"itemcode": r["itemcode"], "division": r["division"], **m})
-    return pd.DataFrame(out, columns=["itemcode", "division", "MAE", "RMSE", "Bias", "MASE"])
+        out.append({"itemcode": r["itemcode"], "division": r["division"], "model": r.get("model", ""), **m})
+    return pd.DataFrame(out, columns=["itemcode", "division", "model", "MAE", "RMSE", "Bias", "MASE"])
 
 
 def _summary_row(per_item: pd.DataFrame, **ids) -> dict:
@@ -91,8 +91,14 @@ def _summary_row(per_item: pd.DataFrame, **ids) -> dict:
             "definition": DEFINITION}
 
 
-def compute_score_rows(log: pd.DataFrame, metadata: dict, raw: pd.DataFrame, run_id: str) -> pd.DataFrame:
-    """Score rows for every (vintage, target month, horizon) whose Item rows all have an actual_qty."""
+COMPARATOR_SCOPES = {"division": "comparator_division", "focus_code": "comparator_focus_code"}
+
+
+def compute_score_rows(log: pd.DataFrame, metadata: dict, raw: pd.DataFrame, run_id: str, comparator: bool = False) -> pd.DataFrame:
+    """Score rows for every (vintage, target month, horizon) whose Item rows all have an actual_qty. With comparator=True `log` is
+    the moving-average comparator log: the same metrics and rules, recorded under the scopes 'comparator_division' and
+    'comparator_focus_code' with key '<division or code>|<model>' (for example 'PEM101|MA12'), so the existing score rows,
+    their keys and their batch hashes are untouched."""
     item_rows = log[(log["level"] == "Item")].copy()
     item_rows["actual_num"] = pd.to_numeric(item_rows["actual_qty"], errors="coerce")
     records = []
@@ -108,11 +114,13 @@ def compute_score_rows(log: pd.DataFrame, metadata: dict, raw: pd.DataFrame, run
         common = {"score_run_id": run_id, "vintage_id": int(vid), "target_month": tm, "horizon": int(h),
                   "fit_first_month": vmeta["fit_first_month"], "fit_last_month": vmeta["fit_last_month"]}
         for division, d in per_item.groupby("division"):
-            records.append(_summary_row(d, scope="division", key=division, **common))
+            key = f"{division}|{d['model'].iloc[0]}" if comparator else division
+            records.append(_summary_row(d, scope=COMPARATOR_SCOPES["division"] if comparator else "division", key=key, **common))
         for code in FOCUS_CODES:
             d = per_item[per_item["itemcode"] == code]
             if len(d):
-                records.append(_summary_row(d, scope="focus_code", key=code, **common))
+                key = f"{code}|{d['model'].iloc[0]}" if comparator else code
+                records.append(_summary_row(d, scope=COMPARATOR_SCOPES["focus_code"] if comparator else "focus_code", key=key, **common))
     df = pd.DataFrame(records)
     if df.empty:
         return pd.DataFrame(columns=SCORE_COLUMNS)
@@ -182,10 +190,15 @@ def append_scores(new_rows: pd.DataFrame, scores_path: str = SCORES_PATH, integr
 
 
 def record_scores(log: pd.DataFrame, metadata: dict, run_id: str, raw_path: str = RAW_HISTORY_PATH,
-                  scores_path: str = SCORES_PATH, integrity_path: str = INTEGRITY_PATH) -> dict:
-    """Computes the scores of every fully-actualised (vintage, target month, horizon) and appends the unrecorded ones."""
+                  scores_path: str = SCORES_PATH, integrity_path: str = INTEGRITY_PATH,
+                  comparator_log: pd.DataFrame = None, comparator_metadata: dict = None) -> dict:
+    """Computes the scores of every fully-actualised (vintage, target month, horizon) and appends the unrecorded ones. When a
+    moving-average comparator log is given its months are scored the same way and appended in the same batch."""
     if not os.path.exists(raw_path):
         raise ScoreRecordError(f"{raw_path} is missing: it is the history the fit series are rebuilt from")
     raw = pd.read_csv(raw_path)
     rows = compute_score_rows(log, metadata, raw, run_id)
+    if comparator_log is not None and len(comparator_log):
+        cmp_rows = compute_score_rows(comparator_log, comparator_metadata, raw, run_id, comparator=True)
+        rows = pd.concat([rows, cmp_rows], ignore_index=True) if len(rows) else cmp_rows
     return append_scores(rows, scores_path, integrity_path) if len(rows) else {"appended": 0, "skipped_already_recorded": 0}

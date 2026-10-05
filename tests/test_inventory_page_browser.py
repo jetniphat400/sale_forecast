@@ -28,7 +28,7 @@ SNAP = """(function(){
   var items=tr('item-table-body');
   var marker=(P['chart-tradeoff']||[]).filter(d=>d.name==='%s')[0];
   return {stock:t('tot-stock-value'),holding:t('tot-holding-cost'),nItems:t('tot-n-items'),excess:t('tot-excess-count'),
-    minmax:items.map(r=>[r[0],r[4],r[5]]),onhand:items.map(r=>[r[0],r[7],r[8],r[9]]),noForecast:tr('no-forecast-table-body'),
+    minmax:items.map(r=>[r[0],r[4],r[5]]),onhand:items.map(r=>[r[0],r[8],r[9],r[10]]),noForecast:tr('no-forecast-table-body'),
     tradeoffLine:(P['chart-tradeoff']||[]).filter(d=>d.name!=='%s').map(d=>JSON.stringify(d.y||[])),
     markerX:marker?marker.x[0]:null, markerY:marker?marker.y[0]:null, minVsCurrent:ys('chart-min-vs-current'),
     curveChart:ys('chart-robust-curve'),curveTotals:t('curve-target-totals'),rsc:t('relative-service-cost-note'),
@@ -335,3 +335,32 @@ def test_placeholder_status_values_show_their_approved_labels(desktop, division)
     allowed = {"ไม่มีประวัติขาย (รอวิธีประมาณ)", "ไม่มีประวัติขาย (กำหนดวิธีประมาณแล้ว)",
                "ตัดออก มีใน Price List แต่ไม่เคยขาย", "ตัดออก ทั้งฝ่ายไม่ใช้นโยบาย stock"}
     assert set(cells) <= allowed, sorted(set(cells) - allowed)
+
+
+# ------------------------------------------------------------------ the system's Max: 0 is shown as not filled in
+@pytest.mark.parametrize("division", DIVISIONS)
+def test_a_system_max_of_zero_shows_as_not_filled_in_and_the_total_leaves_those_rows_out(desktop, division):
+    from page_helpers import fresh_inventory_data
+    e = desktop
+    select_division(e, division)
+    items = {i["code"]: i for i in fresh_inventory_data()["divisions"][division]["items"]}
+    rows = e.ev("[...document.querySelectorAll('#item-table-body tr')].map(r=>[r.children[0].textContent.trim(), r.children[7].textContent.trim()])")
+    assert rows
+    not_filled = [c for c, t in rows if t == "ไม่ได้กรอก"]
+    expected = [c for c, _ in rows if items[c].get("current_has_record") and items[c].get("current_max") == 0]
+    assert sorted(not_filled) == sorted(expected), "every listed item whose system Max is 0 shows ไม่ได้กรอก, and no other item does"
+    # an item with no record in the system shows a dash, never ไม่ได้กรอก and never 0
+    no_record = [c for c, t in rows if not items[c].get("current_has_record")]
+    assert all(dict(rows)[c] == "-" for c in no_record)
+    # the total adds only filled-in Max values and says how many rows it leaves out
+    filled = sum(items[c]["current_max"] for c, _ in rows if items[c].get("current_has_record") and (items[c].get("current_max") or 0) > 0)
+    assert e.ev("document.getElementById('system-max-total').textContent.replace(/,/g,'')") == str(round(filled))
+    assert e.ev("document.getElementById('system-max-note').textContent") == f"ไม่รวม {len(expected)} รายการที่ไม่ได้กรอก Max"
+    assert not [x for x in e.errors if x.startswith("exception")], e.errors
+
+
+def test_some_item_on_the_page_has_a_system_max_of_zero(desktop):
+    """Guards the test above against passing on an empty set: today's data has such items in PEM101, PEM103 and PEM107."""
+    from page_helpers import fresh_inventory_data
+    data = fresh_inventory_data()["divisions"]
+    assert any(i.get("current_has_record") and i.get("current_max") == 0 for d in data.values() for i in d["items"])

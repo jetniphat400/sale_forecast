@@ -112,12 +112,15 @@ def _setup_log(tmp_path, monkeypatch):
     save_metadata(meta, {"1": entry1})
     monkeypatch.setattr(mr, "FORWARD_TEST_LOG_PATH", log)
     monkeypatch.setattr(mr, "FORWARD_TEST_METADATA_PATH", meta)
+    monkeypatch.setattr(mr, "COMPARATOR_LOG_PATH", str(tmp_path / "comparator_log.csv"))
+    monkeypatch.setattr(mr, "COMPARATOR_METADATA_PATH", str(tmp_path / "comparator_metadata.json"))
     return log, meta
 
 
 def _fake_computed(vintage_id=2):
     return {"vintage_id": vintage_id, "rows_df": make_rows(vintage_id), "metadata_entry": base_entry(vintage_id),
-            "n_rows": 9, "six_month_item_forecast_total_by_division": {"PEM101": 1.0}}
+            "n_rows": 9, "six_month_item_forecast_total_by_division": {"PEM101": 1.0},
+            "comparator_rows_df": make_rows(vintage_id), "comparator_metadata_entry": {**base_entry(vintage_id), "ma_window_by_division": {"PEM101": 3}}}
 
 
 def test_a_dry_run_appends_the_new_vintage_to_a_temporary_copy_reads_it_back_and_verifies(monkeypatch, tmp_path):
