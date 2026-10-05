@@ -73,6 +73,14 @@ previous hand-written summary (2026-09-29) is kept below under its own heading a
 - **Critical path:** E11 -> E12 -> Q10 (unchanged). **Operational path:** the monthly runner (phase C) is not yet
   running in production: see C2 below.
 
+### PEM107 order-level evidence file -- DONE, 2026-10-05 (phase E2; one read-only database session; contains customer data, not in the repository)
+
+- **File produced:** `output/pem107_evidence/PEM107_late_delivery_20261005.xlsx` (path ignored by git through `output/`, confirmed with `git check-ignore`; never added or committed). For the user to send to PEM107's business team. Five Thai-named sheets: summary per item (9 rows plus total), delivered lines due 1 May 2026 onward (351 lines), delivered lines due 1 Jan to 30 Apr 2026 (251 lines), overdue undelivered lines (4 lines), explanation. Customer name read from `Cube_CES.CustomerName`; 685 customer IDs in the pull each map to one name (0 with more than one). Data date: Cube_CES loaded 2026-10-05 07:37, pulled 08:44.
+- **Figures (no customer data), nine items, Omni Channel, due date = ForecastDelDate:** from 1 May 2026, 1,169 units delivered, **740 late** (63.3%), of which **711 late although the notice was at least the item's median order-to-delivery time** (96.1%; the 66-item audit figure was 89.6%); days late on late lines: mean 9.8, median 4, max 102. Jan to Apr 2026: 1,050 units delivered, 39 late (3.7%). PlanDelDate differs from ForecastDelDate on 52 of 351 from-May lines.
+- **Reconciliation:** 740 late units today equals the 740 of the 5 October check; the earlier audit's 737 (2 October pull) differs by 3 units on one item (CT-F-99-020505, 33 then 36) because one late delivery (3 units) has ActualDelDate 2026-10-02 and Cube_CES had last loaded on 2026-09-28 before that audit, so the row arrived with the 5 October load (inferred from the dates; the 2 October rows themselves were not kept).
+- **Overdue, not yet delivered:** 4 lines, 5 units (3 lines due before May 2026; oldest 1,196 days overdue). Delivered-only lateness therefore understated the problem, by 5 units here (0.7% of 740) and by lines that may be stale backlog rather than real orders: the business team should say whether those 4 lines are still open.
+- **Found, assigned, not done:** whether the 4 overdue Backlog lines (one 1,196 days old) are real open orders or stale rows -- phase E2, P2, PEM107 business team; the file's "enough notice" test still uses the earlier audit's median rule, whose validity the business has not confirmed -- phase E2, P2, PEM107 business team.
+
 ### Check V1, V2, V3 -- DONE, 2026-10-05 (read-only; one database session; Validator matched every item)
 
 Full report: `output/summary/check_v1_v2_v3.md`.
