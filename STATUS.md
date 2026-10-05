@@ -85,6 +85,17 @@ previous hand-written summary (2026-09-29) is kept below under its own heading a
 - **Critical path:** E11 -> E12 -> Q10 (unchanged). **Operational path:** the monthly runner (phase C) is not yet
   running in production: see C2 below.
 
+### Week 1 progress: items 1.3 (lead time per item) and 1.4 (PEM101 recalibration) -- computed and recorded, 2026-10-05 (one read-only database session; Validator matched except the actual_date row choice)
+
+Report: `output/summary/week1_leadtime_calibration.md`; definition in METRICS.md Sec.5; code `src/lead_time_v1.py`, `src/investigations/week1_recalibration.py`; assumption values in config `lead_time_v1`. Reader text follows in a later task; no page, builder or job changed.
+
+- **Production time, proved before use.** `Cube_Production_Order.start_date` is the order's release date (median 1 day before the first material issue); `end_date` a planned finish; `actual_date` varies between repeated rows of a job-item and is not usable; `cube_final.final_date` is booked about when the last material is issued. **No column marks the actual start of work.** Start to final is the throughput of a job lot (median 26 days, 291 job-items). `Cube_Standard_Time` is the incoming-inspection plan of raw materials, not production time (covers 6 of 92 stock items as rmid): not used. Sources for the 92 items: standard 0, measured 5, assumed 87 (26 days).
+- **Lead time per item v1 (slowest material + production time):** median 89 days, range 43 to 129. Observed for 50 of 53 walkable items' bottlenecks, none supplier-quoted as bottleneck, assumed for 3; **39 items carry assumed values (5 no BOM, 34 only in-house sub-assemblies whose BOMs were not read)**. Most frequent bottlenecks FC-A-38-00201 (4), FL-R-00-38002 (3), FC-R-CP-00002 (2). Recorded with a SHA-256.
+- **PEM101 recalibrated on the 92 items with per-item lead times: the calibration FAILS** (0 distinct members; 96% service needs about twice the observed stock; matching the stock gives at most 84%). The same items and data with lead time free give 36 members with lead 1 to 30 days and a trade-off to 99% of +35.7% (range +26% to +82%), close to the current calibration's +37.5%. Observed: not_late 97.34% / 98.34%, stock THB 15.49M. Method not adjusted.
+- **Correction:** the current calibration simulated **112 items, not 76** (76 is the count of finished_goods_stock policy items quoted in the page note). The page note still says 76 (reader text, later task).
+- **Evidence file:** PEM101_undetermined_20261005.xlsx updated (local, git-ignored): label header and "ปนกัน", whole-number percentages, production-before-order column removed, "ฝ่ายตอบ" dropdown, four approved notes.
+- **Found, not done:** Week 1: read the BOMs of the in-house sub-assemblies (82 W-codes) to walk the 39 items with assumed lead times (needs a database read this single session did not include); decide how Max-Min v1 uses a lead time the calibration does not support (effective 1 to 30 days against 89). Week 2: Production_Order release and planned-finish dates as production load.
+
 ### Week 1 gap check, plan of 2026-10-05 and its Part 1 -- DONE, 2026-10-05 (one read-only database session; documentation only; Validator matched except one classification)
 
 Report: `output/summary/week1_gap_check.md` (queries saved outside the repository). DATA_MAP.md sections 1 and 3 updated.

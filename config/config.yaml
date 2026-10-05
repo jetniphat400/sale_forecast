@@ -1447,3 +1447,18 @@ fulfilment_class_decisions:
         - HS-F-99-3211
         - HS-F-99-3301
         - IS-F-99-0245CE0
+
+# ---- Lead time per item, version 1 (week 1, item 1.3; METRICS.md Sec.5; src/lead_time_v1.py) ----
+# item lead time = slowest material's lead time + the item's production time. One statistic everywhere: the median.
+lead_time_v1:
+  # ASSUMPTION. Used for a material with no observed purchase record and no non-zero supplier-quoted delivery time. Set at the observed 90th
+  # percentile across materials (the per-material median order-to-first-receipt days of the 138 of 228 BOM materials of PEM101's 92 stock items
+  # that have purchase records: p90 63.2, 2026-10-05, output/summary/week1_leadtime_calibration.md). To be tuned later.
+  fallback_material_days: 63
+  # ASSUMPTION. Production time (days from Cube_Production_Order.start_date to the latest cube_final.final_date of the same job) for an item with
+  # fewer than production_min_jobs matched jobs, and for an item with no usable BOM. Set at the median over all 291 matched job-items since
+  # 2023-01-01 (26 days). Cube_Standard_Time is not production time (it is the raw-material incoming-inspection plan) and is not used.
+  production_days_assumed: 26
+  # An item's own median is used when it has at least this many matched jobs (tested leave-one-job-out: item median MAE 21.4 days against 29.1
+  # for the global median, 19 items, 71 jobs).
+  production_min_jobs: 3

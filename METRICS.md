@@ -81,6 +81,30 @@ and whether any part is a configurable assumption.
   Items with policy `component_stock_ato`, `make_to_order`, `placeholder`
   or `excluded` receive none.
 
+### Item lead time, version 1 (added 2026-10-05, week 1 item 1.3; `src/lead_time_v1.py`)
+
+    item lead time = slowest material's lead time + the item's production time
+
+- **Materials:** the item's components in Cube_BOM_Exact, one level, excluding the header row (Sequenceno 0 or a blank component) and the
+  `Machine Hour` pseudo-codes. A component with no purchase record and no price-list quote whose code kind is W (an in-house sub-assembly) is not
+  walked (its own BOM is not in the saved pull); it is listed and left out of the maximum. An item with no BOM, or left with no purchased material,
+  takes the assumed values and is labelled.
+- **Per material, one statistic, the median** (per-material samples are small and the 0 to 730 day range holds outliers), from this order:
+  (1) observed: the median over the material's purchase orders of the days from PO date to the first receipt (Cube_PO_Exact and Cube_ReceiveRM, key
+  PO number plus item, one lead time per PO and item, usable 0 to 730 days); (2) supplier quoted: the median of the non-zero Cube_PriceList.DeliveryTime
+  days over the material's suppliers ("0 Days" is not a quote); (3) assumed: config `lead_time_v1.fallback_material_days`, set at the observed 90th
+  percentile across materials (63 days on 2026-10-05; an assumption, to be tuned).
+- **Production time**, in this order, a source used only where tested: (1) standard time: Cube_Standard_Time is the incoming-inspection plan of raw
+  materials, not production time, and is not used; (2) measured: the median over the item's jobs of the days from Cube_Production_Order.start_date
+  (the order's release date, within about one day before the first material issue) to the latest cube_final.final_date of the same job and item
+  (booked about when the last material is issued), used when the item has at least 3 matched jobs (config `production_min_jobs`; leave-one-job-out
+  error 21.4 days against 29.1 for the global median); (3) assumed: config `production_days_assumed`, the median of all 291 matched job-items (26
+  days; an assumption). Each job and item counts once. No column marks the actual start of work.
+- **Recorded output:** `output/summary/item_lead_time_v1.csv` with its SHA-256 (of the text read back) in `item_lead_time_v1_integrity.json`; per item
+  the lead time, bottleneck material, and the source of each part (observed, supplier quoted, assumed; measured or assumed).
+- **Limits:** one BOM level; 39 of PEM101's 92 stock_policy items (5 with no BOM, 34 with only in-house sub-assemblies) carry the assumed values;
+  the clock starts at the PO date and stops at the first receipt; production time is the throughput of a job lot, not a per-unit assembly time.
+
 ## 6. stock_value  ← the metric that was ambiguous in E1
 
     stock_value = Σ over items with policy = finished_goods_stock of
