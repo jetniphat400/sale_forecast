@@ -1057,8 +1057,7 @@ phase_e1_assumptions:
 # Reader text below may hold {braced} names: src/build_report.py fills each at build time from data,
 # config or a recorded output (src/reader_values.py), never from a typed number (CONVENTIONS.md
 # "Dynamic values"). {intermittent_lumpy_share_pct}: METRICS.md Sec.29 classification of the forecast-
-# status items; {first_scoring_month}: the forward-test log's first eligible date; {paired_t_threshold}:
-# report_statistics below, checked against b3_paired_significance.csv.
+# status items; {first_scoring_month}: the forward-test log's first eligible date.
 report:
   # Plain-language description of Top-down combination forecasting, for a non-technical reader.
   # Source: STATUS.md Locked Decisions, "Final forecasting method: Top-down combination".
@@ -1094,7 +1093,7 @@ report:
     - "ไม่มีข้อมูลประวัติของ Price List เวอร์ชันเก่า จึงไม่สามารถตรวจสอบได้ว่าการจัดฝ่าย/ประเภท
       สินค้าเคยเปลี่ยนแปลงไปจากอดีตหรือไม่ (cannot be determined จากข้อมูลที่มีอยู่ในปัจจุบัน)"
     - "ยอดขายนับจาก PO ที่ลูกค้าสั่งจริงเท่านั้น จึงไม่เห็นความต้องการที่ไม่ได้กลายเป็น PO เช่น ลูกค้าที่ไม่สั่งเพราะรู้ว่าไม่มีของ"
-    - "ความได้เปรียบของ Top-down เทียบกับ Direct ไม่มีนัยสำคัญทางสถิติ (paired t-test, |t| ต่ำกว่า {paired_t_threshold} ในทุกคู่เปรียบเทียบ) เลือกใช้ Top-down เพราะเป็นแนวทางที่ตรงไปตรงมาที่สุดในเชิงโครงสร้าง ไม่ใช่เพราะพิสูจน์แล้วว่าให้ผลแม่นยำที่สุด"
+    # The significance sentence that stood here is replaced by the block in section 6, built from topdown_significance.csv.
     - "ไม่มีข้อมูลเวลาประกอบหลังได้ชิ้นส่วน ตัวเลขนี้ในการวางแผน stock เป็นค่าสมมติ"
     - "Min/Max ที่ตั้งอยู่ในระบบตอนนี้ใช้คำนวณไม่ได้ {n_no_minmax} จาก {n_scope_items} รายการไม่ได้ตั้ง และค่าที่มีไม่สอดคล้องกัน ใช้ได้แค่เป็นตัวเทียบ"
   # Standing next-step items, each pulled from an already-recorded open item in STATUS.md.
@@ -1320,12 +1319,14 @@ page_timestamps:
   staleness_threshold_days: 7
 
 # ============================================================
-# Statistics wording (src/reader_values.py::paired_t_threshold): the conventional |t| criterion used in
-# the sales report's significance statement. An assumption (owner: Modeler, conventional value); the build
-# stops if a recorded paired t (output/summary/b3_paired_significance.csv) is not below it.
+# Statistics (src/significance_topdown.py, METRICS.md Sec.41): the criteria of the sales report's "does Top-down beat
+# the others" block, computed every monthly run. An assumption (owner: Modeler, conventional values): a difference
+# counts as real only when |t| is at least paired_t_threshold AND the Wilcoxon signed-rank p is below
+# wilcoxon_p_threshold AND the signs of t and of the median difference agree.
 # ============================================================
 report_statistics:
   paired_t_threshold: 2
+  wilcoxon_p_threshold: 0.05
 
 # ============================================================
 # Min-Max page (forecast/inventory.html): slider ranges of the scenario controls and the step of the

@@ -164,14 +164,3 @@ def first_scoring_month_label(config: dict) -> str:
     return thai_month_year(str((eligible + pd.Timedelta(1, unit="D")).date()))
 
 
-def paired_t_threshold(config: dict) -> int:
-    """config.yaml report_statistics.paired_t_threshold (the conventional |t| criterion, an assumption), after
-    checking against output/summary/b3_paired_significance.csv (column paired_t_stat) that every recorded
-    paired t stays below it, so the sentence 'every |t| is below the threshold' is true of the data."""
-    threshold = config["report_statistics"]["paired_t_threshold"]
-    sig = _read_csv("b3_paired_significance.csv")
-    worst = float(sig["paired_t_stat"].abs().max())
-    if worst >= threshold:
-        raise ReaderValueError(f"a recorded paired t ({worst:.3f}) is not below the threshold {threshold}; "
-                               f"the significance sentence would be false")
-    return int(threshold) if float(threshold).is_integer() else threshold

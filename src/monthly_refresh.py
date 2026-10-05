@@ -456,6 +456,11 @@ def step4_backtest(run_id: str, offline: bool = False) -> dict:
     analysis_inputs_refreshed.append(
         _run_regeneration_step("Item-level reconciliation, paired significance (b3_paired_significance.csv)",
                                 "item_level_reconciliation.py", "b3_paired_significance.csv"))
+    # Top-down against Direct and Naive, per division, on the backtest step 4 just wrote (METRICS.md Sec.41); the sales
+    # report's significance block reads it. No database; runs in dry runs and offline runs too.
+    analysis_inputs_refreshed.append(
+        _run_regeneration_step("Top-down significance per division (topdown_significance.csv)",
+                                "significance_topdown.py", "topdown_significance.csv"))
     # not_late (delivery_not_late_by_year.csv) reuses delivery_performance.py's OWN raw pull
     # (output/data/raw_cube_ces_delivery_128items.csv) -- no new DB call -- so it must run AFTER
     # delivery_performance.py above, never before/independently.

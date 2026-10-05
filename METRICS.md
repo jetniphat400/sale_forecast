@@ -903,6 +903,9 @@ pipeline — no new section is needed for this; it is already covered by section
 - If fewer than K origins fit the available series, use as many as fit and
   report it; below 3 origins, report the backtest as insufficient rather
   than presenting a figure.
+- Whether one method forecasts more accurately than another over this
+  backtest is decided by section 41, recomputed every monthly run; a single
+  split or a frozen pilot result is never cited for it.
 
 ## 40. excess_stock_flag
 
@@ -914,3 +917,34 @@ pipeline — no new section is needed for this; it is already covered by section
   if on_hand_sellable is above zero; they are listed separately as stock
   with no forecast demand.
 - The threshold is a Tier A control, default from config.
+
+## 41. topdown_significance
+
+    unit          : the item; each item's MAE (section 25) averaged over its
+                    origins of the current backtest (section 39), per method
+    pairs         : Top-down against Direct, and Top-down against Naive, per
+                    division; items with both forecasts only
+    difference    : Top-down minus the other method, so negative = Top-down
+                    made the smaller error
+    reported      : n items, mean difference, paired t = mean / (sd / sqrt n),
+                    two-sided p (t distribution, n - 1 degrees of freedom),
+                    Wilcoxon signed-rank p (two-sided) on the same differences,
+                    sign of the median difference, relative difference
+                    = (mean MAE Top-down - mean MAE other) / mean MAE other
+    verdict       : better  when |t| >= paired_t_threshold AND Wilcoxon p <
+                    wilcoxon_p_threshold AND t < 0 AND median difference < 0
+                    worse   when |t| >= paired_t_threshold AND Wilcoxon p <
+                    wilcoxon_p_threshold AND t > 0 AND median difference > 0
+                    unclear otherwise, including when t and the median
+                    difference have different signs or the median is zero
+
+- Both thresholds are in config.yaml `report_statistics` (2 and 0.05, conventional
+  values, an assumption). A Wilcoxon result alone never gives a verdict; where it
+  disagrees with the t test the division is unclear.
+- Computed by `src/significance_topdown.py` in the monthly runner's step 4 from the
+  backtest rows `src/transferability_all_divisions.py` just wrote, into
+  `output/summary/topdown_significance.csv`; the sales report block "ใช้วิธี Top-down
+  ดีกว่าวิธีอื่นไหม" reads that file. Averaging over origins first keeps pairs of the same
+  item across overlapping origins from being counted as independent.
+- The 2026-10-05 check (`output/summary/check_significance_topdown.md`) is the reference:
+  its item-level t values per division are reproduced by this computation.

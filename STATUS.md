@@ -73,6 +73,14 @@ previous hand-written summary (2026-09-29) is kept below under its own heading a
 - **Critical path:** E11 -> E12 -> Q10 (unchanged). **Operational path:** the monthly runner (phase C) is not yet
   running in production: see C2 below.
 
+### Phase W3b -- S&OP texts, significance every month, typed numbers -- DONE, 2026-10-05 (no database)
+
+- **S&OP tab texts (5 of 5, approved Thai verbatim):** the section 1 caption (now "แถบสีฟ้า = ช่วงที่ผ่านมา (ม.ค.-ก.ค.) · แถบสีส้ม = แผน (ส.ค.-ธ.ค.) · จัดแผนแบบ Chase Strategy คือผลิตให้ตรงกับความต้องการแต่ละเดือน", the Figure 3.5 sentence replaced), the legend "ช่วงที่ผ่านมา", the two card captions ("ตามไฟล์ต้นฉบับ (ตรวจสอบย้อนหลังไม่ได้)", "จับคู่รหัสสินค้าตามไฟล์ต้นฉบับ"), and the row label "Inventory Actual (ล้านบาท, สมมติ)".
+- **Significance computed every month.** `src/significance_topdown.py` (METRICS.md Sec.41, section 39 points to it) reads the current backtest's item x origin rows and writes `output/summary/topdown_significance.csv`: per division, Top-down against Direct and against Naive, item-level pairs, n, paired t, two-sided p, Wilcoxon p, median-difference sign, relative difference, verdict (better/worse only when |t| >= 2, Wilcoxon p < 0.05 and the signs of t and the median agree; else unclear; both thresholds in `config.yaml` `report_statistics`). It reproduces the item-level t of `check_significance_topdown.md` for every division and comparison (tested). The monthly runner's step 4 runs it after the backtest (dry and offline runs too; no database).
+- **Sales report.** The significance sentence (and the limitation bullet that repeated it, removed) is replaced by the approved block "ใช้วิธี Top-down ดีกว่าวิธีอื่นไหม" built by `src/build_report.py` from that file, with its source and rule in an HTML comment; on today's data: Direct line: PEM101 ทายพลาดน้อยกว่าประมาณ 1.4% ทดสอบแล้วความต่างนี้เกิดจริง แม้จะเล็ก · CI101, PEM102, PEM103, PEM107 ใกล้เคียงกันจนบอกไม่ได้ว่าวิธีไหนดีกว่า; Naive line: PEM101 ... ประมาณ 20% ... เกิดจริง · the other four unclear. The frozen pilot file `b3_paired_significance.csv` is no longer cited; `reader_values.paired_t_threshold` (its checker) removed.
+- **Typed numbers in index.html.** Trend heading "448 รหัส" and every "31 เดือน" (note, ADI definition, footer, class label, ADI tooltip) are filled at load from `OMNI.items.length` and `OMNI.n31`. The heading's price-list date "01.06.69" has no source in the tab's data (OMNI holds months, items and the pull date only), so it was moved into an HTML comment rather than computed. Stock panel count cards: has_stock -> มีของ, zero_stock -> ของเป็นศูนย์, no_db_record -> ไม่มีในระบบ stock (display only).
+- **Found, not fixed:** (a) the price-list date needs a source if it is to be shown again -- phase W-polish, P3, Claude Code; (b) the limitations list now holds five items and none about model accuracy; the "ไม่ใช่เพราะพิสูจน์แล้วว่าให้ผลแม่นยำที่สุด" caveat was part of the removed sentence and the block's closing line replaces it; (c) other typed numbers remain in the Trend tab prose (for example "ม.ค. 2024 – ก.ค. 2026", "ADI 1.32, CV² 0.49") -- phase W-polish, P3, Claude Code.
+
 ### Significance check -- is Top-down's advantage over Direct significant? -- DONE, 2026-10-05 (read-only; no database; Validator matched)
 
 Report: `output/summary/check_significance_topdown.md`. **The key G1 finding "Top-down's advantage over Direct is not statistically significant" is PARTLY CONFIRMED.** Sign everywhere: Top-down minus the other method on MAE, negative = Top-down better; threshold |t| >= 2 (config), p-values beside it.
@@ -352,7 +360,7 @@ People only:
 **PROJECT_GRAPH.md is the authoritative source for goal/question/node status; this summary is a
 regenerated snapshot of it, not an independent status record kept by hand.**
 
-- **G1 (sales forecast)** — in progress. Top-down Combination forecasting method adopted and
+- **G1 (sales forecast)** — in progress. **Key finding (replaces the earlier wording "Top-down's advantage over Direct is not statistically significant", superseded 2026-10-05; rule METRICS.md Sec.41, recomputed every monthly run into `output/summary/topdown_significance.csv`):** Top-down against Direct is significantly better only for PEM101, by about 1.4% of MAE, small in practice; CI101, PEM102, PEM103 and PEM107 are unclear (a Wilcoxon result alone for PEM103 and PEM107 counts as unclear). Top-down against Naive is significantly better for PEM101 by about 20% and unclear elsewhere. The choice of Top-down stands (as accurate as or better than the alternatives, and one method serves every division). Top-down Combination forecasting method adopted and
   locked (D1-D4); Phase F (compare against the team's current method) not started. PEM103/PEM107
   were checked for a channel-mix recording bug that would require correcting the forecast/
   forward-test log before 2026-09-30 scoring — none found. **Updated 2026-09-25 (forward test /
@@ -4876,7 +4884,7 @@ which STATUS.md still records as "Proven, method locked" for its own scope.
   zero-inflation cut "to 0%" does NOT reproduce exactly at this 335-item, 5-division scope (25.59%/
   37.18%, not 0%) — a genuinely weaker result at the broader scope, reported honestly, not
   papered over.
-- **[Checked 2026-10-05, run on the current backtest: PARTLY CONFIRMED -- see "Significance check" near the top of this file.]** **Part 3 — transferability, per division, moderate confidence throughout.** Top-down vs. Direct
+- **[SUPERSEDED 2026-10-05: the "not statistically significant" wording below is replaced by the key finding in the G1 bullet (METRICS.md Sec.41); see "Significance check" and phase W3b near the top of this file.]** **Part 3 — transferability, per division, moderate confidence throughout.** Top-down vs. Direct
   vs. Naive, rolling-origin, all 335 items: **PEM101 holds its Top-down advantage cleanly** (beats
   both). **PEM102, PEM103, PEM107: Top-down beats Naive but its edge over Direct is thin and not
   statistically significant** (\|t\|<0.6 for all three) — the step 1 demand-mix flags for these

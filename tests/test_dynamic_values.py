@@ -106,7 +106,17 @@ def _fewer_calibrated_items(df):
     return df
 
 
-CSV_TRANSFORMS = {STOCK_VALUE_FILE: _scale_stock_value, NO_MINMAX_FILE: _more_missing_minmax, DISAGREE_FILE: _double_rows,
+def _different_significance(df):
+    """PEM101 against Direct gets a larger relative difference (7.7 percent), PEM103 against Direct becomes a real loss."""
+    if "rel_diff_pct" not in df.columns:
+        return df
+    df = df.copy()
+    df.loc[(df["division"] == "PEM101") & (df["other_method"] == "Direct"), "rel_diff_pct"] = -7.7
+    df.loc[(df["division"] == "PEM103") & (df["other_method"] == "Direct"), ["rel_diff_pct", "verdict"]] = [3.0, "worse"]
+    return df
+
+
+CSV_TRANSFORMS = {"topdown_significance.csv": _different_significance, STOCK_VALUE_FILE: _scale_stock_value, NO_MINMAX_FILE: _more_missing_minmax, DISAGREE_FILE: _double_rows,
                   ITEM_LEVEL_FILE: _extra_signal_and_fewer_stock_policy, ON_TIME_FILE: _drop_first_year,
                   "delivery_not_late_by_year.csv": _drop_first_year, POLICY_FILE: _fewer_calibrated_items,
                   "processed_all_divisions_monthly_qty.csv": _all_items_smooth,
@@ -268,6 +278,16 @@ def test_sales_report_numbers_follow_their_sources(two_builds):
     assert _first(r"ปรับตัวขึ้นจาก [\d.]+% \((\d{4})\)", b) == "2023" and _first(r"ปรับตัวขึ้นจาก [\d.]+% \((\d{4})\)", p) == "2024"
     # staleness threshold from config
     assert "เก่ากว่า 1 วัน" in p and "เก่ากว่า 1 วัน" not in b
+    # the "does Top-down beat the others" block: percentages and verdicts come from topdown_significance.csv
+    import build_report
+    sig = pd.read_csv(os.path.join(rv.SUMMARY_DIR, "topdown_significance.csv"))
+    direct = sig[sig["other_method"] == "Direct"]
+    expected_base = build_report.significance_line(direct, "Direct")
+    assert expected_base in b, "the Direct line of the block does not follow topdown_significance.csv"
+    assert expected_base not in p
+    assert "PEM101 ทายพลาดน้อยกว่าประมาณ 7.7% ทดสอบแล้วความต่างนี้เกิดจริง" in p
+    assert "PEM101 ทายพลาดน้อยกว่าประมาณ 7.7% ทดสอบแล้วความต่างนี้เกิดจริง แม้จะเล็ก" not in p      # 7.7 is not below 5
+    assert "PEM103 ทายพลาดมากกว่าประมาณ 3.0% ทดสอบแล้วความต่างนี้เกิดจริง แม้จะเล็ก" in p
 
 
 def _pilot_row(html_text):
@@ -334,8 +354,9 @@ def test_numbers_from_the_remaining_typed_list_follow_their_sources(two_builds):
     assert f"ผลรอบแรกต้นเดือน {rv.first_scoring_month_label(real_cfg)}" in b
     lb, lp = _first(r"ผลรอบแรกต้นเดือน ([^<]+)<", b), _first(r"ผลรอบแรกต้นเดือน ([^<]+)<", p)
     assert lb != lp, "first scoring month is typed"
-    # |t| threshold
-    assert _first(r"\|t\| ต่ำกว่า (\d+) ในทุกคู่", b) == "2" and _first(r"\|t\| ต่ำกว่า (\d+) ในทุกคู่", p) == "3"
+    # the |t| and Wilcoxon thresholds are applied when topdown_significance.csv is written (METRICS.md Sec.41), not typed in the page;
+    # the report only states them in an HTML comment read from that file
+    assert "|t| &gt;= 2" in b and "Wilcoxon p &lt; 0.05" in b
     # year range in the delivery section follows the years present
     assert "(2023-2026)" in b and "(2024-2026)" in p and "(2023-2026)" not in p
     # numbers inside the manual notes that describe the data or a control

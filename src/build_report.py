@@ -224,6 +224,55 @@ def gather_model_chart() -> pd.DataFrame:
     return sub
 
 
+# The two comparisons of the significance block, in the order shown, with the approved line openings.
+SIGNIFICANCE_LINES = {
+    "Direct": "เทียบกับการทายรายรหัสตรงๆ:",
+    "Naive": "เทียบกับการใช้ยอดเดือนล่าสุดเป็นค่าทาย:",
+}
+SIGNIFICANCE_HEADING = "ใช้วิธี Top-down ดีกว่าวิธีอื่นไหม"
+SIGNIFICANCE_CLOSING = "ที่เลือกใช้ Top-down เพราะแม่นใกล้เคียงหรือดีกว่าวิธีอื่น และใช้วิธีเดียวได้ทุกฝ่าย"
+NL_INDENT = "\n      "
+SMALL_DIFFERENCE_PCT = 5      # below this absolute relative difference the phrase "แม้จะเล็ก" is added (approved wording rule)
+
+
+def significance_pct_text(rel_diff_pct: float) -> str:
+    """Absolute relative difference: a whole number, or one decimal when below 10."""
+    a = abs(float(rel_diff_pct))
+    text = f"{a:.1f}"
+    return text if a < 10 and float(text) < 10 else f"{a:.0f}"
+
+
+def significance_line(rows: pd.DataFrame, other: str) -> str:
+    """One line of the block for one comparison: better phrases (one per division), then worse phrases, then one phrase for
+    all unclear divisions, joined by ' · '. Rows are that comparison's per-division results (verdict, rel_diff_pct)."""
+    phrases = []
+    for verdict, word in (("better", "น้อยกว่า"), ("worse", "มากกว่า")):
+        for _, r in rows[rows["verdict"] == verdict].iterrows():
+            small = " แม้จะเล็ก" if abs(float(r["rel_diff_pct"])) < SMALL_DIFFERENCE_PCT else ""
+            phrases.append(f"{r['division']} ทายพลาด{word}ประมาณ {significance_pct_text(r['rel_diff_pct'])}% ทดสอบแล้วความต่างนี้เกิดจริง{small}")
+    unclear = list(rows[rows["verdict"] == "unclear"]["division"])
+    if unclear:
+        phrases.append(", ".join(unclear) + " ใกล้เคียงกันจนบอกไม่ได้ว่าวิธีไหนดีกว่า")
+    return SIGNIFICANCE_LINES[other] + " " + " · ".join(phrases)
+
+
+def significance_block_html(sig: pd.DataFrame) -> str:
+    """The sales report's block 'does Top-down beat the others' from topdown_significance.csv (src/significance_topdown.py)."""
+    lines = []
+    for other in SIGNIFICANCE_LINES:
+        rows = sig[sig["other_method"] == other]
+        if len(rows):
+            lines.append(f"<p>{html.escape(significance_line(rows, other))}</p>")
+    first, last = sig["first_test_month"].min(), sig["last_test_month"].max()
+    rule = (f"source: output/summary/topdown_significance.csv, written every monthly run by src/significance_topdown.py (METRICS.md Sec.41); "
+            f"item-level pairs on the backtest of {first} to {last} ({int(sig['n_origins'].max())} origins), difference = Top-down minus the other "
+            f"method; verdict better/worse only when |t| >= {sig['t_threshold'].iloc[0]:g}, Wilcoxon p < {sig['wilcoxon_p_threshold'].iloc[0]:g} and the "
+            f"signs of t and of the median difference agree, otherwise unclear")
+    joined = NL_INDENT.join(lines)
+    return (f"<h3>{html.escape(SIGNIFICANCE_HEADING)}</h3>{NL_INDENT}<!-- {html.escape(rule, quote=False)} -->{NL_INDENT}{joined}"
+            f"{NL_INDENT}<p>{html.escape(SIGNIFICANCE_CLOSING)}</p>")
+
+
 def gather_results(config: dict) -> dict:
     per_division = load_csv("phaseC_step2_per_division_summary_qty.csv", "Results §6 table")
     for col in ["division", "MAE", "RMSE", "Bias", "MASE", "n_items", "n_origins",
@@ -239,27 +288,18 @@ def gather_results(config: dict) -> dict:
             "phaseC_step2_rolling_origin_qty.csv has no Type-level rows for the rolling-origin chart."
         )
 
-    sig = load_csv("b3_paired_significance.csv", "Results §6 significance statement")
-    for col in ["approach_a", "approach_b", "paired_t_stat", "mean_diff_b_minus_a"]:
-        require_col(sig, col, "b3_paired_significance.csv", "significance statement")
-    sig_row = sig[(sig["approach_a"] == "Direct") & (sig["approach_b"] == "Top-down")]
-    if sig_row.empty:
-        raise ReportSourceError("b3_paired_significance.csv has no Direct-vs-Top-down row.")
-
-    # Top-down against Naive: a paired test exists per division (phaseC_step2_transferability_significance.csv), not in
-    # b3_paired_significance.csv. The limitation sentence rests on the b3 pairs (Direct, Top-down, Reconciled) and does not
-    # name Naive; this table feeds the comment beside it, which states what the Naive pairs show.
-    naive = load_csv("phaseC_step2_transferability_significance.csv", "Results §7 comment on the Naive pairs")
-    for col in ["division", "approach_a", "approach_b", "t_stat"]:
-        require_col(naive, col, "phaseC_step2_transferability_significance.csv", "Naive pairs")
-    naive = naive[(naive["approach_a"] == "Top-down") & (naive["approach_b"] == "Naive")]
+    # Top-down against Direct and against Naive, per division: computed every monthly run by src/significance_topdown.py
+    # (METRICS.md Sec.41) on the current backtest rows; the report's "does Top-down beat the others" block reads it.
+    sig = load_csv("topdown_significance.csv", "Results Sec.6 significance block")
+    for col in ["division", "other_method", "rel_diff_pct", "verdict", "t_stat", "wilcoxon_p"]:
+        require_col(sig, col, "topdown_significance.csv", "significance block")
+    if set(sig["other_method"]) != set(SIGNIFICANCE_LINES):
+        raise ReportSourceError("topdown_significance.csv must hold the comparisons " + ", ".join(SIGNIFICANCE_LINES) + ".")
 
     return {
         "per_division": per_division,
         "rolling_type": rolling_type,
-        "sig_row": sig_row.iloc[0],
-        "naive_pairs": naive,
-        "sig_pairs": sig,
+        "topdown_sig": sig,
     }
 
 
@@ -563,7 +603,6 @@ def render_page(config: dict) -> str:
         "history_months": rv.total_history_months(config), "n_base_models": len(BASE_MODELS),
         "intermittent_lumpy_share_pct": f"{rv.intermittent_lumpy_share_pct():.0f}",
         "first_scoring_month": rv.first_scoring_month_label(config),
-        "paired_t_threshold": rv.paired_t_threshold(config),
     }
 
     # ---- Section 1: Executive summary ----
@@ -676,7 +715,7 @@ def render_page(config: dict) -> str:
         for it in fva_items
     )
 
-    sig = results["sig_row"]
+    significance_html = significance_block_html(results["topdown_sig"])
     sec6 = f"""
     <section id="results">
       <h2>6. ผลลัพธ์ (Results)</h2>
@@ -721,30 +760,15 @@ def render_page(config: dict) -> str:
       {cite('report_item_forecast_vs_actual_by_origin.csv', 'origin / month_in_horizon / actual_qty / forecast_qty')}
       <div id="chart-fva" class="plotly-chart"></div>
       {render_notes_html('sales_report.html', 'chart-fva', values=note_values)}
-      {cite('b3_paired_significance.csv', 'paired_t_stat')}
-      <!-- Recorded finding, kept off screen: Top-down's advantage over Direct is not statistically significant (paired t = {fmt_num(sig['paired_t_stat'], 3)}, |t| < 2, mean difference {fmt_num(sig['mean_diff_b_minus_a'], 2)}); Top-down was chosen as the most structurally direct approach, not because it was proven more accurate. -->
-      <p>Top-down ทายพลาดน้อยกว่าวิธี Direct เล็กน้อย แต่ต่างกันไม่มากพอจะยืนยันทางสถิติ ที่เลือกใช้เพราะทำได้ทั้งระบบและผลนิ่งกว่า</p>
+      {cite('topdown_significance.csv', 'verdict / rel_diff_pct')}
+      {significance_html}
     </section>"""
 
     # ---- Section 7: Limitations ----
     limitations_html = "".join(f"<li>{html.escape(x.format(**report_values))}</li>" for x in report["limitations"])
-    # Kept off screen: what the recorded paired tests support. The significance sentence names Direct only. A Top-down
-    # against Naive test exists per division; its |t| is above the threshold in some divisions, so "no significance in every
-    # pair" would not hold for Naive and the sentence does not claim it.
-    naive = results["naive_pairs"]
-    sig_pairs = results["sig_pairs"]
-    t_limit = report_values["paired_t_threshold"]
-    above = naive[naive["t_stat"].abs() >= t_limit]
-    naive_comment = (
-        "<!-- Significance sentence below: b3_paired_significance.csv "
-        f"({len(sig_pairs)} pairs, largest |t| {sig_pairs['paired_t_stat'].abs().max():.2f}, threshold {t_limit}). Top-down against Naive: phaseC_step2_transferability_significance.csv, "
-        f"{len(naive)} divisions, |t| from {naive['t_stat'].abs().min():.2f} to {naive['t_stat'].abs().max():.2f}; "
-        f"{len(above)} division(s) at or above {t_limit} ({', '.join(above['division'])}). Naive is therefore not named in the sentence. -->"
-    )
     sec7 = f"""
     <section id="limitations">
       <h2>7. ข้อจำกัด (Limitations)</h2>
-      {naive_comment}
       <ul>{limitations_html}</ul>
     </section>"""
 

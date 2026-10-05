@@ -99,12 +99,18 @@ def page(edge, tmp_path_factory):
         out["sop"] = edge.ev("document.getElementById('origTab').innerText")
         out["sop_badges"] = edge.ev("(function(){var r={};document.querySelectorAll('#itemTable .badge').forEach(function(b){r[b.textContent]=(r[b.textContent]||0)+1});return r})()")
         out["sop_labels"] = edge.ev("[...document.querySelectorAll('#origTab td.rowlabel')].map(c=>c.textContent.trim())")
+        out["sop_legend"] = edge.ev("[...document.querySelectorAll('#origTab .legend-row > span')].map(e => e.textContent.trim()).join(' | ')")
         out["sop_first"] = edge.ev("[...document.getElementById('origTab').querySelector('.wrap').children].find(e => e.tagName !== 'STYLE').className")
         edge.ev("omniShowTab(2); 1")
         assert _wait(edge, "document.getElementById('trendDataNote').style.display === 'block'"), "the Trend note did not appear"
         out["trend"] = edge.ev("document.getElementById('omniTab').innerText")
         out["trend_first"] = edge.ev("[...document.getElementById('omniTab').children].find(e => e.tagName !== 'STYLE').id")
         out["trend_spans"] = edge.ev("['trendLastDate','trendCodeCount','currentCodeCount'].map(i=>document.getElementById(i).textContent)")
+        out["trend_head"] = edge.ev("document.querySelector('#omniTab h2').innerText")
+        out["trend_head_count"] = edge.ev("document.getElementById('trendHeadCount').textContent")
+        out["n31_spans"] = edge.ev("[...document.querySelectorAll('.omni-n31')].map(e => e.textContent)")
+        out["adi_title"] = edge.ev("document.querySelector('#skuTbl th[data-k=adi]').title")
+        out["nosale_label"] = edge.ev("[...document.querySelectorAll('#fCls option')].map(o => o.textContent)")
         edge.ev("omniShowTab(3); 1")
         assert _wait(edge, "document.getElementById('manualTabContent').innerText.indexOf('กำลังโหลด') < 0"), "the manual did not load"
         out["manual"] = edge.ev("document.getElementById('manualTab').innerText")
@@ -137,7 +143,7 @@ def test_sop_badges_use_the_approved_labels(page):
 
 def test_sop_row_labels_and_section5_heading(page):
     labels = page["sop_labels"]
-    assert "Employees (สมมติ)" in labels and "Inventory Actual (สมมติ)" in labels and "Customer Service % (สมมติ)" in labels
+    assert "Employees (สมมติ)" in labels and "Inventory Actual (ล้านบาท, สมมติ)" in labels and "Customer Service % (สมมติ)" in labels
     assert "ที่มาตามไฟล์ต้นฉบับ (ตรวจสอบย้อนหลังไม่ได้)" in page["sop"]
     assert "แหล่งข้อมูลจริง" not in page["sop"]
 
@@ -200,6 +206,52 @@ def test_trend_note_stays_hidden_when_the_current_count_cannot_be_read(edge, tmp
         server.shutdown()
 
 
+# ------------------------------------------------------------------ W3b: S&OP texts, computed numbers, stock status names
+def test_w3b_sop_texts_are_in_place(page):
+    sop = page["sop"]
+    assert "แถบสีฟ้า = ช่วงที่ผ่านมา (ม.ค.-ก.ค.) · แถบสีส้ม = แผน (ส.ค.-ธ.ค.) · จัดแผนแบบ Chase Strategy คือผลิตให้ตรงกับความต้องการแต่ละเดือน" in sop
+    assert "ตามไฟล์ต้นฉบับ (ตรวจสอบย้อนหลังไม่ได้)" in sop and "จับคู่รหัสสินค้าตามไฟล์ต้นฉบับ" in sop
+    assert "ช่วงที่ผ่านมา" in page["sop_legend"]
+    for gone in ("Figure 3.5", "History (ข้อมูลจริง)", "Cube Sale APD2026 (status", "จับคู่กับ itemcode", "ข้อมูลจริง ม.ค.–ก.ค."):
+        assert gone not in sop, gone
+
+
+def test_w3b_trend_numbers_are_computed_from_the_tab_data(page):
+    text = open(INDEX, encoding="utf-8").read()
+    omni = json.loads(_embedded_lines(text)["OMNI"][len("const OMNI = "):].rstrip(";"))
+    assert page["trend_head_count"] == str(len(omni["items"]))
+    assert "(" + str(len(omni["items"])) + " รหัส)" in page["trend_head"] and "01.06.69" not in page["trend_head"]
+    assert page["n31_spans"] and set(page["n31_spans"]) == {str(omni["n31"])}
+    assert "{n31}" not in page["adi_title"] and f"({omni['n31']} ÷" in page["adi_title"]
+    for typed in ("448 รหัส)", "ฐาน 31 เดือน"):
+        assert typed not in text, f"{typed!r} is typed in index.html again"
+
+
+def test_w3b_trend_numbers_follow_a_changed_source(edge, tmp_path_factory):
+    text = open(INDEX, encoding="utf-8", newline="").read()
+    changed = text.replace('"n31":31', '"n31":29', 1)
+    assert changed != text
+    site = _site(tmp_path_factory, "w3b_perturbed", index_text=changed)
+    server, url = _serve(site)
+    try:
+        edge.open(url)
+        edge.ev("omniShowTab(2); 1")
+        assert _wait(edge, "document.getElementById('trendHeadCount').textContent !== ''")
+        spans = edge.ev("[...document.querySelectorAll('.omni-n31')].map(e => e.textContent)")
+        title = edge.ev("document.querySelector('#skuTbl th[data-k=adi]').title")
+    finally:
+        server.shutdown()
+    assert set(spans) == {"29"} and "(29 ÷" in title
+
+
+def test_w3b_stock_status_names_are_reader_words(page):
+    stock = page["stock"]
+    for shown in ("มีของ", "ของเป็นศูนย์", "ไม่มีในระบบ stock"):
+        assert shown in stock, shown
+    for gone in ("has_stock", "zero_stock", "no_db_record"):
+        assert gone not in stock, gone
+
+
 # ------------------------------------------------------------------ Part 5: manual
 def test_manual_states_the_gap_without_a_typed_percentage(page):
     assert "ตัวเลขบนหน้านี้ต่างเล็กน้อย ดูตัวเลขบนหน้า Min-Max" in page["manual"]
@@ -215,20 +267,15 @@ def test_trend_embedded_data_is_untouched():
     assert got == EMBEDDED_DATA_SHA256
 
 
-# ------------------------------------------------------------------ Part 4: sales report significance sentence
-def test_significance_sentence_names_only_comparisons_the_recorded_tests_support():
-    """The limitation sentence may name Naive only if every recorded Top-down against Naive pair is below the threshold."""
+# ------------------------------------------------------------------ sales report: no stale significance claim
+def test_limitations_hold_no_significance_claim_the_block_replaced():
+    """The significance sentence (and its Naive claim) is replaced by the computed block in section 6; the limitations list must
+    not carry a typed significance statement again (tests/test_significance_topdown.py tests the block)."""
     import yaml
     with open(os.path.join(PROJECT_ROOT, "config", "config.yaml"), encoding="utf-8") as f:
         cfg = yaml.safe_load(f)
-    sentence = next(x for x in cfg["report"]["limitations"] if "ไม่มีนัยสำคัญทางสถิติ" in x)
-    naive = pd.read_csv(os.path.join(PROJECT_ROOT, "output", "summary", "phaseC_step2_transferability_significance.csv"))
-    naive = naive[(naive["approach_a"] == "Top-down") & (naive["approach_b"] == "Naive")]
-    if "Naive" in sentence:
-        assert (naive["t_stat"].abs() < cfg["report_statistics"]["paired_t_threshold"]).all()
-    else:
-        assert "Direct" in sentence
+    assert not [x for x in cfg["report"]["limitations"] if "นัยสำคัญ" in x or "Naive" in x]
     with open(os.path.join(PROJECT_ROOT, "forecast", "sales_report.html"), encoding="utf-8") as f:
         html_text = f.read()
-    li = re.search(r"<li>ความได้เปรียบของ[^<]*</li>", html_text).group(0)
-    assert ("Naive" in li) == ("Naive" in sentence)
+    limitations = re.search(r'<section id="limitations">.*?</section>', html_text, re.S).group(0)
+    assert "นัยสำคัญ" not in limitations and "Naive" not in limitations
