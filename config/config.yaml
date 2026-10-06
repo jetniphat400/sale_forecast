@@ -1376,6 +1376,17 @@ daily_stock:
   success_statuses: [published, nothing_to_publish]
   skip_status: skipped_success_exists_today
 
+# ============================================================
+# Publishing clone (decision D1, option A, by the user 2026-10-06). The daily stock job and the monthly runner publish only from this separate
+# clone of origin, so work in progress in the main working copy can no longer stop them. The clone's `output/` and `reference/` are junctions to the
+# main copy's folders, so saved pulls, snapshots, run logs and the lock file stay in one shared place and no history is moved. Both jobs refuse to
+# publish unless they run from `clone_root` and `<clone_root>/output` resolves to `shared_output_root`. A copy of the project without this block (a test
+# fixture) is not checked.
+# ============================================================
+publishing:
+  clone_root: D:/sale_forecast_publish
+  shared_output_root: D:/sale_forecast/output
+
 # ---- Fulfilment class decisions made by the user, applied on top of METRICS.md Sec.23 (the rule itself is unchanged) ----
 fulfilment_class_decisions:
   # E1, decided by the user 2026-10-05. Source: output/summary/phaseA_pem107_g3_verification.md, 'Recommended subset' (the 41 codes that passed every
@@ -1502,6 +1513,8 @@ material_plan:
   # Recorded outputs (untracked); their hashes go in the operation plan's integrity file under "material_plan".
   output_material_month_file: "output/summary/material_plan_v1_material_month.csv"
   output_material_summary_file: "output/summary/material_plan_v1_material_summary.csv"
+  # The material plan page's first list: materials whose latest order date falls from the day of the plan to that day plus this many days (decided by the user, 2026-10-06).
+  order_window_days: 30
   # Items shown in the "used in" column (the finished goods that need most of the material).
   used_in_max_items: 3
 

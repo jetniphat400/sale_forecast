@@ -464,20 +464,29 @@ def test_the_page_text_is_the_approved_text_and_every_braced_value_comes_from_th
     assert f"จากแผนการผลิตรอบ {bp.thai_month(meta['operation_plan_today'][:7])} · stock วัตถุดิบดึงเมื่อ {bp.thai_datetime(meta['rm_pulled_at_local'])}" in page
     assert "จากแผนการผลิตรอบ ต.ค. 69 · stock วัตถุดิบดึงเมื่อ 6 ต.ค. 69 07:30" in page
     assert "stock วัตถุดิบนับจากคลัง WH21, WH22" in page and "นับของที่สั่งแล้วรอรับตามวันที่คาดว่าจะได้" in page and "ยังไม่นับของที่สั่งแล้วรอรับ" not in page
-    assert '<h2 id="order-now-title">ต้องสั่งทันที</h2>' in page
-    assert "วัตถุดิบที่วันต้องสั่งผ่านไปแล้ว ถ้าสั่งวันนี้จะได้ของช้ากว่าที่แผนต้องการ" in page
+    n = int(mp.load_config(project)["order_window_days"])
+    assert n == 30 and v["n_days"] == n
+    assert f'<h2 id="within-title">ต้องสั่งภายใน {n} วัน</h2>' in page and f"วัตถุดิบที่ต้องสั่งภายใน {n} วันข้างหน้า ถึงจะได้ของทันตามแผน" in page
+    assert '<h2 id="late-title">ขาดแล้ว สั่งตอนนี้ไม่ทัน</h2>' in page
+    assert "วัตถุดิบที่แผนต้องใช้ก่อนที่ของจะมาถึงแม้สั่งวันนี้ ควรตรวจของที่มีอยู่จริง หรือเร่งของที่สั่งไว้แล้ว" in page
+    assert "ต้องสั่งทันที" not in page and page.index('id="within-title"') < page.index('id="late-title"') < page.index('id="material-table"')
 
 
-def test_the_order_now_table_lists_exactly_the_materials_to_order_now_with_the_approved_columns_and_source_labels(project):
+def test_the_two_order_lists_split_by_the_latest_order_date_with_the_approved_columns_and_source_labels(project):
     page, v = _page(project)
-    block = page.split('id="order-now-table"')[1].split("</table>")[0]
-    heads = re.findall(r"<th(?:\s[^>]*)?>(.*?)</th>", block)
-    assert heads == ["รหัสวัตถุดิบ", "ชื่อ", "ใช้ในสินค้า (รหัส)", "ต้องสั่งเพิ่ม", "ต้องสั่งภายใน", "lead time (วัน)", "ที่มา lead time"]
+    heads_expected = ["รหัสวัตถุดิบ", "ชื่อ", "ใช้ในสินค้า (รหัส)", "ต้องสั่งเพิ่ม", "ต้องสั่งภายใน", "lead time (วัน)", "ที่มา lead time"]
+    for table in ("within-table", "late-table"):
+        assert re.findall(r"<th(?:\s[^>]*)?>(.*?)</th>", page.split('id="%s"' % table)[1].split("</table>")[0]) == heads_expected
+    _, sm, meta = mp.read_outputs(project)
+    today = pd.Timestamp(meta["today"])
+    dates = pd.to_datetime(sm.set_index("material")["latest_order_date"])
+    block = page.split('id="late-table"')[1].split("</table>")[0]
     rows = re.findall(r'<tr data-material="([^"]+)">(.*?)</tr>', block)
-    _, sm, _ = mp.read_outputs(project)
-    assert sorted(m for m, _ in rows) == sorted(sm[sm["to_order_now"].astype(bool)]["material"])
-    cells = re.findall(r"<td[^>]*>(.*?)</td>", dict(rows)["RM-A"])
-    assert cells[0] == "RM-A" and cells[1] == "Alpha part" and cells[2] == "FG1, FG2" and cells[3] == "35" and cells[4] == "11 ก.ย. 69" and cells[5] == "20" and cells[6] == "ใบสั่งซื้อจริง"
+    assert sorted(m for m, _ in rows) == sorted(dates[dates < today].index)
+    within = re.findall(r'<tr data-material="([^"]+)">', page.split('id="within-table"')[1].split("</table>")[0])
+    assert sorted(within) == sorted(dates[(dates >= today) & (dates <= today + pd.Timedelta(days=30))].index)
+    cells = re.findall(r"<td[^>]*>(.*?)</td>", dict(rows)["RM-A"])          # the fixture holds no purchase unit for RM-A: its own flag, dashes for quantity and date, the rest as before
+    assert cells[0] == 'RM-A<span class="flag unit">ไม่มีหน่วยซื้อในระบบ</span>' and cells[1] == "Alpha part" and cells[2] == "FG1, FG2" and cells[3] == "-" and cells[4] == "-" and cells[5] == "20" and cells[6] == "ใบสั่งซื้อจริง"
 
 
 def test_the_main_table_has_stock_open_orders_and_the_demand_and_net_columns_per_month(project):
@@ -497,7 +506,7 @@ def test_the_note_without_open_orders_is_the_other_approved_sentence(project):
     cfg = copy.deepcopy(mp.load_config(root))
     cfg["open_orders_usable"] = False
     result = mp.build(root, TODAY, cfg=cfg)
-    vals = bm.compute_values(result["material_month"], result["summary"], result["meta"])
+    vals = bm.compute_values(result["material_month"], result["summary"], result["meta"], 30)
     page = bm.render(vals)
     assert "ยังไม่นับของที่สั่งแล้วรอรับ เพราะข้อมูลวันรับของยังใช้ไม่ได้ ตัวเลขต้องสั่งเพิ่มจึงอาจสูงกว่าจริง" in page and "นับของที่สั่งแล้วรอรับตามวันที่คาดว่าจะได้" not in page
     assert "stock วัตถุดิบนับจากคลัง" in page
@@ -505,10 +514,11 @@ def test_the_note_without_open_orders_is_the_other_approved_sentence(project):
     assert s.loc["RM-C", "open_orders_total"] == 0.0 and s.loc["RM-C", "total_net"] == 400.0         # without the open order the whole requirement is short
 
 
-def test_the_order_now_list_is_sorted_by_the_order_date_and_a_missing_name_shows_a_dash(project):
+def test_the_order_lists_are_sorted_by_the_order_date_and_a_missing_name_shows_a_dash(project):
     page, v = _page(project)
-    assert list(v["now"]["latest_order_date"]) == sorted(v["now"]["latest_order_date"])
-    block = page.split('id="order-now-table"')[1].split("</table>")[0]
+    for k in ("late", "within"):
+        assert list(v[k]["latest_order_date"]) == sorted(v[k]["latest_order_date"])
+    block = page.split('id="late-table"')[1].split("</table>")[0]
     cells = re.findall(r"<td[^>]*>(.*?)</td>", dict(re.findall(r'<tr data-material="([^"]+)">(.*?)</tr>', block))["RM-C"])
     assert cells[1] == "-"
 
@@ -590,9 +600,9 @@ def test_a_material_whose_purchase_unit_differs_from_its_bom_unit_shows_the_flag
     page, v = _page(root)
     s = mp.read_outputs(root)[1].set_index("material")
     assert s.loc["RM-A", "unit_vs_purchase"] == "differs" and s.loc["RM-C", "unit_vs_purchase"] != "differs"
-    assert v["n_unit_flag"] == 1 and v["n_now_flagged"] == 1
+    assert v["n_unit_flag"] == 1 and v["n_late_flagged"] + v["n_within_flagged"] == 1
     flag = '<span class="flag unit">หน่วยซื้อไม่ตรงกับหน่วยใน BOM</span>'
-    now = dict(re.findall(r'<tr data-material="([^"]+)">(.*?)</tr>', page.split('id="order-now-table"')[1].split("</table>")[0]))
+    now = dict(re.findall(r'<tr data-material="([^"]+)">(.*?)</tr>', page.split('id="late-table"')[1].split("</table>")[0]))
     cells = re.findall(r"<td[^>]*>(.*?)</td>", now["RM-A"])
     assert cells[0] == "RM-A" + flag and cells[3] == "-" and cells[4] == "-" and cells[5] == "20"      # no order quantity and no order date; the lead time stays
     main = dict(re.findall(r'<tr data-material="([^"]+)">(.*?)</tr>', page.split('id="material-table"')[1].split("</table>")[0]))
@@ -601,6 +611,43 @@ def test_a_material_whose_purchase_unit_differs_from_its_bom_unit_shows_the_flag
     other = re.findall(r"<td[^>]*>(.*?)</td>", main["RM-C"])
     assert other[0] == "RM-C" and "-" not in other[5:9:2] or other[5] != "-"
     assert page.count(flag) == 2
+
+
+def _list_frames(today, dates, purchase_units):
+    months = ["2026-10", "2026-11"]
+    mm = pd.DataFrame([{"material": m, "month": mo, "gross": 10.0, "net_month": 10.0, "order_date": d} for (m, d) in dates.items() for mo in months])
+    sm = pd.DataFrame([{"material": m, "name": m, "used_in": "FG1", "n_products": 1, "purchase_unit": purchase_units.get(m, "PC"), "unit_vs_purchase": "same", "stock_now": 0.0, "open_orders_total": 0.0, "stock_unit": "PC", "bom_unit": "PC", "lead_days": 10.0,
+                        "lead_source": "observed", "total_net": 20.0, "first_short_month": months[0], "latest_order_date": d} for m, d in dates.items()])
+    meta = {"months": months, "today": today, "operation_plan_today": today, "rm_pulled_at_local": today + " 07:00:00", "rm_warehouses": ["W1"], "open_orders_used": True, "divisions": ["PEM101"]}
+    return mm, sm, meta
+
+
+def test_the_two_lists_hold_the_boundary_dates_the_day_before_today_goes_to_the_late_list_and_today_plus_n_days_stays_in_the_window():
+    dates = {"M-MINUS1": "2026-10-05", "M-TODAY": "2026-10-06", "M-END": "2026-11-05", "M-AFTER": "2026-11-06"}       # today 2026-10-06, window 30 days: ends 2026-11-05
+    v = bm.compute_values(*_list_frames("2026-10-06", dates, {}), 30)
+    assert list(v["late"]["material"]) == ["M-MINUS1"]
+    assert list(v["within"]["material"]) == ["M-TODAY", "M-END"]
+    assert "M-AFTER" not in set(v["late"]["material"]) | set(v["within"]["material"]) and "M-AFTER" in set(v["main"]["material"])
+    v7 = bm.compute_values(*_list_frames("2026-10-06", dates, {}), 31)
+    assert list(v7["within"]["material"]) == ["M-TODAY", "M-END", "M-AFTER"]
+
+
+def test_a_material_with_no_purchase_unit_shows_its_flag_and_dashes_and_is_counted_in_its_list():
+    dates = {"M-NOUNIT": "2026-10-10", "M-OK": "2026-10-11", "M-LATE-NOUNIT": "2026-09-30"}
+    v = bm.compute_values(*_list_frames("2026-10-06", dates, {"M-NOUNIT": "", "M-LATE-NOUNIT": " "}), 30)
+    assert v["n_no_unit"] == 2 and v["n_within_flagged"] == 1 and v["n_late_flagged"] == 1 and v["n_unit_flag"] == 0
+    page = bm.render(v)
+    flag = '<span class="flag unit">ไม่มีหน่วยซื้อในระบบ</span>'
+    for table, material in (("within-table", "M-NOUNIT"), ("late-table", "M-LATE-NOUNIT")):
+        rows = dict(re.findall(r'<tr data-material="([^"]+)">(.*?)</tr>', page.split('id="%s"' % table)[1].split("</table>")[0]))
+        c = re.findall(r"<td[^>]*>(.*?)</td>", rows[material])
+        assert c[0] == material + flag and c[3] == "-" and c[4] == "-" and c[5] == "10"
+    ok = re.findall(r"<td[^>]*>(.*?)</td>", dict(re.findall(r'<tr data-material="([^"]+)">(.*?)</tr>', page.split('id="within-table"')[1].split("</table>")[0]))["M-OK"])
+    assert ok[0] == "M-OK" and ok[3] == "20" and ok[4] == "11 ต.ค. 69"
+    main = dict(re.findall(r'<tr data-material="([^"]+)">(.*?)</tr>', page.split('id="material-table"')[1].split("</table>")[0]))
+    m = re.findall(r"<td[^>]*>(.*?)</td>", main["M-NOUNIT"])
+    assert m[0] == "M-NOUNIT" + flag and m[5::2] == ["-", "-"]
+    assert page.count(flag) == 4        # each flagged material appears in its list and in the main table
 
 
 # ====================================================================================================== the runner pulls the plan's inputs (week 4)

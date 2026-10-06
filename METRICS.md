@@ -520,8 +520,8 @@ always stated.
   of section 15. Mark section 15 accordingly; keep its text.
 
 - **S2 defined (2026-10-06, week 4; this is how `compute_s2_s3` computes it, written down so that it can be reproduced; the rule and its results are unchanged).**
-  - *Rows.* The delivered rows of an item are every Cube_CES row with Status 'Actual' and the item's ItemCode (matched exactly as stored: 19 rows of two items carry a
-    trailing space in the code and are not counted; measured 2026-10-06, no class effect found, kept for decision): all channels, all dates, and one row per plan line
+  - *Rows.* The delivered rows of an item are every Cube_CES row with Status 'Actual' and the item's ItemCode (trimmed of leading and trailing spaces before matching, decision D3 of 2026-10-06: 19 rows of two items carry a
+    trailing space in the code; the job code below is NOT trimmed): all channels, all dates, and one row per plan line
     (a contract delivered in two plan lines gives two rows). The number of delivered rows is `n_delivered_contracts` in the item-level file (the column keeps its
     old name).
   - *Link to a batch.* A row is linked to a batch when its OLMJobCode is not blank (not null, not empty after trimming, not the text 'none' in any case) and is
@@ -699,6 +699,13 @@ Every dashboard page and panel displays, near its title:
       9 scan staged files for sensitive content
       10 check change magnitude against the previous run
       11 commit and push only if steps 8 to 10 all pass
+
+    where the jobs run (decision D1, option A, 2026-10-06): the scheduled daily stock job (SaleForecast_PostingDelaySnapshot, 08:00 and 12:00) and this runner
+      (SaleForecastMonthlyRefresh) run only from a separate clone of origin, `D:\sale_forecast_publish`, never from the working copy `D:\sale_forecast`. Each task first
+      runs `git pull --ff-only origin main` in the clone and starts the job only if that succeeded. The clone's `output/` and `reference/` are junctions to the working copy's
+      folders and its `.env` is a hard link to the working copy's, so saved pulls, snapshots, run logs and the lock file stay in one place (config `publishing`:
+      `clone_root`, `shared_output_root`); both jobs refuse to publish from anywhere else. Commits and pushes are made only from the clone (the daily job: its two data
+      files; this runner: the files of GENERATED_PATHS); work in progress in the working copy cannot stop them, and the working copy takes the published commits with `git pull`.
 
     frozen, never touched by the monthly run:
       existing forward-test vintages; the Phase J3 calibration outputs and
@@ -1170,6 +1177,10 @@ pipeline — no new section is needed for this; it is already covered by section
                receipt since config `purchase_evidence_since`) is an in-house sub-assembly and is expanded; every other component is a purchased material (a component
                with a purchase record is purchased even when it has a BOM entry, one with neither is a purchased material of unknown supply); the header row and the
                time pseudo-codes (BOM lines whose Type contains 'hour': Machine Hour and Labor hour) are not components; a BOM that does not end within `max_bom_levels` stops the build
+    in-house stock (decision D2, 2026-10-06): parents before children; the requirement that all of a sub-assembly's parents put on it, per month, is netted against its on-hand
+               stock in the raw-material warehouses (the net-requirement rule below with no arrivals: stock covers the earliest months first) before it is expanded to its own
+               components, so only the net amount goes further; a finished item's own plan quantity is not netted (the operation plan starts from its stock), but the part of its requirement that comes from parent items is (11 plan items are also components of another plan item; the Validator found the recorded plan equal to this reading and 133 materials differing under the other); item codes are
+               trimmed of leading and trailing spaces before matching (decision D3)
     gross[material, month]      = the exploded quantity (BOM quantity per unit of the parent, in the BOM's unit)
     available[material, month]  = stock in the raw-material warehouses (config `rm_warehouses`, a negative total counts as zero)
                                   + the open orders of Cube_tobe_received whose expected date has arrived by the end of the month (a date before the first month counts in
@@ -1177,8 +1188,14 @@ pipeline — no new section is needed for this; it is already covered by section
     net requirement (cumulative) = the running maximum of max(0, cumulative gross - available); the month's net requirement is its increase
     latest order date            = the first day of a month with a net requirement minus the material's lead time in days (a lead time with a half day gives a date at
                                    noon; the order date is that calendar day, so the day itself still counts as a day to order); the material's date is the first of them
-    to order now                 = the material's date has passed on the day of the build; the quantity to order now is the sum of the net requirements of the months whose
-                                   date has passed
+    two lists (page, decision of 2026-10-06; `order_window_days` in config `material_plan`, 30)
+                                 = by the material's latest order date against the day of the build: from that day to that day plus `order_window_days`, both days included
+                                   (order within the window), and before that day (short already, too late to order today). The quantity shown is the sum of the net
+                                   requirements of the months whose order date is within the window or has passed. A material with no purchase unit in the system (blank in the
+                                   price list and the open orders), or whose purchase unit differs from its BOM unit, is flagged and shows a dash for quantity and date.
+    to order now                 = the material's date is the day of the build or has passed (summary column `to_order_now`: 598 on 2026-10-06; the second list takes
+                                   only the dates before that day, 596, and the first list starts on that day); the quantity to order now is the sum of the net
+                                   requirements of the months whose date has arrived or passed
     lead time per material       = the order of sources of Sec.5 (median observed days from purchase order to first receipt, the supplier's non-zero quoted days, the assumed
                                    fallback), labelled ใบสั่งซื้อจริง, ผู้ขายแจ้ง or ค่าประมาณ on the page
 
@@ -1198,9 +1215,9 @@ pipeline — no new section is needed for this; it is already covered by section
   cumulative net, net, order date) and `material_plan_v1_material_summary.csv` (per material: name from the item master Cube_ItemList, the finished goods that use it most,
   units and their check, stock, open orders, lead time and its source, totals, first short month, latest order date, to order now, quantity to order now), each with a
   SHA-256 in `operation_plan_v1_integrity.json` under "material_plan", verified before they are read back. Inputs: the saved week 3 pulls
-  (`output/data/week3_inputs/material_inputs.pkl`, untracked).
+  (`output/data/material_pull/material_inputs.pkl`, untracked, pulled by the monthly runner's step 1).
 - Computed by `src/material_plan.py`; the monthly runner's step 7c recomputes it from the operation plan step 7b just recorded and builds `forecast/material_plan.html`
   (`src/build_material_plan_page.py`).
-- Assumptions (each also in the meta of the integrity file): no minimum order quantity or lot size; stock of in-house sub-assemblies is not netted, so the gross requirement is an
-  upper bound where sub-assemblies are stocked; overdue open orders count in the first month although some arrive later; the stock in the inspection warehouse (QA) is not
+- Assumptions (each also in the meta of the integrity file): no minimum order quantity or lot size; stock of in-house sub-assemblies is netted (decision D2; before it the gross
+  requirement was an upper bound where sub-assemblies are stocked); overdue open orders count in the first month although some arrive later; the stock in the inspection warehouse (QA) is not
   available; the lead time starts at the purchase-order date.

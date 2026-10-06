@@ -174,6 +174,12 @@ def main():
     from db import session
     config = load_config()
     root_config = djob.load_config()
+    try:
+        djob.check_publishing_setup(PROJECT_ROOT, root_config)        # before any database session: a run from the wrong folder does nothing
+    except djob.DailyStop as exc:
+        logger.error("Daily stock job stopped (%s): %s", exc.step, exc)
+        djob.record_failure(PROJECT_ROOT, root_config, exc.step, exc)
+        raise SystemExit(1)
     # The task runs twice a day (08:00 and a 12:00 retry). A run that finds a successful daily run of today exits before it connects.
     existing = None if "--force" in sys.argv[1:] else djob.successful_run_today(PROJECT_ROOT, root_config)
     if existing:

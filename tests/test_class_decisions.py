@@ -151,6 +151,7 @@ def s2_by_loops(ces, cf, items, threshold=0.5):
             first[jobno] = ts
     count = {i: [0, 0, 0] for i in items}
     for item, status, code, ctr in zip(ces["ItemCode"], ces["Status"], ces["OLMJobCode"], ces["CtrDate"]):
+        item = str(item).strip()                                   # item codes are trimmed before matching (decision D3, 2026-10-06); the job code is not
         if status != "Actual" or item not in count:
             continue
         count[item][0] += 1
@@ -193,7 +194,8 @@ def _s2_fixture():
         ("B", "d1", "Actual", "2026-03-10", 1, "J9"),            # no cube_final row: no link at all, S2 not computable
         ("B", "d2", "Actual", "2026-03-10", 1, None),
         ("C", "e1", "Actual", "2026-03-10", 1, "J1"), ("C", "e2", "Actual", "2026-03-10", 1, "J1"), ("C", "e3", "Actual", "2026-03-10", 1, None), ("C", "e4", "Actual", "2026-03-10", 1, None),   # exactly half
-        ("D", "f1", "Backlog", "2026-03-10", 1, "J1")]           # nothing delivered
+        ("D", "f1", "Backlog", "2026-03-10", 1, "J1"),           # nothing delivered
+        ("C ", "e5", "Actual", "2026-03-10", 1, "J1")]           # a trailing space in the item code is trimmed: this row counts for item C
     ces = pd.DataFrame(rows, columns=["ItemCode", "ContractID", "Status", "CtrDate", "PlanID", "OLMJobCode"])
     ces["ActualDelDate"] = "2026-06-01"      # read by the module's S3 part, not by S2
     cf = pd.DataFrame({"jobno": ["J1", "J1", "J2", "J3"], "itemcode": ["X", "Y", "X", "X"],
@@ -210,7 +212,7 @@ def test_s2_two_computations_agree_on_a_fixture_that_holds_every_case_of_the_def
     # (c2's batch is later than its order, c3's batch was finished on the order day after midnight); 2 of 9 delivered rows is below one half
     assert by_loops["A"] == (9, 4, 2, True, False)
     assert by_loops["B"] == (2, 0, 0, False, None) and by_loops["D"] == (0, 0, 0, False, None)
-    assert by_loops["C"] == (4, 2, 2, True, True)                             # exactly half of all delivered rows is enough
+    assert by_loops["C"] == (5, 3, 3, True, True)                             # the padded-code row counts for C; 3 of 5 delivered rows are served
 
 
 def test_s2_two_computations_agree_on_every_item_of_the_saved_class_evidence():

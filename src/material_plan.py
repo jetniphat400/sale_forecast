@@ -88,37 +88,75 @@ def is_in_house(code: str, has_bom: set, purchased: set) -> bool:
     return code in has_bom and code not in purchased
 
 
-def explode(demand: dict, lines: pd.DataFrame, has_bom: set, purchased: set, n_months: int, max_levels: int = 25) -> dict:
-    """Level by level: `demand` maps a finished item to its monthly production vector. Returns {"gross": {material: vector}, "roots": {material:
-    {finished item: units of that item that need it, summed over months}}, "levels": n, "in_house_expanded": set, "no_bom": set of items without
-    a BOM line}. A BOM that does not end within `max_levels` stops the build."""
+def explode(demand: dict, lines: pd.DataFrame, has_bom: set, purchased: set, n_months: int, max_levels: int = 25, stock: dict = None) -> dict:
+    """Through the bill of materials, parents before children: `demand` maps a finished item to its monthly production vector. An in-house sub-assembly is expanded to its
+    own components after the requirement that its parents put on it has been netted against its on-hand stock (`stock`, per item; the same net-requirement rule as a
+    purchased material, with no arrivals: a cumulative shortfall, so stock covers the earliest months first); the finished items' own plan quantities are not netted
+    (the operation plan already starts from their stock). Without `stock` nothing is netted. A node is processed once all the demand on it has been added (so a
+    sub-assembly used at several levels is netted once). Returns {"gross": {material: vector}, "roots": {material: {finished item: units of the material that item
+    needs, after netting}}, "levels": the longest chain, "in_house_expanded": set, "no_bom": set of items without a BOM line}. A BOM with a loop, or a chain longer than
+    `max_levels`, stops the build."""
     children = {p: list(zip(g["comp"], g["qty"])) for p, g in lines.groupby("parent")}
-    frontier = {k: (np.asarray(v, dtype=float).copy(), {k: float(np.sum(v))}) for k, v in demand.items() if float(np.sum(v)) > 0}
+    inhouse = lambda c: is_in_house(c, has_bom, purchased)
+    stock = stock or {}
+    roots_demand = {k: np.asarray(v, dtype=float) for k, v in demand.items() if float(np.sum(v)) > 0}
+    reach, stack = set(roots_demand), list(roots_demand)
+    while stack:
+        n = stack.pop()
+        for c, _ in children.get(n, []):
+            if inhouse(c) and c not in reach:
+                reach.add(c)
+                stack.append(c)
+    indeg = {n: 0 for n in reach}
+    for n in reach:
+        for c, _ in children.get(n, []):
+            if c in indeg:
+                indeg[c] += 1
+    need = {n: np.zeros(n_months) for n in reach}                       # the requirement parents put on a node
+    shares = {n: {} for n in reach}                                      # per finished item: units of the node its parents need for it
+    for k, v in roots_demand.items():
+        shares[k][k] = float(v.sum())
+    depth = {n: 1 for n in reach}
     gross, roots, expanded, no_bom = {}, {}, set(), set()
-    level = 0
-    while frontier:
-        level += 1
-        if level > max_levels:
-            raise MaterialPlanError(f"the bill of materials does not end within {max_levels} levels (a loop through {sorted(frontier)[:5]}?)")
-        nxt = {}
-        for node, (vec, rts) in frontier.items():
-            kids = children.get(node)
-            if not kids:
-                no_bom.add(node)
-                continue
-            for comp, q in kids:
-                cvec, crts = vec * q, {r: u * q for r, u in rts.items()}
-                if is_in_house(comp, has_bom, purchased):
-                    expanded.add(comp)
-                    tgt = nxt.setdefault(comp, (np.zeros(n_months), {}))
-                else:
-                    tgt = (gross.setdefault(comp, np.zeros(n_months)), roots.setdefault(comp, {}))
-                tgt[0][:] += cvec
-                for r, u in crts.items():
-                    tgt[1][r] = tgt[1].get(r, 0.0) + u
-        frontier = nxt
-    # a purchased material that is itself a finished item with no BOM line is reported through no_bom (the item is a requirement of its own)
-    return {"gross": gross, "roots": roots, "levels": level, "in_house_expanded": expanded, "no_bom": no_bom}
+    ready, done, longest = [n for n in reach if indeg[n] == 0], 0, (1 if roots_demand else 0)
+    while ready:
+        n = ready.pop()
+        done += 1
+        parent_need, share = need[n], dict(shares[n])
+        if n in stock and float(parent_need.sum()) > 0:                  # net the parents' requirement against the node's stock
+            net = net_requirement(parent_need, float(stock[n]), np.zeros(n_months))[2]
+            factor = float(net.sum()) / float(parent_need.sum())
+            vec, share = net, {r: u * factor if r not in roots_demand or r != n else u for r, u in share.items()}
+        else:
+            vec = parent_need
+        vec = vec + roots_demand.get(n, 0.0)
+        kids = children.get(n)
+        if not kids:
+            no_bom.add(n)
+            continue
+        expanded.add(n)
+        longest = max(longest, depth[n])
+        for comp, q in kids:
+            cvec, cshare = vec * q, {r: u * q for r, u in share.items()}
+            if comp in indeg:
+                need[comp] += cvec
+                for r, u in cshare.items():
+                    shares[comp][r] = shares[comp].get(r, 0.0) + u
+                depth[comp] = max(depth[comp], depth[n] + 1)
+                indeg[comp] -= 1
+                if indeg[comp] == 0:
+                    ready.append(comp)
+            else:
+                gross.setdefault(comp, np.zeros(n_months))
+                gross[comp] += cvec
+                rr = roots.setdefault(comp, {})
+                for r, u in cshare.items():
+                    rr[r] = rr.get(r, 0.0) + u
+        if longest > max_levels:
+            raise MaterialPlanError(f"the bill of materials does not end within {max_levels} levels (a chain through {sorted(n for n in reach if depth[n] > max_levels)[:5]})")
+    if done < len(reach):
+        raise MaterialPlanError(f"the bill of materials does not end: a loop through {sorted(n for n in reach if indeg[n] > 0)[:5]}")
+    return {"gross": gross, "roots": roots, "levels": longest, "in_house_expanded": expanded - set(roots_demand), "no_bom": no_bom}
 
 
 # ------------------------------------------------------------------ availability and netting
@@ -231,7 +269,8 @@ def build(root: str = PROJECT_ROOT, today: pd.Timestamp = None, op_out_dir: str 
     lines = bom_component_lines(w3["bom_tree"])
     has_bom = parents_with_bom(w3["bom_tree"])
     purchased = purchased_codes(w3["po_lines"], w3["receipts"])
-    ex = explode(demand, lines, has_bom, purchased, len(months), int(cfg["max_bom_levels"]))
+    rm_list = [str(w).strip() for w in cfg["rm_warehouses"]]
+    ex = explode(demand, lines, has_bom, purchased, len(months), int(cfg["max_bom_levels"]), stock=raw_material_stock(w3["rm_inventory"], rm_list))
     materials = sorted(ex["gross"])
     leads = material_lead_times(materials, w3["po_lines"], w3["receipts"], w3["price"], float(cfg["lead_time_v1"]["fallback_material_days"]),
                                 cfg["usable_lead_days"])
@@ -274,7 +313,7 @@ def build(root: str = PROJECT_ROOT, today: pd.Timestamp = None, op_out_dir: str 
             "rm_pulled_at_local": str(w3["rm_pulled_at_local"]), "rm_warehouses": [str(w).strip() for w in cfg["rm_warehouses"]],
             "divisions": list(cfg["operation_plan"]["divisions"]),
             "open_orders_used": use_open, "open_orders_lines_after_last_month": n_after,
-            "levels": ex["levels"], "n_in_house_expanded": len(ex["in_house_expanded"]), "items_without_bom": sorted(ex["no_bom"]),
+            "levels": ex["levels"], "n_in_house_expanded": len(ex["in_house_expanded"]), "subassembly_stock_netted": True, "items_without_bom": sorted(ex["no_bom"]),
             "n_items_exploded": len(demand), "n_materials": len(materials),
             "n_to_order_now": int(summary["to_order_now"].sum()) if len(summary) else 0,
             "lead_sources": summary["lead_source"].value_counts().to_dict() if len(summary) else {},

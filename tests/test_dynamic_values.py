@@ -480,19 +480,21 @@ def _material_frames(n_months, today, pulled, warehouses, divisions, open_used, 
                         "unit_vs_stock": "same", "unit_vs_purchase": "same", "stock_now": 0.0, "open_orders_total": 0.0, "lead_days": lead, "lead_source": "observed",
                         "total_gross": qty * n_months, "total_net": qty * n_months, "first_short_month": months[0], "latest_order_date": first_date, "to_order_now": True,
                         "qty_to_order_now": qty, "also_has_bom": False}])
-    meta = {"months": months, "operation_plan_today": today, "rm_pulled_at_local": pulled, "rm_warehouses": warehouses, "open_orders_used": open_used, "divisions": divisions}
+    meta = {"months": months, "today": today, "operation_plan_today": today, "rm_pulled_at_local": pulled, "rm_warehouses": warehouses, "open_orders_used": open_used, "divisions": divisions}
     return mm, sm, meta
 
 
 def test_material_plan_page_text_values_follow_their_sources():
     import build_material_plan_page as bm
-    a = bm.render(bm.compute_values(*_material_frames(5, "2026-10-06", "2026-10-06 07:30:00", ["WH21", "WH22"], ["PEM101", "PEM103"], True, 50.0, 20.0, "2026-09-11")))
-    b = bm.render(bm.compute_values(*_material_frames(3, "2027-01-04", "2027-01-15 17:45:10", ["WH90"], ["CI101"], False, 77.0, 33.0, "2027-02-20")))
+    a = bm.render(bm.compute_values(*_material_frames(5, "2026-10-06", "2026-10-06 07:30:00", ["WH21", "WH22"], ["PEM101", "PEM103"], True, 50.0, 20.0, "2026-09-11"), 30))
+    b = bm.render(bm.compute_values(*_material_frames(3, "2027-01-04", "2027-01-15 17:45:10", ["WH90"], ["CI101"], False, 77.0, 33.0, "2027-01-20"), 45))
     assert "แผนวัตถุดิบ 5 เดือน" in a and "แผนวัตถุดิบ 3 เดือน" in b
     assert "จากแผนการผลิตรอบ ต.ค. 69 · stock วัตถุดิบดึงเมื่อ 6 ต.ค. 69 07:30" in a and "จากแผนการผลิตรอบ ม.ค. 70 · stock วัตถุดิบดึงเมื่อ 15 ม.ค. 70 17:45" in b
     assert "stock วัตถุดิบนับจากคลัง WH21, WH22" in a and "stock วัตถุดิบนับจากคลัง WH90" in b
     assert 'id="divisions-covered">ฝ่ายที่รวมในแผนนี้: PEM101, PEM103<' in a and 'id="divisions-covered">ฝ่ายที่รวมในแผนนี้: CI101<' in b
     assert "นับของที่สั่งแล้วรอรับตามวันที่คาดว่าจะได้" in a and "ยังไม่นับของที่สั่งแล้วรอรับ" in b
-    cells = lambda page: re.findall(r"<td[^>]*>(.*?)</td>", page.split('id="order-now-table"')[1].split("</table>")[0])
-    ca, cb = cells(a), cells(b)
-    assert ca[3:6] == ["50", "11 ก.ย. 69", "20"] and cb[3:6] == ["77", "20 ก.พ. 70", "33"] and ca[6] == "ใบสั่งซื้อจริง"
+    cells = lambda page, table: re.findall(r"<td[^>]*>(.*?)</td>", page.split('id="%s"' % table)[1].split("</table>")[0])
+    ca, cb = cells(a, "late-table"), cells(b, "within-table")           # a: order date before the plan's day; b: 16 days after it, inside the 45-day window
+    assert ca[3:6] == ["250", "11 ก.ย. 69", "20"] and cb[3:6] == ["231", "20 ม.ค. 70", "33"] and ca[6] == "ใบสั่งซื้อจริง"      # the quantity sums the months whose order date is in the list's span
+    assert "ต้องสั่งภายใน 30 วัน</h2>" in a and "ต้องสั่งภายใน 45 วัน</h2>" in b
+    assert "วัตถุดิบที่ต้องสั่งภายใน 30 วันข้างหน้า ถึงจะได้ของทันตามแผน" in a and "วัตถุดิบที่ต้องสั่งภายใน 45 วันข้างหน้า ถึงจะได้ของทันตามแผน" in b

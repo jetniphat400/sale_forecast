@@ -610,18 +610,27 @@ def test_the_material_plan_page_shows_its_approved_text_sections_and_tables(edge
     assert _wait(edge, "document.querySelectorAll('#material-table tbody tr').length > 0")
     assert edge.ev("document.getElementById('page-title').innerText") == f"แผนวัตถุดิบ {v['n_months']} เดือน"
     assert edge.ev("document.getElementById('data-line').innerText") == f"จากแผนการผลิตรอบ {v['plan_month']} · stock วัตถุดิบดึงเมื่อ {v['pull_time']}"
-    assert edge.ev("document.getElementById('order-now-title').innerText") == "ต้องสั่งทันที"
-    assert edge.ev("document.getElementById('order-now-line').innerText") == "วัตถุดิบที่วันต้องสั่งผ่านไปแล้ว ถ้าสั่งวันนี้จะได้ของช้ากว่าที่แผนต้องการ"
-    assert edge.ev("[...document.querySelectorAll('#order-now-table thead th')].map(t=>t.innerText.trim())") == \
-        ["รหัสวัตถุดิบ", "ชื่อ", "ใช้ในสินค้า (รหัส)", "ต้องสั่งเพิ่ม", "ต้องสั่งภายใน", "lead time (วัน)", "ที่มา lead time"]
-    rows = edge.ev("[...document.querySelectorAll('#order-now-table tbody tr')].map(r=>[...r.children].map(c=>c.innerText.trim()))")
-    assert len(rows) == v["n_now"] and {r[6] for r in rows} <= {"ใบสั่งซื้อจริง", "ผู้ขายแจ้ง", "ค่าประมาณ"}
-    now = v["now"].reset_index(drop=True)
-    for r, (_, x) in zip(rows[:25], now.head(25).iterrows()):
-        if x["unit_flag"]:      # purchase unit differs from the BOM unit: the flag beside the code, a dash for quantity and date
-            assert r[0] == x["material"] + "หน่วยซื้อไม่ตรงกับหน่วยใน BOM" and r[3] == "-" and r[4] == "-" and r[5] == bm.fmt_qty(x["lead_days"])
-        else:
-            assert r[0] == x["material"] and r[3] == bm.fmt_qty(x["qty_to_order_now"]) and r[4] == bm.fmt_date(x["latest_order_date"]) and r[5] == bm.fmt_qty(x["lead_days"])
+    n = v["n_days"]
+    assert n == 30
+    assert edge.ev("document.getElementById('within-title').innerText") == f"ต้องสั่งภายใน {n} วัน"
+    assert edge.ev("document.getElementById('within-line').innerText") == f"วัตถุดิบที่ต้องสั่งภายใน {n} วันข้างหน้า ถึงจะได้ของทันตามแผน"
+    assert edge.ev("document.getElementById('late-title').innerText") == "ขาดแล้ว สั่งตอนนี้ไม่ทัน"
+    assert edge.ev("document.getElementById('late-line').innerText") == "วัตถุดิบที่แผนต้องใช้ก่อนที่ของจะมาถึงแม้สั่งวันนี้ ควรตรวจของที่มีอยู่จริง หรือเร่งของที่สั่งไว้แล้ว"
+    assert edge.ev("[...document.querySelectorAll('h2')].map(h=>h.id).slice(0, 2)") == ["within-title", "late-title"]
+    assert edge.ev("document.getElementById('late-title').compareDocumentPosition(document.getElementById('material-table')) & 4") == 4      # both sections sit above the main table
+    for key, table in (("within", "within-table"), ("late", "late-table")):
+        assert edge.ev("[...document.querySelectorAll('#%s thead th')].map(t=>t.innerText.trim())" % table) == \
+            ["รหัสวัตถุดิบ", "ชื่อ", "ใช้ในสินค้า (รหัส)", "ต้องสั่งเพิ่ม", "ต้องสั่งภายใน", "lead time (วัน)", "ที่มา lead time"]
+        rows = edge.ev("[...document.querySelectorAll('#%s tbody tr')].map(r=>[...r.children].map(c=>c.innerText.trim()))" % table)
+        assert len(rows) == v["n_" + key] and {r[6] for r in rows} <= {"ใบสั่งซื้อจริง", "ผู้ขายแจ้ง", "ค่าประมาณ"}
+        lst = v[key].reset_index(drop=True)
+        for r, (_, x) in zip(rows[:40], lst.head(40).iterrows()):
+            if x["no_unit_flag"]:      # no purchase unit in the system: its own flag beside the code, a dash for quantity and date
+                assert r[0] == x["material"] + "ไม่มีหน่วยซื้อในระบบ" and r[3] == "-" and r[4] == "-" and r[5] == bm.fmt_qty(x["lead_days"])
+            elif x["unit_flag"]:       # purchase unit differs from the BOM unit
+                assert r[0] == x["material"] + "หน่วยซื้อไม่ตรงกับหน่วยใน BOM" and r[3] == "-" and r[4] == "-" and r[5] == bm.fmt_qty(x["lead_days"])
+            else:
+                assert r[0] == x["material"] and r[3] == bm.fmt_qty(x["qty"]) and r[4] == bm.fmt_date(x["latest_order_date"]) and r[5] == bm.fmt_qty(x["lead_days"])
     top = edge.ev("[...document.querySelectorAll('#material-table thead tr:first-child th')].map(t=>t.innerText.trim())")
     assert top[:4] == ["รหัส", "ชื่อ", "stock ตอนนี้", "ของที่สั่งแล้วรอรับ"] and top[4:] == v["month_labels"]
     assert edge.ev("[...document.querySelectorAll('#material-table thead tr:nth-child(2) th')].map(t=>t.innerText.trim())") == ["ความต้องการ", "ต้องสั่งเพิ่ม"] * v["n_months"]
@@ -633,9 +642,9 @@ def test_the_material_plan_page_shows_its_approved_text_sections_and_tables(edge
     assert edge.ev("document.body.firstElementChild.id === undefined || document.querySelector('.wrap').firstElementChild.id") == "verification-notice"
     assert edge.ev("getComputedStyle(document.getElementById('verification-notice')).borderTopWidth") == "2px"
     flags = edge.ev("[...document.querySelectorAll('.flag.unit')].map(f=>f.innerText.trim())")
-    assert len(flags) == v["n_now_flagged"] + v["n_unit_flag"] and set(flags) <= {"หน่วยซื้อไม่ตรงกับหน่วยใน BOM"}
-    flagged_rows = edge.ev("[...document.querySelectorAll('#order-now-table tbody tr')].filter(r=>r.querySelector('.flag.unit')).map(r=>[r.children[3].innerText.trim(), r.children[4].innerText.trim()])")
-    assert len(flagged_rows) == v["n_now_flagged"] and all(r == ["-", "-"] for r in flagged_rows)
+    assert len(flags) == int(v["main"]["no_figure"].sum()) + v["n_late_flagged"] + v["n_within_flagged"] and set(flags) <= {"หน่วยซื้อไม่ตรงกับหน่วยใน BOM", "ไม่มีหน่วยซื้อในระบบ"}
+    flagged_rows = edge.ev("[...document.querySelectorAll('#within-table tbody tr, #late-table tbody tr')].filter(r=>r.querySelector('.flag.unit')).map(r=>[r.children[3].innerText.trim(), r.children[4].innerText.trim()])")
+    assert len(flagged_rows) == v["n_late_flagged"] + v["n_within_flagged"] and all(r == ["-", "-"] for r in flagged_rows)
     assert not [e for e in edge.errors if e.startswith("exception")], edge.errors
 
 

@@ -1226,7 +1226,9 @@ GENERATED_PATHS = ["forecast/sales_report.html", "forecast/inventory.html", "for
 def _git_status_lines() -> list:
     out = subprocess.run(["git", "status", "--porcelain", "--untracked-files=no"], cwd=PROJECT_ROOT,
                          capture_output=True, text=True, encoding="utf-8", errors="replace", check=True).stdout
-    return [line for line in out.splitlines() if line.strip()]
+    import daily_stock_job
+    skip = daily_stock_job.shared_output_prefixes(load_config())        # the publishing clone's output/ is the main copy's folder (decision D1)
+    return [line for line in out.splitlines() if line.strip() and not (skip and _porcelain_path(line).startswith(skip))]
 
 
 def _porcelain_path(line: str) -> str:
@@ -1259,6 +1261,8 @@ def step11_commit_and_push(dry_run: bool, step8: dict, step9: dict, step10: dict
                                   "step10_change_magnitude_passed": step10["passed"]}}
     # Real commit+push logic (never exercised by --dry-run, and never invoked by this project's
     # own tooling without an explicit, human-approved real run -- see this task's own scope note).
+    import daily_stock_job
+    daily_stock_job.check_publishing_setup(PROJECT_ROOT, load_config())          # decision D1: only the publishing clone publishes
     github_reachable, github_err = check_tcp_reachable("github.com", 443)
     if not github_reachable:
         return {"pushed": False, "reason": f"GitHub unreachable ({github_err}) -- held, not pushed."}
@@ -1468,6 +1472,13 @@ def cli(argv=None) -> int:
     parser.add_argument("--skip-tests", action="store_true",
                          help="Skip step 8 (for tests of the runner itself; recorded in the run log).")
     args = parser.parse_args(argv)
+    if not (args.dry_run or args.in_sandbox or args.offline):       # a real run: refuse before step 1 when it is not the publishing clone (decision D1)
+        import daily_stock_job
+        try:
+            daily_stock_job.check_publishing_setup(PROJECT_ROOT, load_config())
+        except daily_stock_job.DailyStop as e:
+            logger.error("MONTHLY REFRESH NOT STARTED (%s): %s", e.step, e)
+            return 1
     try:
         with _runner_lock(real_run=not (args.dry_run or args.in_sandbox or args.offline)):
             log = main(dry_run=args.dry_run, force_new_vintage=args.force_new_vintage, sandbox=args.in_sandbox,

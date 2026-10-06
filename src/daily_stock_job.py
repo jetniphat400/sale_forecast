@@ -196,10 +196,19 @@ def git(root: str, *args, check: bool = True):
     return proc
 
 
-def tracked_changes(root: str) -> list:
-    """Tracked files that are modified, staged, deleted or renamed (untracked files are not counted)."""
+def tracked_changes(root: str, ignore_prefixes: tuple = ()) -> list:
+    """Tracked files that are modified, staged, deleted or renamed (untracked files are not counted). `ignore_prefixes`: paths under them are left out."""
     out = git(root, "status", "--porcelain", "--untracked-files=no").stdout
-    return [line for line in out.splitlines() if line.strip()]
+    lines = [line for line in out.splitlines() if line.strip()]
+    if not ignore_prefixes:
+        return lines
+    return [line for line in lines if not line[3:].strip().strip('"').replace("\\", "/").startswith(tuple(ignore_prefixes))]
+
+
+def shared_output_prefixes(config: dict) -> tuple:
+    """In the publishing clone `output/` is a junction to the main copy's output folder, which holds 108 tracked report files. They belong to the main copy
+    and are never staged here (the job adds only its own two data files by name), so a change to one of them, made there, must not stop a publish."""
+    return ("output/",) if config.get("publishing") else ()
 
 
 def commit_size(root: str) -> dict:
@@ -248,10 +257,30 @@ def build_stage(root: str, pull_dir: str, out_dir: str) -> dict:
             "inventory_json": inv_out, "stock_json": stock_out}
 
 
+def _same_place(a: str, b: str) -> bool:
+    return os.path.normcase(os.path.realpath(a)) == os.path.normcase(os.path.realpath(b))
+
+
+def check_publishing_setup(root: str, config: dict) -> dict:
+    """Decision D1 (2026-10-06): when config has a `publishing` block, publishing is done only from the publishing clone, whose `output/` is the shared
+    output folder (saved pulls, snapshots, run logs and the lock file stay in one place). Raises DailyStop otherwise, before any database session or git
+    change. A config without the block (a test fixture) is not checked. Returns what was checked."""
+    pub = config.get("publishing")
+    if not pub:
+        return {"checked": False}
+    if not _same_place(root, pub["clone_root"]):
+        raise DailyStop(f"publishing happens only from the publishing clone {pub['clone_root']}; this run is from {root}", step="publishing clone")
+    if not _same_place(os.path.join(root, "output"), pub["shared_output_root"]):
+        raise DailyStop(f"the clone's output folder is not the shared one: {os.path.realpath(os.path.join(root, 'output'))} is not {pub['shared_output_root']}",
+                        step="shared output folder")
+    return {"checked": True, "clone_root": pub["clone_root"], "shared_output_root": pub["shared_output_root"]}
+
+
 def publish_stage(root: str, config: dict, built: dict, replay: bool = False) -> dict:
     cfg = config["daily_stock"]
+    check_publishing_setup(root, config)
     git(root, "pull", "--ff-only", "origin", "main")
-    changes = tracked_changes(root)
+    changes = tracked_changes(root, shared_output_prefixes(config))
     if changes:
         raise DailyStop("a tracked file is modified or staged, so nothing is published: " + "; ".join(changes[:10]),
                         step="tracked files clean")

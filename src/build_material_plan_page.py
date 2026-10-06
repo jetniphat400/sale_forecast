@@ -28,8 +28,10 @@ DASH = "-"
 TEXT = {
     "heading": "แผนวัตถุดิบ {n_months} เดือน",
     "data_line": "จากแผนการผลิตรอบ {plan_month} · stock วัตถุดิบดึงเมื่อ {pull_time}",
-    "now_title": "ต้องสั่งทันที",
-    "now_line": "วัตถุดิบที่วันต้องสั่งผ่านไปแล้ว ถ้าสั่งวันนี้จะได้ของช้ากว่าที่แผนต้องการ",
+    "within_title": "ต้องสั่งภายใน {n_days} วัน",
+    "within_line": "วัตถุดิบที่ต้องสั่งภายใน {n_days} วันข้างหน้า ถึงจะได้ของทันตามแผน",
+    "late_title": "ขาดแล้ว สั่งตอนนี้ไม่ทัน",
+    "late_line": "วัตถุดิบที่แผนต้องใช้ก่อนที่ของจะมาถึงแม้สั่งวันนี้ ควรตรวจของที่มีอยู่จริง หรือเร่งของที่สั่งไว้แล้ว",
     "now_cols": ["รหัสวัตถุดิบ", "ชื่อ", "ใช้ในสินค้า (รหัส)", "ต้องสั่งเพิ่ม", "ต้องสั่งภายใน", "lead time (วัน)", "ที่มา lead time"],
     "source": {"observed": "ใบสั่งซื้อจริง", "supplier_quoted": "ผู้ขายแจ้ง", "assumed": "ค่าประมาณ"},
     "main_cols": ["รหัส", "ชื่อ", "stock ตอนนี้", "ของที่สั่งแล้วรอรับ"],
@@ -40,6 +42,7 @@ TEXT = {
     "back_link": "← กลับไปหน้าหลัก (Dashboard)",
     "notice": "แผนนี้ยังอยู่ระหว่างตรวจสอบ ตัวเลขต้องสั่งยังใช้สั่งซื้อจริงไม่ได้",
     "unit_flag": "หน่วยซื้อไม่ตรงกับหน่วยใน BOM",
+    "no_unit_flag": "ไม่มีหน่วยซื้อในระบบ",
     "demand_col": "ความต้องการ",
     "divisions_label": "ฝ่ายที่รวมในแผนนี้:",
 }
@@ -69,26 +72,41 @@ def used_in_text(codes: str, n_products: int, shown: int) -> str:
     return ", ".join(c) + (f" +{extra}" if extra > 0 else "")
 
 
-def compute_values(material_month: pd.DataFrame, summary: pd.DataFrame, meta: dict) -> dict:
-    """Every value the page shows, from the recorded plan read back. The materials to order now are those whose first order date has passed."""
+def compute_values(material_month: pd.DataFrame, summary: pd.DataFrame, meta: dict, n_days: int) -> dict:
+    """Every value the page shows, from the recorded plan read back. Two lists by each material's latest order date (the order date of its first month with a net
+    requirement), against the day the plan was built (`meta["today"]`): the first holds the dates from that day to that day plus `n_days` (both included), the second
+    the dates before it. A material with no purchase unit in the system, or whose purchase unit differs from its BOM unit, carries a flag and no figure. The quantity to
+    order is the net requirement of the months whose order date is in the first list's window (up to its end) or passed (before the day)."""
     months = list(meta["months"])
+    today = pd.Timestamp(str(meta["today"])[:10])
+    end = today + pd.Timedelta(days=int(n_days))
     s = summary.copy()
     s["name"] = s["name"].fillna("")
     s["latest_order_date"] = s["latest_order_date"].fillna("")
+    s["first_dt"] = pd.to_datetime(s["latest_order_date"].replace("", pd.NA), errors="coerce")
     mm = material_month.copy()
+    mm["od"] = pd.to_datetime(mm["order_date"].replace("", pd.NA), errors="coerce")
     gross = mm.pivot(index="material", columns="month", values="gross").reindex(columns=months)
     net = mm.pivot(index="material", columns="month", values="net_month").reindex(columns=months)
-    now = s[s["to_order_now"].astype(bool)].sort_values(["latest_order_date", "qty_to_order_now", "material"], ascending=[True, False, True], kind="mergesort")
+    short = mm[mm["net_month"] > 1e-9]
+    qty_late = short[short["od"] < today].groupby("material")["net_month"].sum()
+    qty_window = short[short["od"] <= end].groupby("material")["net_month"].sum()
+    s["unit_flag"] = s["unit_vs_purchase"].eq("differs")                 # purchase unit differs from the BOM unit and no conversion can be derived
+    s["no_unit_flag"] = s["purchase_unit"].fillna("").astype(str).str.strip().eq("")      # no purchase unit in the system
+    s["no_figure"] = s["unit_flag"] | s["no_unit_flag"]
+    late = s[s["first_dt"] < today].assign(qty=lambda d: d["material"].map(qty_late))
+    within = s[(s["first_dt"] >= today) & (s["first_dt"] <= end)].assign(qty=lambda d: d["material"].map(qty_window))
+    order = {"by": ["first_dt", "qty", "material"], "ascending": [True, False, True]}
+    late, within = late.sort_values(**order, kind="mergesort"), within.sort_values(**order, kind="mergesort")
     rest = s.assign(_first=s["first_short_month"].replace("", "9999-99")).sort_values(["_first", "total_net", "material"], ascending=[True, False, True], kind="mergesort")
-    rest = pd.concat([now, rest[~rest["material"].isin(now["material"])]]).drop(columns="_first", errors="ignore")
-    s["unit_flag"] = s["unit_vs_purchase"].eq("differs")       # purchase unit differs from the BOM unit and no conversion can be derived: no order figure is shown
-    now = now.assign(unit_flag=now["unit_vs_purchase"].eq("differs"))
-    rest = rest.assign(unit_flag=rest["unit_vs_purchase"].eq("differs"))
-    return {"n_months": len(months), "months": months, "month_labels": [thai_month(m) for m in months],
-            "n_unit_flag": int(s["unit_flag"].sum()), "n_now_flagged": int(now["unit_flag"].sum()), "n_now_with_figure": int((~now["unit_flag"]).sum()),
+    listed = set(late["material"]) | set(within["material"])
+    main = pd.concat([late, within, rest[~rest["material"].isin(listed)]]).drop(columns=["_first", "qty"], errors="ignore")
+    return {"n_months": len(months), "months": months, "month_labels": [thai_month(m) for m in months], "n_days": int(n_days), "today": str(today.date()),
+            "n_unit_flag": int(s["unit_flag"].sum()), "n_no_unit": int(s["no_unit_flag"].sum()),
+            "n_within": int(len(within)), "n_late": int(len(late)), "n_within_flagged": int(within["no_figure"].sum()), "n_late_flagged": int(late["no_figure"].sum()),
             "plan_month": thai_month(str(meta["operation_plan_today"])[:7]), "pull_time": thai_datetime(meta["rm_pulled_at_local"]),
             "rm_warehouses": ", ".join(meta["rm_warehouses"]), "open_orders_used": bool(meta["open_orders_used"]), "divisions": ", ".join(meta["divisions"]),
-            "now": now, "main": rest, "gross": gross, "net": net, "n_now": int(len(now))}
+            "within": within, "late": late, "main": main, "gross": gross, "net": net}
 
 
 CSS_EXTRA = """
@@ -100,8 +118,22 @@ CSS_EXTRA = """
 
 
 def flag_html(r) -> str:
-    """The flag beside a material's code when its purchase unit differs from its BOM unit and no conversion can be derived."""
+    """The flag beside a material's code: no purchase unit in the system, or a purchase unit that differs from the BOM unit with no conversion derivable."""
+    if r["no_unit_flag"]:
+        return f'<span class="flag unit">{_e(TEXT["no_unit_flag"])}</span>'
     return f'<span class="flag unit">{_e(TEXT["unit_flag"])}</span>' if r["unit_flag"] else ""
+
+
+def order_table(rows_df: pd.DataFrame, table_id: str) -> str:
+    """One list: the approved columns; a flagged material shows a dash for its quantity and date."""
+    th = "".join(f'<th class="{"name" if i in (1, 2) else ""}">{_e(c)}</th>' for i, c in enumerate(TEXT["now_cols"]))
+    rows = []
+    for _, r in rows_df.iterrows():
+        rows.append(f'<tr data-material="{_e(r["material"])}"><td class="code">{_e(r["material"])}{flag_html(r)}</td><td class="name">{_e(r["name"] or DASH)}</td>'
+                    f'<td class="name">{_e(used_in_text(r["used_in"], r["n_products"], 3))}</td><td>{DASH if r["no_figure"] else fmt_qty(r["qty"])}</td>'
+                    f'<td>{DASH if r["no_figure"] else _e(fmt_date(r["latest_order_date"]))}</td><td>{fmt_qty(r["lead_days"])}</td>'
+                    f'<td class="name">{_e(TEXT["source"][r["lead_source"]])}</td></tr>')
+    return f'<div class="table-scroll"><table class="report-table" id="{table_id}"><thead><tr>{th}</tr></thead><tbody>{"".join(rows)}</tbody></table></div>'
 
 
 def render(values: dict) -> str:
@@ -112,15 +144,9 @@ def render(values: dict) -> str:
              f'<h1 id="page-title">{_e(heading)}</h1>',
              f'<p class="scope-note" id="data-line">{_e(T["data_line"].format(plan_month=v["plan_month"], pull_time=v["pull_time"]))}</p>',
              f'<p class="scope-note" id="divisions-covered">{_e(T["divisions_label"])} {_e(v["divisions"])}</p>',
-             f'<h2 id="order-now-title">{_e(T["now_title"])}</h2>', f'<p class="note-line" id="order-now-line">{_e(T["now_line"])}</p>']
-    th = "".join(f'<th class="{"name" if i in (1, 2) else ""}">{_e(c)}</th>' for i, c in enumerate(T["now_cols"]))
-    rows = []
-    for _, r in v["now"].iterrows():
-        flag = flag_html(r)
-        rows.append(f'<tr data-material="{_e(r["material"])}"><td class="code">{_e(r["material"])}{flag}</td><td class="name">{_e(r["name"] or DASH)}</td>'
-                    f'<td class="name">{_e(used_in_text(r["used_in"], r["n_products"], 3))}</td><td>{DASH if r["unit_flag"] else fmt_qty(r["qty_to_order_now"])}</td>'
-                    f'<td>{DASH if r["unit_flag"] else _e(fmt_date(r["latest_order_date"]))}</td><td>{fmt_qty(r["lead_days"])}</td><td class="name">{_e(T["source"][r["lead_source"]])}</td></tr>')
-    parts.append(f'<div class="table-scroll"><table class="report-table" id="order-now-table"><thead><tr>{th}</tr></thead><tbody>{"".join(rows)}</tbody></table></div>')
+             f'<h2 id="within-title">{_e(T["within_title"].format(n_days=v["n_days"]))}</h2>',
+             f'<p class="note-line" id="within-line">{_e(T["within_line"].format(n_days=v["n_days"]))}</p>', order_table(v["within"], "within-table"),
+             f'<h2 id="late-title">{_e(T["late_title"])}</h2>', f'<p class="note-line" id="late-line">{_e(T["late_line"])}</p>', order_table(v["late"], "late-table")]
     notes = [T["note_open_used"] if v["open_orders_used"] else T["note_open_not_used"], T["note_warehouses"].format(rm_warehouses=v["rm_warehouses"])]
     parts.append("".join(f'<p class="note-line material-note">{_e(n)}</p>' for n in notes))
     head1 = "".join(f'<th rowspan="2" class="{"name" if i == 1 else ""}">{_e(c)}</th>' for i, c in enumerate(T["main_cols"]))
@@ -129,21 +155,23 @@ def render(values: dict) -> str:
     body = []
     for _, r in v["main"].iterrows():
         m = r["material"]
-        cells = "".join(f'<td>{fmt_qty(v["gross"].loc[m, ym])}</td><td>{DASH if r["unit_flag"] else fmt_qty(v["net"].loc[m, ym])}</td>' for ym in v["months"])
+        cells = "".join(f'<td>{fmt_qty(v["gross"].loc[m, ym])}</td><td>{DASH if r["no_figure"] else fmt_qty(v["net"].loc[m, ym])}</td>' for ym in v["months"])
         body.append(f'<tr data-material="{_e(m)}"><td class="code">{_e(m)}{flag_html(r)}</td><td class="name">{_e(r["name"] or DASH)}</td><td>{fmt_qty(r["stock_now"])}</td>'
                     f'<td>{fmt_qty(r["open_orders_total"])}</td>{cells}</tr>')
     parts.append(f'<div class="table-scroll"><table class="report-table" id="material-table"><thead><tr>{head1}</tr><tr>{head2}</tr></thead><tbody>{"".join(body)}</tbody></table></div>')
     comment = ("<!-- Source: the recorded material plan (output/summary/material_plan_v1_*, SHA-256 checked in operation_plan_v1_integrity.json): the operation plan's "
                "production quantities of every division exploded through Cube_BOM_Exact level by level, netted against raw-material stock and open orders "
-               "(Cube_tobe_received); lead times by the order of sources of METRICS.md Sec.5; names from the item master (Cube_ItemList). A material whose "
-               "purchase unit differs from its BOM unit carries the flag beside its code and a dash in place of its order quantity, order date and net requirement. Net columns are the month's own net requirement (the increase of the cumulative net requirement). -->")
+               "(Cube_tobe_received); lead times by the order of sources of METRICS.md Sec.5; names from the item master (Cube_ItemList). Two lists by "
+               "latest order date: within the next order_window_days days (config) and already past. A material with no purchase unit in the system, or whose "
+               "purchase unit differs from its BOM unit, carries a flag beside its code and a dash in place of its order quantity, order date and net requirement. Net columns are the month's own net requirement (the increase of the cumulative net requirement). -->")
     return (f'<!DOCTYPE html>\n<html lang="th">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1">\n'
             f'<title>{_e(heading)}</title>\n<style>{CSS}{CSS_EXTRA}</style>\n</head>\n<body>\n{comment}\n<div class="wrap">\n' + "\n".join(parts) + "\n</div>\n</body>\n</html>\n")
 
 
 def build_values(root: str = PROJECT_ROOT, out_dir: str = None) -> dict:
-    mm, sm, meta = mp.read_outputs(root, mp.load_config(root), out_dir)
-    return compute_values(mm, sm, meta)
+    cfg = mp.load_config(root)
+    mm, sm, meta = mp.read_outputs(root, cfg, out_dir)
+    return compute_values(mm, sm, meta, int(cfg["order_window_days"]))
 
 
 def build_page(root: str = PROJECT_ROOT, out_dir: str = None, out_path: str = None) -> str:

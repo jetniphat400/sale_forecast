@@ -18,7 +18,8 @@ sys.path.insert(0, os.path.join(PROJECT_ROOT, "src"))
 import daily_stock_job as djob  # noqa: E402
 import stock_daily as sd  # noqa: E402
 
-CONFIG = djob.load_config(PROJECT_ROOT)
+CONFIG_WITH_PUBLISHING = djob.load_config(PROJECT_ROOT)
+CONFIG = {k: v for k, v in CONFIG_WITH_PUBLISHING.items() if k != "publishing"}      # a fixture repository is not the publishing clone: the clone check is tested below
 
 
 # ------------------------------------------------------------------ helpers
@@ -265,6 +266,8 @@ def test_snapshot_main_keeps_the_measurement_and_exits_non_zero_when_the_job_fai
     monkeypatch.setattr(sdy, "append_snapshot", lambda s: calls.append("append"))
     monkeypatch.setattr(sdy, "write_inventory_snapshot", lambda i: calls.append("write"))
     monkeypatch.setattr(djob, "load_base", lambda root, cfg: None)
+    monkeypatch.setattr(djob, "successful_run_today", lambda root, cfg, today=None: None)          # a real success of today in the shared logs must not skip this run
+    monkeypatch.setattr(djob, "check_publishing_setup", lambda root, cfg: {"checked": False})          # this test is about the order of the steps, not the folder
 
     def fail(*a, **k):
         raise djob.DailyFailure("gate failed", gate="row_count_band")
@@ -272,6 +275,20 @@ def test_snapshot_main_keeps_the_measurement_and_exits_non_zero_when_the_job_fai
     with pytest.raises(SystemExit) as exc:
         sdy.main()
     assert exc.value.code == 1 and calls == ["append", "write"], "the posting-delay snapshot must be written before the job runs"
+
+
+def test_snapshot_main_from_the_main_working_copy_stops_before_any_database_session(monkeypatch, tmp_path):
+    import db
+    import snapshot_daily as sdy
+    opened = []
+    monkeypatch.setattr(db, "session", lambda: opened.append(1))
+    monkeypatch.setattr(sys, "argv", ["snapshot_daily.py"])
+    monkeypatch.setattr(sdy, "PROJECT_ROOT", str(tmp_path))                              # not the clone named in config
+    monkeypatch.setattr(djob, "load_config", lambda *a, **k: CONFIG_WITH_PUBLISHING)
+    monkeypatch.setattr(djob, "record_failure", lambda root, cfg, step, exc: opened.append(("logged", step)))
+    with pytest.raises(SystemExit) as exc:
+        sdy.main()
+    assert exc.value.code == 1 and opened == [("logged", "publishing clone")]
 
 
 def test_the_posting_delay_measurement_is_unchanged():
@@ -345,3 +362,107 @@ def test_the_monthly_runner_may_stage_the_stock_file_and_writes_a_lock_only_for_
     with mr._runner_lock(real_run=False):
         assert not os.path.exists(lock)
     assert sorted(CONFIG["daily_stock"]["published_files"]) == ["data/inventory.json", "data/stock_daily.json"]
+
+
+# ------------------------------------------------------------------ the publishing clone (decision D1, 2026-10-06)
+def _junction(link, target):
+    if os.name != "nt":
+        os.symlink(str(target), str(link), target_is_directory=True)
+        return
+    p = subprocess.run(["cmd", "/c", "mklink", "/J", str(link), str(target)], capture_output=True, text=True)
+    assert p.returncode == 0, p.stdout + p.stderr
+
+
+@pytest.fixture
+def clone_setup(repo, tmp_path):
+    """The main working copy (`repo`, with a tracked file modified: work in progress), a publishing clone of the same remote whose output/ is a junction to the
+    main copy's output/, and a config that names both."""
+    shared = repo / "output"
+    shared.mkdir(exist_ok=True)
+    clone = tmp_path / "publish_clone"
+    _g(tmp_path, "clone", "-q", "-c", "core.autocrlf=false", str(tmp_path / "remote.git"), str(clone))
+    _g(clone, "config", "user.name", "test")
+    _g(clone, "config", "user.email", "test@example.com")
+    _g(clone, "config", "core.autocrlf", "false")
+    _junction(clone / "output", shared)
+    config = dict(CONFIG, publishing={"clone_root": str(clone), "shared_output_root": str(shared)})
+    (repo / "other.txt").write_text("work in progress in the main copy\n", encoding="utf-8")
+    return repo, clone, shared, config
+
+
+def test_the_clone_fast_forwards_from_origin_commits_only_the_two_data_files_pushes_and_the_dirty_main_copy_then_pulls_cleanly(clone_setup, tmp_path):
+    main, clone, shared, config = clone_setup
+    # someone else publishes a data file to origin first: the clone must take it by fast-forward before it commits
+    other = tmp_path / "other_clone"
+    _g(tmp_path, "clone", "-q", "-c", "core.autocrlf=false", str(tmp_path / "remote.git"), str(other))
+    _g(other, "config", "user.name", "x")
+    _g(other, "config", "user.email", "x@example.com")
+    (other / "newer.txt").write_text("a later commit on origin\n", encoding="utf-8")
+    _g(other, "add", "-A")
+    _g(other, "commit", "-q", "-m", "later")
+    _g(other, "push", "-q", "origin", "main")
+    origin_before = _g(clone, "ls-remote", "origin", "refs/heads/main").split()[0]
+    result = djob.publish_stage(str(clone), config, _built(tmp_path))
+    assert result["committed"] and result["pushed"]
+    assert (clone / "newer.txt").exists(), "the clone did not fast-forward from origin first"
+    assert sorted(_g(clone, "show", "--name-only", "--format=", "HEAD").split()) == ["data/inventory.json", "data/stock_daily.json"]
+    assert _g(clone, "rev-parse", "HEAD~1").strip() == origin_before                     # exactly one new commit on top of origin's
+    assert _g(tmp_path / "remote.git", "rev-parse", "main").strip() == _g(clone, "rev-parse", "HEAD").strip()
+    assert _g(clone, "status", "--porcelain", "--untracked-files=no").strip() == ""
+    # the main copy still holds its work in progress, and a plain pull takes both commits by fast-forward
+    assert _g(main, "status", "--porcelain", "--untracked-files=no").strip() == "M other.txt"
+    _g(main, "pull", "--ff-only", "origin", "main")
+    assert _g(main, "rev-parse", "HEAD").strip() == _g(clone, "rev-parse", "HEAD").strip()
+    assert (main / "other.txt").read_text(encoding="utf-8") == "work in progress in the main copy\n"
+
+
+def test_the_publishing_check_needs_the_clone_and_the_shared_output_folder(clone_setup, tmp_path):
+    main, clone, shared, config = clone_setup
+    ok = djob.check_publishing_setup(str(clone), config)
+    assert ok["checked"] and os.path.realpath(str(clone / "output")) == os.path.realpath(str(shared))
+    with pytest.raises(djob.DailyStop, match="only from the publishing clone"):
+        djob.check_publishing_setup(str(main), config)                                   # the main working copy never publishes
+    with pytest.raises(djob.DailyStop, match="not the shared one"):
+        djob.check_publishing_setup(str(clone), dict(config, publishing={"clone_root": str(clone), "shared_output_root": str(tmp_path / "elsewhere")}))
+    head = _g(main, "rev-parse", "HEAD").strip()
+    with pytest.raises(djob.DailyStop):
+        djob.publish_stage(str(main), config, _built(tmp_path))
+    assert _g(main, "rev-parse", "HEAD").strip() == head
+    assert djob.check_publishing_setup(str(main), CONFIG) == {"checked": False}          # no block: not checked (a fixture)
+
+
+def test_a_clone_whose_output_is_a_real_folder_does_not_publish(repo, tmp_path):
+    clone = tmp_path / "plain_clone"
+    _g(tmp_path, "clone", "-q", "-c", "core.autocrlf=false", str(tmp_path / "remote.git"), str(clone))
+    (clone / "output").mkdir()
+    config = dict(CONFIG, publishing={"clone_root": str(clone), "shared_output_root": str(repo / "output")})
+    with pytest.raises(djob.DailyStop, match="not the shared one"):
+        djob.publish_stage(str(clone), config, _built(tmp_path))
+
+
+def test_the_clone_writes_its_logs_and_reads_the_lock_in_the_shared_folder(clone_setup, tmp_path, monkeypatch):
+    main, clone, shared, config = clone_setup
+    _stub_build(monkeypatch, tmp_path)
+    lock = shared / "runs" / "monthly_refresh.lock"                                      # the monthly runner (also run from the clone) writes it here
+    lock.parent.mkdir(parents=True, exist_ok=True)
+    lock.write_text(json.dumps({"pid": os.getpid()}), encoding="utf-8")
+    assert djob.monthly_runner_running(str(clone), config)
+    log = djob.run(str(clone), pull_dir=str(tmp_path / "pull"), base=BASE, config=config, run_id="c1")
+    assert log["status"] == "skipped_monthly_runner_running" and not log["committed"]
+    assert (shared / "runs" / "daily" / "daily_stock_c1.json").exists()                    # the log is in the shared folder, seen from the main copy too
+    lock.unlink()
+    log = djob.run(str(clone), pull_dir=str(tmp_path / "pull"), base=BASE, config=config, run_id="c2")
+    assert log["status"] == "published" and (shared / "runs" / "daily" / "last_success.json").exists()
+
+
+def test_changes_under_the_shared_output_folder_are_left_out_of_the_clean_check_only_when_a_clone_is_configured(repo):
+    (repo / "output" / "summary").mkdir(parents=True)
+    (repo / "output" / "summary" / "report.md").write_text("tracked report\n", encoding="utf-8")
+    _g(repo, "add", "-f", "output/summary/report.md")
+    _g(repo, "commit", "-q", "-m", "a tracked report under output/")
+    (repo / "output" / "summary" / "report.md").write_text("changed through the junction\n", encoding="utf-8")
+    assert djob.shared_output_prefixes(CONFIG) == () and djob.shared_output_prefixes(CONFIG_WITH_PUBLISHING) == ("output/",)
+    assert len(djob.tracked_changes(str(repo))) == 1
+    assert djob.tracked_changes(str(repo), djob.shared_output_prefixes(CONFIG_WITH_PUBLISHING)) == []
+    (repo / "other.txt").write_text("a real change\n", encoding="utf-8")
+    assert [l[3:] for l in djob.tracked_changes(str(repo), ("output/",))] == ["other.txt"]

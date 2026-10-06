@@ -171,6 +171,7 @@ def compute_s2_s3(ces, cf, item_codes, s2_threshold, s3_threshold_days):
     src/investigations/task2b_part7_validator.py; see this module's docstring for the 2026-09-29
     correction this replaces (the prior self-referential Cube_CES-only proxy)."""
     ces = ces.copy()
+    ces["ItemCode"] = ces["ItemCode"].astype(str).str.strip()          # decision D3 (2026-10-06): item codes are trimmed before matching (a few Cube_CES codes carry a trailing space)
     ces["CtrDate"] = pd.to_datetime(ces["CtrDate"], errors="coerce")
     ces["ActualDelDate"] = pd.to_datetime(ces["ActualDelDate"], errors="coerce")
 
@@ -347,6 +348,7 @@ def load_week3_config(path: str = CONFIG_PATH) -> dict:
 def delivered_contracts_in_window(ces: pd.DataFrame, start: str) -> pd.Series:
     """Per item code, the number of distinct delivered (Status 'Actual') contracts with CtrDate on or after `start`."""
     d = ces.copy()
+    d["ItemCode"] = d["ItemCode"].astype(str).str.strip()
     d["CtrDate"] = pd.to_datetime(d["CtrDate"], errors="coerce")
     d = d[(d["Status"] == "Actual") & (d["CtrDate"] >= pd.Timestamp(start))]
     return d.groupby("ItemCode")["ContractID"].nunique()
@@ -369,8 +371,10 @@ def delivered_lines(apd: pd.DataFrame, ces: pd.DataFrame) -> pd.DataFrame:
     days are dropped (as S3 drops them)."""
     a = apd[apd["status"] == "Actual"].copy()
     a["planid"] = pd.to_numeric(a["planid"], errors="coerce")
+    a["itemcode"] = a["itemcode"].astype(str).str.strip()
     c = ces[ces["Status"] == "Actual"].copy()
     c["PlanID"] = pd.to_numeric(c["PlanID"], errors="coerce")
+    c["ItemCode"] = c["ItemCode"].astype(str).str.strip()
     m = a.merge(c[["ContractID", "ItemCode", "PlanID", "ActualDelDate"]], left_on=["contractid", "itemcode", "planid"],
                 right_on=["ContractID", "ItemCode", "PlanID"], how="inner")
     m["days"] = (pd.to_datetime(m["ActualDelDate"]) - pd.to_datetime(m["createDate"])).dt.days

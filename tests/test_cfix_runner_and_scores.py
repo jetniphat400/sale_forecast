@@ -167,6 +167,8 @@ def repo(tmp_path, monkeypatch):
     _git(r, "commit", "-qm", "base")
     monkeypatch.setattr(mr, "PROJECT_ROOT", r)
     monkeypatch.setattr(mr, "check_tcp_reachable", lambda *a, **k: (True, None))
+    import daily_stock_job
+    monkeypatch.setattr(daily_stock_job, "check_publishing_setup", lambda root, cfg: {"checked": False})      # a fixture repository is not the publishing clone (decision D1)
     return r
 
 
@@ -293,3 +295,12 @@ def test_step4_regenerates_the_pilot_derived_inputs(monkeypatch, tmp_path):
     monkeypatch.setattr(mr, "_run_regeneration_step", lambda label, script, out, skip_reason=None: labels.append(script) or {"refreshed": True})
     mr.step4_backtest("t", offline=True)
     assert "build_report_data.py" in labels and "item_level_reconciliation.py" in labels
+
+
+def test_a_real_run_and_step_11_refuse_outside_the_publishing_clone(tmp_path, monkeypatch):
+    import daily_stock_job
+    monkeypatch.setattr(mr, "PROJECT_ROOT", str(tmp_path))                                  # not the clone named in config `publishing`
+    monkeypatch.setattr(mr, "main", lambda *a, **k: (_ for _ in ()).throw(AssertionError("step 1 must not start")))
+    assert mr.cli([]) == 1                                                                 # refused before any step
+    with pytest.raises(daily_stock_job.DailyStop, match="only from the publishing clone"):
+        mr.step11_commit_and_push(False, *GATES)

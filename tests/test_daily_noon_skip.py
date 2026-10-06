@@ -78,6 +78,8 @@ def _patch_main(monkeypatch, tmp_path, argv=None):
         calls["load_base"] += 1
         raise Proceeded()
     monkeypatch.setattr(db, "session", no_session)
+    real_load_config = djob.load_config
+    monkeypatch.setattr(djob, "load_config", lambda *a, **k: {key: val for key, val in real_load_config(*a, **k).items() if key != "publishing"})      # a temporary folder is not the publishing clone
     monkeypatch.setattr(djob, "load_base", load_base)
     monkeypatch.setattr(djob, "successful_run_today", lambda root, cfg, today=None: REAL_SUCCESSFUL_RUN_TODAY(root, cfg, today=TODAY))
     return sd, calls, Proceeded
