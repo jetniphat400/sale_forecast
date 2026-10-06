@@ -286,7 +286,13 @@ def material_lead_for_page(codes: list, cfg: dict = None) -> dict:
     labels = cfg["material_source_labels"]
     by = t.set_index("code")
     per_item = {c: {"days": float(by.loc[c, "material_lead_days"]), "source": labels[by.loc[c, "source_key"]]} for c in codes}
+    shown = t[t["code"].isin(codes)]
+    observed = shown[shown["source_key"] == "observed"]
     return {"per_item": per_item, "median_days": float(t["material_lead_days"].median()),
+            # D3 (the user, 2026-10-06): the page states the median over the shown items whose value comes from observed purchase records only,
+            # with their count and the number of items shown.
+            "median_observed_days": float(observed["material_lead_days"].median()) if len(observed) else None,
+            "n_observed": int(len(observed)), "n_items_shown": int(len(shown)),
             "label_counts": {labels[k]: int(v) for k, v in t["source_key"].value_counts().items()}, "n_items": int(len(t))}
 
 

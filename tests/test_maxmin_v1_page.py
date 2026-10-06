@@ -22,7 +22,7 @@ import maxmin_v1 as mm  # noqa: E402
 
 CFG = mm.load_config()
 LINE_1 = "Min/Max คำนวณจาก lead time ที่ทำให้การจำลองส่งของทันและถือ stock ใกล้เคียงของจริงที่สุด อยู่ระหว่าง {lead_min} ถึง {lead_max} วัน"
-LINE_2 = "lead time วัตถุดิบจากใบสั่งซื้อจริงยาวกว่านี้ ค่ากลาง {material_lead_median} วัน ใช้สำหรับวางแผนสั่งวัตถุดิบ ไม่ได้ใช้คำนวณ Min/Max ของสินค้า"
+LINE_2 = "lead time วัตถุดิบจากใบสั่งซื้อจริง ค่ากลาง {median_observed} วัน (มีข้อมูล {n_observed} จาก {n_items} รายการ) ใช้สำหรับวางแผนสั่งวัตถุดิบ ไม่ได้ใช้คำนวณ Min/Max ของสินค้า"
 HEADERS = ["lead time วัตถุดิบ (วัน)", "ที่มา"]
 LABELS = {"ใบสั่งซื้อจริง", "ผู้ขายแจ้ง", "ค่าประมาณ"}
 INTRO = "ตัวเลขบางส่วนในระบบใช้ค่าแทนเพราะข้อมูลยังบอกไม่ได้ ตารางนี้บอกว่าใช้อะไรแทน และกระทบตัวเลขไหน"
@@ -90,7 +90,8 @@ def test_both_lines_and_the_corrected_item_count_show_in_the_pem101_section(edge
     lines = edge.ev("document.getElementById('curve-lead-lines').innerText").split("\n")
     lines = [l.strip() for l in lines if l.strip()]
     expected = [LINE_1.format(lead_min=int(members["lead_time_days"].min()), lead_max=int(members["lead_time_days"].max())),
-                LINE_2.format(material_lead_median=_fmt(lead["bottleneck_days"].median()))]
+                LINE_2.format(median_observed=_fmt(lead.loc[lead["bottleneck_source"] == "observed", "bottleneck_days"].median()),
+                              n_observed=int((lead["bottleneck_source"] == "observed").sum()), n_items=len(lead))]
     assert lines == expected
     summary = edge.ev("document.getElementById('curve-target-summary').innerText")
     n = len(lead)

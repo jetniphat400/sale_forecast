@@ -653,6 +653,7 @@ Every dashboard page and panel displays, near its title:
       5 append a new forward-test vintage per section 27
       6 fill actual_qty and score any months that became eligible
       7 rebuild every page with section 26 timestamps
+      7b recompute operation plan v1 (section 42) from the page just built and the saved pulls
       8 run the full test suite
       9 scan staged files for sensitive content
       10 check change magnitude against the previous run
@@ -704,7 +705,9 @@ Every dashboard page and panel displays, near its title:
 The monthly cycle above is unchanged. Beside it, stock and reserved quantities refresh every day; forecasts, Min and
 Max and every sales-derived figure stay monthly.
 
-    scheduled task SaleForecast_PostingDelaySnapshot, 08:00 daily, start-when-available
+    scheduled task SaleForecast_PostingDelaySnapshot, 08:00 daily and a retry at 12:00 (2026-10-06), start-when-available;
+      a run that starts when a daily run of today already finished as published or nothing_to_publish exits at once and logs the skip
+      (no database connection); `--force` overrides; a failed, held or dry run never counts as a success
     src/snapshot_daily.py, one database session, in order:
       1 posting-delay snapshot and the stock snapshot — exactly as before, written first
       2 pull the four tables data/inventory.json needs (stock, Cube_CES backlog, old backlog, transfers)
@@ -1044,3 +1047,39 @@ pipeline — no new section is needed for this; it is already covered by section
   item across overlapping origins from being counted as independent.
 - The 2026-10-05 check (`output/summary/check_significance_topdown.md`) is the reference:
   its item-level t values per division are reproduced by this computation.
+
+## 42. operation_plan_v1
+
+    scope     : the forecast-status items of PEM101 and PEM107 (the item universe of the Min-Max page: 144 and 112), classes of section 23
+    months    : the target months of the latest forward-test vintage (section 27, level Item) from the current month onward; the vintage's
+                rows are checked against the hash in its metadata before they are read
+    demand[item, month]   = max(forecast[item, month], backlog[item, month])
+      backlog = sum of ActualQty + BacklogQty of the Cube_CES rows with Status 'Backlog' whose ForecastDelDate falls in the month;
+                a date before the first plan month goes into the first month; a date after the last month is not used and is counted
+    part A (class stock_policy; Min and Max exist), per item and month in order
+      closing = opening - demand + open orders
+      if closing < Min:  planned production = Max - closing;  closing = Max
+      opening of the first month = sellable on-hand of the latest daily stock pull (section 7; warehouses of config
+      `phase_e1_assumptions.sellable_warehouse_codes` per division); opening of a later month = the previous closing
+      Min and Max = those the Min-Max page shows on load: PEM101, the calibrated section at its default preset (`today_lowest_stock`),
+      Min and the median Max, interpolated on the section's grid as the page does; PEM107, the item table at the default controls
+    part B (classes confirmed_to_order and conflict; no Min or Max): load[item, month] = demand[item, month], recorded with the class
+    part C (per division and month):
+      total load = planned production (part A) + load (part B)
+      capacity reference = the highest sustained monthly output: cube_final transfer_qty summed by the calendar month of final_date,
+        items joined to their division by `output/summary/phase24_explorerC_item_type_division_map.csv`; the highest month, passing over
+        a month that is at least config `spike_ratio` (2) times the next-highest. It is a lower bound on capacity, not capacity. Units are
+        summed across products.
+      above capacity = total load > capacity reference
+    open production orders: counted only when config `open_orders_usable` is true; the 2026-10-06 test (`src/investigations/
+        week2_open_orders_test.py`, criteria in config `operation_plan.open_orders_test`) found they cannot be used: the plan counts none
+
+- Recorded outputs (untracked, `output/summary/`): `operation_plan_v1_item_month.csv`, `operation_plan_v1_division_month.csv`,
+  `operation_plan_v1_meta.json`, each with a SHA-256 in `operation_plan_v1_integrity.json`, verified before they are read back. Per
+  item and month: forecast, backlog due, demand and its source, opening, open orders, Min, Max, planned production, closing, load.
+- Computed by `src/operation_plan.py`; the monthly runner's step 7b recomputes it from the page step 7 built and the saved pulls.
+- Assumptions (each also in the meta file): production quantity is not rounded and has no lot size; stock at the start has nothing
+  in process added; the sellable warehouses are the configured assumption; capacity is a lower bound; PEM101's Min and Max are the
+  lead-time-free calibration's (decision D2, 2026-10-05, window of decision D4, 2026-10-06).
+- The capacity recomputed from the saved cube_final pull (2026-10-05) equals the figures DATA_MAP.md records for the same method (PEM101
+  249,080 and PEM107 6,221 units per month); config `capacity.data_map_reference` holds them and the plan reports whether they match.

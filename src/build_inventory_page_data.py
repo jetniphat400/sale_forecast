@@ -184,13 +184,17 @@ def _build_curve_target_pem101() -> dict:
     data["item_set_ref"] = ("count: n_items_calibrated of the Max-Min v1 ensemble output (src/maxmin_v1.py, week1_recal_targets.json n_items); "
                             "stock_policy count: task2b_part2_item_level.csv class stock_policy; METRICS.md Sec.23")
     lead = maxmin_v1.material_lead_for_page(data["items_order"], cfg)
+    if lead["median_observed_days"] is None:
+        raise ValueError("no item of the calibrated section has a material lead time from observed purchase records, so the median of the observed values is undefined")
     data["lead_time_lines"] = {"lead_min": data["lead_time_days"]["min"], "lead_max": data["lead_time_days"]["max"],
-                               "material_lead_median": lead["median_days"]}
+                               "material_lead_median_observed": lead["median_observed_days"], "n_observed": lead["n_observed"],
+                               "n_items": lead["n_items_shown"]}
     data["item_material_lead"] = lead["per_item"]
     data["material_lead_label_counts"] = lead["label_counts"]
     data["lead_time_ref"] = ("lead_min and lead_max: smallest and largest lead_time_days over the distinct members of the lead-time-free "
-                             "calibration (week1_recal_control_members_PEM101_92.csv); material_lead_median: median over the 92 items of the "
-                             "slowest material's lead time, production time excluded (item_lead_time_v1.csv, METRICS.md Sec.5); decision D2, 2026-10-05")
+                             "calibration (week1_recal_control_members_PEM101_92.csv); material_lead_median_observed: median of the slowest "
+                             "material's lead time, production time excluded, over the shown items whose value comes from observed purchase records only; n_observed: "
+                             "their count; n_items: the stock_policy items shown (item_lead_time_v1.csv, METRICS.md Sec.5); decisions D2, 2026-10-05, and D3, 2026-10-06")
     return data
 
 

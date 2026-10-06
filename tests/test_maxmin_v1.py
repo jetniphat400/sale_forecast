@@ -149,6 +149,8 @@ def test_the_material_lead_median_and_source_labels_equal_the_per_item_file(reco
     d = _lead_csv()
     page = mm.material_lead_for_page(list(d["item"]), CFG)
     assert page["median_days"] == float(d["bottleneck_days"].median())
+    obs = d[d["bottleneck_source"] == "observed"]
+    assert page["median_observed_days"] == float(obs["bottleneck_days"].median()) and page["n_observed"] == len(obs) and page["n_items_shown"] == len(d)
     labels = CFG["material_source_labels"]
     for _, r in d.iterrows():
         assert page["per_item"][r["item"]] == {"days": float(r["bottleneck_days"]), "source": labels[r["bottleneck_source"]]}

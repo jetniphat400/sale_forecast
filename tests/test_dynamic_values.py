@@ -336,7 +336,8 @@ def test_inventory_page_numbers_follow_their_sources(two_builds):
     llb = base.data["divisions"]["PEM101"]["curve_target"]["lead_time_lines"]
     llp = pert.data["divisions"]["PEM101"]["curve_target"]["lead_time_lines"]
     assert llp["lead_min"] == 2 and llp["lead_max"] == 45 and llb["lead_max"] != 45, "the lead range is typed, not read from the members"
-    assert llp["material_lead_median"] == llb["material_lead_median"] + 10, "the material lead median is typed, not read from the per-item output"
+    assert llp["material_lead_median_observed"] == llb["material_lead_median_observed"] + 10, "the observed material lead median is typed, not read from the per-item output"
+    assert llp["n_observed"] == llb["n_observed"] and llp["n_items"] == llb["n_items"] == 92 and 0 < llb["n_observed"] <= llb["n_items"]
     assert pert.data["staleness_threshold_days"] == 1 and base.data["staleness_threshold_days"] != 1
     # PEM107 split month is read from the alert data, with wording only for the month approved
     assert base.data["pem107_alert"]["split_label"] != pert.data["pem107_alert"]["split_label"]
@@ -410,7 +411,7 @@ def test_script_filled_lines_follow_their_sources(two_builds):
             texts[name] = (summary, rel, alert)
             ll = (base if name == "base" else pert).data["divisions"]["PEM101"]["curve_target"]["lead_time_lines"]
             assert f"อยู่ระหว่าง {ll['lead_min']} ถึง {ll['lead_max']} วัน" in lines
-            assert f"ค่ากลาง {ll['material_lead_median']:g} วัน" in lines
+            assert f"ค่ากลาง {ll['material_lead_median_observed']:g} วัน (มีข้อมูล {ll['n_observed']} จาก {ll['n_items']} รายการ)" in lines
         sb, rb, ab = texts["base"]
         sp, rp, ap = texts["pert"]
         grid_b = base.data["divisions"]["PEM101"]["curve_target"]

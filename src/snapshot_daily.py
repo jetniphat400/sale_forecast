@@ -168,11 +168,18 @@ def main():
     """The posting-delay measurement and the stock snapshot, exactly as before, then the daily stock job (published
     data files), all inside ONE database session (src/db.py session()). A failure of the stock job never loses the
     measurement: the measurement is written first, and the stock job's failure is raised afterwards (non-zero exit,
-    log under output/runs/daily/)."""
+    log under output/runs/daily/). The scheduled task starts it at 08:00 and again at 12:00; the second start does nothing when a successful
+    run of today already exists (--force overrides)."""
     import daily_stock_job as djob
     from db import session
     config = load_config()
     root_config = djob.load_config()
+    # The task runs twice a day (08:00 and a 12:00 retry). A run that finds a successful daily run of today exits before it connects.
+    existing = None if "--force" in sys.argv[1:] else djob.successful_run_today(PROJECT_ROOT, root_config)
+    if existing:
+        logger.info("Skipped: a successful daily run of today exists (run %s, %s). Log: %s", existing.get("run_id"), existing.get("status"),
+                    djob.record_skip(PROJECT_ROOT, root_config, existing))
+        return
     base = djob.load_base(PROJECT_ROOT, root_config)      # before today's snapshot file is written below
     try:
         with session():

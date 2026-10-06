@@ -12,6 +12,7 @@ ORDER, exactly as specified there:
       re-run
     6 fill actual_qty and score any months that became eligible
     7 rebuild every page with section 26 timestamps
+    7b recompute operation plan v1 (METRICS.md Sec.42) from the page just built and the saved pulls
     8 run the full test suite
     9 scan staged files for sensitive content
     10 check change magnitude against the previous run
@@ -127,7 +128,7 @@ SENSITIVE_PATTERNS = [
 
 
 STEP_ORDER = ["1_pull_data", "2_validate", "3_frozen_snapshot", "4_backtest", "5_new_forward_test_vintage",
-              "6_fill_and_score", "7_rebuild_pages", "8_run_tests", "9_scan_sensitive_content",
+              "6_fill_and_score", "7_rebuild_pages", "7b_operation_plan", "8_run_tests", "9_scan_sensitive_content",
               "10_change_magnitude", "11_commit_and_push"]
 
 
@@ -957,6 +958,24 @@ def step7_rebuild_pages(dry_run: bool, staged_dir: str, step1_result: dict = Non
 
 
 # ---------------------------------------------------------------------------------------------
+# Step 7b: operation plan v1 (METRICS.md Sec.42)
+# ---------------------------------------------------------------------------------------------
+
+def step7b_operation_plan(dry_run: bool, staged_dir: str, step7_result: dict = None) -> dict:
+    """Recomputes the operation plan from the inventory page step 7 just built and the saved pulls, verifies the recorded outputs against their
+    SHA-256 and reports the months, the counts, the capacity reference and the months above it. In a dry run the whole run is inside a temporary
+    copy of the project, so the plan is written there; a staged (non-copy) dry run writes under its staging folder. Makes no database connection."""
+    import operation_plan
+    page = (step7_result or {}).get("inventory_rendered_path")
+    result = operation_plan.run(PROJECT_ROOT, today=pd.Timestamp(datetime.now().date()),
+                                out_dir=os.path.join(staged_dir, "operation_plan") if dry_run else None, page_path=page)
+    result["written_to_tracked_path"] = False
+    result["written_to"] = ("temporary copy of the project (dry run)" if IN_SANDBOX else
+                            ("staging folder" if dry_run else "output/summary (untracked)"))
+    return result
+
+
+# ---------------------------------------------------------------------------------------------
 # Step 8: run the full test suite
 # ---------------------------------------------------------------------------------------------
 
@@ -1354,7 +1373,8 @@ def main(dry_run: bool, force_new_vintage: bool = False, sandbox: bool = False, 
     step5 = record("5_new_forward_test_vintage", step5_new_vintage, steps_dry, force_new_vintage)
     computed_vintage_for_preview = _LAST_COMPUTED_VINTAGE if steps_dry else None
     record("6_fill_and_score", step6_fill_and_score, steps_dry, computed_vintage_for_preview, offline, run_id)
-    record("7_rebuild_pages", step7_rebuild_pages, steps_dry, staged_dir, step1)
+    step7 = record("7_rebuild_pages", step7_rebuild_pages, steps_dry, staged_dir, step1)
+    record("7b_operation_plan", step7b_operation_plan, steps_dry, staged_dir, step7)
     step8 = record("8_run_tests", step8_run_tests, skip_tests)
     step9 = record("9_scan_sensitive_content", step9_scan_sensitive_content, started_mtime if sandbox else None)
     step10 = record("10_change_magnitude", step10_change_magnitude, config, step4, step5)

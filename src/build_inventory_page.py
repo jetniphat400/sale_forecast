@@ -940,11 +940,11 @@ function renderCurveTarget(divisionData) {{
     htmlComment('previous English wording: N distinct ensemble members (deduplicated on reorder level, order-up-to level, review interval and replenishment lead time). Today point: not_late, stock value THB. Sources: METRICS.md Sec.22, ' + ct.source_report + '; today point: ' + ct.today_point.source) +
     `<br><span style="color:#b45309;">${{ct.item_set_note}}</span>` + htmlComment(ct.item_set_ref || '');
 
-  // Two approved lines; the numbers come from the section's own data (lead range across the members, median slowest-material lead time).
+  // Two approved lines; the numbers come from the section's own data (lead range across the members; median slowest-material lead time over the items with observed purchase records, their count and the items shown).
   const ll = ct.lead_time_lines;
   document.getElementById('curve-lead-lines').innerHTML =
     `Min/Max คำนวณจาก lead time ที่ทำให้การจำลองส่งของทันและถือ stock ใกล้เคียงของจริงที่สุด อยู่ระหว่าง ${{ll.lead_min}} ถึง ${{ll.lead_max}} วัน<br>` +
-    `lead time วัตถุดิบจากใบสั่งซื้อจริงยาวกว่านี้ ค่ากลาง ${{fmtLeadDays(ll.material_lead_median)}} วัน ใช้สำหรับวางแผนสั่งวัตถุดิบ ไม่ได้ใช้คำนวณ Min/Max ของสินค้า` +
+    `lead time วัตถุดิบจากใบสั่งซื้อจริง ค่ากลาง ${{fmtLeadDays(ll.material_lead_median_observed)}} วัน (มีข้อมูล ${{ll.n_observed}} จาก ${{ll.n_items}} รายการ) ใช้สำหรับวางแผนสั่งวัตถุดิบ ไม่ได้ใช้คำนวณ Min/Max ของสินค้า` +
     htmlComment(ct.lead_time_ref || '');
 
   const slider = document.getElementById('notlate-slider');

@@ -1368,6 +1368,10 @@ daily_stock:
   # The monthly runner writes this file while it runs; the daily job skips publishing while it exists and its
   # process is alive.
   monthly_lock_file: output/runs/monthly_refresh.lock
+  # The task has two daily triggers, 08:00 and a retry at 12:00 (decided by the user 2026-10-06, after the 08:00 run stopped because a tracked file was
+  # modified). A run that starts when a daily run of today already finished with one of these statuses exits at once and logs that it skipped.
+  success_statuses: [published, nothing_to_publish]
+  skip_status: skipped_success_exists_today
 
 # ---- Fulfilment class decisions made by the user, applied on top of METRICS.md Sec.23 (the rule itself is unchanged) ----
 fulfilment_class_decisions:
@@ -1528,3 +1532,64 @@ maxmin_v1:
       used_now: "ใช้ยอดนั้นเป็นค่าต่ำสุด"
       affects: "แผนการผลิต"
       value_source: "STATUS.md, Q20: the highest sustained monthly output per division and Type, a lower bound"
+
+# ---- Operation plan v1 (week 2, 2026-10-06; METRICS.md Sec.42; src/operation_plan.py) ----
+# D4 (the user, 2026-10-06): the PEM101 calibration keeps the J3 observation window, 2024-01 to 2025-12 (METRICS.md Sec.20). The shorter window
+# (target from 2024-07) gives lead 1 to 15 days with 35 members (week1_leadtime_calibration.md); it is a sensitivity for the week 4 review, not used.
+operation_plan:
+  divisions: [PEM101, PEM107]
+  # Classes of METRICS.md Sec.23 that get a Min and Max (part A) and that do not (part B, load equals demand).
+  classes_with_min_max: [stock_policy]
+  classes_without_min_max: [confirmed_to_order, conflict]
+  # Month index of the plan: the vintage's target months from the current month onward (METRICS.md Sec.27, latest vintage, Item level).
+  forecast_log_file: "output/summary/forward_test_log_all_divisions.csv"
+  forecast_log_metadata_file: "output/summary/forward_test_log_all_divisions_metadata.json"
+  forecast_level: "Item"
+  # The page whose embedded data holds each item's Min and Max as shown on load (forecast/inventory.html, built by step 7 of the runner).
+  inventory_page_file: "forecast/inventory.html"
+  # Stock: the latest daily stock pull. Backlog: the latest saved pull of either kind (the larger pulled_at_local in pull_meta.json).
+  stock_pull_dir: "output/data/daily_stock_pull"
+  backlog_pull_dirs: ["output/data/daily_stock_pull", "output/data/inventory_pull"]
+  # Cube_CES Status = 'Backlog': confirmed quantity = ActualQty + BacklogQty (DATA_MAP.md, same convention as build_inventory_dataset.py).
+  # ASSUMPTION. Open production orders are NOT counted (Part 1 test, output/summary/week2_open_orders_test.json): no column marks an order
+  # still to be produced. The simulation adds open orders when this is true and a file of them is given; it is false until a test shows they can be used.
+  open_orders_usable: false
+  open_orders_test_file: "output/summary/week2_open_orders_test.json"
+  # Capacity reference: the highest sustained monthly output per division, METRICS.md Sec.42 (the method of DATA_MAP.md, cube_final entry).
+  capacity:
+    cube_final_file: "output/data/lead_time_inputs/cube_final_all.csv"
+    item_division_file: "output/summary/phase24_explorerC_item_type_division_map.csv"
+    date_column: final_date
+    quantity_column: transfer_qty
+    # A top month at least this many times the next-highest is an isolated spike and is passed over (DATA_MAP.md: "no top-5 month more than ~2x the next").
+    spike_ratio: 2.0
+    # Figures DATA_MAP.md records for the same method (cube_final entry, "Highest sustained monthly output"); the recomputation must equal them.
+    data_map_reference: {PEM101: 249080, PEM107: 6221}
+  # Part 1 test (src/investigations/week2_open_orders_test.py): open production orders are used in the plan only if every criterion holds.
+  # Thresholds are ASSUMPTIONS, stated before the test was run. A finished order is a job and item with a cube_final record.
+  open_orders_test:
+    plan_row_inputs_dir: "output/data/week2_inputs"
+    prodorder_file: "prodorder_20261006.csv"
+    cube_final_file: "cube_final_20261006.csv"
+    earlier_prodorder_file: "output/data/lead_time_inputs/prodorder_all.csv"
+    # C1 planned finish: share of finished orders with the final record within this many days of the planned finish must be at least min_share_within.
+    finish_within_days: 14
+    min_share_within: 0.70
+    # C2 open by status (status open or Released): the share of those orders already past their planned finish by more than stale_days must be at most this.
+    stale_days: 30
+    max_stale_open_share: 0.20
+    # C3 open by missing final record: among orders past their planned finish by more than coverage_overdue_days (so they should be finished), the share
+    # that has a final record must be at least min_final_coverage, or a missing record cannot mean the order is open.
+    coverage_overdue_days: 60
+    min_final_coverage: 0.70
+    open_statuses: [open, Released]
+    # C2b (added after the first run showed that rows with to_be_realized = 0 behave as receipts; threshold set before it was computed): open by receipts,
+    # an order is closed when the quantity of its zero-remaining rows reaches the planned quantity. Finished orders must show that at least this share.
+    min_finished_closed_share: 0.70
+  # Where the recorded outputs go (output/ is untracked) and the file of hashes.
+  output_item_month_file: "output/summary/operation_plan_v1_item_month.csv"
+  output_division_month_file: "output/summary/operation_plan_v1_division_month.csv"
+  output_meta_file: "output/summary/operation_plan_v1_meta.json"
+  output_integrity_file: "output/summary/operation_plan_v1_integrity.json"
+  # Float tolerance for the Min comparison, in units.
+  tolerance_units: 1.0e-9

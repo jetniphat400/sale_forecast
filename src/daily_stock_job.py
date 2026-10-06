@@ -59,6 +59,37 @@ def load_config(root: str = PROJECT_ROOT) -> dict:
         return yaml.safe_load(f)
 
 
+# ----------------------------------------------------------------------------------------------- the noon retry
+def successful_run_today(root: str, config: dict, today=None) -> dict:
+    """The log of the latest daily run that finished today (this machine's clock) with a status in config `daily_stock.success_statuses`,
+    or None. A dry run, a failed run, a run held while the monthly runner ran and a skip never count."""
+    today = str(today or datetime.now().date())
+    log_dir = os.path.join(root, config["daily_stock"]["log_dir"])
+    found = None
+    for name in sorted(os.listdir(log_dir)) if os.path.isdir(log_dir) else []:
+        if not (name.startswith("daily_stock_") and name.endswith(".json")):
+            continue
+        try:
+            with open(os.path.join(log_dir, name), encoding="utf-8") as f:
+                log = json.load(f)
+        except (OSError, ValueError):
+            continue
+        if (not log.get("dry_run") and log.get("status") in config["daily_stock"]["success_statuses"]
+                and str(log.get("finished_at", ""))[:10] == today):
+            found = log
+    return found
+
+
+def record_skip(root: str, config: dict, existing: dict) -> str:
+    """Writes the log of a run that exited at once because a successful run of today exists; returns its path."""
+    log = {"run_id": datetime.now().strftime("%Y%m%dT%H%M%S"), "dry_run": False, "status": config["daily_stock"]["skip_status"],
+           "committed": False, "pushed": False, "gates": [], "steps": [],
+           "note": f"a successful daily run of today exists (run {existing.get('run_id')}, status {existing.get('status')}, "
+                   f"finished {existing.get('finished_at')}); this run did nothing and made no database connection",
+           "finished_at": datetime.now().isoformat(timespec="seconds")}
+    return _write_log(root, config, log)
+
+
 # ----------------------------------------------------------------------------------------------- monthly runner lock
 def pid_alive(pid: int) -> bool:
     if pid <= 0:

@@ -71,7 +71,7 @@ def test_dry_run_changes_nothing_but_its_run_log(tmp_path):
         assert log["dry_run"] is True and log["dry_run_in_temporary_copy"] is True
         assert "aborted_at_step" not in log, log.get("aborted_at_step")
         for step in ("1_pull_data", "2_validate", "3_frozen_snapshot", "4_backtest", "5_new_forward_test_vintage",
-                     "6_fill_and_score", "7_rebuild_pages", "9_scan_sensitive_content", "10_change_magnitude",
+                     "6_fill_and_score", "7_rebuild_pages", "7b_operation_plan", "9_scan_sensitive_content", "10_change_magnitude",
                      "11_commit_and_push"):
             assert log["steps"][step]["status"] == "ok", step
         # the rebuilt pages and the refreshed inputs exist only in the copy

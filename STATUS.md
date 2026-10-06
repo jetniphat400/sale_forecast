@@ -62,9 +62,9 @@ PROJECT_GRAPH.md is the authority; this is a snapshot of its Critical path and N
 - **Purpose (the user, 2026-10-05):** a sales forecast model, then an inventory model built on it, then operation planning. Unknowns are cut out for now, what is used in their place is shown, and the model is tuned later.
 - **G1 (sales forecast): in progress.** Method locked (Top-down Combination; R1 closed, the moving average is a comparator). The forward test (T1) runs monthly: vintages 1 and 2 exist, August scored, the comparator starts with vintage 3 (2026-11).
 - **G2 (inventory policy): Week 1 done 2026-10-06 (Max-Min v1 on the Min-Max page for PEM101, STATUS "Week 1 close").** Earlier note: Week 1 (2026-10-05 to 10-09). Max-Min v1 with lead time per item from data and the source of each value labelled; PEM101 recalibrated on the 92-item stock_policy set. Covers PEM101 and PEM107; PEM107 recalibration is cut.
-- **G3 (operation planning): in scope, Weeks 2 and 3.** Operation plan v1 (six months) in Week 2, material plan v1 (BOM explosion) in Week 3, against the lower-bound capacity already recorded. It is no longer waiting on a person: unknowns are cut out and shown (Q19, Q20).
+- **G3 (operation planning): in scope, Weeks 2 and 3. Week 2 done 2026-10-06 (operation plan v1 for PEM101 and PEM107, STATUS "Week 2").** Material plan v1 (BOM explosion of the plan) is Week 3, against the lower-bound capacity already recorded. It is no longer waiting on a person: unknowns are cut out and shown (Q19, Q20).
 - **Closed or cut:** R1 closed; R2 (MRP hand-off), the buyer reference page, V1, further PEM107 questions and PEM107 recalibration cut.
-- **Critical path:** Week 1 Max-Min v1 -> Week 2 operation plan v1 -> Week 3 material plan v1 -> Week 4 end-to-end check and executive summary. The earlier path E11 -> E12 -> Q10 is history (PROJECT_GRAPH.md).
+- **Critical path:** Week 1 Max-Min v1 (done) -> Week 2 operation plan v1 (done 2026-10-06) -> Week 3 material plan v1 -> Week 4 end-to-end check and executive summary. The earlier path E11 -> E12 -> Q10 is history (PROJECT_GRAPH.md).
 - **Operational path:** the daily stock refresh and the monthly runner (the 5th) are running; on 2026-10-12 check whether Cube_CES loads weekly.
 
 ### Previous Current Status Summary (2026-10-02), superseded 2026-10-05
@@ -84,6 +84,25 @@ previous hand-written summary (2026-09-29) is kept below under its own heading a
   data; DE1-DE4 closed. T2 (posting-delay measurement, started 2026-09-22) in progress, due about 2026-11-21.
 - **Critical path:** E11 -> E12 -> Q10 (unchanged). **Operational path:** the monthly runner (phase C) is not yet
   running in production: see C2 below.
+
+### Week 2 -- operation plan v1 for PEM101 and PEM107, D3 line, noon retry -- DONE, 2026-10-06 (one read-only database session, Part 1 only; offline dry run passed: 12 steps ok, gates 3 passed, 0 failed, 2 not tested (no earlier run log; step 5 skipped), only the run log was written outside the temporary copy; Validator matched)
+
+Report: `output/summary/week2_operation_plan.md` (local); definition METRICS.md Sec.42; code `src/operation_plan.py`, `src/investigations/week2_open_orders_test.py`, monthly runner step 7b; config block `operation_plan`; tests `tests/test_operation_plan.py`, `tests/test_operation_plan_page.py`, `tests/test_daily_noon_skip.py`. No new page; the reader text for the plan is written later by the user's assistant.
+
+**Decisions of the user, 2026-10-06 (given in this task's prompt; PROJECT_GRAPH.md D12 to D14, since D3 and D4 already exist there):**
+- **D3 (graph D12):** the material lead-time line on the Min-Max page states the median over the items with observed purchase records only, with their count: 48.5 days, 50 of 92 items. Applies to the PEM101 calibrated section.
+- **D4 (graph D13):** the PEM101 calibration keeps the J3 window, 2024-01 to 2025-12. The shorter-window result (lead 1 to 15 days, 35 members) is a sensitivity for the Week 4 review.
+- **D14 (graph):** the operation plan v1 logic, METRICS.md Sec.42.
+
+**Part 1, open production orders: not usable.** `end_date` is the planned finish and `status` (Printed, Released, open) the status, but no column marks an order still to be produced. Status is a one-way lifecycle (open, Released, Printed; no reverse step between the two pulls) and 186 of 187 orders with a cube_final record are Printed. Planned finish against final_date: 29.9% within 14 days, 35.8% in the same month. cube_final has a record for 8.7% of orders long past their planned finish, so a missing record cannot mean open. Receipts do not close an order either (44.4% of finished orders show receipts that reach the plan). The plan counts no open orders (an assumption). Detail and levels in DATA_MAP.md, "Week 2". Validator: same verdict; its supporting figures differ (296 matched pairs, 33% within 7 days against 20.3% here) because it did not separate plan rows from receipt rows; both positions are recorded, the verdict is the same.
+
+**Part 2, the plan** (latest vintage 2, months 2026-10 to 2027-02; 256 items: PEM101 144, PEM107 112; 96 with Min and Max, 160 without). 68 items need production in the horizon (PEM101 64, PEM107 4). Replenishment is largest in 2026-10 (226,151 units: most items start below Min). Load against the lower-bound capacity (PEM101 249,080, PEM107 6,221, equal to DATA_MAP): PEM101 peaks at 91% in 2026-10; **PEM107 2026-10 is above it (6,952, 112%), mostly made-to-order and conflict load**. Backlog above forecast in 65 item-months. Validator re-derived all 1,280 item-months, the ten division-months of each part, the capacity and the D3 values from the saved data: MATCH.
+
+**Assumptions the plan uses:** open production orders are not counted; sellable warehouses are the configured assumption (PEM101 FG01, FG21, WH21; PEM107 FG27, WH22, WH24, FG22, FG01); PEM101's Min and Max are the calibrated section's on load (lead time free), PEM107's the item table's at the default controls; production quantity is not rounded and has no lot size; stock at the start has nothing in process added; capacity is a lower bound in units summed across products; the forecast is vintage 2's.
+
+**Part 3.** The D3 line is on `forecast/inventory.html` (the tracked page was patched for this one line and its values, nothing else rebuilt; the builder emits the same line for the next monthly run). **Part 4.** The scheduled task now has a 12:00 trigger beside 08:00 (start-when-available and battery settings kept); a run that finds a successful daily run of today exits at once and logs the skip (tests in `tests/test_daily_noon_skip.py`). **Tests:** full suite 486 passed, 0 failed, 0 skipped; git status unchanged by it.
+
+**Found, not done (assigned to a week):** Week 3: the material plan reads `operation_plan_v1_item_month.csv`. Week 4: re-run the open-orders test on a fresh pull and revisit if a closing flag or complete receipts appear; review the shorter calibration window (D4); decide whether the Assumptions tab gets the plan's assumptions (reader text, the user's assistant); PEM101 default Min/Max source (calibrated section used, main table the alternative); first-month catch-up (49 of 96 stock items start below Min, 91% of PEM101's lower-bound capacity in 2026-10) for planners to read. Week 4 check: negative BacklogQty rows are kept as recorded (not clipped), effect untested.
 
 ### Week 1 close -- Max-Min v1 on the Min-Max page for PEM101 -- DONE, 2026-10-06 (no database; offline dry run passed; Validator matched)
 
