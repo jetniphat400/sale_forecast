@@ -160,7 +160,7 @@ def task2_compare_dates(apd: pd.DataFrame, ces: pd.DataFrame) -> None:
     # the WRONG tranche's CES row. To avoid that artifact, for every APD row we pick the single BEST-
     # matching CES row (the one with the smallest |forecast_date - ForecastDelDate|, ties broken
     # arbitrarily) and compare PlanDelDate/ActualDelDate from THAT SAME row only. This was verified by
-    # hand on several contracts with multiple tranches (e.g. CTR-2024-05379, 3 tranches/item) before
+    # hand on several contracts with multiple tranches (e.g. a 2024 contract, 3 tranches/item) before
     # being adopted, and confirmed to correctly pair each APD row with its own tranche.
     merged_all = apd_valid.merge(
         ces, left_on=["contractid", "itemcode"], right_on=["ContractID", "ItemCode"], how="inner",

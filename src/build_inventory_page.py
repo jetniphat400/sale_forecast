@@ -463,7 +463,6 @@ def build_page(**data_sources) -> str:
 
   <!-- previously: Confirmed-to-order / Conflict รายการ (ไม่มี Min/Max, METRICS.md §23); items classed confirmed_to_order or conflict get no Min/Max however much sales history they have (only PEM101/PEM107 have this grouping; PEM103 shows an empty table). -->
   <h2>สินค้าผลิตตามสั่ง และสินค้าที่ยังไม่ชัด (ไม่มี Min/Max)</h2>
-  <p class="hint" id="class-table-note">จัดกลุ่มเฉพาะ PEM101 และ PEM107 ถ้าเลือก PEM103 ตารางนี้จะว่าง</p>
   <div class="table-scroll"><table class="report-table" id="class-table">
     <thead><tr><th>Item</th><th>Type</th><th>Label</th><th>Class</th><th>S1 (on-hand)</th><th>S2 (batch-before-PO)</th><th>S3 (notice, days)</th></tr></thead>
     <tbody id="class-table-body"></tbody>

@@ -138,6 +138,10 @@ Reader-facing text. Any text a dashboard reader can see is written for PEM's sal
 
 Page layout. Before adding, removing or moving anything on a dashboard page, state who uses it and for what task, and place it so that a control sits within sight of what it changes; a reader can change a control and see the effect without scrolling; every control says which parts of the page it affects and which it does not; and existing elements are reconsidered, not only new ones added.
 
+## Customer and contract identifiers (added 2026-10-06)
+
+Customer and contract identifiers. Customer IDs, customer names, contract numbers and personal login names never appear in documentation, config, source or tests. Pages may show them. Decided by the user on 2026-10-06.
+
 ## No silent omission (added 2026-10-06)
 
 No silent omission. Every page covers every division and item in its scope. Where a division or item is not covered, the page shows why, in approved text; it is never simply missing.

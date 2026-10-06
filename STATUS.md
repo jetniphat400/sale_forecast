@@ -1,5 +1,36 @@
 # STATUS
 
+## The brief
+
+The user's original brief, verbatim (recorded 2026-10-06). Every task reads this section before starting (AGENTS.md).
+
+1. จะดึงข้อมูลขาย ของงาน omni ดึง item ตามpricelist มาดูtrend ย้อนหลัง 3 ปีก่อน  actual ใช้ cube sale APD
+2. เอา product drop,surge มากำหนด model ก่อน จาก ข้อมูลที่ ดู trend ข้อ1
+3.ทำ model  Sale Forcasting 2 แบบ  
+   3.1 ใช้ moving average โดยใช้ข้อมูลย้อนหลังตามความเหมาะสมจากจำนวนtrend ที่ดูในข้อ 1 ซึ่งอาจจะไม่ใช่ 3 เดือนย้อนหลัง
+  3.2 เพิ่มเรื่อง Factor อื่นๆ เช่น งบประมานไฟฟ้า, insight จากSale,ประกาศ Bid จาก EGP
+4.ทำ model สำหรับ Forcast Inventory  ใช้ actual จาก cube inventory ให้สามารถนำไปทำ MRP ได้ ทำข้อมูลเฉพาะ Max-Min ของ FG เพราะต้องใช้ข้อมูลจากข้อ 3  มาบวกเพิ่มเรื่อง Lead time ของ vendor และ พายุ
+เพิ่มsetting model 2product cate drop,surge + 3item 
+EEE-F-FC-1040010002
+HS-F-99-02110
+HS-F-99-0213
+
+How each item reads against the data, and its status (written 2026-10-06; the decision of the user the same day is that nothing waits for answers from other departments: results go on the pages with labels saying how certain they are, and anything uncertain is listed for later verification).
+
+| item | interpreted against the data | status | cannot do now and why |
+|---|---|---|---|
+| 1 | Pricelist-scope Omni rows in cube_Sale_APD start 2024-01, about 2.7 years; Part 4 checks whether Cube_CES extends to 2023 | done | — |
+| 2 | drop and surge are the product categories Drop-out Fuse Cutout and Surge Arrester, the pilot scope, later extended to all pricelist codes | done | — |
+| 3.1 | moving average with a per-division window chosen by backtest, scored beside Top-down from vintage 3 | done | — |
+| 3.2 | utility budgets, sales insight and EGP bids | not done | no such data in the database; Cube_OI_SaleForecast may hold sales insight and is not profiled; after the foundation criteria |
+| 4 Max-Min | Max-Min per finished-goods item | partly: PEM101 | other divisions after Part 2 classifies them, week 4 |
+| 4 MRP | no system MRP exists and people order by hand, so usable for MRP means an operation plan and a material plan built on Max-Min | operation plan for PEM101 and PEM107; all divisions and the material plan in this task | — |
+| 4 vendor lead time | observed order-to-receipt per material from the database; Max-Min uses the replenishment lead time the calibration supports, because the material lead time does not reproduce observed service and stock; the material lead time drives the material plan | done | — |
+| 4 storms | — | not done | no storm data in the database; after the foundation criteria |
+| settings | the three items have report rows; a category-level view for the two categories is week 4 | partly | — |
+
+**Decision of the user, 2026-10-06 (given in the week 3 prompt):** nothing waits for answers from other departments. Results go on the pages with labels saying how certain they are, and anything uncertain is listed for later verification. The PEM101 evidence file (`output/pem101_evidence/PEM101_undetermined_20261005.xlsx`, local, git-ignored) is not sent; the week 3 classification of every division (METRICS.md Sec.23) replaces it.
+
 > **CALIBRATION WARNING (2026-09-23, Phase J2, Part 0) — READ BEFORE USING ANY FIGURE BELOW.**
 > Phase J found that replaying the current inventory policy through the Section 16 simulation
 > predicts single-digit fill rates (8.2% PEM101, 1.1% PEM103, 1.6% PEM107) while the business
@@ -62,9 +93,9 @@ PROJECT_GRAPH.md is the authority; this is a snapshot of its Critical path and N
 - **Purpose (the user, 2026-10-05):** a sales forecast model, then an inventory model built on it, then operation planning. Unknowns are cut out for now, what is used in their place is shown, and the model is tuned later.
 - **G1 (sales forecast): in progress.** Method locked (Top-down Combination; R1 closed, the moving average is a comparator). The forward test (T1) runs monthly: vintages 1 and 2 exist, August scored, the comparator starts with vintage 3 (2026-11).
 - **G2 (inventory policy): Week 1 done 2026-10-06 (Max-Min v1 on the Min-Max page for PEM101, STATUS "Week 1 close").** Earlier note: Week 1 (2026-10-05 to 10-09). Max-Min v1 with lead time per item from data and the source of each value labelled; PEM101 recalibrated on the 92-item stock_policy set. Covers PEM101 and PEM107; PEM107 recalibration is cut.
-- **G3 (operation planning): in scope, Weeks 2 and 3. Week 2 done 2026-10-06 (operation plan v1 for PEM101 and PEM107, STATUS "Week 2").** Material plan v1 (BOM explosion of the plan) is Week 3, against the lower-bound capacity already recorded. It is no longer waiting on a person: unknowns are cut out and shown (Q19, Q20).
+- **G3 (operation planning): in scope, Weeks 2 and 3. Week 2 done 2026-10-06 (operation plan v1 for PEM101 and PEM107, STATUS "Week 2"). Week 3 done 2026-10-06 (operation plan for all six divisions and material plan v1, STATUS "Week 3").** Earlier note: material plan v1 (BOM explosion of the plan) was Week 3, against the lower-bound capacity already recorded. It is no longer waiting on a person: unknowns are cut out and shown (Q19, Q20).
 - **Closed or cut:** R1 closed; R2 (MRP hand-off), the buyer reference page, V1, further PEM107 questions and PEM107 recalibration cut.
-- **Critical path:** Week 1 Max-Min v1 (done) -> Week 2 operation plan v1 (done 2026-10-06) -> Week 3 material plan v1 -> Week 4 end-to-end check and executive summary. The earlier path E11 -> E12 -> Q10 is history (PROJECT_GRAPH.md).
+- **Critical path:** Week 1 Max-Min v1 (done) -> Week 2 operation plan v1 (done 2026-10-06) -> Week 3 material plan v1 (done 2026-10-06) -> Week 4 end-to-end check and executive summary, with the items listed under "Week 3" for verification. The earlier path E11 -> E12 -> Q10 is history (PROJECT_GRAPH.md).
 - **Operational path:** the daily stock refresh and the monthly runner (the 5th) are running; on 2026-10-12 check whether Cube_CES loads weekly.
 
 ### Previous Current Status Summary (2026-10-02), superseded 2026-10-05
@@ -84,6 +115,62 @@ previous hand-written summary (2026-09-29) is kept below under its own heading a
   data; DE1-DE4 closed. T2 (posting-delay measurement, started 2026-09-22) in progress, due about 2026-11-21.
 - **Critical path:** E11 -> E12 -> Q10 (unchanged). **Operational path:** the monthly runner (phase C) is not yet
   running in production: see C2 below.
+
+### Week 3 -- classes for every division, mixed items, operation plan for six divisions, material plan v1 -- DONE pending publication (committed locally, push by the user), 2026-10-06 (one read-only database session, 76 queries; offline dry run passed: 13 steps ok, gates 3 passed, 0 failed, 2 not tested (no earlier run log; step 5 skipped), only the run log written outside the temporary copy; Validator matched except the items below)
+
+Code: `src/investigations/task2b_part2_fulfilment_segmentation.py` (`run_from_pulls`), `src/operation_plan.py`, `src/build_operation_plan_page.py`, `src/material_plan.py`, `src/build_material_plan_page.py`, runner step 7c; METRICS.md Sec.23 (added block), Sec.42 (week 3 block), Sec.43; config blocks `week3_classification`, `material_plan`, `operation_plan`; tests `tests/test_material_plan.py` and the extended plan, page, reader-text, dynamic-values and runner tests. Pages: `forecast/operation_plan.html` (six divisions), `forecast/material_plan.html` (new, linked by the text แผนวัตถุดิบ), `forecast/inventory.html` (the approved line for the divisions without Min and Max). Screenshots: `output/charts/week3/`. Queries and their outputs: a scratch folder outside the repository (kept for the Validator). Decision of the user, 2026-10-06 (recorded under "The brief"): nothing waits for answers from other departments; the PEM101 evidence file is not sent.
+
+**Part 2, classes (METRICS.md Sec.23 unchanged; 439 items: forecast-status and placeholder items of the six divisions; six PEM101 codes listed but never sold are left out).** Class used, stock_policy / confirmed_to_order / conflict: CI101 0/9/4, PEM102 0/3/23, PEM103 0/11/76 by the rule; PEM101 92/33/40 and PEM107 4/78/54 keep their classes (forecast-status items 92/32/20 and 4/78/30, placeholders by the rule); PEM104 12 of 12 confirmed_to_order as the section states (the rule alone gives 3 confirmed and 9 conflict: level A against data). The rule at the neighbouring thresholds, per division, is in `output/summary/task2b_part2_threshold_sensitivity.csv` (for example at 50 percent mixed share PEM103 gives 0/15/72, at 21 days PEM107 gives 17/77/42). data_inconsistent 49 (PEM101 14, PEM102 8, PEM103 25, PEM107 2); its test on the known items (PEM101 and PEM107 stock_policy and confirmed_to_order) flags 7 of 206, all 7 the user's per-item decisions of 2026-10-05 (0 of the 185 the rule classed itself; by construction). no_production_in_system 55 (CI101 1, PEM101 6, PEM102 4, PEM103 36, PEM107 8). too_little_data at 3 delivered contracts 154 (at 2: 130, at 5: 180). The item-level file is extended in place (all divisions, new columns); the page and test readers filter forecast-status rows so the Min-Max page does not change.
+
+**Part 3, mixed items.** The rule (written and fixed before computing, config `week3_classification.mixed_rule`) calls 11 of the 206 known items mixed (5.3 percent, below one in ten), so it is **adopted**. Applied to conflict and mixed-label items: 13 mixed items (PEM101 1, PEM103 3, PEM107 9), MTS share of quantity over 12 months in the item-level file (from 0.0 to 1.0: HS-F-99-0091 0.23; TF-F-99-10044211Q1 0.00; VT-F-99-010721 0.99). Three PEM101 items the user decided to be stock items (CA-F-99-010202, -010203, -010205) are also called mixed by the rule and keep their decided class. Mixed items have no Min or Max and count as made-to-order load.
+
+**Part 4.** CI101: 12 of 13 items have both Cube_BOM_Exact entries and cube_final records, DS-F-99-0320 neither. PEM102: 21 of 26 have a BOM entry, 19 a cube_final record, 4 neither (all placeholders). **2023 history: usable as an extension, level consistent not validated.** Cube_sale_APD holds no pricelist-scope row before 2024; Cube_CES holds 14,229 Omni delivered rows in 2023 (261 items, 1.21 million units); in 2024 it equals cube_Sale_APD on 87.4 percent of item-months and totals 1.7 percent more units (DATA_MAP.md, week 3). No model changed.
+
+**Part 5, operation plan for six divisions** (latest vintage 2, months 2026-10 to 2027-02; 439 items; Min and Max for 96 items, PEM101 92 and PEM107 4; the other 343 carry a load equal to demand). First month total (units) and share of the highest sustained output: PEM101 226,558 (91.0%), PEM103 486 (119.9%), PEM107 6,948 (111.7%), PEM102 73 (243.2%), PEM104 0, CI101 229 (17.2%). Above the reference: PEM103, PEM107 and PEM102 in 2026-10 only (PEM102's reference, 30 a month, rests on few months). Capacity references recomputed by the documented method for every division (PEM101 249,080, PEM103 405, PEM107 6,221, PEM104 4, PEM102 30, CI101 1,336); none lacks one, so no dash. 37 PEM103, 24 PEM107, 21 PEM101, 10 PEM102 and all 12 PEM104 items have no forecast and use only confirmed orders; 55 items with no production in the system are listed and not counted; PEM103 counts only Omni Channel (1 Tendering row dropped). The week 2 figures moved only through the 12:00 stock and backlog pull (PEM101 226,724 to 226,558, PEM107 6,952 to 6,948). The page heading is shortened from the approved "... · PEM101 และ PEM107" because it named two divisions.
+
+**Part 6, proofs** (thresholds fixed in config before the tests). Raw-material warehouses: the 12 that issue at least 1 percent of the type B issues of BOM components (W121, W124, W3-1, W3-2, W3-3, WH, WH21, WH22, WH23, WH24, WH26, WH27); QA receives 90.9 percent of purchases and issues almost nothing. **Open orders usable: YES** (Cube_tobe_received: 99.8 percent of lines match a PO line, 99.0 percent quantity, 97.3 percent expected date equal to the PO planned date, 89.7 percent of received lines within 14 days of it). **BOM used: Cube_BOM_Exact**: V2 holds no line V1 lacks and covers 76.0 percent of issued materials against 91.0 percent. **Units:** BOM unit equals the stock unit for 2,155 of 2,246 materials, differs for 48, unknown 43; no conversion factor is derivable, so nothing is converted (materials marked in the recorded summary). **Plan:** 2,246 purchased materials from 300 exploded items through 15 levels (1,797 in-house sub-assemblies expanded; the Validator's own walk counted 2,076 reached, a difference in what is counted that was not reconciled and changes no figure); 703 to order now; 146 with a latest order date in the next 30 days (267 in 60); lead time observed 2,039, supplier quoted 173, assumed 34. Time pseudo-codes (Type Machine Hour and Labor hour) are not materials (a first build counted the Labor hour type as materials; found in the screenshots and corrected before the record).
+
+**Validator** (own derivation from the saved pulls, no implementer file read): MATCH on label, S1, S3, delivered contracts, no_production_in_system, too_little_data, the 13 mixed items and their shares, the proofs, all 11,230 material-month rows, the 703 to-order-now materials, and the rendered pages (three of them in its own headless Edge). Not reproduced or different: **S2** (Sec.23 does not define the contract-to-batch link; the Validator's link differs on VT-F-99-010715's recomputed class and EEE-F-FC-1040011100NP's flag; both positions kept, the recorded value stands as the implementer's); a half-day lead time gave order dates 12 hours apart and 2 quantities to order now differing (the order date is now defined as the calendar day, METRICS.md Sec.43); the purchase-unit "differs" convention (a material bought in two units counts as differing; 83 against the Validator's 7); the page's per-month net cells were cumulative under a per-month header (changed to the month's own net). Another earlier finding of the Validator, three user-decided items marked mixed_applied, was corrected (a kept class is not marked).
+
+**Tests:** full suite 599 passed, 0 failed, 0 skipped; git status was the same before and after it (only this task's edits). **Found, not done, assigned to week 4 (owner shown):**
+- S2: define the contract-to-batch link in Sec.23 (Claude Code); the item-level classes of PEM101, PEM107 would need re-checking if it changes.
+- Sub-assembly stock is not netted: 221 of 2,198 in-house sub-assembly codes hold 94,724 units in the raw-material warehouses, so gross requirements and the to-order-now list are upper bounds (Claude Code).
+- Counting the QA inspection stock as available takes 38 materials off the to-order-now list; ignoring open orders adds 109 (sensitivities, Claude Code).
+- 148 plan materials have neither a BOM nor a purchase record (treated as purchased, assumed lead time where none): planners to confirm (the user's assistant).
+- 83 materials are bought in a unit other than the BOM unit and 48 are stocked in another unit: conversion factors needed (planners).
+- Material-plan inputs (`output/data/week3_inputs/material_inputs.pkl`) and the item-level class file are saved pulls of 2026-10-06; the monthly run reuses them and the material page shows their pull time. A pull step for raw-material stock, open orders, purchase history and the class evidence needs a database session (Claude Code).
+- Classes of the CI101, PEM102, PEM103 and PEM104 items and the Min/Max for their stock items: none of them has a stock_policy item today; PEM103's Min-Max page table followed the older policy (section 15) with 14 items while Sec.23 gives 0: decided 2026-10-06, the page follows Sec.23 (the publication task below).
+- 2023 history from Cube_CES: decided 2026-10-06, see the publication task below (backtest with and without it in week 4).
+- Reader text: see SENTENCES NEEDING THAI TEXT of this task (demand column header on the material page, a label for the list of divisions covered, a line for the six PEM101 codes never sold, the approved heading for six divisions) (the user's assistant).
+- Category-level view of the two product categories and the three items' settings (brief item "settings"), storms and the other external factors, utility budgets, sales insight and EGP bids: not done (brief table).
+
+### Week 3, identifiers task -- customer and contract identifiers out of the documents, a guard, one note removed -- DONE, 2026-10-06 (no database; saved pulls only)
+
+Decision of the user, 2026-10-06: customer IDs, customer names, contract numbers and personal login names must not appear in STATUS.md, DATA_MAP.md, METRICS.md, PROJECT_GRAPH.md, AGENTS.md, CONVENTIONS.md, config, src or tests; pages under forecast/ and index.html may contain them; git history is left as it is (commit 616a5d9 and earlier still hold the old text).
+- **Replaced.** STATUS.md: 17 customer IDs, 9 contract numbers, 4 login names in paths (written `<user>`); DATA_MAP.md: 1 login name in a path; src: 3 investigation scripts (6 customer IDs in `investigate_customers.py`, which now takes the top customer of its own pull instead of a typed ID, so its two output files are named `partA_top_customer_*`; 1 contract number and 1 quotation number in comments, now described as "a 2024 contract" and "a 2025 quotation"). Customer and contract IDs became local labels (customer A to J, contract C1 to C7): the same customer keeps the same letter within STATUS.md, so each finding still reads; the letters are not the customers' names and the mapping is kept nowhere in the project. One phrase equal to a customer name in the pulls (a customer segment label) was reworded. No other file of the scope held an identifier.
+- **Guard.** CONVENTIONS.md "Customer and contract identifiers" and tests in `tests/test_guards.py`: formats as observed in the saved pulls (customer ID: two capital letters and five digits; contract, quotation and enquiry numbers: two to five capital letters, a four-digit year and five digits; a Windows user folder other than `<user>`), plus exact match against the customer names and IDs of the saved pulls and the database login of `.env` when those files are present (skipped with a message where absent). It passes on the cleaned files and holds no real identifier.
+- **Inventory page.** The sentence saying that choosing PEM103 leaves the made-to-order and conflict table empty is removed in the builder; the heading "สินค้าผลิตตามสั่ง และสินค้าที่ยังไม่ชัด (ไม่มี Min/Max)" stays; the page was rebuilt from its embedded data (one line removed).
+
+### Week 3, publication task -- material plan marked not yet verified, missing texts, PEM103 follows Sec.23 -- DONE, 2026-10-06 (no database; builders and tests only)
+
+Decisions of the user, 2026-10-06 (given in this task's prompt): (1) PEM103's Min-Max table follows METRICS.md Sec.23, which gives it no stock_policy item, in place of the older policy's 14 items. (2) **Cube_CES 2023 is not used yet; week 4 runs the backtest with and without 2023 and adopts it only if accuracy is equal or better.** (Replaces the open question "extend the series" of Week 3.)
+- **Material plan page.** A distinct notice at the very top (แผนนี้ยังอยู่ระหว่างตรวจสอบ ตัวเลขต้องสั่งยังใช้สั่งซื้อจริงไม่ได้). A material whose purchase unit differs from its BOM unit (no conversion derivable) carries the flag หน่วยซื้อไม่ตรงกับหน่วยใน BOM beside its code and a dash for its net requirement, order quantity and order date in both tables: **83 materials** (39 of them on the order-now list). The list shows 703 materials as before; **664 now carry an order figure** (703 less 39). The recorded material plan is unchanged (the flag is applied in the page builder).
+- **Texts.** Operation plan heading "แผนการผลิต {n_months} เดือน · ทุกฝ่าย"; material page demand sub-header "ความต้องการ" and the label "ฝ่ายที่รวมในแผนนี้:" before the divisions covered; under the operation plan summary table "{division} {n} รหัสอยู่ใน Price List แต่ไม่เคยขาย ไม่อยู่ในแผน" (PEM101, 6 codes; the count comes from the plan's meta, which reads the item status file).
+- **PEM103.** Config `inventory_page.class_file_divisions: [PEM103]`; the builder (`apply_class_file_divisions`, part of the reader-text step) takes each item's class from the item-level file: 14 finished_goods_stock and 73 component_stock_ato items become 11 confirmed_to_order and 39 conflict items (50 forecast items) and 37 placeholder items; Min and Max rows 14 to 0. The scope note is kept; the approved line ไม่มีสินค้าที่เข้าเกณฑ์เก็บ stock shows under it (a division with a stock_policy item shows none). **The operation plan and material plan are unchanged** (the four recorded files hash identically before and after, rebuilt against the new page).
+- **Checks.** The three pages were rebuilt through their builders (the inventory page from its embedded data, as in week 2: only the PEM103 data, its option count and the new note element differ from the tracked page). Tests: see the full-suite line below. Screenshots replaced in `output/charts/week3/`.
+- **Scan for identifiers in the files to commit.** STATUS.md holds customer IDs (17 places), contract numbers (9) and the personal account name of the machine login in file paths (4); DATA_MAP.md one personal account name in a path; all were in the file before this task (none in this task's added lines). The Thai word บริษัท (company) appears in generic prose on the inventory page and its builder, and STATUS.md line 1290, with no company name. No supplier or customer name was found in any file. By the rule of this task **STATUS.md is not committed**: its changes stay in the working tree for the user to decide (the copy in the last commit already carries the same identifiers).
+
+**Week 4, to verify (every NEEDS VERIFY item of Week 3, plus this task):**
+- S2 definition (contract-to-batch link) is not in Sec.23; the Validator could not reproduce it (1 class, 1 flag differ).
+- 221 in-house sub-assembly codes hold 94,724 units of stock that the material plan does not net: the to-order-now list (703) is an upper bound.
+- Counting QA inspection stock as available removes 38 materials from the order-now list; ignoring open orders adds 109.
+- 148 plan materials have neither a BOM nor a purchase record (treated as purchased, assumed lead time where none).
+- 83 materials are bought in a unit other than the BOM unit and 48 are stocked in another: conversion factors needed; until then the page shows dashes for them.
+- PEM104: 9 of 12 items fail the rule and stay business-confirmed made-to-order.
+- Backtest with and without Cube_CES 2023; adopt only if accuracy is equal or better (decision above).
+- A database pull step for raw-material stock, open orders, purchase history and class evidence (the monthly run reuses the saved pulls of 2026-10-06).
+- Category-level view of the two product categories and the three items' settings; storms, utility budgets, sales insight, EGP bids (not done).
+- The notice on the material page comes off only when the items above are settled (the user decides).
 
 ### Week 2 -- operation plan v1 for PEM101 and PEM107, D3 line, noon retry -- DONE, 2026-10-06 (one read-only database session, Part 1 only; offline dry run passed: 12 steps ok, gates 3 passed, 0 failed, 2 not tested (no earlier run log; step 5 skipped), only the run log was written outside the temporary copy; Validator matched)
 
@@ -402,7 +489,7 @@ The task is Ready with StartWhenAvailable on.
   `7BA4A3A45A975E04A52935D62036995E1C02DB93D52FC9C24E8028D3182DFA2C`; latest daily stock snapshot
   `inventory_daily_2026-09-28.csv`, load time 2026-09-27 21:41:30; scheduled task `SaleForecastMonthlyRefresh`
   exists, Ready, next run 05/10/2569 07:00.
-- Run: `"C:\Users\jetniphat.boo\AppData\Local\Programs\Python\Python312\python.exe" "D:\sale_forecast\src\monthly_refresh.py"`,
+- Run: `"C:\Users\<user>\AppData\Local\Programs\Python\Python312\python.exe" "D:\sale_forecast\src\monthly_refresh.py"`,
   started 07:45:36, ended 07:46:28 (exit 1). Steps 1 (pull), 2 (validate), 3 (frozen snapshot), 4 (backtest and
   analysis inputs: all refreshed) and 5 (new vintage) completed. **Step 6 stopped at its consistency gate:**
   `ForwardTestConsistencyError`, "vintage 2: row_integrity_hash mismatch -- recorded e7303e4b0194a75a..., recomputed
@@ -443,7 +530,7 @@ The task is Ready with StartWhenAvailable on.
 |---|---|---|---|---|
 | 1 | 2026-10-05 to 10-09 | Max-Min v1: lead time per item from data (slowest material plus assembly time where the data allows); PEM101 recalibrated on the 92-item set; Max-Min v1 on the Min-Max page with the source of each value labelled; a page of assumptions in use; the PEM101 evidence file corrected | G2 | Claude Code |
 | 2 | 2026-10-12 to 10-16 | Operation plan v1, six months: replenishment production for stock items, production load for made-to-order items, against the lower-bound capacity already recorded | G3 | chat assistant designs, the user approves, Claude Code builds |
-| 3 | 2026-10-19 to 10-23 | Material plan v1: BOM explosion of the operation plan into materials and order dates by lead time | G3 | Claude Code |
+| 3 | 2026-10-19 to 10-23 | Material plan v1: BOM explosion of the operation plan into materials and order dates by lead time | G3 | Claude Code (done 2026-10-06, STATUS "Week 3") |
 | 4 | 2026-10-26 to 10-30 | End-to-end check; executive summary v1 after checking target_data.xlsx | all | Claude Code |
 | Automatic | daily and monthly | daily stock; monthly run on the 5th; on 2026-10-12, whether Cube_CES loads weekly | G1, G2 | scheduled tasks; Claude Code checks |
 | After 30 Oct | — | external factors after the foundation criteria are met; Trend tab; W-polish; refactor; S&OP tab on real data; app on the organisation's server | — | Claude Code |
@@ -698,7 +785,7 @@ below and in `output/summary/phaseA_synthesis.md`; none of the three closes with
    2023/2024 breaks). **But a real, partial customer-reclassification confound exists**: 26 of
    127 "dropped" customers (58.5% of that cohort's ฿46.24M value) actually continued doing
    business, just relabelled from Omni Channel/PEM101 to Tendering or another division — one
-   account alone (`CS07977`) accounts for 23.6% of the whole headline decline this way. **Bias
+   account alone (customer A) accounts for 23.6% of the whole headline decline this way. **Bias
    consequence, not resolved by this task**: since the dominant item's real recovery swing sits
    inside the Phase 2/3.1 backtest's actual test window, a meaningful but UNQUANTIFIED share of
    the measured forecasting bias may be inflated by this one item/window, separate from the
@@ -1626,7 +1713,7 @@ the same entry's Part 3 proposed in place of it. Nothing left unresolved from ei
   "Logon Mode: Interactive only", matching the credential-safety requirement: nothing about the
   task registration writes or stores a password):
   ```
-  schtasks /create /tn "SaleForecast_PostingDelaySnapshot" /tr "\"C:\Users\jetniphat.boo\AppData\Local\Programs\Python\Python312\python.exe\" \"D:\sale_forecast\src\snapshot_daily.py\"" /sc daily /st 06:00 /f
+  schtasks /create /tn "SaleForecast_PostingDelaySnapshot" /tr "\"C:\Users\<user>\AppData\Local\Programs\Python\Python312\python.exe\" \"D:\sale_forecast\src\snapshot_daily.py\"" /sc daily /st 06:00 /f
   ```
   **Confirmed existing and working**: `schtasks /query` shows the task registered, Enabled, Daily,
   06:00; a forced `schtasks /run` completed with **Last Result: 0** (success) — not run against a
@@ -2360,7 +2447,7 @@ from visible pricelist sheets. Full detail in `output/summary/task2_*.csv`, `tas
 - **Actual/MPS double-counting**: schema IS testable via `contractid`, `quotationid`,
   `ContractPO_NO` (all three agree exactly). Found **3 confirmed cases** (out of 9,058 rows)
   where the same order and the same item appear under both statuses. One case
-  (`CTR-2026-02042` / `HS-F-99-0215`) has suspiciously identical Actual and MPS quantities
+  (contract C1 / `HS-F-99-0215`) has suspiciously identical Actual and MPS quantities
   (600=600) plus internal exact-duplicate rows — the strongest signal of likely double
   counting. The other two show differing Actual vs. MPS quantities, consistent with (not
   proof of) legitimate partial-shipment tracking (Actual = delivered portion, MPS = pending
@@ -2524,7 +2611,7 @@ the previous session** — flagged explicitly below rather than silently replace
   distinguishing evidence found anywhere** (₿123,513, down from the previously reported 21/
   ₿177,360 — the correction reduces both the count and value of the unresolved bucket).
 - **Cube_CES itself sometimes duplicates.** For one of the 4 "partially corroborated" sets
-  (`CTR-2024-06867`/`EEE-F-FC-1040011000`), `Cube_CES` shows 2 rows with IDENTICAL
+  (contract C2/`EEE-F-FC-1040011000`), `Cube_CES` shows 2 rows with IDENTICAL
   `ActualDelDate=2024-12-04` (adjacent `id`s) plus 1 row with a different, genuine
   `ActualDelDate=2024-12-10`. This means whatever produces the duplication is not confined to
   `cube_Sale_APD`'s own construction — it appears to originate upstream, in a source shared by
@@ -2533,7 +2620,7 @@ the previous session** — flagged explicitly below rather than silently replace
   the identical method to the 26 sets already business-confirmed as genuine split lots: 23 of
   26 (88.5%) are correctly identified as fully distinct in `Cube_CES`; **3 of 26 known-genuine
   split lots are NOT fully distinct in `Cube_CES`** (including the same contract,
-  `CTR-2026-02042`, seen again in the Actual/MPS re-examination below). **This means the
+  contract C1, seen again in the Actual/MPS re-examination below). **This means the
   method has an ~11.5% false-negative rate on cases already known to be real** — so the 16
   "no distinguishing evidence" sets above cannot be confidently called duplicates; some
   unknown fraction of them are very likely genuine split lots the method simply cannot see.
@@ -2565,7 +2652,7 @@ the previous session** — flagged explicitly below rather than silently replace
   `ActualQty` and a real `ActualDelDate`; `Backlog` rows carry `ActualQty=0`,
   `BacklogQty` = the pending amount, and `ActualDelDate=None` (not yet delivered). Actual+
   Backlog sums match `cube_Sale_APD`'s Actual+MPS sums exactly for all 3 (e.g.
-  1,200+1,920=3,120 for `CTR-2026-02042`). **This is ground-truth confirmation from an
+  1,200+1,920=3,120 for contract C1). **This is ground-truth confirmation from an
   independent table's own dedicated status-tracking fields, not inference from
   `forecast_date` patterns. The prior "cannot rule out a stale un-superseded MPS row" caveat
   no longer applies — these are confirmed legitimate multi-tranche orders, not double
@@ -2695,7 +2782,7 @@ the daily source), `output/summary/backtest_*.csv`, `output/charts/forecast_vs_a
   concentration, the classic signature of lumpy demand. Order composition is mixed: most
   spikes are broad-based (many orders, many customers — e.g. one spike had 55 orders from 22
   customers), but a few are single-order-driven (several spikes are >90% one order). One
-  customer (`CS02411`) recurs across 16 of the 62 spike months with 96 orders — a clearly
+  customer (customer C) recurs across 16 of the 62 spike months with 96 orders — a clearly
   identifiable regular large buyer; several others recur across 5-7 spike months each.
 - **Spikes measurably drive forecasting difficulty for a meaningful minority of items —
   high confidence in the direction, exact magnitude is scenario-dependent.** Recomputing
@@ -2747,13 +2834,13 @@ forward-test infrastructure — DONE (2026-08-31).** Scripts: `src/investigate_c
 `src/forward_test.py` + `src/score_forward_test.py` (Part E). Outputs:
 `output/summary/partA_*.csv` through `partD_*.csv`, `forward_test_log.csv`.
 
-- **Part A — CS02411 identified, high confidence.** Join key `customerid` against
+- **Part A — customer C identified, high confidence.** Join key `customerid` against
   `ref_customer` (100% match rate: all 772 distinct customers in the pilot scope's sales
   matched). Note `ref_customer` is a customer×business-unit interaction table, not one row
   per customer (62 rows for this one customerid) — identifying fields (name, taxid, country,
-  class) are stable across all rows, segment/business_group vary by context. **CS02411 is a
+  class) are stable across all rows, segment/business_group vary by context. **customer C is a
   company based in Rayong province, class "4. Client", segment predominantly "M&E
-  Contractor/Main Contractor" (also tagged "Local Industry" and "Smart Shop" in some division
+  Contractor" (the main-contractor variant) (also tagged "Local Industry" and "Smart Shop" in some division
   contexts) — a contractor, not a utility, not a pure dealer. (Company name redacted before
   publishing — see `output/summary/partA_top10_customer_identity.csv`, gitignored, for the
   full name if needed locally.)**
@@ -2761,7 +2848,7 @@ forward-test infrastructure — DONE (2026-08-31).** Scripts: `src/investigate_c
   every single one of 32 months (2024-01 to 2026-08)**, 37–81 orders/month — continuously
   active, not cyclical or project-based. It appears in "spike" months simply because of its
   constant high-volume, broad-portfolio activity, not deliberate large periodic orders.
-  Checked 2 more of the top 10 buyers (CS06091, CS03198) — **both also active in all 32 of 32
+  Checked 2 more of the top 10 buyers (customer D, customer E) — **both also active in all 32 of 32
   months**, same pattern. Top 10 customers = 31.9% of total pilot value; **none of the top 10
   are utilities directly — all are classified Contractor or Dealer**, spread across many
   different Thai provinces (Rayong, Nonthaburi, Surat Thani, Samut Prakan, Bangkok, Chonburi,
@@ -2911,7 +2998,7 @@ through `part5_extended_*.csv`, `part4_inventory_leadtime_relationship_map.csv`.
   — no lookup/description table found; not guessed. **Grain proven, not assumed**: one row per
   delivery plan/instalment, keyed by a unique `PlanID` — a single (ContractID, ItemCode) pair
   can have multiple `PlanID` rows with different dates/quantities (verified directly:
-  `CTR-2025-06153` has 9 rows / 7 items / 9 distinct PlanIDs, with `EEE-F-FC-1040011000`
+  contract C3 has 9 rows / 7 items / 9 distinct PlanIDs, with `EEE-F-FC-1040011000`
   alone having 2 rows on different `ActualDelDate`s).
 - **Part 2 — the two sources reconcile almost exactly for 2024+, high confidence.** Using
   `division='PEM101'`/`revenue_type='Omni Channel'`/`status IN ('Actual','MPS')` on
@@ -2997,7 +3084,7 @@ conclusion from the previous session.** Scripts: `src/verify_ces_status_mapping.
   (contractid, itemcode) pairs reconcile exactly once totaled** — the mismatch is `Cube_CES`
   splitting the same total across multiple finer `PlanID` rows (e.g. 12→9+3, or 500 split into
   370 Actual + 130 Backlog) or a 1-5 day date offset between `CtrDate` and `createDate`, not a
-  real disagreement. The 1 remaining pair (`CTR-2023-08885`) exists in `Cube_CES` with matching
+  real disagreement. The 1 remaining pair (contract C4) exists in `Cube_CES` with matching
   items and status but its `CtrDate` falls in 2023, outside the query's 2024+ filter, while
   `cube_Sale_APD`'s transaction `createDate` is 2024-01-05 — a definitional date-field
   difference, not missing data. **All 20 pairs are fully explained; none represent a genuine
@@ -3579,7 +3666,7 @@ model choice was written to `config/config.yaml`. Scripts:
   backlog is not, in aggregate, a large pile of already-broken promises, it
   is mostly still within its planned window. Backlog concentrates in a
   handful of items (`LS-F-99-1004`, the `EEE-F-FL-1040030xxx` family) and
-  customers (`CS06836`, `CS03051`) — full detail in
+  customers (customer F, customer G) — full detail in
   `delivery_backlog_by_item.csv` / `_by_customer.csv`.
 - **Part 4 — late deliveries did NOT have unusually short notice; the
   majority (69.5%) had normal-or-longer notice and were still late —
@@ -3603,8 +3690,8 @@ model choice was written to `config/config.yaml`. Scripts:
   SHORT_NOTICE). The split is broadly similar across product types (24.5% to
   53.8% SHORT_NOTICE, i.e. ADEQUATE_NOTICE_STILL_LATE is the majority
   category for 7 of 8 types) and stable across years (24-34% SHORT_NOTICE,
-  no trend). By customer, the split varies a lot (e.g. `CS07050`: 7 of 79
-  late orders were SHORT_NOTICE (8.9%) vs. `CS06836`: 57 of 91 (62.6%)) —
+  no trend). By customer, the split varies a lot (e.g. customer H: 7 of 79
+  late orders were SHORT_NOTICE (8.9%) vs. customer F: 57 of 91 (62.6%)) —
   the demand-timing vs. supply-planning mix is customer-specific, not
   uniform. **Practical conclusion, stated directly**: most of the observed
   late-delivery problem in this scope is NOT explained by customers ordering
@@ -3712,7 +3799,7 @@ charts in `output/charts/hyp_part1_*.png` through `hyp_part4_*.png`.
   happen to buy the items that run late for everyone, not idiosyncratic
   "bad" customers.** This favors an item/stock-level explanation over a
   customer-behaviour explanation, matching the hypothesis's framing. Deep
-  dive on the lowest (`CS00089`, 0.59% late) vs. highest (`CS05661`, 33.27%
+  dive on the lowest (customer I, 0.59% late) vs. highest (customer J, 33.27%
   late) top-15 customers: the high-late customer orders much larger
   quantities (median 200 vs. 50 units, mean 279 vs. 75) and gives longer
   notice (median 9 vs. 1 day) — notice period is clearly NOT the explanation
@@ -4008,7 +4095,7 @@ raw/processed pulls: `output/data/phaseA_a{1,2}_*.csv`.
   customer-reclassification confound exists underneath**: of 127 customers who appear to have
   "dropped" after Jan-Jul 2024, 26 (58.5% of that cohort's ₿46.24M value) in fact continued doing
   business, just relabelled from Omni Channel/PEM101 to Tendering or another division — one
-  account, `CS07977`, accounts for 23.6% of the ENTIRE headline decline this way (its Omni
+  account, customer A, accounts for 23.6% of the ENTIRE headline decline this way (its Omni
   Channel activity fell to ~zero while its Tendering activity rose to ~₿263M). The other 101 of
   127 dropped customers show zero activity anywhere post-2024 (likely genuine churn, not
   independently confirmed). **The 2 Lumpy focus items (`HS-F-99-02110`, `HS-F-99-0213`) both
@@ -4062,7 +4149,7 @@ raw/processed pulls: `output/data/phaseA_a{1,2}_*.csv`.
   PlanID pairs (will resolve once delivered); root cause of `EEE-F-FC-1040010002`'s H1-2025
   buyer-base pause (needs stock/supply/contract data); whether the 101 zero-post-2024-activity
   "dropped" customers are genuinely lost (needs account-status confirmation, largest few named in
-  the synthesis report); the mechanism behind `CS07977`'s/`CS00477`'s Omni Channel→Tendering
+  the synthesis report); the mechanism behind customer A's/customer B's Omni Channel→Tendering
   relabelling (needs the sales team who classifies `revenue_type`); how much of the measured
   forecasting bias traces to the one-item/window overlap (needs the Modeler); how a real
   Max-Min policy would respond to the re-keying shift (needs the Modeler, in Phase E); whether
@@ -4899,7 +4986,7 @@ under `src/investigations/phaseC_step1revised_validator_*.py` and
     (₿3,006,792, 0.72% of scope — identical count/value to the original's own combined-filter
     finding, kept in full per established precedent, not newly discovered).
   - **Correction surfaced, not a new finding**: PEM102's original report (`phaseC_PEM102_report.md`)
-    characterised contract `CTR-2024-03290` as "very likely 1 real transaction, 3 duplicate rows."
+    characterised contract contract C5 as "very likely 1 real transaction, 3 duplicate rows."
     This round's direct re-query found 3 DIFFERENT `forecast_date` values across those rows — under
     this project's own established split-lot test, a genuine 3-tranche split lot, not a duplicate.
     **The original characterisation is superseded** (per `AGENTS.md` Rule 4, reported explicitly,
@@ -5403,7 +5490,7 @@ pass on the committed file). The panel opens these on a click of any non-zero Re
 flagging rows that share quantity/status/delivery-date as **possibly** duplicate — stated in the
 popup as a flag for review, not a conclusion, since two genuine orders can coincide (confirmed in
 the committed data itself: `LS-F-99-1004`'s two flagged 100-unit/`MPS`/2026-09-11 rows,
-`CTR-2026-05118` and `CTR-2026-05335`, are recorded under two different customer names — the flag
+contract C6 and contract C7, are recorded under two different customer names — the flag
 correctly surfaces this pair for a person to judge, it does not itself decide they are duplicates).
 Sorting Available now sinks the `no_db_record` (unknown) rows to the bottom in both directions,
 so the most negative values surface first ascending, rather than the previous behaviour where
@@ -5952,7 +6039,7 @@ phase, particularly Phase 4. Full methodology, confidence levels and caveats are
 - **Phase E0 gap register (found 2026-09-18, full detail `output/summary/phaseE0_synthesis_report.md`
   §2)** — the pre-check gate before Phase E1 closed with one project-wide blocking gap and one
   item-specific blocking decision, both requiring action outside this codebase:
-  1. ~~**BLOCKING, project-wide** — SQL Server login `jetniphat.boo`'s password has expired (SQL
+  1. ~~**BLOCKING, project-wide** — SQL Server login's password has expired (SQL
      error 18487), reproduced independently 3 times across 2 agents. Owner: IT/DBA (password
      reset, update `.env`). Until fixed, E0.2's four cancellation sub-questions (Cube_CES Cancel
      rows still counted as Actual/MPS demand in the series; their share of total/Type demand;
@@ -5996,7 +6083,7 @@ phase, particularly Phase 4. Full methodology, confidence levels and caveats are
   moved to Section 8: cannot be answered from internal data; deferred to Phase 3.2, where
   external factors will be examined**; whether the 101 zero-post-2024-activity "dropped"
   customers are genuinely lost (needs account-status confirmation from the sales team); the
-  mechanism behind `CS07977`'s and `CS00477`'s Omni Channel→Tendering relabelling (needs the
+  mechanism behind customer A's and customer B's Omni Channel→Tendering relabelling (needs the
   sales team who classifies `revenue_type`); **how much of the measured Phase 2/3.1 forecasting
   bias traces to the `EEE-F-FC-1040010002` collapse-recovery cycle landing inside the backtest
   window, vs. general demand shape — needs the Modeler, not yet attempted, and should happen
@@ -6983,7 +7070,7 @@ month guard, both requested directly by this task's own brief, neither a pre-exi
   this task, that no other file calls `load_dotenv()` or uses a bare `"python"` subprocess/
   `os.getcwd()` anywhere in `src/`). **Proved**: `python src/monthly_refresh.py --dry-run` run
   twice -- once from the project folder, once from `C:\Windows\system32` via the FULL confirmed
-  `sys.executable` path (`C:\Users\jetniphat.boo\AppData\Local\Programs\Python\Python312\
+  `sys.executable` path (`C:\Users\<user>\AppData\Local\Programs\Python\Python312\
   python.exe`) plus the full script path -- both passed every gate identically (steps 1-11 all
   `ok`; step 8 141/141 tests; step 9 sensitive-content scan passed; step 10 change-magnitude gate
   passed, 0 violations; step 11 `would_push_if_real_run: true`), confirming the fix works

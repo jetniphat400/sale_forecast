@@ -6,7 +6,7 @@ as "the quotation date" because it was the field named in the prior investigatio
 (output/data/phaseJ2_explorerA_cube_quotation_raw_351items.csv) shows this was likely wrong:
 report_date is 99.90% non-null overall but is NULL on most early-scanned rows, and on the rows
 where it IS populated it is IDENTICAL to Cube_Quotation.forecast_date in every sampled case
-(e.g. quotation QTN-2025-00350: report_date=2023-08-04, forecast_date=2023-08-04). That looks
+(e.g. a 2025 quotation: report_date=2023-08-04, forecast_date=2023-08-04). That looks
 like report_date tracks a delivery/disposition date, not a quotation-issued date.
 Cube_Quotation.create_date (99.81% non-null, distinct from forecast_date, consistent with the
 quotation number's own embedded year) is the more plausible "date the quotation was issued"

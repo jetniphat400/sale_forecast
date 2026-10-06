@@ -75,19 +75,20 @@ if __name__ == "__main__":
     identity = customer_identity(top10["customerid"].tolist())
     identity.to_csv(os.path.join(SUMMARY_DIR, "partA_top10_customer_identity.csv"), index=False, encoding="utf-8-sig")
 
-    cs02411_months = order_interval_profile(sales, "CS02411")
-    cs02411_months.to_csv(os.path.join(SUMMARY_DIR, "partA_CS02411_monthly.csv"), index=False)
+    focus_customer = top10["customerid"].iloc[0]       # the customer with the largest value in the pilot scope (a customer ID is not written into the code)
+    focus_months = order_interval_profile(sales, focus_customer)
+    focus_months.to_csv(os.path.join(SUMMARY_DIR, "partA_top_customer_monthly.csv"), index=False)
 
-    cs02411_items = sales[sales["customerid"] == "CS02411"].groupby("itemcode").agg(
+    focus_items = sales[sales["customerid"] == focus_customer].groupby("itemcode").agg(
         qty=("qty", "sum"), sale=("sale", "sum"), n_orders=("contractid", "nunique")
     ).reset_index().sort_values("sale", ascending=False)
-    cs02411_items.to_csv(os.path.join(SUMMARY_DIR, "partA_CS02411_items.csv"), index=False)
+    focus_items.to_csv(os.path.join(SUMMARY_DIR, "partA_top_customer_items.csv"), index=False)
 
     print("\n=== TOP 10 CUSTOMERS BY VALUE (58-item pilot scope) ===")
     print(top10.to_string(index=False))
     print("\n=== IDENTITY ===")
     print(identity.to_string(index=False))
-    print("\n=== CS02411 monthly order pattern ===")
-    print(cs02411_months.to_string(index=False))
-    print("\n=== CS02411 items bought ===")
-    print(cs02411_items.to_string(index=False))
+    print("\n=== Top customer monthly order pattern ===")
+    print(focus_months.to_string(index=False))
+    print("\n=== Top customer items bought ===")
+    print(focus_items.to_string(index=False))

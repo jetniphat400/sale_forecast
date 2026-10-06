@@ -1607,7 +1607,7 @@ Corrections log, above; PROJECT_GRAPH.md, dead end DE4).
   `score_forward_test_all_divisions.py`) already derived its own `PROJECT_ROOT` from `__file__`,
   confirmed by direct read of each. **Proof**: `python src/monthly_refresh.py --dry-run` run once
   from the project folder and once from `C:\Windows\system32` using the FULL confirmed
-  `sys.executable` path (`C:\Users\jetniphat.boo\AppData\Local\Programs\Python\Python312\
+  `sys.executable` path (`C:\Users\<user>\AppData\Local\Programs\Python\Python312\
   python.exe`) -- both runs' JSON logs show identical step-by-step outcomes (all 11 steps `ok`;
   335 items/5 divisions pulled; step 8 141/141 tests passed; step 9 sensitive-content scan passed,
   0 findings; step 10 change-magnitude gate passed, 0 violations, matching `backtest_mae_change_
