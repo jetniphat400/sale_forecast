@@ -424,3 +424,30 @@ def test_script_filled_lines_follow_their_sources(two_builds):
         assert "12.3%" not in ab
     finally:
         edge.close()
+
+
+# ------------------------------------------------------------------ forecast/operation_plan.html (week 2)
+
+def test_operation_plan_page_numbers_dates_and_items_follow_their_sources():
+    """The plan page is built twice from fixture plans that differ in one source each (stock pull time, forecast run date, first month, opening stock,
+    backlog, item codes). Every figure, date and item code in its text must change with its source; a typed value would render the same twice."""
+    import re as _re
+    from test_operation_plan_page_builder import _plan
+    import build_operation_plan_page as bp
+    im, dm, meta = _plan()
+    base = bp.render(bp.compute_values(im, dm, meta, {}, "2026-10-02"))
+    im2, dm2, meta2 = _plan(extra107={"Z9": 400.0, "Y9": 100.0, "X9": 30.0}, refill101=True)
+    im2 = im2.copy()
+    im2["month"] = im2["month"].map({"2026-10": "2027-02", "2026-11": "2027-03", "2026-12": "2027-04"})
+    dm2 = dm2.copy()
+    dm2["month"] = dm2["month"].map({"2026-10": "2027-02", "2026-11": "2027-03", "2026-12": "2027-04"})
+    meta2 = dict(meta2, months=["2027-02", "2027-03", "2027-04"], stock_pull={"pulled_at_local": "2027-01-15 17:45:10"})
+    pert = bp.render(bp.compute_values(im2, dm2, meta2, {}, "2027-01-04"))
+    lines = lambda page: _re.findall(r'<p class="note-line">(.*?)</p>', page)
+    assert "6 ต.ค. 69 08:00" in base and "15 ม.ค. 70 17:45" in pert and "6 ต.ค. 69" not in pert
+    assert "ยอดทายจากรอบ ต.ค. 69" in base and "ยอดทายจากรอบ ม.ค. 70" in pert
+    lb, lp = lines(base), lines(pert)
+    assert lb[0].startswith("ต.ค. 69 PEM101") and lp[0].startswith("ก.พ. 70 PEM101")
+    assert "A7" in lb[1] and "Z9" in lp[1] and "Z9" not in lb[1] and "A7" not in lp[1]
+    assert _re.findall(r"\d[\d,]*", lb[1]) != _re.findall(r"\d[\d,]*", lp[1])
+    assert base != pert

@@ -301,6 +301,16 @@ def _fmt_days(x: float) -> str:
     return str(int(round(x))) if float(x).is_integer() else f"{x:g}"
 
 
+THAI_MONTH_NAMES = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"]
+
+
+def thai_window(start: str, end: str) -> str:
+    """'2024-01', '2025-12' -> 'มกราคม 2567 ถึง ธันวาคม 2568' (Thai month name and Buddhist year, both ends)."""
+    def one(ym):
+        return f"{THAI_MONTH_NAMES[int(ym[5:7]) - 1]} {int(ym[:4]) + 543}"
+    return f"{one(start)} ถึง {one(end)}"
+
+
 def assumption_values(cfg: dict = None) -> dict:
     """The values the braces in config maxmin_v1.assumptions name, each from its recorded source."""
     cfg = cfg or load_config()
@@ -316,7 +326,8 @@ def assumption_values(cfg: dict = None) -> dict:
     return {"lead_min": s["lead_min"], "lead_max": s["lead_max"],
             "assumed_production_days": _fmt_days(days[0]), "n_assumed_production": int(len(assumed)),
             "sellable_warehouses": ", ".join(full["phase_e1_assumptions"]["sellable_warehouse_codes"]["PEM101"]),
-            "n_undetermined": int((seg["class"] == "conflict").sum())}
+            "n_undetermined": int((seg["class"] == "conflict").sum()),
+            "calibration_window": thai_window(cfg["calibration_window"]["start"], cfg["calibration_window"]["end"])}
 
 
 def build_assumptions(cfg: dict = None, today: str = None) -> dict:

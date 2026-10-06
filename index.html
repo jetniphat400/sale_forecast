@@ -116,6 +116,8 @@
 #tabBar{position:sticky;top:0;z-index:999;background:#0f2540;display:flex;gap:6px;padding:10px 16px;box-shadow:0 2px 6px rgba(0,0,0,.25);font-family:'Segoe UI',Tahoma,sans-serif}
 #tabBar button{border:0;padding:9px 18px;border-radius:8px 8px 0 0;cursor:pointer;font-size:14px;font-weight:600;background:#1d3d63;color:#cfe0f4}
 #tabBar button.actv{background:#fff;color:#0f2540}
+#tabBar a{padding:9px 18px;border-radius:8px 8px 0 0;font-size:14px;font-weight:600;background:#1d3d63;color:#cfe0f4;text-decoration:none}
+#tabBar a:hover{background:#2a5588}
 #omniTab{display:none;font-family:'Segoe UI',Tahoma,sans-serif;background:#f4f7fb;padding:18px 22px 60px;color:#17324f}
 #omniTab .note{background:#fff8e6;border:1px solid #e8cf87;border-radius:8px;padding:10px 14px;font-size:12.5px;margin:0 0 14px}
 #omniTab h2{font-size:19px;margin:6px 0 2px}
@@ -237,6 +239,7 @@ tr.section[role="button"]:focus-visible{outline:2px solid var(--series-1);outlin
  <button id="tb2" onclick="omniShowTab(2)">Trend Pricelist Omni 2024–2026</button>
  <button id="tb3" onclick="omniShowTab(3)">คู่มือการใช้งาน</button>
  <button id="tb4" onclick="omniShowTab(4)">สมมติฐานที่ใช้อยู่</button>
+ <a id="tbPlan" href="forecast/operation_plan.html">แผนการผลิต</a>
 </div>
 <div id="origTab">
 

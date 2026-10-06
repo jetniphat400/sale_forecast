@@ -151,6 +151,19 @@ def built_pages(tmp_path_factory):
     return {"sales_report": sales, "inventory": inv}
 
 
+@pytest.fixture(scope="module")
+def plan_page(tmp_path_factory):
+    """forecast/operation_plan.html built by its builder from the recorded plan into a temporary folder (skipped where the recorded plan is absent)."""
+    import build_operation_plan_page as bp
+    import operation_plan as op
+    cfg = op.load_config()
+    for k in ("output_item_month_file", "output_division_month_file", "output_meta_file", "output_integrity_file"):
+        if not os.path.exists(op.path_of(PROJECT_ROOT, cfg[k])):
+            pytest.skip("SKIPPED, not passed: the recorded operation plan is not on this machine")
+    out = tmp_path_factory.mktemp("reader_text_plan")
+    return bp.build_page(out_path=str(out / "forecast" / "operation_plan.html"))
+
+
 # ------------------------------------------------------------------ static view
 
 @pytest.mark.parametrize("page", ["sales_report", "inventory"])
@@ -298,3 +311,31 @@ def test_index_tab_rendered_text_is_reader_text(view, index_texts):
     assert len([x for x in lines if x.strip()]) > 8, f"{view}: rendered text looks empty"
     found = violations(lines, _config_keys(), english_exempt=cells[view])
     assert not found, f"index.html {view}: reader-facing text carries project internals:\n" + "\n".join(found)
+
+
+# ------------------------------------------------------------------ forecast/operation_plan.html (week 2)
+
+def test_plan_page_static_visible_text_is_reader_text(plan_page):
+    import html as _html
+    with open(plan_page, encoding="utf-8") as f:
+        text = f.read()
+    lines = visible_lines(text)
+    assert len(lines) > 40, "operation plan page: visible text extraction looks empty"
+    names = {" ".join(_html.unescape(n).split()) for n in re.findall(r'<td class="name">(.*?)</td>', text)}      # product names: table cells from the price list
+    found = violations(lines, _config_keys(), english_exempt=names)
+    assert not found, "operation plan page: reader-facing text carries project internals:\n" + "\n".join(found)
+
+
+def test_plan_page_rendered_text_is_reader_text(plan_page):
+    edge = Edge(require_browser())
+    try:
+        edge.open(plan_page)
+        text = edge.ev("document.body.innerText")
+        cells = set(edge.ev("[...document.querySelectorAll('td, th')].map(c => c.innerText.trim())"))
+        assert not [e for e in edge.errors if e.startswith("exception")], edge.errors
+    finally:
+        edge.close()
+    lines = re.split(r"[\n\t]", text)
+    assert len([x for x in lines if x.strip()]) > 40
+    found = violations(lines, _config_keys(), english_exempt=cells)
+    assert not found, "operation plan page: rendered reader-facing text carries project internals:\n" + "\n".join(found)

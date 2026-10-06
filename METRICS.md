@@ -1083,3 +1083,23 @@ pipeline — no new section is needed for this; it is already covered by section
   lead-time-free calibration's (decision D2, 2026-10-05, window of decision D4, 2026-10-06).
 - The capacity recomputed from the saved cube_final pull (2026-10-05) equals the figures DATA_MAP.md records for the same method (PEM101
   249,080 and PEM107 6,221 units per month); config `capacity.data_map_reference` holds them and the plan reports whether they match.
+
+### Split of stock-item production and the planners' page (added 2026-10-06; `src/build_operation_plan_page.py`)
+
+    per stock item and month:
+      meets demand = min(planned production, that month's demand)
+      refill       = planned production - meets demand
+    per division and month on the page:
+      produced to meet demand = sum of meets demand over the stock items
+      refilled to Max         = sum of refill over the stock items
+      made to order           = sum of load over the confirmed_to_order and conflict items
+      total                   = the three added; it equals the recorded division-month total_load (the build stops if not)
+      against the highest sustained output = total / capacity reference; above 100 percent when total > capacity reference
+
+- Computed in the page builder from the recorded plan (read after its SHA-256 check); the plan and its recorded outputs are not changed. The
+  parts add back to planned production exactly (a test checks it).
+- The first-month sentences read from the same data: the PEM101 refill part of the first month; for PEM107 the first-month sum over items of
+  max(backlog due - forecast, 0), and the items contributing most, in descending order, until together they reach 80 percent of that sum,
+  at most three. A sentence is left out when its figure rounds to zero.
+- `forecast/operation_plan.html` is built by the monthly runner's step 7b after the plan is recomputed, and is in its staging list. Product
+  names come from the price list; the stock pull time and the forecast run month are those of the plan's inputs.

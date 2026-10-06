@@ -86,7 +86,7 @@
 </head>
 <body>
 <div class="wrap">
-  <a class="back-link" href="../index.html">&larr; กลับไปหน้าหลัก (Dashboard)</a>
+  <a class="back-link" href="../index.html">&larr; กลับไปหน้าหลัก (Dashboard)</a> &nbsp;·&nbsp; <a class="back-link" id="plan-link" href="operation_plan.html">แผนการผลิต</a>
   <h1 id="page-title">แผนสต็อค — Inventory Min/Max Scenario</h1>
   <p class="scope-note" id="page-timestamps-note"></p>
 
@@ -204,6 +204,8 @@
     <tbody id="item-table-body"></tbody>
     <tfoot><tr class="total-row"><td colspan="7">Total</td><td id="item-total-system-max"></td><td colspan="3"></td></tr></tfoot>
   </table></div>
+  <!-- Shown for the division that has the calibrated section (PEM101), the one the sentence points to. -->
+  <p class="hint" id="item-table-note" style="display:none">Min/Max ในตารางนี้เปลี่ยนตามตัวควบคุมด้านซ้าย ใช้ลองสมมติฐาน ค่าแนะนำอยู่ในส่วน PEM101 ด้านล่าง</p>
 
   <!-- previously: Confirmed-to-order / Conflict รายการ (ไม่มี Min/Max, METRICS.md §23); items classed confirmed_to_order or conflict get no Min/Max however much sales history they have (only PEM101/PEM107 have this grouping; PEM103 shows an empty table). -->
   <h2>สินค้าผลิตตามสั่ง และสินค้าที่ยังไม่ชัด (ไม่มี Min/Max)</h2>
@@ -240,7 +242,7 @@
 
   <div id="curve-target-section" style="display:none;">
     <!-- Previous heading: PEM101 — Trade-off Curve Target (METRICS.md Sec.22) — PARTIALLY CALIBRATED. Previous note: the data cannot identify the correct reorder level on its own (every item gives the same range ratio, no item-level information); choosing the not_late target is what fixes the reorder level (METRICS.md Sec.22). -->
-    <h2>PEM101 — เลือกเป้าการส่งทัน แล้วดูว่าต้องถือของเท่าไหร่</h2>
+    <h2>PEM101 — เลือกเป้าการส่งทัน แล้วดูว่าต้องถือของเท่าไหร่ (ค่าแนะนำ)</h2>
     <p class="hint" id="curve-own-controls">ส่วนนี้ปรับได้ด้วยปุ่มเป้าและ slider ในส่วนนี้เท่านั้น</p>
     <p class="note-box" id="curve-target-summary"></p>
     <p class="note-box" id="curve-lead-lines"></p>
@@ -967,6 +969,7 @@ function onDivisionChange() {
   renderWarehouseChecklist(divisionData);
   renderNoPolicyTable(divisionData);
   renderCurveTarget(divisionData);
+  document.getElementById('item-table-note').style.display = divisionData.curve_target ? '' : 'none';
   onControlChange(true);
 }
 

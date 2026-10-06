@@ -202,7 +202,7 @@ def test_the_assumptions_file_has_the_contract_schema():
     payload = json.load(open(TRACKED_ASSUMPTIONS, encoding="utf-8"))
     assert set(payload) == {"schema_version", "assumptions"} and payload["schema_version"] == mm.ASSUMPTIONS_SCHEMA_VERSION
     rows = payload["assumptions"]
-    assert len(rows) == 6 and len({r["id"] for r in rows}) == 6
+    assert len(rows) == 10 and len({r["id"] for r in rows}) == 10
     for r in rows:
         assert list(r) == mm.ASSUMPTIONS_FIELDS
         assert all(isinstance(r[k], str) and r[k].strip() for k in r)
@@ -220,6 +220,10 @@ def test_the_assumptions_file_holds_the_approved_texts_and_the_computed_values(r
         "sellable_warehouses": ("คลังที่นับว่าขายได้", "ประวัติการเคลื่อนไหวของคลังไม่พอ", v["sellable_warehouses"], "stock ที่ใช้เทียบกับ Min"),
         "pem101_undetermined_items": (f"สินค้า PEM101 {v['n_undetermined']} รหัส", "ยังไม่ชัดว่าเก็บ stock หรือผลิตตามสั่ง", "ไม่มี Min/Max", "Min/Max"),
         "production_capacity": ("กำลังผลิต", "ข้อมูลบอกได้แค่ยอดผลิตสูงสุดที่เคยทำ", "ใช้ยอดนั้นเป็นค่าต่ำสุด", "แผนการผลิต"),
+        "open_production_orders": ("ใบสั่งผลิตที่กำลังทำ", "วันกำหนดเสร็จในระบบไม่ตรงกับวันเสร็จจริง", "ไม่นับในแผน", "แผนการผลิต"),
+        "fmto_fmts_warehouses": ("คลัง FMTO และ FMTS", "ยังไม่รู้ว่าเป็นของพร้อมขายไหม", "ไม่นับ", "stock ที่ใช้เทียบกับ Min และแผนการผลิต"),
+        "forecast_range": ("ยอดทาย", "ยังไม่มีช่วงสูง-ต่ำ", "ใช้ค่ากลาง", "แผนการผลิต"),
+        "calibration_window": ("ช่วงข้อมูลที่ใช้ปรับ Min/Max", "ถ้าใช้ช่วงสั้นลง lead time ที่ได้จะแคบลง", v["calibration_window"], "Min/Max ของ PEM101"),
     }
     assert set(rows) == set(expected)
     for rid, (topic, unknown, used, affects) in expected.items():

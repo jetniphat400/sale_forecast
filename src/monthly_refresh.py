@@ -12,7 +12,8 @@ ORDER, exactly as specified there:
       re-run
     6 fill actual_qty and score any months that became eligible
     7 rebuild every page with section 26 timestamps
-    7b recompute operation plan v1 (METRICS.md Sec.42) from the page just built and the saved pulls
+    7b recompute operation plan v1 (METRICS.md Sec.42) from the page just built and the saved pulls, then build
+      forecast/operation_plan.html from it
     8 run the full test suite
     9 scan staged files for sensitive content
     10 check change magnitude against the previous run
@@ -965,10 +966,14 @@ def step7b_operation_plan(dry_run: bool, staged_dir: str, step7_result: dict = N
     """Recomputes the operation plan from the inventory page step 7 just built and the saved pulls, verifies the recorded outputs against their
     SHA-256 and reports the months, the counts, the capacity reference and the months above it. In a dry run the whole run is inside a temporary
     copy of the project, so the plan is written there; a staged (non-copy) dry run writes under its staging folder. Makes no database connection."""
+    import build_operation_plan_page
     import operation_plan
     page = (step7_result or {}).get("inventory_rendered_path")
-    result = operation_plan.run(PROJECT_ROOT, today=pd.Timestamp(datetime.now().date()),
-                                out_dir=os.path.join(staged_dir, "operation_plan") if dry_run else None, page_path=page)
+    plan_dir = os.path.join(staged_dir, "operation_plan") if dry_run else None
+    result = operation_plan.run(PROJECT_ROOT, today=pd.Timestamp(datetime.now().date()), out_dir=plan_dir, page_path=page)
+    # The planners' page, built from the plan just recorded (forecast/operation_plan.html; a staged dry run writes it under the staging folder).
+    result["operation_plan_page"] = build_operation_plan_page.build_page(
+        PROJECT_ROOT, out_dir=plan_dir, out_path=os.path.join(plan_dir, "operation_plan.html") if dry_run else None)
     result["written_to_tracked_path"] = False
     result["written_to"] = ("temporary copy of the project (dry run)" if IN_SANDBOX else
                             ("staging folder" if dry_run else "output/summary (untracked)"))
@@ -1187,7 +1192,7 @@ def gate_outcomes(step8: dict, step9: dict, step10: dict) -> dict:
 # ---------------------------------------------------------------------------------------------
 
 # The only tracked files a run generates (step 7; step 11 stages exactly these, never `git add -A`).
-GENERATED_PATHS = ["forecast/sales_report.html", "forecast/inventory.html", "data/inventory.json", "data/stock_daily.json",
+GENERATED_PATHS = ["forecast/sales_report.html", "forecast/inventory.html", "forecast/operation_plan.html", "data/inventory.json", "data/stock_daily.json",
                    "data/assumptions.json"]
 
 

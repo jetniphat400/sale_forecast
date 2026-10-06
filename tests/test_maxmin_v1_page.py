@@ -187,7 +187,7 @@ def _open_tab(edge, url):
     edge.pump(0.8)
 
 
-def test_the_assumptions_tab_shows_the_six_records_from_the_json(edge, tmp_path_factory):
+def test_the_assumptions_tab_shows_the_ten_records_from_the_json(edge, tmp_path_factory):
     site = _site(tmp_path_factory, "idx_ok")
     server, url = _serve(site)
     try:
@@ -200,7 +200,7 @@ def test_the_assumptions_tab_shows_the_six_records_from_the_json(edge, tmp_path_
         assert heads == ["เรื่อง", "ยังไม่รู้อะไร", "ตอนนี้ใช้", "กระทบ"]
         rows = edge.ev("[...document.querySelectorAll('#assumptionsTable tbody tr')].map(r=>[...r.children].map(c=>c.textContent.trim()))")
         payload = json.load(open(site / "data" / "assumptions.json", encoding="utf-8"))["assumptions"]
-        assert rows == [[r["topic"], r["unknown"], r["used_now"], r["affects"]] for r in payload] and len(rows) == 6
+        assert rows == [[r["topic"], r["unknown"], r["used_now"], r["affects"]] for r in payload] and len(rows) == 10
         assert FAIL not in edge.ev("document.getElementById('assumptionsTabContent').textContent")
         # the other tabs still switch
         edge.ev("document.getElementById('tb3').click(); 1")
