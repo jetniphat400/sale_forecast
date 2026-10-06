@@ -112,14 +112,39 @@ def _stocked_item_counts(division: str) -> tuple:
     return int(sub["has_stock_anywhere"].astype(bool).sum()), int(len(sub))
 
 
+# Approved text (the user, 2026-10-06), shown for every division that has no Min and Max; {n_stock} is the number of items of the division classed
+# stock_policy by METRICS.md Sec.23 (the item-level file, forecast-status and placeholder items).
+NO_MIN_MAX_TEXT = "ยังไม่ได้คำนวณ Min/Max ให้ {n_stock} รหัสที่เข้าเกณฑ์เก็บ stock"
+NO_MIN_MAX_TEXT_ZERO = "ไม่มีสินค้าที่เข้าเกณฑ์เก็บ stock"
+NO_MIN_MAX_SEPARATOR = " · "
+
+
+def stock_class_count(division: str) -> int:
+    """Items of `division` classed stock_policy in the Sec.23 item-level file (column class_used). Stops when the file or the column is missing."""
+    path = os.path.join(SUMMARY_DIR, "task2b_part2_item_level.csv")
+    if not os.path.exists(path):
+        raise FileNotFoundError(f"Required source file missing: {path} (needed for the divisions without Min and Max).")
+    df = pd.read_csv(path)
+    if "class_used" not in df.columns:
+        raise ValueError(f"{path} has no class_used column (the week 3 item-level file).")
+    return int(((df["division"] == division) & (df["class_used"] == "stock_policy")).sum())
+
+
+def no_min_max_line(division: str) -> str:
+    """The approved line for a division without Min and Max: the count of its stock items, or the zero text."""
+    n = stock_class_count(division)
+    return NO_MIN_MAX_TEXT.format(n_stock=n) if n else NO_MIN_MAX_TEXT_ZERO
+
+
 def disabled_division_reasons() -> dict:
     n_ci, t_ci = _stocked_item_counts("CI101")
     n_102, t_102 = _stocked_item_counts("PEM102")
-    return {
+    reasons = {
         "CI101": f"ยังไม่เปิด มีของในคลังแค่ {n_ci} จาก {t_ci} รหัส และอยู่ในคลังเดียวกับ PEM101 ยังกำหนดคลังของฝ่ายนี้ไม่ได้",
         "PEM102": f"ยังไม่เปิด มีของในคลังแค่ {n_102} จาก {t_102} รหัส น้อยเกินกว่าจะกำหนดคลังได้",
         "PEM104": "ไม่มีนโยบาย stock ฝ่ายนี้ผลิตตามสั่งทั้งหมด",
     }
+    return {d: reason + NO_MIN_MAX_SEPARATOR + no_min_max_line(d) for d, reason in reasons.items()}
 
 
 FULFILMENT_SEGMENTATION_DIVISIONS = ["PEM101", "PEM107"]  # task 2b Part 2 scope; PEM103 unaffected
@@ -132,6 +157,8 @@ def _load_fulfilment_segmentation(division: str) -> pd.DataFrame:
     128/136-item pilot scopes the pre-existing forecast/unit_cost pipeline covers)."""
     path = os.path.join(SUMMARY_DIR, "task2b_part2_item_level.csv")
     df = pd.read_csv(path)
+    if "status_category" in df.columns:        # week 3: the file also holds placeholder items and the other divisions; the page's universe is the forecast-status items
+        df = df[df["status_category"] == "forecast"]
     df = apply_class_decisions(df, load_config().get("fulfilment_class_decisions", {}))
     return df[df["division"] == division].set_index("code")
 
@@ -448,6 +475,47 @@ def model_calibrated_at() -> dict:
                       "Sec.20 inverse calibration, lead time free, 92 stock_policy items (week 1, 2026-10-05)."}
 
 
+def apply_class_file_divisions(data: dict, config: dict) -> None:
+    """Divisions listed in config inventory_page.class_file_divisions follow METRICS.md Sec.23 (decision of the user, 2026-10-06): every item still carrying the
+    older policy (finished_goods_stock, component_stock_ato) takes its class from the item-level file (class_used, label, signals); a placeholder item (no forecast)
+    moves to the table of items without a policy. A division left with no stock_policy item gets the approved line for a division without stock items. The
+    function does nothing for an item that already carries a class, so it can run on data it has already changed."""
+    names = config["inventory_page"].get("class_file_divisions") or []
+    if not names:
+        return
+    path = os.path.join(SUMMARY_DIR, "task2b_part2_item_level.csv")
+    if not os.path.exists(path):
+        raise FileNotFoundError(f"Required source file missing: {path} (needed for the divisions that follow Sec.23).")
+    table = pd.read_csv(path)
+    for division in names:
+        dd = data["divisions"][division]
+        sub = table[table["division"] == division].set_index("code")
+        forecast = sub[sub["status_category"] == "forecast"]
+        no_policy = list(dd.get("no_policy_items") or [])
+        known = {r["code"] for r in no_policy}
+        items = []
+        for it in dd["items"]:
+            if it["policy"] not in ("finished_goods_stock", "component_stock_ato"):
+                items.append(it)
+                continue
+            if it["code"] in forecast.index:
+                row = forecast.loc[it["code"]]
+                s2c = bool(row["S2_computable"])
+                it.update({"policy": row["class_used"], "class_basis": "", "fulfilment_label": row["label"], "S1": bool(row["S1"]),
+                           "S2": (bool(row["S2"]) if s2c and pd.notna(row["S2"]) else None), "S2_computable": s2c,
+                           "S3": bool(row["S3"]), "min_max_computable": True})
+                items.append(it)
+            elif it["code"] in sub.index and it["code"] not in known:
+                no_policy.append({"code": it["code"], "type": it.get("type", ""), "policy": sub.loc[it["code"], "status_category"]})
+        total = len(items) + len(no_policy)
+        dd["items"], dd["no_policy_items"] = items, no_policy
+        dd["n_items_label"] = f"{len(items)} รายการ (ของทั้งหมด {total}, เฉพาะที่มีนโยบาย)"
+        if not any(it["policy"] == "stock_policy" for it in items):
+            dd["no_min_max_line"] = no_min_max_line(division)
+        else:
+            dd.pop("no_min_max_line", None)
+
+
 def apply_reader_text(data: dict) -> dict:
     """Sets every reader-facing text/value that needs no database: disabled-division reasons, scope
     notes, the curve item-set note, the PEM107 alert block, the staleness threshold and the PEM101
@@ -463,6 +531,7 @@ def apply_reader_text(data: dict) -> dict:
     data["service_level_chart_step"] = config["inventory_page"]["service_level_chart_step"]
     data["fulfilment_notice_days"] = rv.fulfilment_notice_threshold_days()
     data["fulfilment_signal_count"] = rv.fulfilment_signal_count()
+    apply_class_file_divisions(data, config)
     for division, dd in data["divisions"].items():
         dd["warehouse_scope_note"], dd["warehouse_scope_ref"] = warehouse_scope_note_and_ref(division)
     ct = _build_curve_target_pem101()

@@ -435,14 +435,14 @@ def test_operation_plan_page_numbers_dates_and_items_follow_their_sources():
     from test_operation_plan_page_builder import _plan
     import build_operation_plan_page as bp
     im, dm, meta = _plan()
-    base = bp.render(bp.compute_values(im, dm, meta, {}, "2026-10-02"))
+    base = bp.render(bp.compute_values(im, dm, meta, {}, "2026-10-02", ["PEM101", "PEM107"]))
     im2, dm2, meta2 = _plan(extra107={"Z9": 400.0, "Y9": 100.0, "X9": 30.0}, refill101=True)
     im2 = im2.copy()
     im2["month"] = im2["month"].map({"2026-10": "2027-02", "2026-11": "2027-03", "2026-12": "2027-04"})
     dm2 = dm2.copy()
     dm2["month"] = dm2["month"].map({"2026-10": "2027-02", "2026-11": "2027-03", "2026-12": "2027-04"})
     meta2 = dict(meta2, months=["2027-02", "2027-03", "2027-04"], stock_pull={"pulled_at_local": "2027-01-15 17:45:10"})
-    pert = bp.render(bp.compute_values(im2, dm2, meta2, {}, "2027-01-04"))
+    pert = bp.render(bp.compute_values(im2, dm2, meta2, {}, "2027-01-04", ["PEM101", "PEM107"]))
     lines = lambda page: _re.findall(r'<p class="note-line">(.*?)</p>', page)
     assert "6 ต.ค. 69 08:00" in base and "15 ม.ค. 70 17:45" in pert and "6 ต.ค. 69" not in pert
     assert "ยอดทายจากรอบ ต.ค. 69" in base and "ยอดทายจากรอบ ม.ค. 70" in pert
@@ -451,3 +451,48 @@ def test_operation_plan_page_numbers_dates_and_items_follow_their_sources():
     assert "A7" in lb[1] and "Z9" in lp[1] and "Z9" not in lb[1] and "A7" not in lp[1]
     assert _re.findall(r"\d[\d,]*", lb[1]) != _re.findall(r"\d[\d,]*", lp[1])
     assert base != pert
+
+
+# ------------------------------------------------------------------ week 3: the division lines of the plan page and the material plan page
+
+def test_operation_plan_division_lines_follow_the_counts_of_the_plan():
+    """The counts in the three per-division lines come from the plan's meta (counts per division): changing a count changes the line, and a division with
+    stock items or with nothing to say shows no line."""
+    import build_operation_plan_page as bp
+    from test_operation_plan_page_builder import _plan_all, SIX
+    im, dm, meta = _plan_all()
+    base = bp.render(bp.compute_values(im, dm, meta, {}, "2026-10-02", SIX))
+    meta2 = copy.deepcopy(meta)
+    meta2["counts"]["no_forecast_items_by_division"]["PEM103"] = 41
+    meta2["counts"]["no_production_items_by_division"]["PEM103"] = 17
+    meta2["counts"]["stock_items_by_division"]["PEM102"] = 3          # a division that has stock items no longer says it has none
+    pert = bp.render(bp.compute_values(im, dm, meta2, {}, "2026-10-02", SIX))
+    assert "1 รหัสไม่มียอดทาย ใช้เฉพาะออเดอร์ที่รับแล้ว" in base and "41 รหัสไม่มียอดทาย ใช้เฉพาะออเดอร์ที่รับแล้ว" in pert and "41 รหัส" not in base
+    assert "1 รหัสไม่พบการผลิตในระบบ ไม่นับเป็นภาระผลิต" in base and "17 รหัสไม่พบการผลิตในระบบ ไม่นับเป็นภาระผลิต" in pert
+    assert "PEM102 ไม่มีสินค้าที่เข้าเกณฑ์เก็บ stock" in base and "PEM102 ไม่มีสินค้าที่เข้าเกณฑ์เก็บ stock" not in pert
+
+
+def _material_frames(n_months, today, pulled, warehouses, divisions, open_used, qty, lead, first_date):
+    months = [str(pd.Period("2026-10", freq="M") + k) for k in range(n_months)]
+    mm = pd.DataFrame([{"material": "M1", "month": m, "gross": qty, "stock_available": 0.0, "open_orders_cum": 0.0, "net_cum": qty * (k + 1), "net_month": qty,
+                        "order_date": first_date} for k, m in enumerate(months)])
+    sm = pd.DataFrame([{"material": "M1", "name": "Material one", "used_in": "FG-ONE FG-TWO", "n_products": 2, "bom_unit": "PC", "stock_unit": "PC", "purchase_unit": "PC",
+                        "unit_vs_stock": "same", "unit_vs_purchase": "same", "stock_now": 0.0, "open_orders_total": 0.0, "lead_days": lead, "lead_source": "observed",
+                        "total_gross": qty * n_months, "total_net": qty * n_months, "first_short_month": months[0], "latest_order_date": first_date, "to_order_now": True,
+                        "qty_to_order_now": qty, "also_has_bom": False}])
+    meta = {"months": months, "operation_plan_today": today, "rm_pulled_at_local": pulled, "rm_warehouses": warehouses, "open_orders_used": open_used, "divisions": divisions}
+    return mm, sm, meta
+
+
+def test_material_plan_page_text_values_follow_their_sources():
+    import build_material_plan_page as bm
+    a = bm.render(bm.compute_values(*_material_frames(5, "2026-10-06", "2026-10-06 07:30:00", ["WH21", "WH22"], ["PEM101", "PEM103"], True, 50.0, 20.0, "2026-09-11")))
+    b = bm.render(bm.compute_values(*_material_frames(3, "2027-01-04", "2027-01-15 17:45:10", ["WH90"], ["CI101"], False, 77.0, 33.0, "2027-02-20")))
+    assert "แผนวัตถุดิบ 5 เดือน" in a and "แผนวัตถุดิบ 3 เดือน" in b
+    assert "จากแผนการผลิตรอบ ต.ค. 69 · stock วัตถุดิบดึงเมื่อ 6 ต.ค. 69 07:30" in a and "จากแผนการผลิตรอบ ม.ค. 70 · stock วัตถุดิบดึงเมื่อ 15 ม.ค. 70 17:45" in b
+    assert "stock วัตถุดิบนับจากคลัง WH21, WH22" in a and "stock วัตถุดิบนับจากคลัง WH90" in b
+    assert 'id="divisions-covered">ฝ่ายที่รวมในแผนนี้: PEM101, PEM103<' in a and 'id="divisions-covered">ฝ่ายที่รวมในแผนนี้: CI101<' in b
+    assert "นับของที่สั่งแล้วรอรับตามวันที่คาดว่าจะได้" in a and "ยังไม่นับของที่สั่งแล้วรอรับ" in b
+    cells = lambda page: re.findall(r"<td[^>]*>(.*?)</td>", page.split('id="order-now-table"')[1].split("</table>")[0])
+    ca, cb = cells(a), cells(b)
+    assert ca[3:6] == ["50", "11 ก.ย. 69", "20"] and cb[3:6] == ["77", "20 ก.พ. 70", "33"] and ca[6] == "ใบสั่งซื้อจริง"

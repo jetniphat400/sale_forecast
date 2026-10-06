@@ -138,6 +138,10 @@ Reader-facing text. Any text a dashboard reader can see is written for PEM's sal
 
 Page layout. Before adding, removing or moving anything on a dashboard page, state who uses it and for what task, and place it so that a control sits within sight of what it changes; a reader can change a control and see the effect without scrolling; every control says which parts of the page it affects and which it does not; and existing elements are reconsidered, not only new ones added.
 
+## No silent omission (added 2026-10-06)
+
+No silent omission. Every page covers every division and item in its scope. Where a division or item is not covered, the page shows why, in approved text; it is never simply missing.
+
 ## Dynamic values (added 2026-09-29)
 
 Dynamic values. Every number a dashboard reader sees is computed at build time from verified data, config or a verified recorded output file. No number is typed into reader text, config or code. The only exception is an illustrative example in the user manual, marked as an example. A second, documented exception (decided by the user, 2026-10-05): the figures of the S&OP tab in `index.html` that come from its original file stay as they are, labelled unverifiable by the notice at the top of that tab, until phase S rebuilds the tab from the database; `tests/test_index_w3.py` records the exception and checks that the notice is there.

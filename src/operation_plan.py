@@ -8,6 +8,11 @@ For every forecast-status item of the two divisions, month by month from the cur
   * items without a Min and Max (confirmed_to_order, conflict), part B: the month's production load equals the month's demand;
   * part C: per division and month, planned production plus load against the highest sustained monthly output (cube_final transfer_qty), a lower bound.
 
+Week 3 (2026-10-06): the plan covers all six divisions. Items without a Min and Max (every item of CI101, PEM102, PEM103 and PEM104, PEM101's and
+PEM107's placeholder items, and any item of the two divisions that has no Min and Max) carry a load equal to demand; items without a forecast
+(placeholder items and PEM104) use only the confirmed orders not yet delivered; items marked no_production_in_system are listed with their demand and
+not counted as production load; PEM103 counts only its Omni Channel orders. Classes and flags are read from the Sec.23 item-level file.
+
 Everything is read from recorded files (the built page, the forward-test log with its hash check, saved pulls, config); no database. Outputs are
 recorded with a SHA-256 (`operation_plan_v1_integrity.json`) and verified before they are read back. The module never writes under a tracked path.
 """
@@ -29,9 +34,10 @@ sys.path.insert(0, HERE)
 logger = logging.getLogger("operation_plan")
 
 ITEM_MONTH_COLUMNS = ["division", "item", "class", "min_max_source", "month", "forecast", "backlog_due", "demand", "demand_source", "opening",
-                      "open_orders", "min", "max", "planned_production", "closing", "load"]
+                      "open_orders", "min", "max", "planned_production", "closing", "load", "status_category", "class_label", "data_inconsistent",
+                      "counted"]
 DIVISION_MONTH_COLUMNS = ["division", "month", "planned_production_stock", "load_confirmed_to_order", "load_conflict", "total_load", "capacity",
-                          "share_of_capacity", "above_capacity"]
+                          "share_of_capacity", "above_capacity", "load_not_counted"]
 
 
 class OperationPlanError(Exception):
@@ -215,18 +221,26 @@ def simulate_item(opening: float, demand: list, min_qty: float, max_qty: float, 
 
 
 # ------------------------------------------------------------------ capacity
-def capacity_reference(cube_final_path: str, item_division_path: str, cfg_capacity: dict, divisions: list) -> dict:
+def capacity_reference(cube_final_path: str, item_division_path: str, cfg_capacity: dict, divisions: list, extra_items: dict = None) -> dict:
     """Highest sustained monthly output per division, by the method of DATA_MAP.md (cube_final entry): transfer_qty summed by the calendar month
     of final_date, items joined to their division by the item-division map; the highest month, passing over an isolated spike (a month at least
-    spike_ratio times the next-highest). Returns {division: {"capacity", "month", "passed_over", "top5"}}."""
+    spike_ratio times the next-highest). `extra_items` maps item code -> division for items the map file does not hold (week 3: CI101 and PEM102,
+    by the price-list division); an item the file holds keeps the file's division. A division with no cube_final output returns capacity None.
+    Returns {division: {"capacity", "month", "passed_over", "top5"}}."""
     cf = pd.read_csv(cube_final_path, usecols=["itemcode", cfg_capacity["date_column"], cfg_capacity["quantity_column"]])
     m = pd.read_csv(item_division_path).set_index("code")["item_division"]
+    if extra_items:
+        add = pd.Series({c: d for c, d in extra_items.items() if c not in m.index}, dtype=object, name="item_division")
+        m = pd.concat([m, add])
     cf = cf.merge(m.rename("division"), left_on="itemcode", right_index=True)
     cf["month"] = pd.to_datetime(cf[cfg_capacity["date_column"]]).dt.strftime("%Y-%m")
     monthly = cf.groupby(["division", "month"])[cfg_capacity["quantity_column"]].sum().reset_index()
     out = {}
     for division in divisions:
         x = monthly[monthly["division"] == division].sort_values(cfg_capacity["quantity_column"], ascending=False).reset_index(drop=True)
+        if x.empty:
+            out[division] = {"capacity": None, "month": None, "passed_over": [], "top5": []}
+            continue
         q = x[cfg_capacity["quantity_column"]].tolist()
         pick, passed = 0, []
         while pick + 1 < len(q) and q[pick] >= cfg_capacity["spike_ratio"] * q[pick + 1]:
@@ -235,6 +249,66 @@ def capacity_reference(cube_final_path: str, item_division_path: str, cfg_capaci
         out[division] = {"capacity": float(q[pick]), "month": x.loc[pick, "month"], "passed_over": passed,
                          "top5": [[x.loc[i, "month"], float(q[i])] for i in range(min(5, len(x)))]}
     return out
+
+
+# ------------------------------------------------------------------ item classes, the week 3 inputs, the backlog's channel scope
+CLASS_FILE_COLUMNS = ["code", "division", "status_category", "class_used", "class_label", "data_inconsistent", "no_production_in_system"]
+
+
+def load_item_classes(root: str, cfg: dict) -> tuple:
+    """(table, sha256) of the Sec.23 item-level file: one row per item of the six divisions (forecast-status and placeholder items, PEM104's items)
+    with the class the pages read (`class_used`), the label an item shows (`class_label`) and the flags. Stops when the file is missing or lacks a column."""
+    path = path_of(root, cfg["item_class_file"])
+    if not os.path.exists(path):
+        raise OperationPlanError(f"the item-level class file is missing: {cfg['item_class_file']}")
+    df = pd.read_csv(path)
+    missing = [c for c in CLASS_FILE_COLUMNS if c not in df.columns]
+    if missing:
+        raise OperationPlanError(f"the item-level class file lacks column(s) {missing}")
+    for c in ("data_inconsistent", "no_production_in_system"):
+        df[c] = df[c].astype(bool)
+    return df, sha256_file(path)
+
+
+def load_week3_inputs(root: str, cfg: dict) -> dict:
+    """The saved week 3 pulls (a dict of DataFrames, one pickle: the CES backlog with RevenueType, the BOM tree, raw-material stock, open orders,
+    purchase history, item names). Stops when the file is missing."""
+    path = path_of(root, cfg["week3_inputs_file"])
+    if not os.path.exists(path):
+        raise OperationPlanError(f"the saved week 3 pulls are missing: {cfg['week3_inputs_file']}")
+    return pd.read_pickle(path)
+
+
+def filter_backlog_channel(backlog: pd.DataFrame, item_division: dict, scope: dict) -> tuple:
+    """Keeps the backlog rows of the items whose division is in `scope` ({division: RevenueType}) only when their RevenueType equals the division's
+    value (PEM103: Omni Channel); other divisions are untouched. Returns (rows kept, number dropped). Stops when a scoped division's rows carry no
+    RevenueType column."""
+    if not scope:
+        return backlog, 0
+    if "RevenueType" not in backlog.columns:
+        raise OperationPlanError("the backlog has no RevenueType column, so the channel scope of " + ", ".join(scope) + " cannot be applied")
+    div = backlog["ItemCode"].map(item_division)
+    drop = pd.Series(False, index=backlog.index)
+    for d, rt in scope.items():
+        drop |= (div == d) & (backlog["RevenueType"] != rt)
+    return backlog[~drop].copy(), int(drop.sum())
+
+
+def choose_backlog(backlog_dir: str, cfg: dict, root: str, scope: dict, item_division: dict) -> tuple:
+    """The CES backlog the plan reads: the latest saved pull's. When a channel scope is configured and that pull has no RevenueType column (the daily
+    pull gains it at its next run), the rows of the scoped divisions' items come from the saved week 3 pull, which has it; every other row stays the
+    pull's, so the other divisions' figures do not move. Returns (DataFrame, meta dict with the source and the pull time)."""
+    import build_inventory_dataset as bid
+    frames, meta = bid.load_pulls(backlog_dir)
+    b = frames["backlog_ces"]
+    src = os.path.relpath(backlog_dir, root).replace("\\", "/")
+    if not scope or "RevenueType" in b.columns:
+        return b, {"source": src, "pulled_at_local": meta["pulled_at_local"], "scoped_rows_from": None}
+    w3 = load_week3_inputs(root, cfg)
+    scoped = {i for i, d in item_division.items() if d in scope}
+    merged = pd.concat([b[~b["ItemCode"].isin(scoped)], w3["backlog_ces"][w3["backlog_ces"]["ItemCode"].isin(scoped)]], ignore_index=True)
+    return merged, {"source": src, "pulled_at_local": meta["pulled_at_local"],
+                    "scoped_rows_from": {"file": cfg["week3_inputs_file"], "pulled_at_local": str(w3["backlog_pulled_at_local"]), "divisions": sorted(scope)}}
 
 
 # ------------------------------------------------------------------ the plan
@@ -248,19 +322,39 @@ def build_plan(root: str = PROJECT_ROOT, today: pd.Timestamp = None, open_orders
     today = pd.Timestamp(today) if today is not None else pd.Timestamp(datetime.now().date())
     tol = float(cfg["tolerance_units"])
     data = read_page_data(page_path or path_of(root, cfg["inventory_page_file"]))
-    min_max = pd.concat([page_default_min_max(data, d) for d in cfg["divisions"]], ignore_index=True)
+    page_mm = pd.concat([page_default_min_max(data, d) for d in cfg["divisions_min_max_from_page"]], ignore_index=True)
+    classes, class_sha = load_item_classes(root, cfg)
+    universe = classes[classes["division"].isin(cfg["divisions"])].copy()
+    # every forecast-status item of the page's divisions must be in the class file and carry the same class (the page reads the same file)
+    page_items = set(page_mm["item"])
+    file_items = set(universe.loc[universe["division"].isin(cfg["divisions_min_max_from_page"]) & (universe["status_category"] == "forecast"), "code"])
+    if page_items != file_items:
+        raise OperationPlanError(f"the page's items and the class file's forecast-status items differ: only on the page {sorted(page_items - file_items)[:5]}, "
+                                 f"only in the file {sorted(file_items - page_items)[:5]}")
+    both = page_mm.merge(universe[["code", "class_used"]], left_on="item", right_on="code")
+    clash = both[both["class"] != both["class_used"]]
+    if len(clash):
+        raise OperationPlanError(f"the page and the class file disagree on the class of {len(clash)} item(s), for example {clash['item'].iloc[0]}")
+    items = universe.merge(page_mm[["item", "min", "max", "min_max_source"]], left_on="code", right_on="item", how="left")
+    items["class"] = items["class_used"]
+    items["min_max_source"] = items["min_max_source"].fillna("")
+    order = {d: i for i, d in enumerate(cfg["divisions"])}
+    items["_o"] = items["division"].map(order)
+    items = items.sort_values(["_o", "code"], kind="mergesort").drop(columns="_o").reset_index(drop=True)
 
     forecast, vid, vintage_months, _ = latest_vintage_forecast(root, cfg)
     months = plan_months(vintage_months, today)
     backlog_dir = latest_pull_dir(root, cfg["backlog_pull_dirs"])
     stock_dir = path_of(root, cfg["stock_pull_dir"])
     import build_inventory_dataset as bid
-    b_frames, b_meta = bid.load_pulls(backlog_dir)
     s_frames, s_meta = bid.load_pulls(stock_dir)
-    backlog, n_backlog_after = backlog_by_month(b_frames["backlog_ces"], months)
-    division_items = {d: min_max[min_max["division"] == d]["item"].tolist() for d in cfg["divisions"]}
+    item_division = dict(zip(items["code"], items["division"]))
+    scope = cfg.get("backlog_channel_scope") or {}
+    backlog_raw, backlog_meta = choose_backlog(backlog_dir, cfg, root, scope, item_division)
+    backlog_scoped, n_dropped_channel = filter_backlog_channel(backlog_raw, item_division, scope)
+    backlog, n_backlog_after = backlog_by_month(backlog_scoped, months)
     sellable = full_cfg["phase_e1_assumptions"]["sellable_warehouse_codes"]
-    on_hand = sellable_on_hand(s_frames["inventory"], division_items, sellable)
+    on_hand = sellable_on_hand(s_frames["inventory"], {d: items[items["division"] == d]["code"].tolist() for d in cfg["divisions_min_max_from_page"]}, sellable)
     use_open = bool(cfg["open_orders_usable"]) and open_orders is not None
     oo = {}
     if use_open:
@@ -268,20 +362,23 @@ def build_plan(root: str = PROJECT_ROOT, today: pd.Timestamp = None, open_orders
             oo[(item, month)] = float(q)
 
     rows, no_min_max = [], []
-    for _, r in min_max.iterrows():
-        d, item, cls = r["division"], r["item"], r["class"]
-        f = [float(forecast.loc[item, m]) if item in forecast.index and m in forecast.columns and pd.notna(forecast.loc[item, m]) else 0.0 for m in months]
+    for _, r in items.iterrows():
+        d, item, cls = r["division"], r["code"], r["class"]
+        has_forecast = r["status_category"] == "forecast"
+        f = [float(forecast.loc[item, m]) if has_forecast and item in forecast.index and m in forecast.columns and pd.notna(forecast.loc[item, m]) else 0.0
+             for m in months]
         b = [float(backlog.loc[item, m]) if item in backlog.index else 0.0 for m in months]
         dem = [max(x, y) for x, y in zip(f, b)]
-        src = ["backlog" if y > x else "forecast" for x, y in zip(f, b)]
+        src = ["backlog" if (y > x or not has_forecast) else "forecast" for x, y in zip(f, b)]
         has_mm = cls in cfg["classes_with_min_max"] and pd.notna(r["min"]) and pd.notna(r["max"])
-        if cls in cfg["classes_with_min_max"] and not has_mm:
+        if cls in cfg["classes_with_min_max"] and d in cfg["divisions_min_max_from_page"] and not has_mm:
             no_min_max.append(item)
         if has_mm:
             sim = simulate_item(on_hand[(d, item)], dem, float(r["min"]), float(r["max"]), [oo.get((item, m), 0.0) for m in months], tol)
         for i, m in enumerate(months):
             row = {"division": d, "item": item, "class": cls, "min_max_source": r["min_max_source"], "month": m, "forecast": f[i],
-                   "backlog_due": b[i], "demand": dem[i], "demand_source": src[i]}
+                   "backlog_due": b[i], "demand": dem[i], "demand_source": src[i], "status_category": r["status_category"],
+                   "class_label": r["class_label"], "data_inconsistent": bool(r["data_inconsistent"]), "counted": not bool(r["no_production_in_system"])}
             if has_mm:
                 row.update({"opening": sim[i]["opening"], "open_orders": sim[i]["open_orders"], "min": float(r["min"]), "max": float(r["max"]),
                             "planned_production": sim[i]["planned_production"], "closing": sim[i]["closing"], "load": np.nan})
@@ -291,39 +388,58 @@ def build_plan(root: str = PROJECT_ROOT, today: pd.Timestamp = None, open_orders
             rows.append(row)
     item_month = pd.DataFrame(rows, columns=ITEM_MONTH_COLUMNS)
 
+    extra_mask = items["division"].isin(cfg["capacity"]["extra_divisions"])
+    extra = dict(zip(items.loc[extra_mask, "code"], items.loc[extra_mask, "division"]))
     cap = capacity_reference(path_of(root, cfg["capacity"]["cube_final_file"]), path_of(root, cfg["capacity"]["item_division_file"]),
-                             cfg["capacity"], cfg["divisions"])
+                             cfg["capacity"], cfg["divisions"], extra)
     drows = []
     for d in cfg["divisions"]:
         for m in months:
             sub = item_month[(item_month["division"] == d) & (item_month["month"] == m)]
-            prod = float(sub["planned_production"].sum())
-            cto = float(sub.loc[sub["class"] == "confirmed_to_order", "load"].sum())
-            cfl = float(sub.loc[sub["class"] == "conflict", "load"].sum())
+            counted = sub[sub["counted"]]
+            prod = float(counted["planned_production"].sum())
+            cto = float(counted.loc[counted["class"] == "confirmed_to_order", "load"].sum())
+            cfl = float(counted.loc[counted["class"] == "conflict", "load"].sum())
+            not_counted = float(sub.loc[~sub["counted"], "planned_production"].fillna(0).sum() + sub.loc[~sub["counted"], "load"].fillna(0).sum())
             total = prod + cto + cfl
             c = cap[d]["capacity"]
             drows.append({"division": d, "month": m, "planned_production_stock": prod, "load_confirmed_to_order": cto, "load_conflict": cfl,
-                          "total_load": total, "capacity": c, "share_of_capacity": total / c, "above_capacity": bool(total > c)})
+                          "total_load": total, "capacity": c if c is not None else np.nan,
+                          "share_of_capacity": total / c if c is not None else np.nan, "above_capacity": bool(c is not None and total > c),
+                          "load_not_counted": not_counted})
     division_month = pd.DataFrame(drows, columns=DIVISION_MONTH_COLUMNS)
 
-    a_items = item_month[item_month["planned_production"].notna()]
+    a_items = item_month[item_month["planned_production"].notna() & item_month["counted"]]
     produced = a_items.groupby("item")["planned_production"].sum()
     by_month = a_items.groupby("month")["planned_production"].sum()
+    status_path = path_of(root, cfg["item_status_file"])
+    if not os.path.exists(status_path):
+        raise OperationPlanError(f"the item status file is missing: {cfg['item_status_file']}")
+    status = pd.read_csv(status_path)
+    never = status[status["status_category"].astype(str).str.startswith(cfg["never_sold_prefix"])]
+    never_sold = {d: int((never["division"] == d).sum()) for d in cfg["divisions"]}
+    first_rows = item_month[item_month["month"] == months[0]]
+    per_division = lambda mask: {d: int(((first_rows["division"] == d) & mask).sum()) for d in cfg["divisions"]}
     meta = {
         "built_at": datetime.now().isoformat(timespec="seconds"), "today": str(today.date()), "months": months,
         "vintage_id": vid, "vintage_months": vintage_months, "forecast_vintage_hash_verified": True,
         "stock_pull": {"dir": cfg["stock_pull_dir"], "pulled_at_local": s_meta["pulled_at_local"]},
-        "backlog_pull": {"dir": os.path.relpath(backlog_dir, root).replace("\\", "/"), "pulled_at_local": b_meta["pulled_at_local"]},
+        "backlog_pull": {"dir": backlog_meta["source"], "pulled_at_local": backlog_meta["pulled_at_local"], "scoped_rows_from": backlog_meta["scoped_rows_from"]},
+        "class_file": {"file": cfg["item_class_file"], "sha256": class_sha},
         "page": {"file": cfg["inventory_page_file"], "built_at": data.get("page_built_at"),
                  "default_not_late_pct": data["divisions"]["PEM101"]["curve_target"]["presets"]["today_lowest_stock"]["not_late_pct"]},
         "counts": {"items": int(item_month["item"].nunique()),
                    "by_division": {d: int(item_month[item_month["division"] == d]["item"].nunique()) for d in cfg["divisions"]},
-                   "with_min_max": {d: int(a_items[a_items["division"] == d]["item"].nunique()) for d in cfg["divisions"]},
+                   "with_min_max": {d: int(item_month[(item_month["division"] == d) & item_month["planned_production"].notna()]["item"].nunique()) for d in cfg["divisions"]},
                    "without_min_max": int(item_month[item_month["planned_production"].isna()]["item"].nunique()),
+                   "stock_items_by_division": per_division(first_rows["class"] == "stock_policy"),
+                   "no_forecast_items_by_division": per_division(first_rows["status_category"] != "forecast"),
+                   "no_production_items_by_division": per_division(~first_rows["counted"]),
+                   "never_sold_items_by_division": never_sold,
                    "stock_policy_without_min_max": sorted(no_min_max),
                    "items_needing_production": int((produced > tol).sum()),
-                   "item_months_backlog_above_forecast": int((item_month["backlog_due"] > item_month["forecast"]).sum()),
-                   "backlog_rows_after_last_month": n_backlog_after},
+                   "item_months_backlog_above_forecast": int(((item_month["status_category"] == "forecast") & (item_month["backlog_due"] > item_month["forecast"])).sum()),
+                   "backlog_rows_after_last_month": n_backlog_after, "backlog_rows_dropped_by_channel_scope": n_dropped_channel},
         "replenishment_by_month": {m: float(by_month.get(m, 0.0)) for m in months},
         "capacity": cap,
         "open_orders": {"usable": bool(cfg["open_orders_usable"]), "counted": bool(use_open),
@@ -332,7 +448,11 @@ def build_plan(root: str = PROJECT_ROOT, today: pd.Timestamp = None, open_orders
                         "capacity is a lower bound: the highest sustained monthly output seen, units summed across products",
                         "PEM101 Min and Max are those of the calibrated section on load (lead time free, 36 members); PEM107 those of the item table on load",
                         "production quantity is not rounded and has no minimum lot or batch size",
-                        "stock at the start is the sellable on-hand of the latest daily pull; no in-process or open production adds to it"],
+                        "stock at the start is the sellable on-hand of the latest daily pull; no in-process or open production adds to it",
+                        "CI101, PEM102, PEM103 and PEM104 have no Min and Max: their load equals demand",
+                        "items without a forecast (placeholder items and PEM104) use only confirmed orders not yet delivered",
+                        "items marked no_production_in_system are listed with their demand and not counted as production load",
+                        "PEM103 counts only Omni Channel orders; tender orders are not in the plan"],
     }
     return {"item_month": item_month, "division_month": division_month, "meta": meta}
 

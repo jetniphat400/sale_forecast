@@ -1,11 +1,13 @@
-"""Builds forecast/operation_plan.html, the production planners' page for operation plan v1 (week 2; METRICS.md Sec.42).
+"""Builds forecast/operation_plan.html, the production planners' page for operation plan v1 (week 2; METRICS.md Sec.42; six divisions from week 3).
 
 Every number, date and item code on the page is computed here from the recorded plan (`operation_plan_v1_*`, read after its SHA-256 check), the
 forward-test log (the run month of the forecast the plan used) and the price list (product names); nothing is typed. All Thai text is the approved
-text of the 2026-10-06 task, used verbatim; braces in `TEXT` name the values `compute_values` fills.
+text of the 2026-10-06 tasks, used verbatim; braces in `TEXT` name the values `compute_values` fills. Where a reader would need Thai text that has not
+been approved, the page shows a dash and the place is listed for the user's assistant (STATUS.md, week 3).
 
 The split of stock-item production (METRICS.md Sec.42): per stock item and month, the part that meets demand is the smaller of planned production
-and that month's demand, the refill part is the rest. It is computed here from the recorded plan; the plan itself is not changed.
+and that month's demand, the refill part is the rest. It is computed here from the recorded plan; the plan itself is not changed. Items marked
+no_production_in_system are listed with their demand and are not part of any total (the plan does not count them).
 """
 import html
 import json
@@ -24,24 +26,36 @@ import operation_plan as op  # noqa: E402
 
 logger = logging.getLogger("build_operation_plan_page")
 PAGE_RELATIVE = "forecast/operation_plan.html"
+MATERIAL_PAGE_RELATIVE = "material_plan.html"        # linked from this page; both pages sit in forecast/
 THAI_MONTHS = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."]   # the abbreviations the Min-Max page uses
-CLASS_LABELS = {"stock_policy": "เก็บ stock", "confirmed_to_order": "ผลิตตามสั่ง", "conflict": "ยังไม่ชัด"}
-CLASS_ORDER = ["stock_policy", "confirmed_to_order", "conflict"]
-DIVISIONS = ["PEM101", "PEM107"]
+CLASS_LABELS = {"stock_policy": "เก็บ stock", "confirmed_to_order": "ผลิตตามสั่ง", "conflict": "ยังไม่ชัด", "mixed": "ผสม (เก็บ stock บางส่วน)",
+                "no_production_in_system": "ไม่พบการผลิตในระบบ", "too_little_data": "ข้อมูลไม่พอจัดประเภท"}
+CLASS_ORDER = ["stock_policy", "confirmed_to_order", "conflict", "mixed", "too_little_data", "no_production_in_system"]
 SHARE_OF_BACKLOG_ITEMS = 0.80          # the items shown reach this share of the sum (approved text of 2026-10-06)
 MAX_BACKLOG_ITEMS = 3
+DASH = "-"
 
 # Approved Thai text, verbatim. {braces} are computed values.
 TEXT = {
-    "heading": "แผนการผลิต {n_months} เดือน · PEM101 และ PEM107",
+    "heading": "แผนการผลิต {n_months} เดือน · ทุกฝ่าย",
     "data_line": "ข้อมูล stock ดึงเมื่อ {pull_time} · ยอดทายจากรอบ {forecast_run_month}",
     "col_month": "เดือน", "col_demand": "ผลิตตามความต้องการ", "col_refill": "เติมให้ถึง Max", "col_mto": "ผลิตตามสั่ง", "col_total": "รวม",
     "col_capacity": "เทียบยอดผลิตสูงสุดที่เคยทำ", "above_capacity": "สูงกว่ายอดผลิตสูงสุดที่เคยทำ",
     "line_refill": "{first_month} PEM101 ต้องเติมให้ถึง Max {refill_units} หน่วย นอกเหนือจากความต้องการเดือนนั้น เพราะ stock ตอนนี้ต่ำกว่า Max ทยอยเติมในเดือนถัดไปได้",
     "line_backlog": "{first_month} PEM107 มีออเดอร์ที่รับแล้วสูงกว่ายอดทาย {backlog_above_forecast} หน่วย ส่วนใหญ่จาก {top_backlog_items}",
     "line_capacity": "ยอดผลิตสูงสุดที่เคยทำ คือยอดผลิตเสร็จต่อเดือนสูงสุดในอดีต นับทุกสินค้ารวมกันโดยไม่แยกขนาด ใช้ดูทิศทาง ไม่ได้แปลว่าเป็นกำลังผลิตเต็มที่",
+    "line_no_stock": "{division} ไม่มีสินค้าที่เข้าเกณฑ์เก็บ stock แผนจึงเป็นการผลิตตามความต้องการทั้งหมด",
+    "line_no_forecast": "{n} รหัสไม่มียอดทาย ใช้เฉพาะออเดอร์ที่รับแล้ว",
+    "line_no_production": "{n} รหัสไม่พบการผลิตในระบบ ไม่นับเป็นภาระผลิต",
+    "line_never_sold": "{division} {n} รหัสอยู่ใน Price List แต่ไม่เคยขาย ไม่อยู่ในแผน",
+    "line_pem103": "PEM103 นับเฉพาะยอด Omni Channel งานประมูลไม่อยู่ในแผนนี้",
     "units": "หน่วย", "and": " และ ",
     "item_cols": ["รหัส", "ชื่อสินค้า", "ประเภท", "stock ตอนนี้", "Min", "Max"],
+    "filter_division": "ฝ่าย", "filter_all": "ทั้งหมด",
+    "stock_note": "stock ตอนนี้ แสดงเฉพาะสินค้าเก็บ stock",
+    "flag_inconsistent": "ข้อมูลไม่สอดคล้อง",
+    "flag_inconsistent_tip": "ประเภทที่บันทึกในระบบขัดกับวิธีส่งจริง ใช้วิธีส่งจริงตัดสิน",
+    "material_link": "แผนวัตถุดิบ",
     "back_link": "← กลับไปหน้าหลัก (Dashboard)",       # wording of the same link on the Min-Max page
 }
 
@@ -72,7 +86,7 @@ def fmt_cell(x: float) -> str:
 
 
 def fmt_pct(x: float) -> str:
-    return f"{100 * float(x):.1f}%"
+    return DASH if pd.isna(x) else f"{100 * float(x):.1f}%"
 
 
 def join_items(parts: list) -> str:
@@ -103,45 +117,65 @@ def top_backlog_items(excess: pd.Series) -> list:
     return picked
 
 
-def compute_values(item_month: pd.DataFrame, division_month: pd.DataFrame, meta: dict, names: dict, forecast_run_date: str) -> dict:
+def compute_values(item_month: pd.DataFrame, division_month: pd.DataFrame, meta: dict, names: dict, forecast_run_date: str, divisions: list) -> dict:
     """Every value the page shows. `item_month`, `division_month`, `meta` are the recorded plan (read back), `names` maps item code to product name,
-    `forecast_run_date` is the forecast vintage's run date. The summary total must equal the recorded division-month total (checked)."""
+    `forecast_run_date` is the forecast vintage's run date, `divisions` the divisions in the order shown. The summary total must equal the recorded
+    division-month total (checked); rows of items the plan does not count are in the item table but in no total."""
     months = list(meta["months"])
     first = months[0]
     im = item_month.copy()
+    im["counted"] = im["counted"].astype(bool)
     a = im["planned_production"].notna()
     im["meets_demand"] = np.nan
     im["refill"] = np.nan
     meets, refill = split_production(im.loc[a, "planned_production"].to_numpy(), im.loc[a, "demand"].to_numpy())
     im.loc[a, "meets_demand"], im.loc[a, "refill"] = meets, refill
+    cnt = im[im["counted"]]
     rows = []
-    for d in DIVISIONS:
+    for d in divisions:
         for m in months:
-            s = im[(im["division"] == d) & (im["month"] == m)]
+            s = cnt[(cnt["division"] == d) & (cnt["month"] == m)]
             rec = division_month[(division_month["division"] == d) & (division_month["month"] == m)].iloc[0]
             demand_part, refill_part, mto = float(s["meets_demand"].sum()), float(s["refill"].sum()), float(s["load"].sum())
             total = demand_part + refill_part + mto
             if abs(total - float(rec["total_load"])) > 1e-3:
                 raise op.OperationPlanError(f"{d} {m}: the page total {total} differs from the recorded division-month total {rec['total_load']}")
+            cap = rec["capacity"]
             rows.append({"division": d, "month": m, "demand_part": demand_part, "refill_part": refill_part, "mto": mto, "total": total,
-                         "capacity": float(rec["capacity"]), "share": total / float(rec["capacity"]), "above": bool(rec["above_capacity"])})
+                         "capacity": None if pd.isna(cap) else float(cap), "share": None if pd.isna(cap) else total / float(cap), "above": bool(rec["above_capacity"])})
     summary = pd.DataFrame(rows)
-    refill_first = float(im[(im["division"] == "PEM101") & (im["month"] == first)]["refill"].sum())
-    p107 = im[(im["division"] == "PEM107") & (im["month"] == first)].set_index("item")
+    refill_first = float(cnt[(cnt["division"] == "PEM101") & (cnt["month"] == first)]["refill"].sum())
+    p107 = cnt[(cnt["division"] == "PEM107") & (cnt["month"] == first)].set_index("item")
     excess = (p107["backlog_due"] - p107["forecast"]).clip(lower=0)
     picked = top_backlog_items(excess)
     items = []
     for (d, item), s in im.groupby(["division", "item"], sort=False):
         s = s.set_index("month").reindex(months)
         cls = s["class"].iloc[0]
-        stock = cls == "stock_policy"
-        items.append({"division": d, "item": item, "name": names.get(item, ""), "class": cls,
+        stock = cls == "stock_policy" and bool(s["min"].notna().iloc[0])
+        items.append({"division": d, "item": item, "name": names.get(item, ""), "class": cls, "label": s["class_label"].iloc[0],
+                      "inconsistent": bool(s["data_inconsistent"].iloc[0]), "counted": bool(s["counted"].iloc[0]),
                       "stock_now": float(s["opening"].iloc[0]) if stock else None,
                       "min": float(s["min"].iloc[0]) if stock else None, "max": float(s["max"].iloc[0]) if stock else None,
                       "months": [float(s["planned_production"].iloc[i]) if stock else float(s["load"].iloc[i]) for i in range(len(months))]})
-    items.sort(key=lambda r: (DIVISIONS.index(r["division"]), CLASS_ORDER.index(r["class"]), -sum(r["months"]), r["item"]))
+    items.sort(key=lambda r: (divisions.index(r["division"]), CLASS_ORDER.index(r["label"]), -sum(r["months"]), r["item"]))
+    counts = meta["counts"]
+    division_lines = {}
+    for d in divisions:
+        lines = []
+        if counts["stock_items_by_division"][d] == 0:
+            lines.append(TEXT["line_no_stock"].format(division=d))
+        if counts["no_forecast_items_by_division"][d] > 0:
+            lines.append(TEXT["line_no_forecast"].format(n=counts["no_forecast_items_by_division"][d]))
+        if counts["no_production_items_by_division"][d] > 0:
+            lines.append(TEXT["line_no_production"].format(n=counts["no_production_items_by_division"][d]))
+        if counts.get("never_sold_items_by_division", {}).get(d, 0) > 0:
+            lines.append(TEXT["line_never_sold"].format(division=d, n=counts["never_sold_items_by_division"][d]))
+        if d == "PEM103":
+            lines.append(TEXT["line_pem103"])
+        division_lines[d] = lines
     values = {
-        "n_months": len(months), "months": months,
+        "n_months": len(months), "months": months, "divisions": divisions,
         "month_labels": [thai_month(m) for m in months],
         "pull_time": thai_datetime(meta["stock_pull"]["pulled_at_local"]),
         "forecast_run_month": thai_month(str(forecast_run_date)[:7]),
@@ -149,7 +183,7 @@ def compute_values(item_month: pd.DataFrame, division_month: pd.DataFrame, meta:
         "refill_units": fmt_units(refill_first), "refill_first": refill_first,
         "backlog_above_forecast": fmt_units(excess.sum()), "backlog_above_forecast_value": float(excess.sum()),
         "top_backlog_items": join_items([f"{c} ({fmt_units(v)} {TEXT['units']})" for c, v in picked]) if picked else "",
-        "top_backlog_picked": picked, "summary": summary, "items": items,
+        "top_backlog_picked": picked, "summary": summary, "items": items, "division_lines": division_lines,
     }
     return values
 
@@ -165,7 +199,9 @@ CSS = """
   h2 { font-size: 17px; margin: 24px 0 8px; border-bottom: 1px solid var(--border); padding-bottom: 6px; }
   p.scope-note { font-size: 12px; color: var(--muted); margin: 2px 0 10px; }
   p.note-line { font-size: 12.5px; color: var(--text-secondary); background: #eef4fb; border: 1px solid var(--border); border-radius: 6px; padding: 8px 12px; margin: 6px 0; }
-  a.back-link { color: var(--series-1); text-decoration: none; font-size: 13px; }
+  p.table-note { font-size: 12px; color: var(--muted); margin: 2px 0 12px; }
+  a.back-link, a.page-link { color: var(--series-1); text-decoration: none; font-size: 13px; }
+  .links { display: flex; gap: 18px; flex-wrap: wrap; margin: 4px 0 8px; }
   .table-scroll { overflow-x: auto; max-width: 100%; }
   .report-table { width:100%; border-collapse: collapse; font-size: 12.5px; margin: 6px 0 16px; }
   .report-table th, .report-table td { border: 1px solid var(--border); padding: 5px 7px; text-align: right; white-space: nowrap; }
@@ -173,6 +209,7 @@ CSS = """
   .report-table thead th { background: #f0efec; }
   .report-table td.name, .report-table th.name, .report-table td.kind, .report-table th.kind { text-align: left; white-space: normal; }
   .flag { color: #8f2b2b; font-weight: 700; margin-left: 6px; white-space: nowrap; }
+  .flag.tip { cursor: help; border-bottom: 1px dotted #8f2b2b; }
   tr.above td { background: #fdecea; }
   .filters { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; margin: 14px 0 6px; }
   .filters select { font-size: 14px; padding: 5px 8px; border-radius: 6px; border: 1px solid var(--border); }
@@ -199,12 +236,14 @@ def _e(x) -> str:
 def render(values: dict) -> str:
     """The page as one HTML string. Reader-facing text is the approved text; comments hold what must stay off screen."""
     T, v = TEXT, values
+    divisions = v["divisions"]
     parts = []
     parts.append(f'<a class="back-link" href="../index.html">{_e(T["back_link"])}</a>')
     heading = T["heading"].format(n_months=v["n_months"])
     parts.append(f'<h1 id="page-title">{_e(heading)}</h1>')
     parts.append(f'<p class="scope-note" id="data-line">{_e(T["data_line"].format(pull_time=v["pull_time"], forecast_run_month=v["forecast_run_month"]))}</p>')
-    for d in DIVISIONS:
+    parts.append(f'<div class="links"><a class="page-link" id="material-plan-link" href="{MATERIAL_PAGE_RELATIVE}">{_e(T["material_link"])}</a></div>')
+    for d in divisions:
         parts.append(f'<h2>{d}</h2>')
         head = "".join(f"<th>{_e(T[k])}</th>" for k in ("col_month", "col_demand", "col_refill", "col_mto", "col_total", "col_capacity"))
         body = []
@@ -214,6 +253,7 @@ def render(values: dict) -> str:
                         f'<td>{fmt_units(r["demand_part"])}</td><td>{fmt_units(r["refill_part"])}</td><td>{fmt_units(r["mto"])}</td>'
                         f'<td>{fmt_units(r["total"])}</td><td>{fmt_pct(r["share"])}{flag}</td></tr>')
         parts.append(f'<div class="table-scroll"><table class="report-table summary-table" id="summary-{d}"><thead><tr>{head}</tr></thead><tbody>{"".join(body)}</tbody></table></div>')
+        parts.append("".join(f'<p class="note-line division-line" data-division="{d}">{_e(l)}</p>' for l in v["division_lines"][d]))
     lines = []
     if v["refill_first"] >= 0.5:
         lines.append(T["line_refill"].format(first_month=v["first_month"], refill_units=v["refill_units"]))
@@ -222,24 +262,28 @@ def render(values: dict) -> str:
                                               top_backlog_items=v["top_backlog_items"]))
     lines.append(T["line_capacity"])
     parts.append("".join(f'<p class="note-line">{_e(l)}</p>' for l in lines))
-    div_opts = '<option value="all">All</option>' + "".join(f'<option value="{d}">{d}</option>' for d in DIVISIONS)
-    class_opts = '<option value="all">All</option>' + "".join(f'<option value="{c}">{_e(CLASS_LABELS[c])}</option>' for c in CLASS_ORDER)
-    parts.append(f'<div class="filters"><label>Division <select id="filter-division">{div_opts}</select></label>'
+    div_opts = f'<option value="all">{_e(T["filter_all"])}</option>' + "".join(f'<option value="{d}">{d}</option>' for d in divisions)
+    class_opts = f'<option value="all">{_e(T["filter_all"])}</option>' + "".join(f'<option value="{c}">{_e(CLASS_LABELS[c])}</option>' for c in CLASS_ORDER)
+    parts.append(f'<div class="filters"><label>{_e(T["filter_division"])} <select id="filter-division">{div_opts}</select></label>'
                  f'<label>{_e(T["item_cols"][2])} <select id="filter-class">{class_opts}</select></label></div>')
     cols = T["item_cols"]
     th = "".join(f'<th class="{"name" if i == 1 else ("kind" if i == 2 else "")}">{_e(c)}</th>' for i, c in enumerate(cols)) + \
         "".join(f"<th>{_e(l)}</th>" for l in v["month_labels"])
     rows = []
     for it in v["items"]:
-        cells = [f'<td>{_e(it["item"])}</td>', f'<td class="name">{_e(it["name"])}</td>', f'<td class="kind">{_e(CLASS_LABELS[it["class"]])}</td>',
+        flag = f'<span class="flag tip" title="{_e(T["flag_inconsistent_tip"])}">{_e(T["flag_inconsistent"])}</span>' if it["inconsistent"] else ""
+        cells = [f'<td>{_e(it["item"])}</td>', f'<td class="name">{_e(it["name"])}</td>', f'<td class="kind">{_e(CLASS_LABELS[it["label"]])}{flag}</td>',
                  f'<td>{fmt_units(it["stock_now"]) if it["stock_now"] is not None else ""}</td>',
                  f'<td>{fmt_cell(it["min"]) if it["min"] is not None else ""}</td>', f'<td>{fmt_cell(it["max"]) if it["max"] is not None else ""}</td>']
         cells += [f"<td>{fmt_cell(x)}</td>" for x in it["months"]]
-        rows.append(f'<tr data-division="{it["division"]}" data-class="{it["class"]}">{"".join(cells)}</tr>')
+        rows.append(f'<tr data-division="{it["division"]}" data-class="{it["label"]}">{"".join(cells)}</tr>')
     parts.append(f'<div class="table-scroll"><table class="report-table" id="item-table"><thead><tr>{th}</tr></thead><tbody id="item-table-body">{"".join(rows)}</tbody></table></div>')
+    parts.append(f'<p class="table-note" id="stock-note">{_e(T["stock_note"])}</p>')
     comment = ("<!-- Source: the recorded operation plan (output/summary/operation_plan_v1_*, SHA-256 checked) and its split of stock-item production "
-               "(METRICS.md Sec.42); product names from the price list; month columns hold planned production for stock items and the made-to-order "
-               "load for the others; stock ตอนนี้, Min and Max are blank where the plan has none. -->")
+               "(METRICS.md Sec.42); product names from the price list; classes and flags from the Sec.23 item-level file; month columns hold planned "
+               "production for stock items and the made-to-order load for the others; stock ตอนนี้, Min and Max are blank where the plan has none; items "
+               "marked no_production_in_system are listed with their demand and are in no total; six PEM101 codes listed in the price list but never sold "
+               "are not in the plan (the page says how many per division). -->")
     return (f'<!DOCTYPE html>\n<html lang="th">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1">\n'
             f'<title>{_e(heading)}</title>\n<style>{CSS}</style>\n</head>\n<body>\n{comment}\n<div class="wrap">\n' + "\n".join(parts) +
             f'\n</div>\n<script>{JS}</script>\n</body>\n</html>\n')
@@ -269,7 +313,7 @@ def product_names(root: str) -> dict:
 def build_values(root: str = PROJECT_ROOT, out_dir: str = None) -> dict:
     cfg = op.load_config(root)
     im, dm, meta = op.read_outputs(root, cfg, out_dir)
-    return compute_values(im, dm, meta, product_names(root), forecast_run_date(root, cfg, meta["vintage_id"]))
+    return compute_values(im, dm, meta, product_names(root), forecast_run_date(root, cfg, meta["vintage_id"]), list(cfg["divisions"]))
 
 
 def build_page(root: str = PROJECT_ROOT, out_dir: str = None, out_path: str = None) -> str:

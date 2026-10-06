@@ -109,8 +109,9 @@ Explorer   Validator    Analyst      Modeler        Synthesizer
    and say what changed. Never overwrite a previous conclusion silently.
 5. **Write results to `output/summary/`, in a separate file per agent.** Each agent's output must
    be independently readable and attributable to that agent.
-6. **Read `STATUS.md`, `CONVENTIONS.md`, `DATA_MAP.md` and `PROJECT_GRAPH.md` before starting any
-   task.** When closing a task that establishes a new fact, add it to `DATA_MAP.md` with a
+6. **Read `STATUS.md`'s "The brief" section (the user's original brief, with how each item reads
+   against the data) before starting any task, then `STATUS.md`, `CONVENTIONS.md`, `DATA_MAP.md`
+   and `PROJECT_GRAPH.md`.** When closing a task that establishes a new fact, add it to `DATA_MAP.md` with a
    citation and verification level; when a task changes a node's status, update
    `PROJECT_GRAPH.md` (CONVENTIONS.md, "Project map").
 7. **Separate what is confirmed from data from what is inferred.** Every output must mark each

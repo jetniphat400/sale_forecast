@@ -46,7 +46,8 @@ def raw_items():
     for p in (LEAN_REPORT, G3_REPORT, ITEM_LEVEL):
         if not os.path.exists(p):
             pytest.skip(f"SKIPPED, not passed: {os.path.relpath(p, PROJECT_ROOT)} is not in this checkout")
-    return pd.read_csv(ITEM_LEVEL)
+    df = pd.read_csv(ITEM_LEVEL)
+    return df[df["status_category"] == "forecast"] if "status_category" in df.columns else df   # the file also holds placeholders and other divisions (week 3)
 
 
 # ------------------------------------------------------------------ E1

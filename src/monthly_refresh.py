@@ -14,6 +14,8 @@ ORDER, exactly as specified there:
     7 rebuild every page with section 26 timestamps
     7b recompute operation plan v1 (METRICS.md Sec.42) from the page just built and the saved pulls, then build
       forecast/operation_plan.html from it
+    7c recompute material plan v1 (METRICS.md Sec.43) from the operation plan just recorded and the saved week 3 pulls, then build
+      forecast/material_plan.html from it
     8 run the full test suite
     9 scan staged files for sensitive content
     10 check change magnitude against the previous run
@@ -129,7 +131,7 @@ SENSITIVE_PATTERNS = [
 
 
 STEP_ORDER = ["1_pull_data", "2_validate", "3_frozen_snapshot", "4_backtest", "5_new_forward_test_vintage",
-              "6_fill_and_score", "7_rebuild_pages", "7b_operation_plan", "8_run_tests", "9_scan_sensitive_content",
+              "6_fill_and_score", "7_rebuild_pages", "7b_operation_plan", "7c_material_plan", "8_run_tests", "9_scan_sensitive_content",
               "10_change_magnitude", "11_commit_and_push"]
 
 
@@ -981,6 +983,26 @@ def step7b_operation_plan(dry_run: bool, staged_dir: str, step7_result: dict = N
 
 
 # ---------------------------------------------------------------------------------------------
+# Step 7c: material plan v1 (METRICS.md Sec.43)
+# ---------------------------------------------------------------------------------------------
+
+def step7c_material_plan(dry_run: bool, staged_dir: str) -> dict:
+    """Recomputes the material plan from the operation plan step 7b just recorded (hash-checked) and the saved week 3 pulls, records its two outputs with
+    their SHA-256 and builds forecast/material_plan.html. In a dry run the whole run is inside a temporary copy of the project; a staged (non-copy) dry
+    run writes under its staging folder. Makes no database connection."""
+    import build_material_plan_page
+    import material_plan
+    plan_dir = os.path.join(staged_dir, "operation_plan") if dry_run else None
+    result = material_plan.run(PROJECT_ROOT, today=pd.Timestamp(datetime.now().date()), out_dir=plan_dir, op_out_dir=plan_dir)
+    result["material_plan_page"] = build_material_plan_page.build_page(
+        PROJECT_ROOT, out_dir=plan_dir, out_path=os.path.join(plan_dir, "material_plan.html") if dry_run else None)
+    result["written_to_tracked_path"] = False
+    result["written_to"] = ("temporary copy of the project (dry run)" if IN_SANDBOX else
+                            ("staging folder" if dry_run else "output/summary (untracked)"))
+    return result
+
+
+# ---------------------------------------------------------------------------------------------
 # Step 8: run the full test suite
 # ---------------------------------------------------------------------------------------------
 
@@ -1192,8 +1214,8 @@ def gate_outcomes(step8: dict, step9: dict, step10: dict) -> dict:
 # ---------------------------------------------------------------------------------------------
 
 # The only tracked files a run generates (step 7; step 11 stages exactly these, never `git add -A`).
-GENERATED_PATHS = ["forecast/sales_report.html", "forecast/inventory.html", "forecast/operation_plan.html", "data/inventory.json", "data/stock_daily.json",
-                   "data/assumptions.json"]
+GENERATED_PATHS = ["forecast/sales_report.html", "forecast/inventory.html", "forecast/operation_plan.html", "forecast/material_plan.html",
+                   "data/inventory.json", "data/stock_daily.json", "data/assumptions.json"]
 
 
 def _git_status_lines() -> list:
@@ -1380,6 +1402,7 @@ def main(dry_run: bool, force_new_vintage: bool = False, sandbox: bool = False, 
     record("6_fill_and_score", step6_fill_and_score, steps_dry, computed_vintage_for_preview, offline, run_id)
     step7 = record("7_rebuild_pages", step7_rebuild_pages, steps_dry, staged_dir, step1)
     record("7b_operation_plan", step7b_operation_plan, steps_dry, staged_dir, step7)
+    record("7c_material_plan", step7c_material_plan, steps_dry, staged_dir)
     step8 = record("8_run_tests", step8_run_tests, skip_tests)
     step9 = record("9_scan_sensitive_content", step9_scan_sensitive_content, started_mtime if sandbox else None)
     step10 = record("10_change_magnitude", step10_change_magnitude, config, step4, step5)

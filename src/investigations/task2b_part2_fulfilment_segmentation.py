@@ -48,6 +48,12 @@ Definitions (METRICS.md Sec.23, quoted in full in that section):
   conflict            : every other combination, and every 'mixed' item
   If S2 cannot be computed: evaluate on S1 and S3 only, and require BOTH to hold for stock_policy.
 
+Week 3 additions (2026-10-06, METRICS.md Sec.23 "Added 2026-10-06"): the item universe is every forecast-status and placeholder item of the
+six divisions (PEM104's items are business-confirmed made-to-order), and three definitions are added per item -- data_inconsistent,
+no_production_in_system, too_little_data -- plus the mixed-item rule of Part 3 (`mixed_rule`, tested on known items before it is applied) and
+the display label of each item (`class_label`). `run_from_pulls` computes everything from saved pulls (no database); the item-level file keeps
+the classes of PEM101 and PEM107 forecast-status items (decisions of 2026-09-29 and 2026-10-05) and records the fresh recomputation beside them.
+
 No customer_name/cusname column is pulled or printed anywhere in this script.
 """
 import logging
@@ -56,6 +62,7 @@ import sys
 
 import numpy as np
 import pandas as pd
+import yaml
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
@@ -318,6 +325,211 @@ def load_current_finished_goods_stock_set():
     out["PEM101"] = set(p101[p101["policy"] == "finished_goods_stock"]["code"])
     p107 = pd.read_csv(os.path.join(SUMMARY_DIR, "phaseE2pilot_PEM107_1_item_policy.csv"))
     out["PEM107"] = set(p107[p107["policy"] == "finished_goods_stock"]["code"])
+    return out
+
+
+# =====================================================================================================================
+# Week 3 (2026-10-06): all six divisions, three new definitions, the mixed-item rule, display labels.
+# =====================================================================================================================
+CONFIG_PATH = os.path.join(PROJECT_ROOT, "config", "config.yaml")
+ITEM_STATUS_FILE = os.path.join(SUMMARY_DIR, "phaseC_step1revised_item_status_445.csv")
+KEPT_CLASS_DIVISIONS = ["PEM101", "PEM107"]          # forecast-status items keep their class (decisions of 2026-09-29 and 2026-10-05)
+NEVER_SOLD_PREFIX = "excluded - listed but never sold"   # status of six PEM101 codes: not in the universe
+FORECAST_STATUS = "forecast"
+LABEL_KEYS = ["stock_policy", "confirmed_to_order", "conflict", "mixed", "no_production_in_system", "too_little_data"]
+
+
+def load_week3_config(path: str = CONFIG_PATH) -> dict:
+    with open(path, encoding="utf-8") as f:
+        return yaml.safe_load(f)["week3_classification"]
+
+
+def delivered_contracts_in_window(ces: pd.DataFrame, start: str) -> pd.Series:
+    """Per item code, the number of distinct delivered (Status 'Actual') contracts with CtrDate on or after `start`."""
+    d = ces.copy()
+    d["CtrDate"] = pd.to_datetime(d["CtrDate"], errors="coerce")
+    d = d[(d["Status"] == "Actual") & (d["CtrDate"] >= pd.Timestamp(start))]
+    return d.groupby("ItemCode")["ContractID"].nunique()
+
+
+def is_data_inconsistent(label, s1, s2, s3, s2_computable) -> bool:
+    """The recorded label contradicts the observed behaviour: MTS while none of S1 to S3 holds, or MTO or ETO while all of them hold.
+    When S2 cannot be computed the test uses S1 and S3 only, as the rest of Sec.23 does."""
+    held = [bool(s1), bool(s3)] + ([bool(s2)] if s2_computable else [])
+    if label == "MTS":
+        return not any(held)
+    if label in ("MTO", "ETO"):
+        return all(held)
+    return False
+
+
+def delivered_lines(apd: pd.DataFrame, ces: pd.DataFrame) -> pd.DataFrame:
+    """One row per delivered order line: the cube_Sale_APD line (status Actual, label manufacturing_type, createDate) joined to its Cube_CES
+    delivery row on (contract, item, plan id) -- the key is unique on both sides -- with days = ActualDelDate - createDate; lines with negative
+    days are dropped (as S3 drops them)."""
+    a = apd[apd["status"] == "Actual"].copy()
+    a["planid"] = pd.to_numeric(a["planid"], errors="coerce")
+    c = ces[ces["Status"] == "Actual"].copy()
+    c["PlanID"] = pd.to_numeric(c["PlanID"], errors="coerce")
+    m = a.merge(c[["ContractID", "ItemCode", "PlanID", "ActualDelDate"]], left_on=["contractid", "itemcode", "planid"],
+                right_on=["ContractID", "ItemCode", "PlanID"], how="inner")
+    m["days"] = (pd.to_datetime(m["ActualDelDate"]) - pd.to_datetime(m["createDate"])).dt.days
+    return m[m["days"] >= 0][["itemcode", "manufacturing_type", "days"]].reset_index(drop=True)
+
+
+def mixed_item_stats(lines: pd.DataFrame, rule: dict) -> pd.DataFrame:
+    """Part 3 rule per item (index itemcode): n_lines_mts, n_lines_order, median days of each, and mixed_by_rule. An item is mixed when it has at
+    least `min_lines_each_kind` delivered lines of each kind, the MTS-labelled median is at most `stock_median_days_max`, the MTO- or ETO-labelled
+    median is above `order_median_days_min`, and the medians differ by at least `min_median_gap_days`."""
+    cols = ["n_lines_mts", "n_lines_order", "median_days_mts", "median_days_order", "mixed_by_rule"]
+    rows = {}
+    for code, g in lines.groupby("itemcode"):
+        s = g.loc[g["manufacturing_type"] == "MTS", "days"]
+        o = g.loc[g["manufacturing_type"].isin(["MTO", "ETO"]), "days"]
+        ms, mo = (float(s.median()) if len(s) else np.nan), (float(o.median()) if len(o) else np.nan)
+        enough = len(s) >= rule["min_lines_each_kind"] and len(o) >= rule["min_lines_each_kind"]
+        mixed = bool(enough and ms <= rule["stock_median_days_max"] and mo > rule["order_median_days_min"]
+                     and (mo - ms) >= rule["min_median_gap_days"])
+        rows[code] = [int(len(s)), int(len(o)), ms, mo, mixed]
+    return pd.DataFrame.from_dict(rows, orient="index", columns=cols)
+
+
+def mixed_rule_known_test(stats: pd.DataFrame, known_codes, rule: dict) -> dict:
+    """Tests the rule on items whose answer is known (stock_policy and confirmed_to_order items): how many it calls mixed. The rule is adopted only
+    when that share is at most `max_share_of_known_items`."""
+    known = list(known_codes)
+    called = sum(bool(stats["mixed_by_rule"].get(c, False)) for c in known)
+    share = called / len(known) if known else 0.0
+    return {"n_known": len(known), "n_called_mixed": int(called), "share": share, "adopted": bool(share <= rule["max_share_of_known_items"])}
+
+
+def mts_share_by_quantity(apd: pd.DataFrame, today: pd.Timestamp, months: int) -> pd.Series:
+    """Per item, the MTS-labelled share of ordered quantity (Actual and MPS lines) with createDate in the last `months` months up to `today`."""
+    a = apd.dropna(subset=["manufacturing_type"]).copy()
+    a["createDate"] = pd.to_datetime(a["createDate"], errors="coerce")
+    a = a[(a["createDate"] > today - pd.DateOffset(months=months)) & (a["createDate"] <= today)]
+    tot = a.groupby("itemcode")["qty"].sum()
+    mts = a[a["manufacturing_type"] == "MTS"].groupby("itemcode")["qty"].sum()
+    return (mts.reindex(tot.index).fillna(0) / tot).where(tot > 0)
+
+
+def display_label(cls: str, no_production: bool, too_little: bool, mixed: bool, kept_decided: bool) -> str:
+    """The label an item shows on a page, in this order: no_production_in_system; a class decided by the user or by the business (PEM101 and
+    PEM107 stock_policy or confirmed_to_order, PEM104) keeps its class; too_little_data; mixed; otherwise the Sec.23 class."""
+    if no_production:
+        return "no_production_in_system"
+    if kept_decided:
+        return cls
+    if too_little:
+        return "too_little_data"
+    if mixed:
+        return "mixed"
+    return cls
+
+
+def build_week3_item_level(universe: pd.DataFrame, label_df: pd.DataFrame, s1_df: pd.DataFrame, s2s3_df: pd.DataFrame, apd: pd.DataFrame,
+                           ces: pd.DataFrame, bom_counts: dict, final_counts: dict, kept_class: dict, today: pd.Timestamp, w3: dict,
+                           decisions: dict) -> tuple:
+    """The full item-level table for every item of `universe` (columns code, division, status_category) and the Part 3 known-item test.
+    `kept_class` maps code -> the class PEM101 and PEM107 forecast-status items keep; `bom_counts` and `final_counts` map item code ->
+    number of Cube_BOM_Exact entries and cube_final records. Returns (table, mixed_test dict)."""
+    m = universe.copy()
+    m["itemcode"] = m["code"]
+    m = m.merge(label_df, on="itemcode", how="left").merge(s1_df, on="itemcode", how="left").merge(s2s3_df, on="itemcode", how="left")
+    m["class_recomputed"] = m.apply(classify_item, axis=1)
+    keep = ((m["division"].isin(KEPT_CLASS_DIVISIONS)) & (m["status_category"] == FORECAST_STATUS) & m["code"].isin(list(kept_class))).to_numpy()
+    m["class"] = np.where(keep, m["code"].map(kept_class), m["class_recomputed"])
+    m.loc[m["division"] == "PEM104", "class"] = "confirmed_to_order"      # METRICS.md Sec.23: PEM104, every item confirmed_to_order, level A
+    # class_used: the class on top of which the user's per-item decisions of 2026-10-05 (config fulfilment_class_decisions) are applied, as the
+    # pages read it; `class` stays the Sec.23 result (the existing tests count it)
+    import build_inventory_page_data as bd
+    decided = bd.apply_class_decisions(m[["division", "code", "class"]], decisions)
+    m["class_used"] = decided["class"].to_numpy()
+    m["class_basis"] = np.where(keep, np.where(decided["class_basis"].to_numpy() != "", "user_decision", "kept_rule_class"),
+                                np.where(m["division"] == "PEM104", "business_confirmed", "rule"))
+    ndel = delivered_contracts_in_window(ces, w3["analysis_window_start"])
+    m["n_delivered_window"] = m["code"].map(ndel).fillna(0).astype(int)
+    m["too_little_data"] = m["n_delivered_window"] < w3["min_delivered_contracts"]
+    m["data_inconsistent"] = [is_data_inconsistent(r.label, r.S1, r.S2, r.S3, bool(r.S2_computable)) for r in m.itertuples()]
+    m["n_bom_entries"] = m["code"].map(bom_counts).fillna(0).astype(int)
+    m["n_cube_final_records"] = m["code"].map(final_counts).fillna(0).astype(int)
+    m["no_production_in_system"] = (m["n_bom_entries"] == 0) & (m["n_cube_final_records"] == 0)
+    rule = w3["mixed_rule"]
+    stats = mixed_item_stats(delivered_lines(apd, ces), rule)
+    m = m.merge(stats, left_on="code", right_index=True, how="left")
+    m["n_lines_mts"] = m["n_lines_mts"].fillna(0).astype(int)
+    m["n_lines_order"] = m["n_lines_order"].fillna(0).astype(int)
+    m["mixed_by_rule"] = m["mixed_by_rule"].map(lambda x: bool(x) if pd.notna(x) else False)
+    stock_or_order = m["class_used"].isin(["stock_policy", "confirmed_to_order"]).to_numpy()
+    known_codes = m.loc[keep & stock_or_order, "code"].tolist()
+    test = mixed_rule_known_test(stats, known_codes, rule)
+    rule_derived = m.loc[keep & stock_or_order & (m["class_recomputed"] == m["class"]).to_numpy(), "code"].tolist()
+    test["n_known_rule_derived"] = len(rule_derived)
+    test["n_called_mixed_rule_derived"] = int(sum(bool(stats["mixed_by_rule"].get(c, False)) for c in rule_derived))
+    target = ((m["class_used"] == "conflict") | (m["label"] == "mixed")).to_numpy()
+    kept_decided = (keep & stock_or_order) | (m["division"] == "PEM104").to_numpy()
+    called = bool(test["adopted"]) & m["mixed_by_rule"].to_numpy() & target
+    m["mixed_applied"] = called & ~kept_decided          # an item whose class the user or the business decided keeps it, even when the rule calls it mixed
+    share = mts_share_by_quantity(apd, today, rule["share_window_months"])
+    m["mts_share_12m"] = np.where(called, m["code"].map(share), np.nan)      # recorded for every item the rule calls mixed, kept ones included
+    m["class_label"] = [display_label(c, bool(n), bool(t), bool(x), bool(k)) for c, n, t, x, k in
+                        zip(m["class_used"], m["no_production_in_system"], m["too_little_data"], m["mixed_applied"], kept_decided)]
+    return m, test
+
+
+def too_little_data_counts(table: pd.DataFrame, report_at: list) -> dict:
+    """Counts per division of items with fewer delivered contracts than each value in `report_at` (the section's 3 and its neighbours 2 and 5)."""
+    return {k: (table["n_delivered_window"] < k).groupby(table["division"]).sum().astype(int).to_dict() for k in report_at}
+
+
+def universe_from_status(status: pd.DataFrame) -> pd.DataFrame:
+    """Every forecast-status and placeholder item of the six divisions plus PEM104's items (item status file of phase C); the PEM101 codes
+    listed but never sold are left out and counted by the caller. Columns code, division, status_category ('forecast' for every forecast-status
+    row, the file's own text otherwise)."""
+    s = status[~status["status_category"].str.startswith(NEVER_SOLD_PREFIX)].copy()
+    s["itemcode"] = s["itemcode"].astype(str).str.strip()
+    s["status_category"] = np.where(s["status_category"].str.startswith(FORECAST_STATUS), FORECAST_STATUS, s["status_category"])
+    return s.rename(columns={"itemcode": "code"})[["code", "division", "status_category"]].drop_duplicates("code").reset_index(drop=True)
+
+
+def run_from_pulls(pull_dir: str, out_item_level: str = OUT_ITEM_LEVEL, today: pd.Timestamp = None, write: bool = True) -> dict:
+    """Computes the week 3 item-level table from saved pulls (no database): p2_apd.csv, p2_ces.csv, p2_final.csv, p2_inv.csv and p4_bom.csv in
+    `pull_dir`. The classes of PEM101 and PEM107 forecast-status items are read from the existing item-level file and kept. Returns a dict with
+    the table, the mixed-rule test, the too-little-data counts, the threshold sensitivity (recomputed classes, every division) and the number of
+    PEM101 codes listed but never sold."""
+    today = pd.Timestamp(today) if today is not None else pd.Timestamp.today().normalize()
+    w3 = load_week3_config()
+    rd = lambda n: pd.read_csv(os.path.join(pull_dir, n))
+    apd, ces, cf, inv, bom = rd("p2_apd.csv"), rd("p2_ces.csv"), rd("p2_final.csv"), rd("p2_inv.csv"), rd("p4_bom.csv")
+    status = pd.read_csv(ITEM_STATUS_FILE)
+    universe = universe_from_status(status)
+    codes = sorted(universe["code"])
+    prev = pd.read_csv(out_item_level)
+    prev = prev[prev["division"].isin(KEPT_CLASS_DIVISIONS)]
+    if "status_category" in prev.columns:
+        prev = prev[prev["status_category"] == FORECAST_STATUS]
+    kept_class = prev.set_index("code")["class"].to_dict()
+    label_df = compute_label(apd, codes, MIXED_THRESHOLD)
+    inv["stock"] = pd.to_numeric(inv["stock"], errors="coerce")
+    s1 = pd.DataFrame({"itemcode": codes})
+    s1["total_stock"] = s1["itemcode"].map(inv.groupby("itemcode")["stock"].sum()).fillna(0.0)
+    s1["S1"] = s1["total_stock"] > 0
+    s2s3 = compute_s2_s3(ces, cf, codes, S2_THRESHOLD, S3_THRESHOLD_DAYS)
+    bom_counts = bom.assign(ItemFG=bom["ItemFG"].astype(str).str.strip()).groupby("ItemFG").size().to_dict()
+    final_counts = cf.assign(itemcode=cf["itemcode"].astype(str).str.strip()).groupby("itemcode").size().to_dict()
+    with open(CONFIG_PATH, encoding="utf-8") as f:
+        decisions = yaml.safe_load(f).get("fulfilment_class_decisions", {})
+    table, test = build_week3_item_level(universe, label_df, s1, s2s3, apd, ces, bom_counts, final_counts, kept_class, today, w3, decisions)
+    pl = load_visible_product_rows(os.path.join(REFERENCE_DIR, "pricelist.xlsx"))[["code", "business", "category", "type", "description"]]
+    table = table.merge(pl.drop_duplicates("code"), on="code", how="left")
+    out = {"table": table, "mixed_test": test, "too_little_counts": too_little_data_counts(table, w3["min_delivered_contracts_report_at"]),
+           "thresholds": threshold_sensitivity(universe, apd, s1, ces, cf, codes),
+           "n_never_sold": int(status["status_category"].str.startswith(NEVER_SOLD_PREFIX).sum())}
+    if write:
+        table.to_csv(out_item_level, index=False)
+        # the class counts and the threshold sensitivity files cover every division now (class_used: the class the pages read)
+        table.groupby(["division", "class_used"]).size().unstack(fill_value=0).to_csv(OUT_CLASS_COUNTS)
+        out["thresholds"].to_csv(OUT_THRESHOLD_SENSITIVITY, index=False)
     return out
 
 

@@ -50,6 +50,7 @@ def _stub_steps(monkeypatch, fail_step=None, exc=RuntimeError("boom: not a Month
     monkeypatch.setattr(mr, "step6_fill_and_score", ok("6_fill_and_score"))
     monkeypatch.setattr(mr, "step7_rebuild_pages", ok("7_rebuild_pages"))
     monkeypatch.setattr(mr, "step7b_operation_plan", ok("7b_operation_plan"))
+    monkeypatch.setattr(mr, "step7c_material_plan", ok("7c_material_plan"))
     monkeypatch.setattr(mr, "step8_run_tests", ok("8_run_tests", {"passed": True}))
     monkeypatch.setattr(mr, "step9_scan_sensitive_content", ok("9_scan_sensitive_content", {"passed": True}))
     monkeypatch.setattr(mr, "step10_change_magnitude", ok("10_change_magnitude", {"passed": True}))

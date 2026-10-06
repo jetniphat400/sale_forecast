@@ -408,6 +408,7 @@ def build_page(**data_sources) -> str:
 
   <main class="content">
   <p class="scope-note" id="scope-note"></p>
+  <p class="scope-note" id="no-min-max-line" style="display:none"></p>
   <ul class="disabled-note-list" id="disabled-note-list">{disabled_notes}</ul>
 
   <div id="pem107-alert" class="alert-banner" style="display:none" role="alert">
@@ -1050,6 +1051,9 @@ function onDivisionChange() {{
   const divisionData = getDivisionData(currentDivision);
   document.getElementById('page-title').textContent = 'แผนสต็อค — Inventory Min/Max Scenario (' + currentDivision + ', ' + divisionData.n_items_label + ')';
   setTextWithRef('scope-note', divisionData.warehouse_scope_note, divisionData.warehouse_scope_ref);
+  const noMinMax = document.getElementById('no-min-max-line');
+  noMinMax.textContent = divisionData.no_min_max_line || '';
+  noMinMax.style.display = divisionData.no_min_max_line ? '' : 'none';
   renderPem107Alert(currentDivision);
   const builtAt = parseYmdHm(DATA.page_built_at);
   const pulledAt = parseYmdHm(divisionData.snapshot_pull_date);

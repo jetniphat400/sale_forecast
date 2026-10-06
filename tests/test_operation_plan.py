@@ -114,15 +114,24 @@ def project(tmp_path):
     cfg = copy.deepcopy(REAL_CFG)
     cfg["capacity"]["data_map_reference"] = {"PEM101": 500, "PEM107": 60}
     cfg["open_orders_usable"] = False
+    cfg["divisions"] = ["PEM101", "PEM107"]
+    cfg["backlog_channel_scope"] = {}
     full = {"operation_plan": cfg, "phase_e1_assumptions": {"sellable_warehouse_codes": {"PEM101": ["FG01", "FG21"], "PEM107": ["FG27"]}}}
     _write(os.path.join(root, "config", "config.yaml"), yaml.safe_dump(full))
     history = [10.0] * 24
     _write(os.path.join(root, *cfg["inventory_page_file"].split("/")), _page({
-        "PEM101": [("A101", "stock_policy"), ("B101", "stock_policy"), ("E101", "stock_policy"), ("C101", "confirmed_to_order"), ("D101", "conflict")],
+        "PEM101": [("A101", "stock_policy"), ("B101", "stock_policy"), ("E101", "stock_policy"), ("C101", "confirmed_to_order"), ("D101", "conflict"),
+                   ("X101", "confirmed_to_order")],
         "PEM107": [("M107", "stock_policy", [10.0] * 10, history), ("N107", "confirmed_to_order")]}))
+    _write_status_file(root, cfg, 3)
+    _write_class_file(root, cfg, [("A101", "PEM101", "forecast", "stock_policy", "stock_policy", False, False), ("B101", "PEM101", "forecast", "stock_policy", "stock_policy", False, False),
+                                  ("E101", "PEM101", "forecast", "stock_policy", "stock_policy", False, False), ("C101", "PEM101", "forecast", "confirmed_to_order", "confirmed_to_order", False, False),
+                                  ("D101", "PEM101", "forecast", "conflict", "mixed", True, False), ("X101", "PEM101", "forecast", "confirmed_to_order", "no_production_in_system", False, True),
+                                  ("P101", "PEM101", "placeholder - pending method", "conflict", "conflict", False, False),
+                                  ("M107", "PEM107", "forecast", "stock_policy", "stock_policy", False, False), ("N107", "PEM107", "forecast", "confirmed_to_order", "confirmed_to_order", False, False)])
     os.makedirs(os.path.join(root, "output", "summary"), exist_ok=True)
     rows = []
-    fc = {"A101": 30, "B101": 1, "E101": 5, "C101": 20, "D101": 8, "M107": 10, "N107": 40}
+    fc = {"A101": 30, "B101": 1, "E101": 5, "C101": 20, "D101": 8, "X101": 12, "M107": 10, "N107": 40}
     for item, q in fc.items():
         for m in MONTHS:
             rows.append((item, "PEM107" if item.endswith("107") else "PEM101", m, float(q)))
@@ -135,7 +144,9 @@ def project(tmp_path):
                         ("D101", "2026-10-30", 0, 50),         # above forecast (8)
                         ("E101", "2026-08-01", 0, 40),         # overdue and above the forecast (5)
                         ("E101", "2027-03-01", 0, 99),         # after the last plan month: not used
-                        ("B101", "2026-11-02", 0, 0.5)])      # below forecast: forecast stays the demand
+                        ("B101", "2026-11-02", 0, 0.5),       # below forecast: forecast stays the demand
+                        ("P101", "2026-10-12", 0, 30),        # a placeholder item has no forecast: the confirmed order is its whole demand
+                        ("P101", "2026-12-12", 2, 3)])
     _save_pull(root, cfg["stock_pull_dir"], "2026-10-06 08:00:40", inv, backlog)
     _save_pull(root, "output/data/inventory_pull", "2026-10-05 07:41:00", inv.iloc[:0], _backlog([("C101", "2026-10-10", 0, 1000)]))
     cf = pd.DataFrame({"itemcode": ["A101", "A101", "A101", "M107", "M107", "M107"], "final_date": ["2025-01-10", "2025-01-20", "2025-02-05", "2025-03-01", "2025-04-01", "2025-05-01"],
@@ -145,6 +156,23 @@ def project(tmp_path):
     pd.DataFrame({"code": ["A101", "M107"], "item_type": ["t", "t"], "item_division": ["PEM101", "PEM107"]}).to_csv(
         os.path.join(root, *cfg["capacity"]["item_division_file"].split("/")), index=False)
     return root, cfg
+
+
+def _write_status_file(root, cfg, never_sold):
+    """The phase C item status file: one row per fixture item plus `never_sold` PEM101 codes listed in the price list but never sold."""
+    rows = [{"itemcode": c, "division": "PEM101", "status_category": "forecast"} for c in ("A101", "B101")]
+    rows += [{"itemcode": f"NS{k}", "division": "PEM101", "status_category": cfg["never_sold_prefix"]} for k in range(never_sold)]
+    p = os.path.join(root, *cfg["item_status_file"].split("/"))
+    os.makedirs(os.path.dirname(p), exist_ok=True)
+    pd.DataFrame(rows).to_csv(p, index=False)
+
+
+def _write_class_file(root, cfg, rows):
+    """The Sec.23 item-level file as the plan reads it: code, division, status_category, class_used, class_label, data_inconsistent, no_production_in_system."""
+    df = pd.DataFrame(rows, columns=["code", "division", "status_category", "class_used", "class_label", "data_inconsistent", "no_production_in_system"])
+    p = os.path.join(root, *cfg["item_class_file"].split("/"))
+    os.makedirs(os.path.dirname(p), exist_ok=True)
+    df.to_csv(p, index=False)
 
 
 def _plan(project, **kw):
@@ -160,7 +188,7 @@ def _row(plan, item, month):
 def test_the_plan_covers_the_vintage_months_from_the_current_month_onward(project):
     plan = _plan(project)
     assert plan["meta"]["months"] == MONTHS and plan["meta"]["vintage_id"] == 1 and plan["meta"]["forecast_vintage_hash_verified"]
-    assert plan["item_month"]["item"].nunique() == 7 and len(plan["item_month"]) == 7 * len(MONTHS)
+    assert plan["item_month"]["item"].nunique() == 9 and len(plan["item_month"]) == 9 * len(MONTHS)
 
 
 def test_months_before_the_current_month_are_left_out(project):
@@ -245,7 +273,7 @@ def test_a_division_month_above_capacity_is_flagged_and_one_below_is_not(project
     assert plan["meta"]["capacity"]["PEM101"]["capacity"] == 500.0 and plan["meta"]["capacity"]["PEM107"]["capacity"] == 60.0        # 2025-01 PEM101: 400, 2025-02: 500
     im = plan["item_month"]
     for (d, m), r in dm.iterrows():
-        sub = im[(im["division"] == d) & (im["month"] == m)]
+        sub = im[(im["division"] == d) & (im["month"] == m) & im["counted"]]
         expect = sub["planned_production"].fillna(0).sum() + sub["load"].fillna(0).sum()
         assert r["total_load"] == pytest.approx(expect) and r["above_capacity"] == (expect > r["capacity"])
         assert r["share_of_capacity"] == pytest.approx(expect / r["capacity"])
@@ -289,6 +317,101 @@ def test_a_forecast_vintage_that_does_not_hash_to_its_metadata_stops_the_build(p
     df.loc[0, "forecast_qty"] = "999"
     df.to_csv(p, index=False)
     with pytest.raises(op.OperationPlanError):
+        _plan(project)
+
+
+# ------------------------------------------------------------------ week 3: all divisions, items without a forecast, items not counted
+def test_a_placeholder_item_has_no_forecast_and_its_demand_is_only_the_confirmed_orders(project):
+    plan = _plan(project)
+    p = plan["item_month"][plan["item_month"]["item"] == "P101"].set_index("month")
+    assert (p["forecast"] == 0).all() and (p["demand_source"] == "backlog").all()
+    assert p.loc["2026-10", "demand"] == 30.0 and p.loc["2026-11", "demand"] == 0.0 and p.loc["2026-12", "demand"] == 5.0     # 2 + 3 in December
+    assert (p["load"] == p["demand"]).all() and p["planned_production"].isna().all() and p["status_category"].iloc[0].startswith("placeholder")
+
+
+def test_an_item_with_no_production_in_the_system_is_listed_with_its_demand_and_counted_in_no_total(project):
+    plan = _plan(project)
+    x = plan["item_month"][plan["item_month"]["item"] == "X101"]
+    assert (x["demand"] == 12.0).all() and (x["load"] == 12.0).all() and not x["counted"].any() and (x["class_label"] == "no_production_in_system").all()
+    dm = plan["division_month"].set_index(["division", "month"])
+    im = plan["item_month"]
+    for m in MONTHS:
+        counted = im[(im["division"] == "PEM101") & (im["month"] == m) & im["counted"]]
+        assert dm.loc[("PEM101", m), "total_load"] == pytest.approx(counted["planned_production"].fillna(0).sum() + counted["load"].fillna(0).sum())
+        assert dm.loc[("PEM101", m), "load_not_counted"] == pytest.approx(12.0)
+    assert plan["meta"]["counts"]["no_production_items_by_division"]["PEM101"] == 1
+
+
+def test_the_flag_and_the_label_of_an_item_come_from_the_class_file(project):
+    plan = _plan(project)
+    d = plan["item_month"][plan["item_month"]["item"] == "D101"]
+    assert (d["class_label"] == "mixed").all() and d["data_inconsistent"].all() and (d["class"] == "conflict").all()
+    assert not plan["item_month"][plan["item_month"]["item"] == "A101"]["data_inconsistent"].any()
+
+
+def test_the_codes_listed_but_never_sold_are_counted_per_division_and_are_not_in_the_plan(project):
+    plan = _plan(project)
+    assert plan["meta"]["counts"]["never_sold_items_by_division"] == {"PEM101": 3, "PEM107": 0}
+    assert not plan["item_month"]["item"].str.startswith("NS").any()
+
+
+def test_the_counts_per_division_come_from_the_plan_not_from_typing(project):
+    c = _plan(project)["meta"]["counts"]
+    assert c["stock_items_by_division"] == {"PEM101": 3, "PEM107": 1}
+    assert c["no_forecast_items_by_division"] == {"PEM101": 1, "PEM107": 0}
+    assert c["by_division"] == {"PEM101": 7, "PEM107": 2}
+
+
+def test_the_channel_scope_keeps_only_the_scoped_divisions_own_channel_and_leaves_the_others(project):
+    b = pd.DataFrame({"ItemCode": ["I1", "I1", "I2", "I2"], "RevenueType": ["Omni Channel", "Tendering", "Tendering", None], "BacklogQty": [1, 2, 3, 4]})
+    kept, dropped = op.filter_backlog_channel(b, {"I1": "PEM103", "I2": "PEM107"}, {"PEM103": "Omni Channel"})
+    assert dropped == 1 and list(kept["BacklogQty"]) == [1, 3, 4]
+    same, none = op.filter_backlog_channel(b, {"I1": "PEM103"}, {})
+    assert none == 0 and len(same) == 4
+    with pytest.raises(op.OperationPlanError):
+        op.filter_backlog_channel(b.drop(columns="RevenueType"), {"I1": "PEM103"}, {"PEM103": "Omni Channel"})
+
+
+def test_the_scoped_divisions_rows_come_from_the_saved_week3_pull_when_the_daily_pull_has_no_revenue_type(project):
+    root, cfg = project
+    cfg = copy.deepcopy(cfg)
+    cfg["backlog_channel_scope"] = {"PEM101": "Omni Channel"}
+    cfg["week3_inputs_file"] = "output/data/week3_inputs/material_inputs.pkl"
+    w3 = {"backlog_ces": pd.DataFrame([{"ContractID": "W", "ItemCode": "D101", "ForecastDelDate": "2026-10-20", "PlanDelDate": "2026-10-20", "ActualQty": 0, "BacklogQty": 77,
+                                         "RevenueType": "Omni Channel"},
+                                        {"ContractID": "T", "ItemCode": "D101", "ForecastDelDate": "2026-10-21", "PlanDelDate": "2026-10-21", "ActualQty": 0, "BacklogQty": 500,
+                                         "RevenueType": "Tendering"}]),
+          "backlog_pulled_at_local": "2026-10-06 11:00:00"}
+    os.makedirs(os.path.join(root, "output", "data", "week3_inputs"), exist_ok=True)
+    pd.to_pickle(w3, os.path.join(root, *cfg["week3_inputs_file"].split("/")))
+    plan = op.build_plan(root, TODAY, cfg=cfg, full_cfg=op.load_full_config(root))
+    assert _row(plan, "D101", "2026-10")["backlog_due"] == 77.0                    # the saved Omni row only; the daily pull's 50 for D101 is replaced
+    assert _row(plan, "C101", "2026-10")["backlog_due"] == 0.0                     # every scoped-division row comes from the saved pull, which holds none for C101
+    assert plan["meta"]["backlog_pull"]["scoped_rows_from"]["divisions"] == ["PEM101"] and plan["meta"]["counts"]["backlog_rows_dropped_by_channel_scope"] == 1      # the Tendering row
+
+
+def test_capacity_takes_extra_items_for_divisions_the_map_lacks_and_returns_none_for_a_division_with_no_output(tmp_path):
+    cf = pd.DataFrame({"itemcode": ["A", "B", "B", "C"], "final_date": ["2025-01-05", "2025-01-06", "2025-02-06", "2025-01-07"], "transfer_qty": [100, 5, 7, 9]})
+    cf.to_csv(tmp_path / "cf.csv", index=False)
+    pd.DataFrame({"code": ["A"], "item_type": ["t"], "item_division": ["PEM101"]}).to_csv(tmp_path / "m.csv", index=False)
+    cap = op.capacity_reference(str(tmp_path / "cf.csv"), str(tmp_path / "m.csv"), REAL_CFG["capacity"], ["PEM101", "CI101", "PEM104"], {"B": "CI101", "A": "CI101"})
+    assert cap["PEM101"]["capacity"] == 100.0           # an item the file holds keeps the file's division
+    assert cap["CI101"]["capacity"] == 7.0 and cap["PEM104"]["capacity"] is None and cap["PEM104"]["month"] is None
+
+
+def test_a_missing_class_file_or_one_that_disagrees_with_the_page_stops_the_build(project):
+    root, cfg = project
+    path = os.path.join(root, *cfg["item_class_file"].split("/"))
+    df = pd.read_csv(path)
+    df.loc[df["code"] == "A101", "class_used"] = "conflict"
+    df.to_csv(path, index=False)
+    with pytest.raises(op.OperationPlanError, match="disagree on the class"):
+        _plan(project)
+    df[df["code"] != "A101"].to_csv(path, index=False)
+    with pytest.raises(op.OperationPlanError, match="differ"):
+        _plan(project)
+    os.remove(path)
+    with pytest.raises(op.OperationPlanError, match="missing"):
         _plan(project)
 
 

@@ -339,3 +339,44 @@ def test_plan_page_rendered_text_is_reader_text(plan_page):
     assert len([x for x in lines if x.strip()]) > 40
     found = violations(lines, _config_keys(), english_exempt=cells)
     assert not found, "operation plan page: rendered reader-facing text carries project internals:\n" + "\n".join(found)
+
+
+# ------------------------------------------------------------------ forecast/material_plan.html (week 3)
+
+@pytest.fixture(scope="module")
+def material_page(tmp_path_factory):
+    """forecast/material_plan.html built by its builder from the recorded material plan into a temporary folder (skipped where the recorded plan is absent)."""
+    import build_material_plan_page as bm
+    import material_plan as mp
+    cfg = mp.load_config()
+    for k in ("output_material_month_file", "output_material_summary_file"):
+        if not os.path.exists(mp.op.path_of(PROJECT_ROOT, cfg[k])):
+            pytest.skip("SKIPPED, not passed: the recorded material plan is not on this machine")
+    out = tmp_path_factory.mktemp("reader_text_material")
+    return bm.build_page(out_path=str(out / "forecast" / "material_plan.html"))
+
+
+def test_material_page_static_visible_text_is_reader_text(material_page):
+    import html as _html
+    with open(material_page, encoding="utf-8") as f:
+        text = f.read()
+    lines = visible_lines(text)
+    assert len(lines) > 100, "material plan page: visible text extraction looks empty"
+    names = {" ".join(_html.unescape(n).split()) for n in re.findall(r'<td class="name">(.*?)</td>', text)}      # material names: table cells from the item master
+    found = violations(lines, _config_keys(), english_exempt=names)
+    assert not found, "material plan page: reader-facing text carries project internals:\n" + "\n".join(found)
+
+
+def test_material_page_rendered_text_is_reader_text(material_page):
+    edge = Edge(require_browser())
+    try:
+        edge.open(material_page)
+        text = edge.ev("document.body.innerText")
+        cells = set(edge.ev("[...document.querySelectorAll('td, th')].map(c => c.innerText.trim())"))
+        assert not [e for e in edge.errors if e.startswith("exception")], edge.errors
+    finally:
+        edge.close()
+    lines = re.split(r"[\n\t]", text)
+    assert len([x for x in lines if x.strip()]) > 100
+    found = violations(lines, _config_keys(), english_exempt=cells)
+    assert not found, "material plan page: rendered reader-facing text carries project internals:\n" + "\n".join(found)

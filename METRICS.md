@@ -519,6 +519,30 @@ always stated.
 - For G2 item eligibility this supersedes the value and frequency criteria
   of section 15. Mark section 15 accordingly; keep its text.
 
+- **Added 2026-10-06 (week 3; `src/investigations/task2b_part2_fulfilment_segmentation.py`, config `week3_classification`). The rule above is not
+  changed;** it is applied to every forecast-status and placeholder item of CI101, PEM102 and PEM103, and PEM101's and PEM107's forecast-status items keep
+  their classes (the rule's result of 2026-09-29 and the user's per-item decisions of 2026-10-05, column `class_used`; a fresh recomputation is recorded beside
+  it as `class_recomputed`). PEM104's items are business-confirmed made-to-order (level A, as stated above); the rule's own result for them is recorded in
+  `class_recomputed`. Six PEM101 codes the price list lists but that were never sold are not in the universe. Three definitions are added per item, in every
+  division:
+  - `data_inconsistent`: the recorded label contradicts the observed behaviour: the label is MTS while none of S1 to S3 holds, or the label is MTO or ETO while
+    all of S1 to S3 hold (when S2 cannot be computed, S1 and S3 only, as above). It is a flag, not a class. Tested on the items whose class is known (PEM101's and
+    PEM107's stock_policy and confirmed_to_order items) before it is shown; for the items the rule itself classed it flags none by construction (a stock_policy item
+    has at least two signals, a confirmed_to_order item at most one), so only the user's per-item decisions can be flagged.
+  - `no_production_in_system`: no Cube_BOM_Exact entry (any row with the item as ItemFG) and no cube_final record (itemcode). The item is listed with its
+    demand in the operation plan and is not counted as production load; its material requirement is not exploded.
+  - `too_little_data`: fewer than 3 delivered contracts in the analysis window (Cube_CES Status 'Actual', distinct ContractID, CtrDate on or after 2024-01-01;
+    config `min_delivered_contracts`); counts are also reported at 2 and 5.
+  - **Mixed items** (a per-item test of the fact that manufacturing_type is held per order): the delivered lines of an item (cube_Sale_APD status Actual joined to
+    Cube_CES on contract, item and plan id, days = ActualDelDate - createDate, negative days dropped) are split by label, MTS against MTO or ETO. An item is mixed
+    when it has at least 3 delivered lines of each kind, the MTS-labelled median is at most 14 days, the MTO- or ETO-labelled median is above 14 days, and the two
+    medians differ by at least 7 days (config `mixed_rule`, fixed before it was computed). Before it is applied it is tested on the known items (stock_policy and
+    confirmed_to_order of PEM101 and PEM107); if it calls more than one in ten of them mixed it is not adopted. When adopted it is applied to every conflict item and
+    every mixed-label item in every division and records the MTS share of ordered quantity over the last 12 months; a mixed item gets no Min or Max and its whole
+    demand is made-to-order load. A class decided by the user or the business keeps its class even when the rule calls the item mixed.
+  - **Label an item shows** (`class_label`), in this order: no_production_in_system; a class decided by the user or the business (PEM101 and PEM107 stock_policy or
+    confirmed_to_order, PEM104) keeps its class; too_little_data; mixed; otherwise the class.
+
 ## 24. relative_service_cost
 
     For each distinct ensemble member e, deduplicated per section 22:
@@ -1084,6 +1108,22 @@ pipeline — no new section is needed for this; it is already covered by section
 - The capacity recomputed from the saved cube_final pull (2026-10-05) equals the figures DATA_MAP.md records for the same method (PEM101
   249,080 and PEM107 6,221 units per month); config `capacity.data_map_reference` holds them and the plan reports whether they match.
 
+### Week 3: all six divisions (2026-10-06; `src/operation_plan.py`)
+
+    scope     : every item of the item-level file (METRICS.md Sec.23): forecast-status and placeholder items of CI101, PEM101, PEM102, PEM103 and PEM107, and PEM104's
+                items; divisions in the order PEM101, PEM103, PEM107, PEM102, PEM104, CI101
+    Min, Max  : PEM101 and PEM107 only (read from the inventory page as before); every other item's load equals its demand
+    demand    : an item without a forecast (placeholder items and PEM104) uses only the confirmed orders not yet delivered (Cube_CES Status 'Backlog')
+    channel   : PEM103 counts only the backlog rows whose RevenueType is Omni Channel (config `backlog_channel_scope`); the latest saved pull's rows are used, and
+                for the scoped division the saved week 3 pull's rows while the daily pull has no RevenueType column
+    not counted: an item marked no_production_in_system keeps its row (demand, load) with `counted` false and is in no total; the division-month total counts the
+                counted rows only, `load_not_counted` is the rest
+    capacity  : the method above for every division; items the item-division map file does not hold (CI101 and PEM102) take their price-list division; a division
+                with no cube_final output has no capacity (a dash on the page)
+
+- Item-month columns added: status_category, class_label, data_inconsistent, counted. Division-month column added: load_not_counted. `class` stays the Sec.23 class
+  used (decisions applied); the page and the plan read the class from the item-level file and stop if a PEM101 or PEM107 forecast-status item's class differs from the page's.
+
 ### Split of stock-item production and the planners' page (added 2026-10-06; `src/build_operation_plan_page.py`)
 
     per stock item and month:
@@ -1103,3 +1143,47 @@ pipeline — no new section is needed for this; it is already covered by section
   at most three. A sentence is left out when its figure rounds to zero.
 - `forecast/operation_plan.html` is built by the monthly runner's step 7b after the plan is recomputed, and is in its staging list. Product
   names come from the price list; the stock pull time and the forecast run month are those of the plan's inputs.
+
+
+## 43. material_plan_v1
+
+    input    : the operation plan's production quantities per item and month (planned production of an item with a Min and Max, the load of every other item) of the
+               counted rows, every division; the plan is read after its SHA-256 check
+    explode  : level by level through Cube_BOM_Exact (config `bom_source`); a component with its own BOM and no purchase record (no purchase order line and no
+               receipt since config `purchase_evidence_since`) is an in-house sub-assembly and is expanded; every other component is a purchased material (a component
+               with a purchase record is purchased even when it has a BOM entry, one with neither is a purchased material of unknown supply); the header row and the
+               time pseudo-codes (BOM lines whose Type contains 'hour': Machine Hour and Labor hour) are not components; a BOM that does not end within `max_bom_levels` stops the build
+    gross[material, month]      = the exploded quantity (BOM quantity per unit of the parent, in the BOM's unit)
+    available[material, month]  = stock in the raw-material warehouses (config `rm_warehouses`, a negative total counts as zero)
+                                  + the open orders of Cube_tobe_received whose expected date has arrived by the end of the month (a date before the first month counts in
+                                  the first month); used because its tests passed (see below)
+    net requirement (cumulative) = the running maximum of max(0, cumulative gross - available); the month's net requirement is its increase
+    latest order date            = the first day of a month with a net requirement minus the material's lead time in days (a lead time with a half day gives a date at
+                                   noon; the order date is that calendar day, so the day itself still counts as a day to order); the material's date is the first of them
+    to order now                 = the material's date has passed on the day of the build; the quantity to order now is the sum of the net requirements of the months whose
+                                   date has passed
+    lead time per material       = the order of sources of Sec.5 (median observed days from purchase order to first receipt, the supplier's non-zero quoted days, the assumed
+                                   fallback), labelled ใบสั่งซื้อจริง, ผู้ขายแจ้ง or ค่าประมาณ on the page
+
+- **Proofs, run before each source was used** (functions `rm_warehouse_proof`, `open_orders_proof`, `bom_source_proof`, `unit_proof` in `src/material_plan.py`; thresholds in config
+  `material_plan`, fixed before the tests; results in STATUS.md and DATA_MAP.md, week 3):
+  - raw-material warehouses: those that issue to production (type B) at least `rm_warehouse_min_share` of the 12 months' type B issues of the BOM components; the warehouse
+    that receives most purchases (QA) issues almost nothing and is reported apart;
+  - open orders: usable when at least 90 percent of Cube_tobe_received lines match a purchase-order line, of those at least 90 percent have the open quantity equal to
+    ordered minus received and at least 90 percent have the expected date equal to the PO's planned date, and on received history at least 70 percent of lines have their
+    first receipt within 14 days of the planned date;
+  - BOM source: Cube_BOM_Exact against Cube_BOM_Exact_V2 by the share of materials actually issued to 2026 production orders (Cube_JobCost_Detail actual quantity) that are
+    a line of the order item's BOM, and by the issued quantity against produced quantity x BOM quantity (within 5 percent);
+  - units: the BOM unit against the stock unit and against the purchase unit (price list, open orders), per material ("same" only when every known unit equals the BOM
+    unit; a material that is bought in a second unit as well is "differs"); a unit of '-' or blank is unknown. No conversion factor
+    is applied: where the units differ the quantities are netted as they are and the material is marked.
+- Recorded outputs (untracked, `output/summary/`): `material_plan_v1_material_month.csv` (per material and month: gross, stock available, cumulative open orders,
+  cumulative net, net, order date) and `material_plan_v1_material_summary.csv` (per material: name from the item master Cube_ItemList, the finished goods that use it most,
+  units and their check, stock, open orders, lead time and its source, totals, first short month, latest order date, to order now, quantity to order now), each with a
+  SHA-256 in `operation_plan_v1_integrity.json` under "material_plan", verified before they are read back. Inputs: the saved week 3 pulls
+  (`output/data/week3_inputs/material_inputs.pkl`, untracked).
+- Computed by `src/material_plan.py`; the monthly runner's step 7c recomputes it from the operation plan step 7b just recorded and builds `forecast/material_plan.html`
+  (`src/build_material_plan_page.py`).
+- Assumptions (each also in the meta of the integrity file): no minimum order quantity or lot size; stock of in-house sub-assemblies is not netted, so the gross requirement is an
+  upper bound where sub-assemblies are stocked; overdue open orders count in the first month although some arrive later; the stock in the inspection warehouse (QA) is not
+  available; the lead time starts at the purchase-order date.

@@ -17,6 +17,9 @@ import pytest
 from page_helpers import Edge, build_inventory_html, require_browser
 
 DIVISIONS = ["PEM101", "PEM103", "PEM107"]
+# PEM103 follows METRICS.md Sec.23 since 2026-10-06 and has no stock_policy item, so it shows no Min and Max rows: the tests that move a control and expect
+# Min, Max or stock figures to move run for the divisions that have them; PEM103's page is checked in test_operation_plan_page_builder.py.
+MIN_MAX_DIVISIONS = ["PEM101", "PEM107"]
 CHART_FAIL_MSG = "กราฟโหลดไม่ได้ เครือข่ายอาจบล็อกไลบรารีกราฟ · ตัวเลขและตารางยังใช้ได้ตามปกติ"
 MARKER_NAME = "service level ที่เลือก"
 
@@ -115,7 +118,7 @@ def test_totals_tables_and_summary_are_filled_on_load(desktop):
     assert not desktop.errors, desktop.errors
 
 
-@pytest.mark.parametrize("division", DIVISIONS)
+@pytest.mark.parametrize("division", MIN_MAX_DIVISIONS)
 @pytest.mark.parametrize("key,value,expect", [
     ("procurement_lead_time_days", 90, {"stock", "holding", "minmax", "tradeoffLine", "minVsCurrent", "markerY"}),
     ("assembly_time_days", 20, {"stock", "holding", "minmax", "tradeoffLine", "minVsCurrent", "markerY"}),
@@ -174,7 +177,7 @@ def test_warehouse_checklist_changes_stock_columns_but_never_min_or_max(desktop,
     assert not e.errors, e.errors
 
 
-@pytest.mark.parametrize("division", DIVISIONS)
+@pytest.mark.parametrize("division", MIN_MAX_DIVISIONS)
 def test_service_level_marker_follows_its_slider(desktop, division):
     e = desktop
     select_division(e, division)
@@ -263,7 +266,7 @@ COUNT_JS = """(function(){
   return {shown:document.getElementById('tot-n-items').textContent.trim(), rowsWithMinMax:showing, rows:rows.length}})()"""
 
 
-@pytest.mark.parametrize("division", DIVISIONS)
+@pytest.mark.parametrize("division", MIN_MAX_DIVISIONS)
 def test_summary_count_equals_item_table_rows_showing_a_min_and_max(desktop, division):
     e = desktop
     select_division(e, division)
@@ -338,7 +341,7 @@ def test_placeholder_status_values_show_their_approved_labels(desktop, division)
 
 
 # ------------------------------------------------------------------ the system's Max: 0 is shown as not filled in
-@pytest.mark.parametrize("division", DIVISIONS)
+@pytest.mark.parametrize("division", MIN_MAX_DIVISIONS)
 def test_a_system_max_of_zero_shows_as_not_filled_in_and_the_total_leaves_those_rows_out(desktop, division):
     from page_helpers import fresh_inventory_data
     e = desktop

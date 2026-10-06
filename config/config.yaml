@@ -1334,6 +1334,9 @@ report_statistics:
 # exists); read by src/build_inventory_page_data.py, and the page's chart and notes follow them.
 # ============================================================
 inventory_page:
+  # Decision of the user, 2026-10-06: these divisions follow METRICS.md Sec.23 (the item-level file's class_used) in place of the older policy of Sec.15, so a
+  # division with no stock_policy item shows no Min and Max rows. PEM103 has no stock_policy item (0 of its 87 items).
+  class_file_divisions: [PEM103]
   tier_a_ranges:
     procurement_lead_time_days: [30, 90]
     assembly_time_days: [0, 20]
@@ -1452,6 +1455,56 @@ fulfilment_class_decisions:
         - HS-F-99-3301
         - IS-F-99-0245CE0
 
+# ---- Week 3 classification additions (METRICS.md Sec.23, "Added 2026-10-06"; src/investigations/task2b_part2_fulfilment_segmentation.py) ----
+# ASSUMPTIONS, set before the numbers were computed (the user's prompt of 2026-10-06). The Sec.23 thresholds themselves are unchanged.
+week3_classification:
+  # Delivered contracts are counted from this date (the analysis window of the Sec.23 label).
+  analysis_window_start: "2024-01-01"
+  # too_little_data: fewer than this many delivered contracts in the window; counts are also reported at the neighbouring values.
+  min_delivered_contracts: 3
+  min_delivered_contracts_report_at: [2, 3, 5]
+  # Mixed item (Part 3): at least min_lines_each_kind delivered lines of each kind; the median days from createDate to ActualDelDate of the
+  # MTS-labelled lines at most stock_median_days_max, of the MTO- or ETO-labelled lines above order_median_days_min; the two medians differ by
+  # at least min_median_gap_days. The rule is not applied when it calls more than max_share_of_known_items of the known items mixed.
+  mixed_rule:
+    min_lines_each_kind: 3
+    stock_median_days_max: 14
+    order_median_days_min: 14
+    min_median_gap_days: 7
+    max_share_of_known_items: 0.10
+    share_window_months: 12
+
+# ---- Material plan v1 (week 3, 2026-10-06; METRICS.md Sec.43; src/material_plan.py) ----
+# ASSUMPTIONS and thresholds, fixed before the proof tests were run (the prompt of 2026-10-06). Each is reported with its evidence in STATUS.md and DATA_MAP.md.
+material_plan:
+  # Warehouses that hold raw materials and components: the warehouses that issue to production (type B) for BOM components, over 12 months,
+  # at least rm_warehouse_min_share of all those issues. The list is the result of the proof (src/material_plan.py rm_warehouse_proof); QA receives
+  # purchases but does not issue to production and is not in it.
+  rm_warehouse_min_share: 0.01
+  # Result of the proof of 2026-10-06 (12 warehouses; each issues at least rm_warehouse_min_share of the 12 months' type B issues of BOM components).
+  rm_warehouses: [W121, W124, W3-1, W3-2, W3-3, WH, WH21, WH22, WH23, WH24, WH26, WH27]
+  # Open orders (Cube_tobe_received) are used when every proof criterion holds: lines matched to a purchase-order line, the open quantity equal to the
+  # ordered minus the received quantity, the expected date equal to the PO planned date, and on received history the planned date within
+  # open_orders_within_days of the first receipt for at least open_orders_min_share of lines.
+  open_orders_min_match_share: 0.90
+  open_orders_min_quantity_share: 0.90
+  open_orders_min_date_share: 0.90
+  open_orders_within_days: 14
+  open_orders_min_share: 0.70
+  open_orders_usable: true
+  # BOM source: Cube_BOM_Exact, because it holds a line for more of the materials actually issued to production than Cube_BOM_Exact_V2 (STATUS.md week 3).
+  bom_source: "Cube_BOM_Exact"
+  # A component is an in-house sub-assembly (expanded) when it has its own BOM and no purchase record (a purchase order or a receipt) since the date below.
+  purchase_evidence_since: "2022-01-01"
+  max_bom_levels: 25
+  # Lead time per material, the order of sources of METRICS.md Sec.5 (observed, supplier quoted, assumed); the assumed value is lead_time_v1.fallback_material_days.
+  usable_lead_days: [0, 730]
+  # Recorded outputs (untracked); their hashes go in the operation plan's integrity file under "material_plan".
+  output_material_month_file: "output/summary/material_plan_v1_material_month.csv"
+  output_material_summary_file: "output/summary/material_plan_v1_material_summary.csv"
+  # Items shown in the "used in" column (the finished goods that need most of the material).
+  used_in_max_items: 3
+
 # ---- Lead time per item, version 1 (week 1, item 1.3; METRICS.md Sec.5; src/lead_time_v1.py) ----
 # item lead time = slowest material's lead time + the item's production time. One statistic everywhere: the median.
 lead_time_v1:
@@ -1564,7 +1617,20 @@ maxmin_v1:
 # D4 (the user, 2026-10-06): the PEM101 calibration keeps the J3 observation window, 2024-01 to 2025-12 (METRICS.md Sec.20). The shorter window
 # (target from 2024-07) gives lead 1 to 15 days with 35 members (week1_leadtime_calibration.md); it is a sensitivity for the week 4 review, not used.
 operation_plan:
-  divisions: [PEM101, PEM107]
+  # Week 3 (2026-10-06): all six divisions, in the order the pages show them.
+  divisions: [PEM101, PEM103, PEM107, PEM102, PEM104, CI101]
+  # Only these divisions have a Min and Max (read from the inventory page); every other item's load equals its demand.
+  divisions_min_max_from_page: [PEM101, PEM107]
+  # The Sec.23 item-level file: class, display label and flags per item of the six divisions (output/summary, untracked).
+  item_class_file: "output/summary/task2b_part2_item_level.csv"
+  # The item status file of phase C: codes whose status starts with never_sold_prefix are listed in the price list but never sold; they are not in the plan and
+  # the page says how many per division.
+  item_status_file: "output/summary/phaseC_step1revised_item_status_445.csv"
+  never_sold_prefix: "excluded - listed but never sold"
+  # The saved week 3 pulls (one pickle of DataFrames): the CES backlog with RevenueType, the BOM tree, raw-material stock, open orders, purchase history, item names.
+  week3_inputs_file: "output/data/week3_inputs/material_inputs.pkl"
+  # PEM103 counts only its Omni Channel orders (the approved page line states it); the backlog rows of its items with another RevenueType are dropped.
+  backlog_channel_scope: {PEM103: "Omni Channel"}
   # Classes of METRICS.md Sec.23 that get a Min and Max (part A) and that do not (part B, load equals demand).
   classes_with_min_max: [stock_policy]
   classes_without_min_max: [confirmed_to_order, conflict]
@@ -1592,6 +1658,8 @@ operation_plan:
     spike_ratio: 2.0
     # Figures DATA_MAP.md records for the same method (cube_final entry, "Highest sustained monthly output"); the recomputation must equal them.
     data_map_reference: {PEM101: 249080, PEM107: 6221}
+    # Week 3: items the item-division file above does not hold take their price-list division when it is one of these (CI101 and PEM102 are not in the file).
+    extra_divisions: [CI101, PEM102]
   # Part 1 test (src/investigations/week2_open_orders_test.py): open production orders are used in the plan only if every criterion holds.
   # Thresholds are ASSUMPTIONS, stated before the test was run. A finished order is a job and item with a cube_final record.
   open_orders_test:

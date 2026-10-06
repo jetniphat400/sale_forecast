@@ -181,6 +181,8 @@ def test_each_assumption_value_equals_its_source(recorded):
     assert set(assumed["production_days"]) == {FULL["lead_time_v1"]["production_days_assumed"]}
     assert v["sellable_warehouses"] == ", ".join(FULL["phase_e1_assumptions"]["sellable_warehouse_codes"]["PEM101"])
     items = pd.read_csv(os.path.join(PROJECT_ROOT, "output", "summary", "task2b_part2_item_level.csv"))
+    if "status_category" in items.columns:     # week 3: forecast-status items only, as the page reads them
+        items = items[items["status_category"] == "forecast"]
     import build_inventory_page_data as bd
     after = bd.apply_class_decisions(items, FULL.get("fulfilment_class_decisions", {}))
     assert v["n_undetermined"] == int(((after["division"] == "PEM101") & (after["class"] == "conflict")).sum())
