@@ -358,8 +358,9 @@ def project(tmp_path):
     names = pd.DataFrame({"ItemCode": ["RM-A", "RM-B"], "Description": ["Alpha part", "Beta bar"]})
     w3 = {"backlog_ces": pd.DataFrame(), "backlog_pulled_at_local": "2026-10-06 07:00:00", "bom_tree": bom, "rm_inventory": inv, "rm_pulled_at_local": "2026-10-06 07:30:00",
           "open_orders": tobe, "po_lines": PO, "receipts": RCV, "price": price, "item_names": names}
-    os.makedirs(os.path.join(root, "output", "data", "week3_inputs"), exist_ok=True)
-    pd.to_pickle(w3, os.path.join(root, *full["operation_plan"]["week3_inputs_file"].split("/")))
+    target = os.path.join(root, *full["operation_plan"]["week3_inputs_file"].split("/"))
+    os.makedirs(os.path.dirname(target), exist_ok=True)
+    pd.to_pickle(w3, target)
     return root
 
 
@@ -600,3 +601,123 @@ def test_a_material_whose_purchase_unit_differs_from_its_bom_unit_shows_the_flag
     other = re.findall(r"<td[^>]*>(.*?)</td>", main["RM-C"])
     assert other[0] == "RM-C" and "-" not in other[5:9:2] or other[5] != "-"
     assert page.count(flag) == 2
+
+
+# ====================================================================================================== the runner pulls the plan's inputs (week 4)
+def _fake_run_query(log):
+    """A stand-in for db.run_query over a tiny world: FG1 -> SUB1 -> RM-A, RM-B; FG2 -> RM-B. It records every statement it is given."""
+    bom = {"FG1": [("SUB1", 2)], "SUB1": [("RM-A", 3), ("RM-B", 1)], "FG2": [("RM-B", 4)]}
+
+    def run(sql):
+        log.append(sql)
+        codes = set(re.findall(r"'([^']+)'", sql.split(" IN (", 1)[1].split(")", 1)[0]) if " IN (" in sql else [])
+        if "FROM Cube_BOM_Exact" in sql:
+            rows = [{"ItemFG": p + "   ", "ItemRawmat": c, "Quantity": q, "Unit": "PC", "Sequenceno": i + 1, "Type": "Standard", "Status": "Active", "Warehouse": "W",
+                     "Division": "D", "ItemGroup": "G", "version": 1, "Timestamp": "t"} for p, kids in bom.items() if p in {x.upper() for x in codes} or p in codes
+                    for i, (c, q) in enumerate(kids)]
+            return pd.DataFrame(rows, columns=["ItemFG", "ItemRawmat", "Quantity", "Unit", "Sequenceno", "Type", "Status", "Warehouse", "Division", "ItemGroup", "version", "Timestamp"])
+        if "Cube_Inventory_Exact" in sql:
+            return pd.DataFrame({"warehouse": ["WH21"] * len(codes), "itemcode": sorted(codes), "stock": [1.0] * len(codes), "unit": ["PC"] * len(codes)})
+        if "Cube_tobe_received" in sql:
+            return pd.DataFrame({"fulfill_date": ["2026-11-01"], "po_number": ["P1"], "itemcode": ["RM-A"], "quantity": [5.0], "unit": ["PC"], "warehouse": ["QA"], "order_date": ["2026-10-01"]})
+        if "Cube_PO_Exact" in sql:
+            return pd.DataFrame({"po_no": ["P0"], "item_code": ["RM-A"], "po_date": ["2026-01-01"], "planed_date": ["2026-01-20"], "po_quantity": [1.0], "received_quantity": [1.0]})
+        if "Cube_ReceiveRM" in sql:
+            return pd.DataFrame({"PO": ["P0"], "Itemcode": ["RM-A"], "Receive_date": ["2026-01-21"], "Items_Received": [1.0]})
+        if "Cube_PriceList" in sql:
+            return pd.DataFrame({"ItemCode": ["RM-B"], "SupplierNumber": ["s"], "Unit": ["PC"], "DeliveryTime": ["30 Days"]})
+        if "Cube_ItemList" in sql:
+            return pd.DataFrame({"ItemCode": sorted(codes), "Description": ["d"] * len(codes)})
+        raise AssertionError("an unexpected statement: " + sql[:80])
+    return run
+
+
+def test_the_pull_walks_the_bom_level_by_level_and_reads_every_source_for_every_component(monkeypatch):
+    import db
+    log = []
+    monkeypatch.setattr(db, "run_query", _fake_run_query(log))
+    got = mp.pull_material_inputs(["FG1", "FG2"], "2022-01-01")
+    parents = {x.strip() for x in got["bom_tree"]["ItemFG"]}
+    assert parents == {"FG1", "FG2", "SUB1"}                       # SUB1 was looked up as a parent on the second level
+    comps_sql = [s for s in log if "Cube_Inventory_Exact" in s][0]
+    assert all(f"'{c}'" in comps_sql for c in ("RM-A", "RM-B", "SUB1"))
+    assert sum("FROM Cube_BOM_Exact" in s for s in log) == 3        # FG1 and FG2 at once, then SUB1, then the last level (RM-A and RM-B have no BOM)
+    assert all(not re.search(r"\b(INSERT|UPDATE|DELETE|DROP|ALTER|CREATE)\b", s, re.I) for s in log)      # read-only
+    assert set(got) == {"bom_tree", "inventory", "tobe", "po", "receipts", "price", "item"}
+    assert any("po_date >= '2022-01-01'" in s for s in log) and any("Receive_date >= '2022-01-01'" in s for s in log)
+
+
+def test_the_assembled_inputs_have_what_the_plan_reads_and_the_backlog_comes_from_the_class_evidence_ces(monkeypatch):
+    import db
+    monkeypatch.setattr(db, "run_query", _fake_run_query([]))
+    material = mp.pull_material_inputs(["FG1"], "2022-01-01")
+    ces = pd.DataFrame({"ItemCode": ["A", "A"], "ContractID": ["c1", "c2"], "Status": ["Backlog", "Actual"], "ForecastDelDate": ["2026-10-20", "2026-01-01"],
+                        "PlanDelDate": ["2026-10-20", "2026-01-01"], "ActualQty": [0, 5], "BacklogQty": [7, 0], "RevenueType": ["Omni Channel", "Tendering"]})
+    b = mp.assemble_inputs(material, ces, "2026-10-06 09:00:00", "2026-10-06 09:00:01")
+    assert list(b["backlog_ces"]["ContractID"]) == ["c1"] and b["backlog_pulled_at_local"] == "2026-10-06 09:00:00" and b["rm_pulled_at_local"] == "2026-10-06 09:00:01"
+    assert set(b) == {"backlog_ces", "backlog_pulled_at_local", "bom_tree", "rm_inventory", "rm_pulled_at_local", "open_orders", "po_lines", "receipts", "price", "item_names"}
+    # the plan can read it: BOM lines, purchase evidence and lead time from the assembled frames
+    lines = mp.bom_component_lines(b["bom_tree"])
+    assert set(lines[lines["parent"] == "SUB1"]["comp"]) == {"RM-A", "RM-B"} and "RM-A" in mp.purchased_codes(b["po_lines"], b["receipts"])
+
+
+def test_the_pull_stage_saves_the_inputs_and_the_class_evidence_beside_each_other_and_recomputes_the_class_file(tmp_path, monkeypatch):
+    import contextlib
+    import db
+    real = op.load_full_config(PROJECT_ROOT)
+    full = {"operation_plan": copy.deepcopy(real["operation_plan"]), "material_plan": copy.deepcopy(real["material_plan"]), "lead_time_v1": real["lead_time_v1"]}
+    _write(os.path.join(str(tmp_path), "config", "config.yaml"), yaml.safe_dump(full))
+    monkeypatch.setattr(db, "run_query", _fake_run_query([]))
+    sessions = []
+
+    @contextlib.contextmanager
+    def fake_session():
+        sessions.append(1)
+        yield None
+    monkeypatch.setattr(db, "session", fake_session)
+    monkeypatch.setattr(seg, "class_evidence_codes", lambda: ["FG1", "FG2"])
+    ces = pd.DataFrame({"ItemCode": ["FG1"], "ContractID": ["c1"], "Status": ["Backlog"], "ForecastDelDate": ["2026-10-20"], "PlanDelDate": ["2026-10-20"], "ActualQty": [0],
+                        "BacklogQty": [3], "RevenueType": ["Omni Channel"]})
+    monkeypatch.setattr(seg, "pull_class_evidence", lambda codes: {"p2_apd": pd.DataFrame(), "p2_ces": ces, "p2_final": pd.DataFrame(), "p2_inv": pd.DataFrame(), "p4_bom": pd.DataFrame()})
+    seen = {}
+    monkeypatch.setattr(seg, "run_from_frames", lambda frames, out, today, write: seen.update(out=out, write=write, names=sorted(frames)) or {"table": pd.DataFrame({"a": [1, 2]})})
+    r = mp.pull_and_save(str(tmp_path))
+    assert sessions == [1], "exactly one database session is opened by the pull stage"
+    folder = os.path.dirname(op.path_of(str(tmp_path), full["operation_plan"]["week3_inputs_file"]))
+    assert sorted(os.listdir(folder)) == ["class_evidence.pkl", "material_inputs.pkl"]
+    saved = pd.read_pickle(os.path.join(folder, "material_inputs.pkl"))
+    assert list(saved["backlog_ces"]["ItemCode"]) == ["FG1"] and set(saved["bom_tree"]["ItemFG"].str.strip()) >= {"FG1", "SUB1"}
+    assert pd.read_pickle(os.path.join(folder, "class_evidence.pkl"))["pulled_at_local"] == r["pulled_at_local"]
+    assert seen["write"] is True and seen["out"].endswith("task2b_part2_item_level.csv") and r["n_items"] == 2 and "p2_ces" in seen["names"]
+    with pytest.raises(Exception):
+        monkeypatch.setattr(seg, "pull_class_evidence", lambda codes: (_ for _ in ()).throw(RuntimeError("login failed")))
+        mp.pull_and_save(str(tmp_path))                              # a failure inside the session is raised, not retried
+    assert sessions == [1, 1]
+
+
+def test_an_open_session_is_reused_and_never_nested(tmp_path, monkeypatch):
+    import db
+    real = op.load_full_config(PROJECT_ROOT)
+    full = {"operation_plan": copy.deepcopy(real["operation_plan"]), "material_plan": copy.deepcopy(real["material_plan"]), "lead_time_v1": real["lead_time_v1"]}
+    _write(os.path.join(str(tmp_path), "config", "config.yaml"), yaml.safe_dump(full))
+    monkeypatch.setattr(db, "run_query", _fake_run_query([]))
+    monkeypatch.setattr(db, "session", lambda: (_ for _ in ()).throw(AssertionError("a second session was opened")))
+    monkeypatch.setattr(seg, "class_evidence_codes", lambda: ["FG1"])
+    monkeypatch.setattr(seg, "pull_class_evidence", lambda codes: {"p2_ces": pd.DataFrame({"ItemCode": [], "ContractID": [], "Status": [], "ForecastDelDate": [], "PlanDelDate": [],
+                                                                                           "ActualQty": [], "BacklogQty": [], "RevenueType": []})})
+    monkeypatch.setattr(seg, "run_from_frames", lambda *a, **k: {"table": pd.DataFrame()})
+    mp.pull_and_save(str(tmp_path), in_open_session=True)
+
+
+def test_the_runner_has_the_pull_stage_and_the_plan_no_longer_reads_the_one_off_file():
+    src = open(os.path.join(PROJECT_ROOT, "src", "monthly_refresh.py"), encoding="utf-8").read()
+    step1 = src.split("def step1_pull_data")[1].split("def step2_validate")[0]
+    assert '"material_plan.py"' in step1 and '"--pull"' in step1 and "material_plan_pull" in step1
+    cfg = op.load_config(PROJECT_ROOT)
+    assert "week3_inputs" not in cfg["week3_inputs_file"] and cfg["week3_inputs_file"].endswith("material_pull/material_inputs.pkl")
+    for name in ("operation_plan.py", "material_plan.py", "build_operation_plan_page.py", "build_material_plan_page.py"):
+        text = open(os.path.join(PROJECT_ROOT, "src", name), encoding="utf-8").read()
+        assert "week3_inputs/" not in text, name
+    import monthly_refresh as mr
+    out = mr.step1_pull_data(dry_run=True, offline=True)
+    assert out["material_plan_pull"]["refreshed"] is False

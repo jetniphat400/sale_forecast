@@ -193,6 +193,7 @@ def step1_pull_data(dry_run: bool, offline: bool = False) -> dict:
         return {"offline_reused_existing_pull": True, "rows_pulled": len(monthly),
                 "pilot_128item_refresh": {"refreshed": False, "not_refreshed_reason": "offline mode: no database connection"},
                 "inventory_pull": {"refreshed": False, "not_refreshed_reason": "offline mode: no database connection"},
+                "material_plan_pull": {"refreshed": False, "not_refreshed_reason": "offline mode: no database connection"},
                 "snapshot_pull_date": str(monthly["snapshot_pull_date"].iloc[0]),
                 "n_items": monthly["itemcode"].nunique(), "n_divisions": monthly["division"].nunique()}
     from dotenv import load_dotenv
@@ -242,6 +243,10 @@ def step1_pull_data(dry_run: bool, offline: bool = False) -> dict:
     result["inventory_pull"] = _pull_stage("inventory.json pulls", "build_inventory_dataset.py",
                                            os.path.join(INVENTORY_PULL_DIR, "pull_meta.json"),
                                            args=["--save-pulls", INVENTORY_PULL_DIR])
+    # the material plan's inputs and the Sec.23 class evidence (METRICS.md Sec.43): raw-material stock, open orders, purchase history, BOM tree, class evidence
+    # in one session of their own; the item-level class file is recomputed from it. A failure leaves the earlier files in place and the log says so.
+    result["material_plan_pull"] = _pull_stage("material plan inputs and class evidence", "material_plan.py",
+                                               os.path.join(PROJECT_ROOT, *load_config()["operation_plan"]["week3_inputs_file"].split("/")), args=["--pull"])
     return result
 
 

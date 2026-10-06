@@ -1627,8 +1627,10 @@ operation_plan:
   # the page says how many per division.
   item_status_file: "output/summary/phaseC_step1revised_item_status_445.csv"
   never_sold_prefix: "excluded - listed but never sold"
-  # The saved week 3 pulls (one pickle of DataFrames): the CES backlog with RevenueType, the BOM tree, raw-material stock, open orders, purchase history, item names.
-  week3_inputs_file: "output/data/week3_inputs/material_inputs.pkl"
+  # The material plan's inputs (one pickle of DataFrames, written by the monthly runner's pull stage `src/material_plan.py --pull`, which also saves class_evidence.pkl
+  # beside it): the CES backlog with RevenueType, the BOM tree, raw-material stock, open orders, purchase history, price list, item names. The one-off file of
+  # week 3 (output/data/week3_inputs) is no longer read.
+  week3_inputs_file: "output/data/material_pull/material_inputs.pkl"
   # PEM103 counts only its Omni Channel orders (the approved page line states it); the backlog rows of its items with another RevenueType are dropped.
   backlog_channel_scope: {PEM103: "Omni Channel"}
   # Classes of METRICS.md Sec.23 that get a Min and Max (part A) and that do not (part B, load equals demand).

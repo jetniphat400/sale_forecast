@@ -519,6 +519,23 @@ always stated.
 - For G2 item eligibility this supersedes the value and frequency criteria
   of section 15. Mark section 15 accordingly; keep its text.
 
+- **S2 defined (2026-10-06, week 4; this is how `compute_s2_s3` computes it, written down so that it can be reproduced; the rule and its results are unchanged).**
+  - *Rows.* The delivered rows of an item are every Cube_CES row with Status 'Actual' and the item's ItemCode (matched exactly as stored: 19 rows of two items carry a
+    trailing space in the code and are not counted; measured 2026-10-06, no class effect found, kept for decision): all channels, all dates, and one row per plan line
+    (a contract delivered in two plan lines gives two rows). The number of delivered rows is `n_delivered_contracts` in the item-level file (the column keeps its
+    old name).
+  - *Link to a batch.* A row is linked to a batch when its OLMJobCode is not blank (not null, not empty after trimming, not the text 'none' in any case) and is
+    EXACTLY equal, character for character with no trimming and no splitting, to the `jobno` of at least one cube_final row (any item, any date). An OLMJobCode that
+    is a comma list of several job codes therefore never links. The batch date is the earliest `final_date` among the cube_final rows of that `jobno`.
+  - *Before the order.* A linked row is served from an existing batch (`traceable_pre_existing`) when its batch date is strictly earlier than the row's CtrDate (a
+    timestamp compared with a date at 00:00, so a batch finished on the day of the order, at any time after midnight, is not earlier). A row with no CtrDate is
+    never served and never counts as linked.
+  - *Per item.* n_linked = linked rows with a CtrDate; n_pre = served rows; share = n_pre / n_delivered (the denominator is ALL delivered rows, linked or not);
+    S2 holds when share >= 0.50. S2 is not computable when the item has no delivered row or no linked row (n_linked = 0); the fallback of this section for a
+    missing S2 then applies.
+  - *Where no link exists:* the row stays in the denominator and is never served. Alternative link rules were measured on 2026-10-06: trimming both sides changes S2
+    on 2 items, splitting comma lists on 11, both on 13 of 439; no class changes under any of them (DATA_MAP.md, week 4). Two separately written computations agree on
+    every item (`tests/test_class_decisions.py`).
 - **Added 2026-10-06 (week 3; `src/investigations/task2b_part2_fulfilment_segmentation.py`, config `week3_classification`). The rule above is not
   changed;** it is applied to every forecast-status and placeholder item of CI101, PEM102 and PEM103, and PEM101's and PEM107's forecast-status items keep
   their classes (the rule's result of 2026-09-29 and the user's per-item decisions of 2026-10-05, column `class_used`; a fresh recomputation is recorded beside

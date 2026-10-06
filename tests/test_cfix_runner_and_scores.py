@@ -273,8 +273,9 @@ def test_step1_pulls_the_pilot_file_and_the_inventory_tables_in_the_same_stage(m
     monkeypatch.setattr(mr, "run_script", lambda *a, **k: _Proc())
     monkeypatch.setattr(pd, "read_csv", lambda *a, **k: pd.DataFrame({"snapshot_pull_date": ["2026-10-05 07:00:01"], "itemcode": ["A"], "division": ["PEM101"]}))
     out = mr.step1_pull_data(False, offline=False)
-    assert [s for s, _ in seen] == ["load_data_full.py", "build_inventory_dataset.py"]
+    assert [s for s, _ in seen] == ["load_data_full.py", "build_inventory_dataset.py", "material_plan.py"]      # week 4: the material plan's inputs are a third stage
     assert seen[1][1][0] == "--save-pulls" and out["pilot_128item_refresh"]["refreshed"] and out["inventory_pull"]["refreshed"]
+    assert seen[2][1] == ["--pull"] and out["material_plan_pull"]["refreshed"]
 
 
 def test_step4_regenerates_the_pilot_derived_inputs(monkeypatch, tmp_path):

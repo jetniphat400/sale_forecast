@@ -463,9 +463,93 @@ def unit_proof(summary: pd.DataFrame) -> dict:
     return out
 
 
-# ------------------------------------------------------------------ the saved week 3 pulls
+# ------------------------------------------------------------------ the pulls the plan reads (METRICS.md Sec.43, "Inputs")
+CHUNK = 1300           # codes per IN list
+
+
+def _in_list(codes) -> str:
+    return "','".join(sorted(str(c).replace("'", "") for c in codes))
+
+
+def _chunks(codes: list) -> list:
+    codes = sorted(codes)
+    return [codes[i:i + CHUNK] for i in range(0, len(codes), CHUNK)]
+
+
+def pull_material_inputs(root_codes: list, since: str, max_levels: int = 25) -> dict:
+    """Reads, through the open database session (db.run_query; the caller owns the session; read-only), what the material plan needs for the items `root_codes`:
+    the BOM tree (Cube_BOM_Exact, level by level: every component code is looked up as a parent until none is new), raw-material stock (Cube_Inventory_Exact),
+    open purchase orders (Cube_tobe_received), purchase orders and receipts since `since` (lead times and purchase evidence), the price list (quoted delivery
+    times) and the item master (names) for every component code. Returns raw frames {bom_tree, inventory, tobe, po, receipts, price, item}."""
+    from db import run_query
+    cols = "ItemFG, ItemRawmat, Quantity, Unit, Sequenceno, Type, Status, Warehouse, Division, ItemGroup, version, [Timestamp]"
+    have, frames, frontier, level = set(), [], sorted(root_codes), 0
+    while frontier:
+        level += 1
+        if level > max_levels:
+            raise MaterialPlanError(f"the bill of materials does not end within {max_levels} levels while it is pulled")
+        got = pd.concat([run_query(f"SELECT {cols} FROM Cube_BOM_Exact WHERE ItemFG IN ('{_in_list(ch)}')") for ch in _chunks(frontier)], ignore_index=True)
+        have |= set(frontier)
+        frames.append(got)
+        lines = bom_component_lines(got) if len(got) else pd.DataFrame(columns=["comp"])
+        frontier = sorted({c for c in lines["comp"] if c not in have and c not in {key(x) for x in have}})
+    bom = pd.concat(frames, ignore_index=True)
+    comps = sorted(set(bom_component_lines(bom)["comp"]) | {str(c).strip() for c in bom["ItemRawmat"].dropna()} - {""})
+
+    def many(sql_tmpl):
+        return pd.concat([run_query(sql_tmpl.format(codes=_in_list(ch))) for ch in _chunks(comps)], ignore_index=True)
+    return {"bom_tree": bom,
+            "inventory": many("SELECT warehouse, itemcode, stock, unit FROM Cube_Inventory_Exact WHERE itemcode IN ('{codes}')"),
+            "tobe": many("SELECT fulfill_date, po_number, itemcode, quantity, unit, warehouse, order_date FROM Cube_tobe_received WHERE itemcode IN ('{codes}')"),
+            "po": many(f"SELECT po_no, item_code, po_date, planed_date, po_quantity, received_quantity FROM Cube_PO_Exact WHERE item_code IN ('{{codes}}') AND po_date >= '{since}'"),
+            "receipts": many(f"SELECT PO, Itemcode, Receive_date, Items_Received FROM Cube_ReceiveRM WHERE Itemcode IN ('{{codes}}') AND Receive_date >= '{since}'"),
+            "price": many("SELECT ItemCode, SupplierNumber, Unit, DeliveryTime FROM Cube_PriceList WHERE ItemCode IN ('{codes}')"),
+            "item": many("SELECT ItemCode, Description FROM Cube_ItemList WHERE ItemCode IN ('{codes}')")}
+
+
+def assemble_inputs(material: dict, ces: pd.DataFrame, backlog_pulled_at: str, rm_pulled_at: str) -> dict:
+    """The dict of DataFrames the offline plan reads, from `pull_material_inputs`' frames and the Cube_CES frame of the class evidence (its Status 'Backlog' rows
+    with RevenueType are the confirmed orders). Keeps only the columns the plan uses."""
+    b = ces[ces["Status"] == "Backlog"][["ContractID", "ItemCode", "ForecastDelDate", "PlanDelDate", "ActualQty", "BacklogQty", "RevenueType"]].copy()
+    return {"backlog_ces": b.reset_index(drop=True), "backlog_pulled_at_local": backlog_pulled_at,
+            "bom_tree": material["bom_tree"][["ItemFG", "ItemRawmat", "Quantity", "Unit", "Sequenceno", "Type"]].reset_index(drop=True),
+            "rm_inventory": material["inventory"][["warehouse", "itemcode", "stock", "unit"]], "rm_pulled_at_local": rm_pulled_at,
+            "open_orders": material["tobe"][["fulfill_date", "po_number", "itemcode", "quantity", "unit", "warehouse", "order_date"]],
+            "po_lines": material["po"][["po_no", "item_code", "po_date", "planed_date", "po_quantity", "received_quantity"]],
+            "receipts": material["receipts"][["PO", "Itemcode", "Receive_date", "Items_Received"]],
+            "price": material["price"][["ItemCode", "SupplierNumber", "Unit", "DeliveryTime"]],
+            "item_names": material["item"][["ItemCode", "Description"]]}
+
+
+def pull_and_save(root: str = PROJECT_ROOT, in_open_session: bool = False) -> dict:
+    """The runner's pull stage for the material plan, inside ONE database session opened here (login failure raises, no retry; `in_open_session` True when the caller
+    already holds the session): the class evidence of METRICS.md Sec.23 and the material plan's inputs are read, saved under the folder of config
+    `operation_plan.week3_inputs_file` (the plan's input bundle and the class evidence), and the item-level class file is recomputed from the class evidence.
+    Returns the counts."""
+    import contextlib
+    import db
+    sys.path.insert(0, os.path.join(HERE, "investigations"))
+    import task2b_part2_fulfilment_segmentation as seg
+    cfg = load_config(root)
+    codes = seg.class_evidence_codes()
+    started = datetime.now()
+    with (contextlib.nullcontext() if in_open_session else db.session()):
+        evidence = seg.pull_class_evidence(codes)
+        material = pull_material_inputs(codes, cfg["purchase_evidence_since"], int(cfg["max_bom_levels"]))
+    pulled_at = started.strftime("%Y-%m-%d %H:%M:%S")
+    bundle = assemble_inputs(material, evidence["p2_ces"], pulled_at, pulled_at)
+    out = op.path_of(root, cfg["operation_plan"]["week3_inputs_file"])
+    os.makedirs(os.path.dirname(out), exist_ok=True)
+    pd.to_pickle(bundle, out)
+    pd.to_pickle({"pulled_at_local": pulled_at, **evidence}, os.path.join(os.path.dirname(out), "class_evidence.pkl"))
+    result = seg.run_from_frames(evidence, op.path_of(root, cfg["operation_plan"]["item_class_file"]), pd.Timestamp(started.date()), write=True)
+    return {"pulled_at_local": pulled_at, "rows": {k: int(len(v)) for k, v in {**evidence, **material}.items()}, "n_items": int(len(result["table"])),
+            "written_to": op._display_path(out, root)}
+
+
+# ------------------------------------------------------------------ the saved pulls (offline use, tests and the one-off bundle of week 3)
 def build_inputs_bundle(pull_dir: str, pulled_at: dict) -> dict:
-    """The dict of DataFrames the offline plan reads, from the week 3 pulls saved in `pull_dir` (csv files named as the pulls were: p2_ces, p6_bom_tree_rows,
+    """The dict of DataFrames the offline plan reads, from pulls saved in `pull_dir` (csv files named as the pulls were: p2_ces, p6_bom_tree_rows,
     p6_inv_*, p6_tobe_*, p6_po_*, p6_rcv_*, p6_price_*, p6_item_*). `pulled_at` gives {"backlog": ..., "rm": ...} local pull times. Keeps only the columns
     the plan uses."""
     import glob
@@ -487,4 +571,7 @@ def build_inputs_bundle(pull_dir: str, pulled_at: dict) -> dict:
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
-    print(json.dumps(run(), indent=1, default=str))
+    if "--pull" in sys.argv[1:]:           # the monthly runner's pull stage (one database session; read-only)
+        print(json.dumps(pull_and_save(), indent=1, default=str))
+    else:
+        print(json.dumps(run(), indent=1, default=str))

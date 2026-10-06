@@ -492,15 +492,48 @@ def universe_from_status(status: pd.DataFrame) -> pd.DataFrame:
     return s.rename(columns={"itemcode": "code"})[["code", "division", "status_category"]].drop_duplicates("code").reset_index(drop=True)
 
 
+CLASS_EVIDENCE_NAMES = ("p2_apd", "p2_ces", "p2_final", "p2_inv", "p4_bom")
+
+
+def class_evidence_codes() -> list:
+    """The item codes the class evidence is pulled for: every item of the universe (forecast-status and placeholder items, PEM104's items)."""
+    return sorted(universe_from_status(pd.read_csv(ITEM_STATUS_FILE))["code"])
+
+
+def pull_class_evidence(codes: list) -> dict:
+    """The five pulls METRICS.md Sec.23 needs, for `codes`, through the open database session (db.run_query; the caller owns the session; read-only):
+    cube_Sale_APD lines (Omni Channel, Actual and MPS, createDate from the analysis window start), every Cube_CES row of the items, cube_final rows,
+    Cube_Inventory_Exact stock and Cube_BOM_Exact rows. Returns {name: DataFrame} for CLASS_EVIDENCE_NAMES."""
+    from db import run_query
+    w3 = load_week3_config()
+    lst = "','".join(sorted(str(c).replace("'", "") for c in codes))
+    sale = SALE_TABLE
+    return {
+        "p2_apd": run_query(f"SELECT itemcode, manufacturing_type, qty, createDate, contractid, planid, status, forecast_date, revenue_type FROM {sale} "
+                            f"WHERE itemcode IN ('{lst}') AND revenue_type = '{REVENUE_TYPE}' AND status IN ('Actual','MPS') AND createDate >= '{w3['analysis_window_start']}'"),
+        "p2_ces": run_query(f"SELECT ItemCode, ContractID, PlanID, Status, CtrDate, ForecastDelDate, PlanDelDate, ActualDelDate, OLMJobCode, ActualQty, BacklogQty, PlanQty, "
+                            f"RevenueType FROM Cube_CES WHERE ItemCode IN ('{lst}')"),
+        "p2_final": run_query(f"SELECT itemcode, jobno, ctrno, final_date, transfer_qty, job_qty, division FROM cube_final WHERE itemcode IN ('{lst}')"),
+        "p2_inv": run_query(f"SELECT warehouse, itemcode, stock, freestock, tobe_received, unit, timestamp FROM Cube_Inventory_Exact WHERE itemcode IN ('{lst}')"),
+        "p4_bom": run_query(f"SELECT ItemFG, ItemRawmat, Quantity, Unit, Sequenceno, Type, Status, Warehouse, Division, ItemGroup, version, [Timestamp] FROM Cube_BOM_Exact "
+                            f"WHERE ItemFG IN ('{lst}')"),
+    }
+
+
 def run_from_pulls(pull_dir: str, out_item_level: str = OUT_ITEM_LEVEL, today: pd.Timestamp = None, write: bool = True) -> dict:
-    """Computes the week 3 item-level table from saved pulls (no database): p2_apd.csv, p2_ces.csv, p2_final.csv, p2_inv.csv and p4_bom.csv in
-    `pull_dir`. The classes of PEM101 and PEM107 forecast-status items are read from the existing item-level file and kept. Returns a dict with
-    the table, the mixed-rule test, the too-little-data counts, the threshold sensitivity (recomputed classes, every division) and the number of
-    PEM101 codes listed but never sold."""
+    """The week 3 item-level table from the five class-evidence pulls saved as csv files in `pull_dir` (p2_apd.csv, p2_ces.csv, p2_final.csv, p2_inv.csv,
+    p4_bom.csv); see run_from_frames."""
+    frames = {n: pd.read_csv(os.path.join(pull_dir, n + ".csv")) for n in CLASS_EVIDENCE_NAMES}
+    return run_from_frames(frames, out_item_level, today, write)
+
+
+def run_from_frames(frames: dict, out_item_level: str = OUT_ITEM_LEVEL, today: pd.Timestamp = None, write: bool = True) -> dict:
+    """Computes the week 3 item-level table from the class-evidence frames (no database). The classes of PEM101 and PEM107 forecast-status items are read from
+    the existing item-level file and kept. Returns a dict with the table, the mixed-rule test, the too-little-data counts, the threshold sensitivity
+    (recomputed classes, every division) and the number of PEM101 codes listed but never sold."""
     today = pd.Timestamp(today) if today is not None else pd.Timestamp.today().normalize()
     w3 = load_week3_config()
-    rd = lambda n: pd.read_csv(os.path.join(pull_dir, n))
-    apd, ces, cf, inv, bom = rd("p2_apd.csv"), rd("p2_ces.csv"), rd("p2_final.csv"), rd("p2_inv.csv"), rd("p4_bom.csv")
+    apd, ces, cf, inv, bom = (frames[n].copy() for n in CLASS_EVIDENCE_NAMES)
     status = pd.read_csv(ITEM_STATUS_FILE)
     universe = universe_from_status(status)
     codes = sorted(universe["code"])

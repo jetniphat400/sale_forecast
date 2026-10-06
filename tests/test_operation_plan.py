@@ -376,13 +376,13 @@ def test_the_scoped_divisions_rows_come_from_the_saved_week3_pull_when_the_daily
     root, cfg = project
     cfg = copy.deepcopy(cfg)
     cfg["backlog_channel_scope"] = {"PEM101": "Omni Channel"}
-    cfg["week3_inputs_file"] = "output/data/week3_inputs/material_inputs.pkl"
+    cfg["week3_inputs_file"] = "output/data/material_pull/material_inputs.pkl"
     w3 = {"backlog_ces": pd.DataFrame([{"ContractID": "W", "ItemCode": "D101", "ForecastDelDate": "2026-10-20", "PlanDelDate": "2026-10-20", "ActualQty": 0, "BacklogQty": 77,
                                          "RevenueType": "Omni Channel"},
                                         {"ContractID": "T", "ItemCode": "D101", "ForecastDelDate": "2026-10-21", "PlanDelDate": "2026-10-21", "ActualQty": 0, "BacklogQty": 500,
                                          "RevenueType": "Tendering"}]),
           "backlog_pulled_at_local": "2026-10-06 11:00:00"}
-    os.makedirs(os.path.join(root, "output", "data", "week3_inputs"), exist_ok=True)
+    os.makedirs(os.path.dirname(os.path.join(root, *cfg["week3_inputs_file"].split("/"))), exist_ok=True)
     pd.to_pickle(w3, os.path.join(root, *cfg["week3_inputs_file"].split("/")))
     plan = op.build_plan(root, TODAY, cfg=cfg, full_cfg=op.load_full_config(root))
     assert _row(plan, "D101", "2026-10")["backlog_due"] == 77.0                    # the saved Omni row only; the daily pull's 50 for D101 is replaced
