@@ -105,6 +105,10 @@ and whether any part is a configurable assumption.
 - **Limits:** one BOM level; 39 of PEM101's 92 stock_policy items (5 with no BOM, 34 with only in-house sub-assemblies) carry the assumed values;
   the clock starts at the PO date and stops at the first receipt; production time is the throughput of a job lot, not a per-unit assembly time.
 
+### Max-Min v1 lead time (decision of the user, 2026-10-06; `src/maxmin_v1.py`)
+
+PEM101's Min and Max on `forecast/inventory.html` use the lead time the calibration supports: the section 22 ensemble fitted with lead time free (section 20) on the 92 stock_policy items (36 distinct members, replenishment lead 1 to 30 days on 2026-10-06). The item lead time version 1 above is shown beside each item and kept for the material plan; it is not an input to Min or Max. Every figure the page shows from the ensemble is read from the control run's recorded files after a SHA-256 check.
+
 ## 6. stock_value  ← the metric that was ambiguous in E1
 
     stock_value = Σ over items with policy = finished_goods_stock of

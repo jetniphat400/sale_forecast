@@ -496,6 +496,7 @@ def build_page(**data_sources) -> str:
     <h2>PEM101 — เลือกเป้าการส่งทัน แล้วดูว่าต้องถือของเท่าไหร่</h2>
     <p class="hint" id="curve-own-controls">ส่วนนี้ปรับได้ด้วยปุ่มเป้าและ slider ในส่วนนี้เท่านั้น</p>
     <p class="note-box" id="curve-target-summary"></p>
+    <p class="note-box" id="curve-lead-lines"></p>
     <p class="hint">ข้อมูลบอกไม่ได้ว่าบริษัทสั่งเติมเมื่อของเหลือกี่เดือน เป้าการส่งทันที่เลือกคือสิ่งที่กำหนดตัวนี้</p>
     <div id="chart-robust-curve" class="plotly-chart"></div>
     {render_notes_html('inventory.html', 'chart-robust-curve', values=note_values)}
@@ -514,7 +515,7 @@ def build_page(**data_sources) -> str:
     {render_notes_html('inventory.html', 'relative-service-cost', values=note_values)}
     <div class="table-scroll"><table class="report-table" id="curve-item-table">
       <thead><tr>
-        <th>Item</th><th>Min</th><th>Max (median)</th><th>Max range (across members)</th>
+        <th>Item</th><th>Min</th><th>Max (median)</th><th>Max range (across members)</th><th>lead time วัตถุดิบ (วัน)</th><th>ที่มา</th>
       </tr></thead>
       <tbody id="curve-item-table-body"></tbody>
     </table></div>
@@ -825,7 +826,7 @@ function lerpGridPoints(a, b, t) {{
   }};
 }}
 // task 2b Part 3 (METRICS.md Sec.24): interpolates the pre-computed ratio_e grid (median/min/max
-// across the 80 distinct ensemble members) at an arbitrary target not_late -- same linear
+// across the distinct ensemble members) at an arbitrary target not_late -- same linear
 // interpolation convention as interpolateGridAtNotLate above, on a separate (finer, 0.25pp-step)
 // grid built by src/investigations/task2b_part3_relative_service_cost.py. Returns null outside
 // the grid's own range (never extrapolated).
@@ -846,6 +847,16 @@ function interpolateRatioGrid(rsc, targetNotLate) {{
 
 let curCurveTarget = null;
 
+// Days shown with at most one decimal (a median of two lead times can end in .5).
+function fmtLeadDays(v) {{ return String(Number(Number(v).toFixed(1))); }}
+
+// The slowest-material lead time of one item, or its source label, from the section's own data (the page builder fills item_material_lead).
+function materialLeadCell(ct, code, field) {{
+  const m = (ct.item_material_lead || {{}})[code];
+  if (!m) return '';
+  return field === 'days' ? fmtLeadDays(m.days) : m.source;
+}}
+
 function applyCurveTarget(targetNotLate) {{
   const state = curCurveTarget;
   if (!state) return;
@@ -864,7 +875,7 @@ function applyCurveTarget(targetNotLate) {{
     <div class="stat">Change vs today's on-hand<b style="color:${{diff>=0?'#c0392b':'#1baf7a'}}">${{diff>=0?'+':''}}${{fmtTHB(diff)}} (${{diffPct>=0?'+':''}}${{diffPct.toFixed(1)}}%)</b></div>
   `;
 
-  // task 2b Part 3 (METRICS.md Sec.24): ratio_e across the 80 distinct members, at THIS target,
+  // task 2b Part 3 (METRICS.md Sec.24): ratio_e across the distinct members, at THIS target,
   // relative to today's REAL not_late (state.rsc.today_not_late_pct) -- never each member's own
   // simulated-at-today point (Sec.24's own reasoning: the unidentifiable reorder level cancels
   // WITHIN a member's ratio of two points on its own curve).
@@ -899,7 +910,8 @@ function applyCurveTarget(targetNotLate) {{
     const tr = document.createElement('tr');
     tr.innerHTML = `<td>${{it.code}}</td><td>${{Math.round(it.Min).toLocaleString()}}</td>` +
       `<td>${{Math.round(it.Max_median).toLocaleString()}}</td>` +
-      `<td>${{Math.round(it.Max_min).toLocaleString()}} – ${{Math.round(it.Max_max).toLocaleString()}}</td>`;
+      `<td>${{Math.round(it.Max_min).toLocaleString()}} – ${{Math.round(it.Max_max).toLocaleString()}}</td>` +
+      `<td>${{materialLeadCell(ct, it.code, 'days')}}</td><td>${{materialLeadCell(ct, it.code, 'source')}}</td>`;
     tbody.appendChild(tr);
   }}
 
@@ -927,6 +939,13 @@ function renderCurveTarget(divisionData) {{
     `มูลค่า stock ${{Math.round(ct.today_point.stock_value_thb).toLocaleString()}} บาท` +
     htmlComment('previous English wording: N distinct ensemble members (deduplicated on reorder level, order-up-to level, review interval and replenishment lead time). Today point: not_late, stock value THB. Sources: METRICS.md Sec.22, ' + ct.source_report + '; today point: ' + ct.today_point.source) +
     `<br><span style="color:#b45309;">${{ct.item_set_note}}</span>` + htmlComment(ct.item_set_ref || '');
+
+  // Two approved lines; the numbers come from the section's own data (lead range across the members, median slowest-material lead time).
+  const ll = ct.lead_time_lines;
+  document.getElementById('curve-lead-lines').innerHTML =
+    `Min/Max คำนวณจาก lead time ที่ทำให้การจำลองส่งของทันและถือ stock ใกล้เคียงของจริงที่สุด อยู่ระหว่าง ${{ll.lead_min}} ถึง ${{ll.lead_max}} วัน<br>` +
+    `lead time วัตถุดิบจากใบสั่งซื้อจริงยาวกว่านี้ ค่ากลาง ${{fmtLeadDays(ll.material_lead_median)}} วัน ใช้สำหรับวางแผนสั่งวัตถุดิบ ไม่ได้ใช้คำนวณ Min/Max ของสินค้า` +
+    htmlComment(ct.lead_time_ref || '');
 
   const slider = document.getElementById('notlate-slider');
   slider.min = ct.not_late_range_pct[0];

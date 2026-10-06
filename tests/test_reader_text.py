@@ -224,18 +224,20 @@ INDEX_VIEWS = {
     "S&OP": ("origTab", None),
     "Trend": ("omniTab", "omniShowTab(2)"),
     "Manual": ("manualTab", "omniShowTab(3)"),
+    "Assumptions": ("assumptionsTab", "omniShowTab(4)"),
     "Stock panel": ("invPanel", "omniShowTab(1); document.getElementById('invMenuRow').click()"),
 }
 
 
 def _make_index_site(site_dir):
-    """A temporary copy of what index.html loads at runtime: the page, the manual and the stock data file."""
+    """A temporary copy of what index.html loads at runtime: the page, the manual, the stock data file and the assumptions file."""
     import shutil
     os.makedirs(os.path.join(site_dir, "docs"), exist_ok=True)
     os.makedirs(os.path.join(site_dir, "data"), exist_ok=True)
     shutil.copy(os.path.join(PROJECT_ROOT, "index.html"), os.path.join(site_dir, "index.html"))
     shutil.copy(os.path.join(PROJECT_ROOT, "docs", "user_manual.md"), os.path.join(site_dir, "docs", "user_manual.md"))
     shutil.copy(os.path.join(PROJECT_ROOT, "data", "inventory.json"), os.path.join(site_dir, "data", "inventory.json"))
+    shutil.copy(os.path.join(PROJECT_ROOT, "data", "assumptions.json"), os.path.join(site_dir, "data", "assumptions.json"))
 
 
 class _Quiet(__import__("http.server").server.SimpleHTTPRequestHandler):
@@ -289,7 +291,7 @@ def index_texts(index_url):
     return texts, cells
 
 
-@pytest.mark.parametrize("view", ["S&OP", "Trend", "Manual", "Stock panel", "Stock panel popup"])
+@pytest.mark.parametrize("view", ["S&OP", "Trend", "Manual", "Assumptions", "Stock panel", "Stock panel popup"])
 def test_index_tab_rendered_text_is_reader_text(view, index_texts):
     texts, cells = index_texts
     lines = re.split(r"[\n\t]", texts[view])

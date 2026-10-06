@@ -116,7 +116,16 @@ def _different_significance(df):
     return df
 
 
-CSV_TRANSFORMS = {"topdown_significance.csv": _different_significance, STOCK_VALUE_FILE: _scale_stock_value, NO_MINMAX_FILE: _more_missing_minmax, DISAGREE_FILE: _double_rows,
+def _slower_materials(df):
+    """Every item's slowest-material lead time 10 days longer (the PEM101 calibrated section's median line and column follow it)."""
+    if "bottleneck_days" not in df.columns:
+        return df
+    df = df.copy()
+    df["bottleneck_days"] = df["bottleneck_days"] + 10
+    return df
+
+
+CSV_TRANSFORMS = {"item_lead_time_v1.csv": _slower_materials, "topdown_significance.csv": _different_significance, STOCK_VALUE_FILE: _scale_stock_value, NO_MINMAX_FILE: _more_missing_minmax, DISAGREE_FILE: _double_rows,
                   ITEM_LEVEL_FILE: _extra_signal_and_fewer_stock_policy, ON_TIME_FILE: _drop_first_year,
                   "delivery_not_late_by_year.csv": _drop_first_year, POLICY_FILE: _fewer_calibrated_items,
                   "processed_all_divisions_monthly_qty.csv": _all_items_smooth,
@@ -127,6 +136,8 @@ CSV_TRANSFORMS = {"topdown_significance.csv": _different_significance, STOCK_VAL
 def _perturb_grid(d):
     d = copy.deepcopy(d)
     d["n_distinct_members"] = d["n_distinct_members"] + 1000
+    d["n_items_calibrated"] = d["n_items_calibrated"] + 7
+    d["lead_time_days"] = {"min": 2, "max": 45, "median": 9.0}
     d["today_point"]["not_late_pct"] = 91.37
     d["today_point"]["stock_value_thb"] = d["today_point"]["stock_value_thb"] * 2
     d["presets"]["extra_preset"] = copy.deepcopy(d["presets"]["stretch_99pct"])
@@ -148,8 +159,8 @@ def _perturb_ratio(d):
     return d
 
 
-JSON_TRANSFORMS = {"phase23_dense_grid_PEM101.json": _perturb_grid, "task2b_part4_pem107_alert.json": _perturb_alert,
-                   "task2b_part3_ratio_grid_PEM101.json": _perturb_ratio}
+JSON_TRANSFORMS = {"maxmin_v1_dense_grid_PEM101.json": _perturb_grid, "task2b_part4_pem107_alert.json": _perturb_alert,
+                   "maxmin_v1_ratio_grid_PEM101.json": _perturb_ratio}
 
 
 def _perturb_config(cfg):
@@ -322,6 +333,10 @@ def test_inventory_page_numbers_follow_their_sources(two_builds):
     assert _first(r"พฤติกรรมจริง (\d+) อย่าง", b) == "3" and _first(r"พฤติกรรมจริง (\d+) อย่าง", p) == "4"
     nb, npt = base.data["divisions"]["PEM101"]["curve_target"]["item_set_note"], pert.data["divisions"]["PEM101"]["curve_target"]["item_set_note"]
     assert re.findall(r"\d+", nb) != re.findall(r"\d+", npt), "calibrated / stock-policy item counts are typed"
+    llb = base.data["divisions"]["PEM101"]["curve_target"]["lead_time_lines"]
+    llp = pert.data["divisions"]["PEM101"]["curve_target"]["lead_time_lines"]
+    assert llp["lead_min"] == 2 and llp["lead_max"] == 45 and llb["lead_max"] != 45, "the lead range is typed, not read from the members"
+    assert llp["material_lead_median"] == llb["material_lead_median"] + 10, "the material lead median is typed, not read from the per-item output"
     assert pert.data["staleness_threshold_days"] == 1 and base.data["staleness_threshold_days"] != 1
     # PEM107 split month is read from the alert data, with wording only for the month approved
     assert base.data["pem107_alert"]["split_label"] != pert.data["pem107_alert"]["split_label"]
@@ -388,10 +403,14 @@ def test_script_filled_lines_follow_their_sources(two_builds):
             edge.pump(0.3)
             summary = edge.ev("document.getElementById('curve-target-summary').textContent")
             rel = edge.ev("document.getElementById('relative-service-cost-note').textContent")
+            lines = edge.ev("document.getElementById('curve-lead-lines').textContent")
             edge.ev("document.getElementById('division-select').value='PEM107'; onDivisionChange(); 1")
             edge.pump(0.4)
             alert = edge.ev("document.getElementById('pem107-alert-limitations').textContent")
             texts[name] = (summary, rel, alert)
+            ll = (base if name == "base" else pert).data["divisions"]["PEM101"]["curve_target"]["lead_time_lines"]
+            assert f"อยู่ระหว่าง {ll['lead_min']} ถึง {ll['lead_max']} วัน" in lines
+            assert f"ค่ากลาง {ll['material_lead_median']:g} วัน" in lines
         sb, rb, ab = texts["base"]
         sp, rp, ap = texts["pert"]
         grid_b = base.data["divisions"]["PEM101"]["curve_target"]

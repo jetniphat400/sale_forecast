@@ -61,7 +61,7 @@ PROJECT_GRAPH.md is the authority; this is a snapshot of its Critical path and N
 
 - **Purpose (the user, 2026-10-05):** a sales forecast model, then an inventory model built on it, then operation planning. Unknowns are cut out for now, what is used in their place is shown, and the model is tuned later.
 - **G1 (sales forecast): in progress.** Method locked (Top-down Combination; R1 closed, the moving average is a comparator). The forward test (T1) runs monthly: vintages 1 and 2 exist, August scored, the comparator starts with vintage 3 (2026-11).
-- **G2 (inventory policy): in progress, Week 1 (2026-10-05 to 10-09).** Max-Min v1 with lead time per item from data and the source of each value labelled; PEM101 recalibrated on the 92-item stock_policy set. Covers PEM101 and PEM107; PEM107 recalibration is cut.
+- **G2 (inventory policy): Week 1 done 2026-10-06 (Max-Min v1 on the Min-Max page for PEM101, STATUS "Week 1 close").** Earlier note: Week 1 (2026-10-05 to 10-09). Max-Min v1 with lead time per item from data and the source of each value labelled; PEM101 recalibrated on the 92-item stock_policy set. Covers PEM101 and PEM107; PEM107 recalibration is cut.
 - **G3 (operation planning): in scope, Weeks 2 and 3.** Operation plan v1 (six months) in Week 2, material plan v1 (BOM explosion) in Week 3, against the lower-bound capacity already recorded. It is no longer waiting on a person: unknowns are cut out and shown (Q19, Q20).
 - **Closed or cut:** R1 closed; R2 (MRP hand-off), the buyer reference page, V1, further PEM107 questions and PEM107 recalibration cut.
 - **Critical path:** Week 1 Max-Min v1 -> Week 2 operation plan v1 -> Week 3 material plan v1 -> Week 4 end-to-end check and executive summary. The earlier path E11 -> E12 -> Q10 is history (PROJECT_GRAPH.md).
@@ -84,6 +84,26 @@ previous hand-written summary (2026-09-29) is kept below under its own heading a
   data; DE1-DE4 closed. T2 (posting-delay measurement, started 2026-09-22) in progress, due about 2026-11-21.
 - **Critical path:** E11 -> E12 -> Q10 (unchanged). **Operational path:** the monthly runner (phase C) is not yet
   running in production: see C2 below.
+
+### Week 1 close -- Max-Min v1 on the Min-Max page for PEM101 -- DONE, 2026-10-06 (no database; offline dry run passed; Validator matched)
+
+Report: `output/summary/week1_maxmin_v1_validator.md`; code `src/maxmin_v1.py`, config block `maxmin_v1`; tests `tests/test_maxmin_v1.py`, `tests/test_maxmin_v1_page.py`. Screenshots: `output/charts/week1_maxmin_v1/`.
+
+**Decisions of the user, 2026-10-06 (given in this task's prompt; PROJECT_GRAPH.md D10 and D11, since D1 to D9 exist):**
+- **D2 (graph D10):** Min/Max use the lead time the calibration supports, the ensemble fitted with lead time free on the 92 stock_policy items. The per-item material lead time is shown and kept for the Week 3 material plan, not used for Min/Max. Applies to PEM101.
+- **D1 (graph D11):** reading the in-house sub-assembly BOMs is allowed, with one read-only session, in Week 3.
+
+**What v1 contains.** The PEM101 calibrated section of `forecast/inventory.html` now reads the lead-time-free ensemble on the 92 items (36 distinct members, lead 1 to 30 days; today's simulated point 96.95% not_late at THB 14.77M against observed 98.34% and THB 15.49M; the stock cost of 99% is +35.7%, range +26.2% to +81.8%, from the 98% bin). Two approved lines state the lead range and the median material lead time (63 days); the item table has the columns lead time วัตถุดิบ (วัน) and ที่มา (ใบสั่งซื้อจริง 50, ผู้ขายแจ้ง 0, ค่าประมาณ 42); the item count the calibration was fitted on reads 92 (was 76). `index.html` has a fourth tab, สมมติฐานที่ใช้อยู่, reading `data/assumptions.json` (six records, schema in DATA_MAP.md) at runtime; the monthly runner's step 7 writes the file. The tab shows its failure message when the file cannot load. The ensemble files are the control run of `week1_recalibration.py` (hash-verified before each read; the page inputs `maxmin_v1_*` recorded with a SHA-256).
+
+**What v1 assumes.** Min/Max use an effective lead of 1 to 30 days that the data support, not the 43 to 129 days of the purchase chain; 39 of 92 items carry an assumed material lead time (5 no BOM, 34 only in-house sub-assemblies); production time is the assumed 26 days for 87 items; sellable warehouses FG01, FG21, WH21 are an assumption; 20 PEM101 items have no Min/Max; capacity is a lower bound. All six are listed on the tab.
+
+**Page figures changed, PEM101 only** (embedded data compared before and after): the trade-off curve and its three presets, today's point (98.34%, THB 15,491,483), the ratio grid, the item rows of the curve table (112 to 92), the member count (80 to 36), the item-count note (76 to 92), the "calibrated at" date (2026-09-23 to 2026-10-05, data to 2026-09). The Min/Max table, stock figures and the other divisions are unchanged.
+
+**Validator** (own simulation of METRICS 16, no implementer file read): MATCH on every Part 1 figure and every text and value on the rendered pages. It found that the calibration window's observed target covers 2024-01 to 2025-12 (the J3 convention), and that the envelope figures depend on whole-percent binning and the 2024-01 warm-up (DATA_MAP.md).
+
+**Deviations.** `index.html` has no builder, so the tab was added by direct edit (as in W3). The item note keeps only its first approved clause because the second ("not refitted") would be false; it returns when the stock_policy set differs from the fitted set. The two decisions are D10 and D11 in the graph. "The item table" was read as the table in the PEM101 calibrated section.
+
+**Found, not done.** (a) The median 63 days is mostly the assumed fallback (42 of 92 values), while the line says "from actual purchase orders": the user decides the wording or whether to use the median of the 50 observed values only; Week 1 follow-up. (b) Walk the 82 in-house sub-assembly BOMs for the 39 assumed items: Week 3, Claude Code, under D11. (c) The calibration target window (2024-01 or 2024-07 start) changes the member count (36 or 35, lead 1 to 15 for the latter): the user decides; Week 4 check, Claude Code.
 
 ### Week 1 progress: items 1.3 (lead time per item) and 1.4 (PEM101 recalibration) -- computed and recorded, 2026-10-05 (one read-only database session; Validator matched except the actual_date row choice)
 

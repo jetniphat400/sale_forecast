@@ -10,7 +10,7 @@ status, it updates this file (CONVENTIONS.md, Part 4).
 
 ## Critical path
 
-**As of 2026-10-05 (plan decided by the user), the critical path runs: Week 1 Max-Min v1 (lead time per item from data, PEM101 recalibrated on the 92-item stock_policy set, Max-Min v1 on the Min-Max page with the source of each value labelled) -> Week 2 operation plan v1, six months (G3) -> Week 3 material plan v1, BOM explosion (G3) -> Week 4 end-to-end check and executive summary v1.** Purpose: a sales forecast model, then an inventory model built on it, then operation planning; where something is unknown, build the best model the data allows, cut the unknown out for now, show what is used in its place and tune later. G3 is in scope and is no longer waiting on a person (Q19, Q20 are cut out and shown, not asked). Closed: R1. Cut: R2 (MRP hand-off), the buyer reference page, V1, further PEM107 questions, PEM107 recalibration. The plan table is in STATUS.md, "Work plan, decided 2026-10-05". The path below (E11 -> E12 -> Q10) is the earlier one, kept as history.
+**Update 2026-10-06: Week 1 (Max-Min v1) is done** (STATUS.md, "Week 1 close"); the path continues with Week 2. **As of 2026-10-05 (plan decided by the user), the critical path runs: Week 1 Max-Min v1 (lead time per item from data, PEM101 recalibrated on the 92-item stock_policy set, Max-Min v1 on the Min-Max page with the source of each value labelled) -> Week 2 operation plan v1, six months (G3) -> Week 3 material plan v1, BOM explosion (G3) -> Week 4 end-to-end check and executive summary v1.** Purpose: a sales forecast model, then an inventory model built on it, then operation planning; where something is unknown, build the best model the data allows, cut the unknown out for now, show what is used in its place and tune later. G3 is in scope and is no longer waiting on a person (Q19, Q20 are cut out and shown, not asked). Closed: R1. Cut: R2 (MRP hand-off), the buyer reference page, V1, further PEM107 questions, PEM107 recalibration. The plan table is in STATUS.md, "Work plan, decided 2026-10-05". The path below (E11 -> E12 -> Q10) is the earlier one, kept as history.
 
 **Earlier path, as of 2026-09-23 (history): the critical path ran: E11 → E12 → Q10 → (blocks D9's resolution and every
 downstream G2 figure).** Phase J found the Section 16 model fails calibration against actual
@@ -176,6 +176,8 @@ flowchart TD
         D7["D7: segment policy formula\n(with zero-P50, infeasible amendments)"]
         D8["D8: robust-upper-bound Tier A\ndefaults REJECTED/deferred"]
         D9["D9: every E0/E1/E2/Phase I\nfigure marked UNCALIBRATED"]
+        D10["D10: Min/Max use the lead time\nthe calibration supports (2026-10-06)"]
+        D11["D11: in-house sub-assembly BOMs\nmay be read, week 3 (2026-10-06)"]
     end
 
     subgraph TIMETRACKS["Time-bound tracks"]
@@ -235,6 +237,8 @@ flowchart TD
     Q15 --> D8
     D8 --> D9
     D9 --> G2
+    D10 --> G2
+    D11 -.-> G3
     D6 --> G2
     D7 --> G2
 
@@ -270,7 +274,7 @@ flowchart TD
     class Q19,Q20 blockedperson
     class Q21 inprogress
     class Q23 done
-    class D1,D2,D3,D4,D6,D7,D8,D9 done
+    class D1,D2,D3,D4,D6,D7,D8,D9,D10,D11 done
     class D5 uncalibrated
     class T1,T2 inprogress
     class G1 inprogress
@@ -399,6 +403,8 @@ largely resolved; PEM103/PEM107 each now have ONE narrow named business question
 | D7 | done | Q5 (loosely) | G2 | METRICS.md §15, incl. 2026-09-22/2026-09-23 amendments | — |
 | D8 | done | Q15 | D9 | STATUS.md Phase J2 Part 0 entry (revert) | — |
 | D9 | done | D8 | G2 | STATUS.md banner + per-phase tags | — |
+| D10 | done, 2026-10-06 (the user's decision, given in the Week 1 close task prompt as "D2") | Week 1 recalibration on the 92 items (`output/summary/week1_leadtime_calibration.md`) | G2 | **Min/Max use the lead time the calibration supports: the ensemble fitted with lead time free on the 92 stock_policy items (36 distinct members, replenishment lead 1 to 30 days).** The per-item material lead time (median 63 days, slowest purchased material) is shown on the page and kept for the Week 3 material plan; it is not used for Min/Max. Applies to PEM101's calibrated section of `forecast/inventory.html` (PEM107 has no calibrated Min/Max). STATUS.md, "Week 1 close". Labelled D2 in that prompt; D10 here because D1 to D9 already exist. | — |
+| D11 | done, 2026-10-06 (the user's decision, given in the Week 1 close task prompt as "D1") | — | G3 (Week 3 material plan) | **Reading the BOMs of the in-house sub-assemblies (the 82 W-codes, which leave 39 of the 92 PEM101 stock items with an assumed lead time) is allowed, with one read-only database session, in Week 3.** Not used yet. STATUS.md, "Week 1 close". Labelled D1 in that prompt; D11 here for the same reason as D10. | — |
 | T1 | in progress | — | G1 | STATUS.md, "First scoreable target month is 2026-08, safe to score only from 2026-09-30" | time |
 | T2 | in progress | — | Q10 | STATUS.md, "Prospective posting-delay measurement: STARTED 2026-09-22" (+60 days ≈ 2026-11-21) | time |
 | **G1** | in progress | D1, D2, D3, D4, T1 | — | Forecasting method adopted and locked; Phase F (compare against the team's current method) not started. **PEM103/PEM107 checked 2026-09-24 for a channel-mix recording bug that would require correcting the Omni forecast/forward-test log before the 2026-09-30 scoring — NONE found; no correction made, 2026-09-30 scoring proceeds unlabelled/not provisional on these grounds** (`output/summary/phase136_synthesis_report.md` §4). A pre-existing, separate caution is reaffirmed, not newly created: PEM103/PEM107's Omni-only series is driven by a churning customer population placing lumpy, large, tender-adjacent orders — wide uncertainty bands remain warranted on these two divisions' point forecasts specifically. | time (Phase F) |

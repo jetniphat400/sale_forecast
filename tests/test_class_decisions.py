@@ -106,12 +106,16 @@ def test_an_override_for_an_item_that_is_not_in_the_conflict_class_is_refused(ra
         bd.apply_class_decisions(raw_items, {"class_overrides": {"PEM101": {"stock_policy": ["NO-SUCH-CODE"]}}})
 
 
-def test_the_calibrated_target_note_keeps_saying_it_was_fitted_on_a_different_set():
+def test_the_calibrated_target_note_states_the_fitted_count_from_the_ensemble_output():
+    """Week 1: the section is fitted on the 92 stock_policy items (the Max-Min v1 ensemble), so the note states that count, from the
+    ensemble output, and no longer says it was not refitted; it would say so again if the stock_policy set grew past the fitted set."""
     from page_helpers import fresh_inventory_data
     pem101 = fresh_inventory_data()["divisions"]["PEM101"]
     n_stock = sum(1 for i in pem101["items"] if i["policy"] == "stock_policy")
-    note = pem101["curve_target"]["item_set_note"]
-    assert "ยังไม่ได้ปรับใหม่ตามชุดนี้" in note and f"{n_stock} รายการ" in note and n_stock == 92
+    ct = pem101["curve_target"]
+    assert ct["n_items_calibrated"] == 92 == n_stock
+    assert ct["item_set_note"] == f"ปรับให้ตรงกับผลจริงจากสินค้า {ct['n_items_calibrated']} รายการ"
+    assert "ยังไม่ได้ปรับใหม่" not in ct["item_set_note"] and "76" not in ct["item_set_note"]
 
 
 # ------------------------------------------------------------------ manual text (part 4)

@@ -236,6 +236,7 @@ tr.section[role="button"]:focus-visible{outline:2px solid var(--series-1);outlin
  <button id="tb1" class="actv" onclick="omniShowTab(1)">S&amp;OP Plan (เดิม)</button>
  <button id="tb2" onclick="omniShowTab(2)">Trend Pricelist Omni 2024–2026</button>
  <button id="tb3" onclick="omniShowTab(3)">คู่มือการใช้งาน</button>
+ <button id="tb4" onclick="omniShowTab(4)">สมมติฐานที่ใช้อยู่</button>
 </div>
 <div id="origTab">
 
@@ -7612,6 +7613,72 @@ tr.section[role="button"]:focus-visible{outline:2px solid var(--series-1);outlin
   <div id="manualTabContent"><p class="manual-loading">กำลังโหลดคู่มือ…</p></div>
  </div>
 </div>
+<style id="assumptionsTabCss">
+#assumptionsTab{display:none}
+#assumptionsTab .wrap{max-width:1100px}
+#assumptionsTab .assump-intro{margin:10px 0 14px;font-size:13.5px;line-height:1.6}
+#assumptionsTab table{margin:8px 0 16px;border-collapse:collapse;width:100%}
+#assumptionsTab table th,#assumptionsTab table td{text-align:left;white-space:normal;font-size:13px;padding:8px 10px;border-bottom:1px solid var(--border);vertical-align:top}
+#assumptionsTab .assump-error{color:#8f2b2b;font-size:13px}
+</style>
+<div id="assumptionsTab">
+ <div class="wrap">
+  <p class="assump-intro">ตัวเลขบางส่วนในระบบใช้ค่าแทนเพราะข้อมูลยังบอกไม่ได้ ตารางนี้บอกว่าใช้อะไรแทน และกระทบตัวเลขไหน</p>
+  <div id="assumptionsTabContent"></div>
+ </div>
+</div>
+<script id="assumptionsTabJs">
+(function(){
+  // Loads data/assumptions.json AT RUNTIME (the same fetch pattern as the manual tab and the stock panel). The file is written by
+  // src/maxmin_v1.py (write_assumptions) in the monthly run; its schema is in DATA_MAP.md. Nothing in this tab is typed here except
+  // the column names and the message shown when the file cannot be loaded.
+  const FAIL_MSG = 'โหลดรายการสมมติฐานไม่ได้';
+  const COLUMNS = [['topic','เรื่อง'],['unknown','ยังไม่รู้อะไร'],['used_now','ตอนนี้ใช้'],['affects','กระทบ']];
+  let loaded = false;
+
+  function showError(box){
+    box.innerHTML = '';
+    const p = document.createElement('p');
+    p.className = 'assump-error';
+    p.textContent = FAIL_MSG;
+    box.appendChild(p);
+  }
+
+  function render(box, payload){
+    const rows = payload && payload.assumptions;
+    if (!Array.isArray(rows)) throw new Error('format');
+    const table = document.createElement('table');
+    table.id = 'assumptionsTable';
+    const head = document.createElement('tr');
+    COLUMNS.forEach(function(c){ const th = document.createElement('th'); th.textContent = c[1]; head.appendChild(th); });
+    const thead = document.createElement('thead'); thead.appendChild(head); table.appendChild(thead);
+    const tbody = document.createElement('tbody');
+    rows.forEach(function(r){
+      const tr = document.createElement('tr');
+      COLUMNS.forEach(function(c){
+        if (typeof r[c[0]] !== 'string') throw new Error('format');
+        const td = document.createElement('td'); td.textContent = r[c[0]]; tr.appendChild(td);
+      });
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+    box.innerHTML = '';
+    box.appendChild(table);
+  }
+
+  window.loadAssumptionsTab = function(){
+    if (loaded) return;
+    const box = document.getElementById('assumptionsTabContent');
+    fetch('data/assumptions.json?t=' + Date.now()).then(function(res){
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      return res.json();
+    }).then(function(payload){
+      render(box, payload);
+      loaded = true;
+    }).catch(function(){ showError(box); });
+  };
+})();
+</script>
 <script id="manualTabJs">
 (function(){
   // Loads docs/user_manual.md AT RUNTIME (fetch, same pattern this page already uses for
@@ -7934,10 +8001,13 @@ function omniShowTab(n){
   document.getElementById('origTab').style.display = n==1?'':'none';
   document.getElementById('omniTab').style.display = n==2?'block':'none';
   document.getElementById('manualTab').style.display = n==3?'block':'none';
+  document.getElementById('assumptionsTab').style.display = n==4?'block':'none';
   document.getElementById('tb1').className = n==1?'actv':'';
   document.getElementById('tb2').className = n==2?'actv':'';
   document.getElementById('tb3').className = n==3?'actv':'';
+  document.getElementById('tb4').className = n==4?'actv':'';
   if (n==3 && window.loadManualTab) window.loadManualTab();
+  if (n==4 && window.loadAssumptionsTab) window.loadAssumptionsTab();
   window.scrollTo(0,0);
 }
 </script>

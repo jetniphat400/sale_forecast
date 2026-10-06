@@ -942,7 +942,10 @@ def step7_rebuild_pages(dry_run: bool, staged_dir: str, step1_result: dict = Non
     inv_path = os.path.join(staged_dir, "inventory.html") if dry_run else build_inventory_page.OUT_PATH
     with open(inv_path, "w", encoding="utf-8") as f:
         f.write(page)
-    return {"inventory_json": inventory_json,
+    # The in-use assumptions the index.html tab reads at runtime (src/maxmin_v1.py), computed from the recorded outputs and config.
+    import maxmin_v1
+    assumptions_path = maxmin_v1.write_assumptions(os.path.join(staged_dir, "assumptions.json") if dry_run else None)
+    return {"inventory_json": inventory_json, "assumptions_written_to": assumptions_path,
             "rendered_path": out_path, "inventory_rendered_path": inv_path,
             "inventory_sales_pull_time": str(pull_time),
             "inventory_pilot_pull_label": sources["pull_labels"]["PEM103"],
@@ -1165,7 +1168,8 @@ def gate_outcomes(step8: dict, step9: dict, step10: dict) -> dict:
 # ---------------------------------------------------------------------------------------------
 
 # The only tracked files a run generates (step 7; step 11 stages exactly these, never `git add -A`).
-GENERATED_PATHS = ["forecast/sales_report.html", "forecast/inventory.html", "data/inventory.json", "data/stock_daily.json"]
+GENERATED_PATHS = ["forecast/sales_report.html", "forecast/inventory.html", "data/inventory.json", "data/stock_daily.json",
+                   "data/assumptions.json"]
 
 
 def _git_status_lines() -> list:

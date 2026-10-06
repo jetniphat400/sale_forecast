@@ -1462,3 +1462,69 @@ lead_time_v1:
   # An item's own median is used when it has at least this many matched jobs (tested leave-one-job-out: item median MAE 21.4 days against 29.1
   # for the global median, 19 items, 71 jobs).
   production_min_jobs: 3
+
+# ---- Max-Min v1 for PEM101 (week 1, decision D2 of 2026-10-05; METRICS.md Sec.5, 20, 22; src/maxmin_v1.py) ----
+# Min/Max use the lead time the calibration supports: the ensemble fitted with lead time free on the 92 stock_policy items (the control run of
+# src/investigations/week1_recalibration.py). The per-item material lead time is shown and kept for the week 3 material plan, not used for Min/Max.
+maxmin_v1:
+  # The control run's recorded files (output/summary), with their hashes in week1_recal_integrity.json.
+  ensemble_integrity_file: "output/summary/week1_recal_integrity.json"
+  ensemble_members_file: "output/summary/week1_recal_control_members_PEM101_92.csv"
+  ensemble_tradeoff_points_file: "output/summary/week1_recal_control_tradeoff_points_PEM101_92.csv"
+  ensemble_tradeoff_envelope_file: "output/summary/week1_recal_control_tradeoff_envelope_PEM101_92.csv"
+  ensemble_targets_file: "output/summary/week1_recal_targets.json"
+  ensemble_stock_items_file: "output/data/lead_time_inputs/stock92.json"
+  ensemble_raw_sales_file: "output/data/raw_all_divisions_sales.csv"
+  # The page's inputs, built from the files above by src/maxmin_v1.py and recorded with a SHA-256.
+  dense_grid_file: "output/summary/maxmin_v1_dense_grid_PEM101.json"
+  ratio_grid_file: "output/summary/maxmin_v1_ratio_grid_PEM101.json"
+  recorded_outputs_integrity_file: "output/summary/maxmin_v1_integrity.json"
+  # Per-item lead time (METRICS.md Sec.5, item lead time version 1) and its integrity file.
+  item_lead_time_file: "output/summary/item_lead_time_v1.csv"
+  item_lead_time_integrity_file: "output/summary/item_lead_time_v1_integrity.json"
+  # The in-use assumptions the Assumptions tab of index.html reads at runtime (a contract for a later app, DATA_MAP.md).
+  assumptions_file: "data/assumptions.json"
+  # Source of a material's value (src/lead_time_v1.py) -> the label the page shows (approved text of 2026-10-05).
+  material_source_labels:
+    observed: "ใบสั่งซื้อจริง"
+    supplier_quoted: "ผู้ขายแจ้ง"
+    assumed: "ค่าประมาณ"
+  # The assumptions in use (week 1, approved text of 2026-10-05, used verbatim). Braces name values the builder (src/maxmin_v1.py) computes from
+  # recorded outputs and config; value_source says where each comes from (never shown on a page).
+  assumptions:
+    - id: minmax_lead_time
+      topic: "lead time ที่ใช้คำนวณ Min/Max"
+      unknown: "ได้จากการจำลองให้ตรงผลจริง ไม่ได้วัดตรง"
+      used_now: "{lead_min}-{lead_max} วัน"
+      affects: "Min/Max ของ PEM101"
+      value_source: "lead_time_days over the distinct members of the lead-time-free calibration, minimum and maximum (output/summary/week1_recal_control_members_PEM101_92.csv)"
+    - id: production_time
+      topic: "เวลาผลิตสินค้า"
+      unknown: "ระบบไม่บันทึกวันเริ่มผลิตจริง"
+      used_now: "{assumed_production_days} วัน ({n_assumed_production} รายการ)"
+      affects: "แผนสั่งวัตถุดิบ"
+      value_source: "production_days and production_source of the items with source assumed (output/summary/item_lead_time_v1.csv)"
+    - id: material_without_purchase_history
+      topic: "วัตถุดิบที่ไม่มีประวัติสั่งซื้อ"
+      unknown: "ไม่มีใบสั่งซื้อในระบบ"
+      used_now: "เวลาที่ผู้ขายแจ้ง หรือค่าสูงของวัตถุดิบอื่น"
+      affects: "แผนสั่งวัตถุดิบ"
+      value_source: "METRICS.md Sec.5 item lead time version 1: supplier-quoted delivery time, else config lead_time_v1.fallback_material_days"
+    - id: sellable_warehouses
+      topic: "คลังที่นับว่าขายได้"
+      unknown: "ประวัติการเคลื่อนไหวของคลังไม่พอ"
+      used_now: "{sellable_warehouses}"
+      affects: "stock ที่ใช้เทียบกับ Min"
+      value_source: "config phase_e1_assumptions.sellable_warehouse_codes.PEM101"
+    - id: pem101_undetermined_items
+      topic: "สินค้า PEM101 {n_undetermined} รหัส"
+      unknown: "ยังไม่ชัดว่าเก็บ stock หรือผลิตตามสั่ง"
+      used_now: "ไม่มี Min/Max"
+      affects: "Min/Max"
+      value_source: "items of class conflict under METRICS.md Sec.23 after config fulfilment_class_decisions (output/summary/task2b_part2_item_level.csv)"
+    - id: production_capacity
+      topic: "กำลังผลิต"
+      unknown: "ข้อมูลบอกได้แค่ยอดผลิตสูงสุดที่เคยทำ"
+      used_now: "ใช้ยอดนั้นเป็นค่าต่ำสุด"
+      affects: "แผนการผลิต"
+      value_source: "STATUS.md, Q20: the highest sustained monthly output per division and Type, a lower bound"

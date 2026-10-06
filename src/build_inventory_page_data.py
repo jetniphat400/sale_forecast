@@ -165,38 +165,32 @@ def apply_class_decisions(df: pd.DataFrame, decisions: dict) -> pd.DataFrame:
 
 
 def _build_curve_target_pem101() -> dict:
-    """METRICS.md Sec.22 selectable not_late target data for PEM101, added 2026-09-24 (Phase 23,
-    Part 5) -- reads the already-computed dense grid (output/summary/phase23_dense_grid_PEM101.json,
-    built by src/investigations/phase23_page_precompute.py from the Modeler's locked-config curve),
-    no database access. Supersedes the prior robust/sensitive table (every item returned the same
-    range_ratio, carrying no item-level information -- see output/summary/phase23_modeler_report.md).
-    """
-    with open(os.path.join(SUMMARY_DIR, "phase23_dense_grid_PEM101.json"), encoding="utf-8") as f:
-        data = json.load(f)
-    # task 2b Part 3 (METRICS.md Sec.24): relative_service_cost ratio grid, computed by
-    # src/investigations/task2b_part3_relative_service_cost.py from the SAME 80-member curve
-    # points as the section-22 curve above, no database access.
-    with open(os.path.join(SUMMARY_DIR, "task2b_part3_ratio_grid_PEM101.json"), encoding="utf-8") as f:
-        data["relative_service_cost"] = json.load(f)
-    # task 2b Part 2 (METRICS.md Sec.23): this curve/ensemble was built (Phase 22/23, 2026-09-24)
-    # on the pre-Sec.23 finished_goods_stock item set, before Sec.23 changed which items are
-    # Min/Max-eligible. Not recalibrated on the new stock_policy set this task (explicit scope
-    # decision, STATUS.md/PROJECT_GRAPH.md G2) -- labelled here so the page states its own scope,
-    # not just the documentation.
-    policy_counts = pd.read_csv(os.path.join(SUMMARY_DIR, "phaseE1fix_1_item_policy.csv"))["policy"].value_counts()
-    n_calibrated_on = int(policy_counts.get("finished_goods_stock", 0))
+    """The PEM101 calibrated section's data (METRICS.md Sec.20 and 22), read from the recorded outputs of the Max-Min v1 ensemble
+    (src/maxmin_v1.py, config `maxmin_v1`): the lead-time-free calibration on the 92 stock_policy items. Each file is hash-verified
+    before it is read, and the build stops if one is missing or was changed. No database.
+    Adds the lead-time lines' values (the lead range across the ensemble's members and the median slowest-material lead time) and, per
+    item, the slowest-material lead time with the source of its value (METRICS.md Sec.5, item lead time version 1)."""
+    import maxmin_v1
+    cfg = maxmin_v1.load_config()
+    data, data["relative_service_cost"] = maxmin_v1.load_page_inputs(cfg)
     seg_counts = _load_fulfilment_segmentation("PEM101")["class"].value_counts()
     n_current_set = int(seg_counts.get("stock_policy", 0))
-    data["item_set_note"] = (
-        f"ปรับให้ตรงกับผลจริงจากสินค้า {n_calibrated_on} รายการตามเกณฑ์เดิม "
-        f"ตอนนี้สินค้าที่เข้าเกณฑ์เก็บ stock มี {n_current_set} รายการ ยังไม่ได้ปรับใหม่ตามชุดนี้"
-    )
-    # Previous English wording, kept off screen (rendered as an HTML comment): "Calibrated on the
-    # pre-Sec.23 finished_goods_stock item set (N items, section 15 criterion). NOT recalibrated on
-    # the current Sec.23 stock_policy item set (M items) this task -- recalibrating on the new set is
-    # scheduled follow-up work, not yet done (DATA_MAP.md 'Task 2b' entries, PROJECT_GRAPH.md node G2)."
-    data["item_set_ref"] = ("counts: phaseE1fix_1_item_policy.csv policy finished_goods_stock; task2b_part2_item_level.csv "
-                            "class stock_policy; METRICS.md Sec.23 (supersedes section 15); DATA_MAP.md 'Task 2b'; PROJECT_GRAPH.md G2")
+    n_fitted = int(data["n_items_calibrated"])
+    # The note states the fitted item count from the ensemble's own output. When the current stock_policy set differs from the fitted
+    # set, the earlier approved clause saying so is kept.
+    data["item_set_note"] = f"ปรับให้ตรงกับผลจริงจากสินค้า {n_fitted} รายการ"
+    if n_current_set != n_fitted:
+        data["item_set_note"] += f" ตอนนี้สินค้าที่เข้าเกณฑ์เก็บ stock มี {n_current_set} รายการ ยังไม่ได้ปรับใหม่ตามชุดนี้"
+    data["item_set_ref"] = ("count: n_items_calibrated of the Max-Min v1 ensemble output (src/maxmin_v1.py, week1_recal_targets.json n_items); "
+                            "stock_policy count: task2b_part2_item_level.csv class stock_policy; METRICS.md Sec.23")
+    lead = maxmin_v1.material_lead_for_page(data["items_order"], cfg)
+    data["lead_time_lines"] = {"lead_min": data["lead_time_days"]["min"], "lead_max": data["lead_time_days"]["max"],
+                               "material_lead_median": lead["median_days"]}
+    data["item_material_lead"] = lead["per_item"]
+    data["material_lead_label_counts"] = lead["label_counts"]
+    data["lead_time_ref"] = ("lead_min and lead_max: smallest and largest lead_time_days over the distinct members of the lead-time-free "
+                             "calibration (week1_recal_control_members_PEM101_92.csv); material_lead_median: median over the 92 items of the "
+                             "slowest material's lead time, production time excluded (item_lead_time_v1.csv, METRICS.md Sec.5); decision D2, 2026-10-05")
     return data
 
 
@@ -439,15 +433,15 @@ def _load_pem107_alert() -> dict:
     return alert
 
 
-# METRICS.md Sec.26 (page_timestamps): when the model was last calibrated. "source" is a reference
-# only; the page renders it as an HTML comment, never on screen.
-MODEL_CALIBRATED_AT = {
-    "run_date": "2026-09-23",
-    "last_month_of_data": "2026-07",
-    "source": "output/summary/phaseJ3_report.md header ('Date: 2026-09-23') and Part 1 "
-               "('Phase J bounds by ForecastDelDate in [2024-01, 2026-07]') -- METRICS.md "
-               "Sec.20 inverse calibration, Phase J3.",
-}
+def model_calibrated_at() -> dict:
+    """METRICS.md Sec.26 (page_timestamps): when the model was last calibrated and the last month of data it used, from the Max-Min v1
+    ensemble's recorded output (run date of the calibration, validation end). "source" is a reference only; the page renders it as an
+    HTML comment, never on screen."""
+    import maxmin_v1
+    dense, _ = maxmin_v1.load_page_inputs()
+    return {"run_date": dense["calibrated_on"], "last_month_of_data": dense["last_month_of_data"],
+            "source": "output/summary/week1_recal_integrity.json recorded_at and week1_recal_targets.json validation_end -- METRICS.md "
+                      "Sec.20 inverse calibration, lead time free, 92 stock_policy items (week 1, 2026-10-05)."}
 
 
 def apply_reader_text(data: dict) -> dict:
@@ -459,7 +453,7 @@ def apply_reader_text(data: dict) -> dict:
         config = yaml.safe_load(f)
     data["disabled_divisions"] = disabled_division_reasons()
     data["disabled_division_labels"] = DISABLED_DIVISION_LABELS
-    data["model_calibrated_at"] = MODEL_CALIBRATED_AT
+    data["model_calibrated_at"] = model_calibrated_at()
     data["staleness_threshold_days"] = rv.staleness_threshold_days(config)
     data["tier_a_ranges"] = config["inventory_page"]["tier_a_ranges"]
     data["service_level_chart_step"] = config["inventory_page"]["service_level_chart_step"]
@@ -512,7 +506,7 @@ def build_data(inventory_source=None, sales_source=None, pull_labels: dict = Non
         # fields touched on this page this task; Min/Max logic, segmentation, PEM107 alert etc.
         # are explicitly out of scope, per task instruction, for a separate task 2b).
         "page_built_at": datetime.now().strftime("%Y-%m-%d %H:%M") + " ICT (UTC+7) -- this build run's own clock",
-        "model_calibrated_at": MODEL_CALIBRATED_AT,
+        "model_calibrated_at": model_calibrated_at(),
         "division_order": PILOT_DIVISIONS,
         "default_division": "PEM101",
         "disabled_divisions": {}, "disabled_division_labels": {},
