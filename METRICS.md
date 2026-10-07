@@ -1093,7 +1093,7 @@ pipeline — no new section is needed for this; it is already covered by section
   `output/summary/topdown_significance.csv`; the sales report block "ใช้วิธี Top-down
   ดีกว่าวิธีอื่นไหม" reads that file. Averaging over origins first keeps pairs of the same
   item across overlapping origins from being counted as independent.
-- The 2026-10-05 check (`output/summary/check_significance_topdown.md`) is the reference:
+- The 2026-10-05 check (`docs/reports/summary/check_significance_topdown.md`) is the reference:
   its item-level t values per division are reproduced by this computation.
 
 ## 42. operation_plan_v1
@@ -1221,3 +1221,15 @@ pipeline — no new section is needed for this; it is already covered by section
 - Assumptions (each also in the meta of the integrity file): no minimum order quantity or lot size; stock of in-house sub-assemblies is netted (decision D2; before it the gross
   requirement was an upper bound where sub-assemblies are stocked); overdue open orders count in the first month although some arrive later; the stock in the inspection warehouse (QA) is not
   available; the lead time starts at the purchase-order date.
+
+## 44. pilot_categories
+
+    Drop-out Fuse Cutout = the price-list items whose Product Type is "High Voltage Distribution Fuse Cutout"
+    Surge Arrester       = the price-list items whose Product Type is the Medium Voltage one, "Medium Voltage Surge Arrester"
+                           (decision D3 of the user, 2026-10-07; the Low Voltage Surge Arrester Type is not part of it)
+
+- Defined in config `pilot_categories` (`fuse_cutout`, `surge_arrester`); the view data of the two categories (`src/focus_item_model_selection.py --pilot-view`) reads
+  them from there. A category's series is the sum of its items of the forecast scope, its backtest figures are those of Sec.13 and 25 on that series (the Type-level
+  combination) and the mean of its items' own figures, both labelled.
+- An item on the price list that is not in the forecast scope is listed with its reason from the item status file (`output/summary/phaseC_step1revised_item_status_445.csv`):
+  "excluded - listed but never sold" or "placeholder - method already assigned".

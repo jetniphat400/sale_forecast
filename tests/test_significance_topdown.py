@@ -1,7 +1,7 @@
 """Top-down against Direct and Naive, per division (METRICS.md section 41): the computation, the verdict rule and the text of
 the sales report's block "ใช้วิธี Top-down ดีกว่าวิธีอื่นไหม".
 
-No database and no browser. The computation is checked against the figures of output/summary/check_significance_topdown.md (the
+No database and no browser. The computation is checked against the figures of docs/reports/summary/check_significance_topdown.md (the
 2026-10-05 check, which a separate Validator recomputed) on the backtest rows that check used; those rows are regenerated every
 month, so the figures are compared on a frozen copy of the item-level pairs only when the rows on disk are the ones the check
 read (same pull date), and otherwise the test skips with a message rather than passing silently.
@@ -20,7 +20,7 @@ sys.path.insert(0, os.path.join(PROJECT_ROOT, "src"))
 import build_report as br  # noqa: E402
 import significance_topdown as sig  # noqa: E402
 
-REPORT = os.path.join(PROJECT_ROOT, "output", "summary", "check_significance_topdown.md")
+REPORT = os.path.join(PROJECT_ROOT, "docs", "reports", "summary", "check_significance_topdown.md")
 ITEM_ROWS = os.path.join(PROJECT_ROOT, "output", "summary", "phaseC_step2_transferability_item_rolling_origin.csv")
 CHECK_PULL_DATE = "2026-10-05 07:41:06"      # the backtest the check report was written from
 DIVISIONS = ["CI101", "PEM101", "PEM102", "PEM103", "PEM107"]

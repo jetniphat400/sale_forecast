@@ -32,6 +32,7 @@ pricelist_path: "reference/pricelist.xlsx"
 # demand behaviour. See STATUS.md Locked Decisions for the full reasoning.
 pilot_categories:
   fuse_cutout: "High Voltage Distribution Fuse Cutout"     # 10 items, from reference/pricelist.xlsx Product Type column
+  # Surge Arrester for the pilot-category view = the items whose Product Type is the Medium Voltage one (decision D3 of the user, 2026-10-07); the Low Voltage Surge Arrester Type is not part of it.
   surge_arrester: "Medium Voltage Surge Arrester"          # 58 items, from reference/pricelist.xlsx Product Type column
 
 # --- Business unit / division -------------------------------------------------

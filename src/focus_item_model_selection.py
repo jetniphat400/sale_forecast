@@ -219,11 +219,17 @@ import json as _json
 import math
 
 FOCUS_PV = ["EEE-F-FC-1040010002", "HS-F-99-02110", "HS-F-99-0213"]
-PILOT_CAT_DEFS = {
-    "Drop-out Fuse Cutout": {"pricelist_type": "High Voltage Distribution Fuse Cutout", "level": "Type"},
-    "Surge Arrester": {"pricelist_type": "Medium Voltage Surge Arrester", "level": "Type"},
-}
-# alternative reading of "Surge Arrester": the pricelist Product Cate. of that name (Low + Medium Voltage types)
+def _pilot_category_definitions() -> dict:
+    """The two pilot categories as config `pilot_categories` defines them (decision D3, 2026-10-07: Surge Arrester = the items whose Product Type is the Medium Voltage one;
+    Drop-out Fuse Cutout = the High Voltage Distribution Fuse Cutout Type), read from config, not typed here."""
+    with open(os.path.join(PROJECT_ROOT, "config", "config.yaml"), encoding="utf-8") as fh:
+        cats = yaml.safe_load(fh)["pilot_categories"]
+    return {"Drop-out Fuse Cutout": {"pricelist_type": cats["fuse_cutout"], "level": "Type"},
+            "Surge Arrester": {"pricelist_type": cats["surge_arrester"], "level": "Type"}}
+
+
+PILOT_CAT_DEFS = _pilot_category_definitions()
+# the alternative reading of "Surge Arrester" (the pricelist Product Category of that name, Low + Medium Voltage Types) is kept in the recorded file for comparison only
 PILOT_ALT_SURGE_CATEGORY = "Surge Arrester"
 
 

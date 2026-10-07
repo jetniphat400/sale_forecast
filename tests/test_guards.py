@@ -240,10 +240,10 @@ def test_no_customer_name_or_id_from_the_saved_pulls_appears_by_exact_match():
 # Nothing under output/ is tracked (decision of 2026-10-07): the publishing clone's output/ is a junction into the main copy's output/, so a tracked
 # file there could be changed or deleted in the main copy by a pull in the clone.
 # ---------------------------------------------------------------------------
-HELD_UNDER_OUTPUT = {"output/summary/check_significance_topdown.md"}      # read by tests/test_significance_topdown.py; held for a decision (STATUS.md, week 4 prompt 3)
+HELD_UNDER_OUTPUT = set()      # nothing is held: check_significance_topdown.md moved to docs/reports (decision D2 of 2026-10-07)
 
 
-def test_no_file_under_output_is_tracked_except_the_one_held_for_a_decision():
+def test_no_file_under_output_is_tracked():
     import os
     import subprocess
     root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
