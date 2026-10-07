@@ -1,8 +1,8 @@
 {
   "snapshot": {
     "source_table": "[salewarehouse].[dbo].[Cube_Inventory_Exact]",
-    "loaded_at": "2026-10-05 21:41:14.190000",
-    "generated_at": "2026-10-06T09:25:54Z",
+    "loaded_at": "2026-10-06 21:41:42.053000",
+    "generated_at": "2026-10-07T01:00:43Z",
     "refresh_cadence": "unknown"
   },
   "backlog": {
@@ -13,11 +13,11 @@
     "rows_used": 152,
     "raw_rows_before_dedup": 873,
     "reserved_change_report": {
-      "old_total_cube_backlog": 66316.0,
+      "old_total_cube_backlog": 67452.0,
       "new_total_cube_ces_backlog": 62586.0,
-      "old_codes_with_reserved": 152,
+      "old_codes_with_reserved": 151,
       "new_codes_with_reserved": 152,
-      "n_codes_changed": 57,
+      "n_codes_changed": 86,
       "changed_codes_sample": [
         {
           "code": "CA-F-99-010203",
@@ -35,6 +35,11 @@
           "new": 80.0
         },
         {
+          "code": "CT-F-99-020502",
+          "old": 27.0,
+          "new": 26.0
+        },
+        {
           "code": "CT-F-99-020503",
           "old": 8.0,
           "new": 9.0
@@ -45,14 +50,14 @@
           "new": 43.0
         },
         {
+          "code": "CT-F-99-020505",
+          "old": 28.0,
+          "new": 31.0
+        },
+        {
           "code": "CT-F-99-020506",
           "old": 24.0,
           "new": 27.0
-        },
-        {
-          "code": "CT-F-99-020507",
-          "old": 14.0,
-          "new": 11.0
         },
         {
           "code": "CT-F-99-020510",
@@ -70,204 +75,199 @@
           "new": 18.0
         },
         {
+          "code": "DS-F-99-0308",
+          "old": 24.0,
+          "new": 48.0
+        },
+        {
+          "code": "DS-F-99-0311",
+          "old": 6.0,
+          "new": 16.0
+        },
+        {
           "code": "EEE-F-FC-1040010002",
-          "old": 2585.0,
+          "old": 2776.0,
           "new": 2545.0
         },
         {
           "code": "EEE-F-FC-1040011000",
-          "old": 2213.0,
+          "old": 2201.0,
           "new": 1516.0
         },
         {
           "code": "EEE-F-FC-1040011100",
-          "old": 61.0,
+          "old": 46.0,
           "new": 55.0
         },
         {
+          "code": "EEE-F-FC-1040011100NP",
+          "old": 9.0,
+          "new": 12.0
+        },
+        {
+          "code": "EEE-F-FC-5920-383-1000",
+          "old": 195.0,
+          "new": 192.0
+        },
+        {
           "code": "EEE-F-FL-1040030002",
-          "old": 5720.0,
+          "old": 5011.0,
           "new": 5253.0
         },
         {
           "code": "EEE-F-FL-1040030003",
-          "old": 2068.0,
+          "old": 2163.0,
           "new": 2060.0
         },
         {
           "code": "EEE-F-FL-1040030004",
-          "old": 2876.0,
+          "old": 2469.0,
           "new": 2569.0
         },
         {
           "code": "EEE-F-FL-1040030005",
-          "old": 4410.0,
+          "old": 4003.0,
           "new": 3903.0
         },
         {
           "code": "EEE-F-FL-1040030006",
-          "old": 5360.0,
+          "old": 4655.0,
           "new": 4755.0
         },
         {
           "code": "EEE-F-FL-1040030007",
-          "old": 2168.0,
+          "old": 2233.0,
           "new": 2153.0
         },
         {
           "code": "EEE-F-FL-1040030008",
-          "old": 3010.0,
+          "old": 3210.0,
           "new": 2910.0
         },
         {
           "code": "EEE-F-FL-1040030009",
-          "old": 1129.0,
+          "old": 1213.0,
           "new": 1110.0
         },
         {
           "code": "EEE-F-FL-1040030010",
-          "old": 751.0,
+          "old": 559.0,
           "new": 539.0
         },
         {
-          "code": "EEE-F-FL-1040030011",
-          "old": 28.0,
-          "new": 12.0
-        },
-        {
-          "code": "EEE-F-FL-1040030012",
-          "old": 32.0,
-          "new": 12.0
-        },
-        {
-          "code": "EEE-F-FL-1040030013",
-          "old": 70.0,
-          "new": 51.0
-        },
-        {
           "code": "EEE-F-FL-1040030102",
-          "old": 221.0,
+          "old": 921.0,
           "new": 518.0
         },
         {
-          "code": "EEE-F-FL-1040030106",
-          "old": 406.0,
-          "new": 606.0
+          "code": "EEE-F-FL-1040030103",
+          "old": 600.0,
+          "new": 300.0
         },
         {
-          "code": "EEE-F-FL-1040030110",
-          "old": 103.0,
+          "code": "EEE-F-FL-1040030104",
+          "old": 300.0,
           "new": 100.0
         },
         {
+          "code": "EEE-F-FL-1040030105",
+          "old": 850.0,
+          "new": 450.0
+        },
+        {
+          "code": "EEE-F-FL-1040030106",
+          "old": 1006.0,
+          "new": 606.0
+        },
+        {
+          "code": "EEE-F-FL-1040030108",
+          "old": 500.0,
+          "new": 300.0
+        },
+        {
+          "code": "EEE-F-FL-1040030109",
+          "old": 10.0,
+          "new": 110.0
+        },
+        {
+          "code": "EEE-F-FL-1040030110",
+          "old": 80.0,
+          "new": 100.0
+        },
+        {
+          "code": "EEE-F-FL-5920-353-00700",
+          "old": 3.0,
+          "new": 0.0
+        },
+        {
+          "code": "EEE-F-HC-1040020001",
+          "old": 370.0,
+          "new": 270.0
+        },
+        {
+          "code": "EEE-F-HC-1040020002",
+          "old": 2110.0,
+          "new": 2510.0
+        },
+        {
           "code": "EEE-F-HC-1040020003",
-          "old": 3983.0,
+          "old": 3683.0,
           "new": 3783.0
         },
         {
           "code": "EEE-F-HC-1040020004",
-          "old": 2427.0,
+          "old": 2327.0,
           "new": 2527.0
         },
         {
+          "code": "EEE-F-HC-1040020005",
+          "old": 0.0,
+          "new": 15.0
+        },
+        {
+          "code": "EEE-F-HC-1040020006",
+          "old": 0.0,
+          "new": 15.0
+        },
+        {
+          "code": "EEE-F-HC-1040020007",
+          "old": 0.0,
+          "new": 15.0
+        },
+        {
           "code": "EEE-F-HC-1040020009",
-          "old": 6.0,
+          "old": 3.0,
           "new": 9.0
         },
         {
           "code": "EEE-F-LT-1040020100",
-          "old": 960.0,
+          "old": 945.0,
           "new": 963.0
         },
         {
           "code": "EEE-F-LT-1040020100P",
-          "old": 1018.0,
+          "old": 928.0,
           "new": 718.0
         },
         {
           "code": "HS-F-99-0211",
-          "old": 220.0,
+          "old": 190.0,
           "new": 271.0
+        },
+        {
+          "code": "HS-F-99-02110",
+          "old": 1904.0,
+          "new": 1949.0
+        },
+        {
+          "code": "HS-F-99-0213",
+          "old": 206.0,
+          "new": 220.0
         },
         {
           "code": "HS-F-99-0215",
           "old": 1323.0,
           "new": 603.0
-        },
-        {
-          "code": "HS-F-99-0241",
-          "old": 128.0,
-          "new": 182.0
-        },
-        {
-          "code": "HS-F-99-0301",
-          "old": 85.0,
-          "new": 88.0
-        },
-        {
-          "code": "HS-F-99-1241",
-          "old": 20.0,
-          "new": 17.0
-        },
-        {
-          "code": "HS-F-99-1301",
-          "old": 18.0,
-          "new": 0.0
-        },
-        {
-          "code": "HS-F-99-3303",
-          "old": 430.0,
-          "new": 30.0
-        },
-        {
-          "code": "LB-F-99-G2261204",
-          "old": 17.0,
-          "new": 7.0
-        },
-        {
-          "code": "PH-F-99-0001",
-          "old": 155.0,
-          "new": 143.0
-        },
-        {
-          "code": "RS-F-99-041008",
-          "old": 18.0,
-          "new": 12.0
-        },
-        {
-          "code": "RS-F-99-070003",
-          "old": 650.0,
-          "new": 350.0
-        },
-        {
-          "code": "RS-F-99-070005",
-          "old": 2000.0,
-          "new": 3.0
-        },
-        {
-          "code": "RS-F-99-070006",
-          "old": 650.0,
-          "new": 450.0
-        },
-        {
-          "code": "RS-F-99-090003",
-          "old": 1000.0,
-          "new": 4000.0
-        },
-        {
-          "code": "ST-F-11-0001",
-          "old": 215.0,
-          "new": 151.0
-        },
-        {
-          "code": "TF-F-99-12044211AF1",
-          "old": 83.0,
-          "new": 85.0
-        },
-        {
-          "code": "TF-F-99-19044211AF1",
-          "old": 9.0,
-          "new": 12.0
         }
       ]
     },
@@ -454,32 +454,32 @@
   ],
   "totals": {
     "codes": 445,
-    "has_stock": 157,
-    "zero_stock": 231,
+    "has_stock": 162,
+    "zero_stock": 226,
     "no_db_record": 57,
     "codes_with_backlog": 152,
     "backlog_total": 62586.0,
-    "available_positive": 110,
-    "available_zero": 190,
-    "available_negative": 88,
+    "available_positive": 111,
+    "available_zero": 187,
+    "available_negative": 90,
     "available_unknown": 57,
-    "available_total": 78002.0
+    "available_total": 88702.0
   },
   "sellable_split_totals": {
     "by_division": {
       "PEM101": {
-        "sellable_total": 127450.0,
-        "staging_total": 12218.0,
+        "sellable_total": 128264.0,
+        "staging_total": 21999.0,
         "elsewhere_total": 29.0
       },
       "PEM107": {
-        "sellable_total": 709.0,
-        "staging_total": 81.0,
-        "elsewhere_total": 19.0
+        "sellable_total": 769.0,
+        "staging_total": 69.0,
+        "elsewhere_total": 4.0
       },
       "PEM103": {
-        "sellable_total": 27.0,
-        "staging_total": 0.0,
+        "sellable_total": 28.0,
+        "staging_total": 66.0,
         "elsewhere_total": 0.0
       }
     },
@@ -827,9 +827,9 @@
       "type": "Low Voltage Capacitor",
       "description": "Cap-3E 45kVAR 400V",
       "state": "has_stock",
-      "qty": 30.0,
+      "qty": 29.0,
       "backlog": 1.0,
-      "available": 29.0,
+      "available": 28.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
@@ -838,7 +838,7 @@
         },
         {
           "code": "FG21",
-          "qty": 10.0
+          "qty": 9.0
         }
       ],
       "backlog_rows": [
@@ -855,7 +855,7 @@
       ],
       "sellable_split": {
         "not_assessed": false,
-        "sellable_qty": 30.0,
+        "sellable_qty": 29.0,
         "staging_qty": 0.0,
         "elsewhere_qty": 0.0
       }
@@ -867,14 +867,14 @@
       "type": "Low Voltage Capacitor",
       "description": "Cap-3E 50kVAR 400V",
       "state": "has_stock",
-      "qty": 28.0,
+      "qty": 26.0,
       "backlog": 2.0,
-      "available": 26.0,
+      "available": 24.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
           "code": "FG01",
-          "qty": 20.0
+          "qty": 18.0
         },
         {
           "code": "FG21",
@@ -895,7 +895,7 @@
       ],
       "sellable_split": {
         "not_assessed": false,
-        "sellable_qty": 28.0,
+        "sellable_qty": 26.0,
         "staging_qty": 0.0,
         "elsewhere_qty": 0.0
       }
@@ -1163,9 +1163,9 @@
       "type": "Fuse Holder",
       "description": "22kV 8kA 100A",
       "state": "has_stock",
-      "qty": 2060.0,
+      "qty": 1970.0,
       "backlog": 30.0,
-      "available": 2030.0,
+      "available": 1940.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
@@ -1173,12 +1173,8 @@
           "qty": 70.0
         },
         {
-          "code": "QA",
-          "qty": 1300.0
-        },
-        {
           "code": "WH21",
-          "qty": 690.0
+          "qty": 1900.0
         }
       ],
       "backlog_rows": [
@@ -1195,8 +1191,8 @@
       ],
       "sellable_split": {
         "not_assessed": false,
-        "sellable_qty": 760.0,
-        "staging_qty": 1300.0,
+        "sellable_qty": 1970.0,
+        "staging_qty": 0.0,
         "elsewhere_qty": 0.0
       }
     },
@@ -1207,9 +1203,9 @@
       "type": "Fuse Holder",
       "description": "22kV 12kA 100A",
       "state": "has_stock",
-      "qty": 7821.0,
+      "qty": 6967.0,
       "backlog": 300.0,
-      "available": 7521.0,
+      "available": 6667.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
@@ -1222,7 +1218,7 @@
         },
         {
           "code": "WH21",
-          "qty": 1647.0
+          "qty": 793.0
         }
       ],
       "backlog_rows": [
@@ -1259,7 +1255,7 @@
       ],
       "sellable_split": {
         "not_assessed": false,
-        "sellable_qty": 2221.0,
+        "sellable_qty": 1367.0,
         "staging_qty": 5600.0,
         "elsewhere_qty": 0.0
       }
@@ -1271,20 +1267,20 @@
       "type": "Fuse Holder",
       "description": "22kV 12kA 200A",
       "state": "has_stock",
-      "qty": 1428.0,
+      "qty": 1354.0,
       "backlog": 0.0,
-      "available": 1428.0,
+      "available": 1354.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
           "code": "WH21",
-          "qty": 1428.0
+          "qty": 1354.0
         }
       ],
       "backlog_rows": [],
       "sellable_split": {
         "not_assessed": false,
-        "sellable_qty": 1428.0,
+        "sellable_qty": 1354.0,
         "staging_qty": 0.0,
         "elsewhere_qty": 0.0
       }
@@ -1296,9 +1292,9 @@
       "type": "Fuse Holder",
       "description": "38kV Old 100A",
       "state": "has_stock",
-      "qty": 1585.0,
+      "qty": 1575.0,
       "backlog": 0.0,
-      "available": 1585.0,
+      "available": 1575.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
@@ -1307,13 +1303,13 @@
         },
         {
           "code": "WH21",
-          "qty": 1569.0
+          "qty": 1559.0
         }
       ],
       "backlog_rows": [],
       "sellable_split": {
         "not_assessed": false,
-        "sellable_qty": 1585.0,
+        "sellable_qty": 1575.0,
         "staging_qty": 0.0,
         "elsewhere_qty": 0.0
       }
@@ -1325,9 +1321,9 @@
       "type": "Fuse Holder",
       "description": "38kV New 100A",
       "state": "has_stock",
-      "qty": 4560.0,
+      "qty": 4420.0,
       "backlog": 0.0,
-      "available": 4560.0,
+      "available": 4420.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
@@ -1335,19 +1331,15 @@
           "qty": 11.0
         },
         {
-          "code": "QA",
-          "qty": 1200.0
-        },
-        {
           "code": "WH21",
-          "qty": 3349.0
+          "qty": 4409.0
         }
       ],
       "backlog_rows": [],
       "sellable_split": {
         "not_assessed": false,
-        "sellable_qty": 3360.0,
-        "staging_qty": 1200.0,
+        "sellable_qty": 4420.0,
+        "staging_qty": 0.0,
         "elsewhere_qty": 0.0
       }
     },
@@ -1383,14 +1375,14 @@
       "type": "High Voltage Distribution Fuse Cutout",
       "description": "22kV 8kA 100Amp",
       "state": "has_stock",
-      "qty": 278.0,
+      "qty": 346.0,
       "backlog": 1516.0,
-      "available": -1238.0,
+      "available": -1170.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
           "code": "FG01",
-          "qty": 244.0
+          "qty": 212.0
         },
         {
           "code": "FG21",
@@ -1399,6 +1391,10 @@
         {
           "code": "FMTO",
           "qty": 6.0
+        },
+        {
+          "code": "FMTS",
+          "qty": 100.0
         },
         {
           "code": "W4-1",
@@ -1719,8 +1715,8 @@
       ],
       "sellable_split": {
         "not_assessed": false,
-        "sellable_qty": 266.0,
-        "staging_qty": 6.0,
+        "sellable_qty": 234.0,
+        "staging_qty": 106.0,
         "elsewhere_qty": 6.0
       }
     },
@@ -1731,14 +1727,14 @@
       "type": "High Voltage Distribution Fuse Cutout",
       "description": "22kV 12kA 100Amp",
       "state": "has_stock",
-      "qty": 9.0,
+      "qty": 171.0,
       "backlog": 2545.0,
-      "available": -2536.0,
+      "available": -2374.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
           "code": "FG01",
-          "qty": 9.0
+          "qty": 171.0
         }
       ],
       "backlog_rows": [
@@ -2055,7 +2051,7 @@
       ],
       "sellable_split": {
         "not_assessed": false,
-        "sellable_qty": 9.0,
+        "sellable_qty": 171.0,
         "staging_qty": 0.0,
         "elsewhere_qty": 0.0
       }
@@ -2067,9 +2063,9 @@
       "type": "High Voltage Distribution Fuse Cutout",
       "description": "22kV 12kA 200Amp",
       "state": "has_stock",
-      "qty": 54.0,
+      "qty": 74.0,
       "backlog": 369.0,
-      "available": -315.0,
+      "available": -295.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
@@ -2079,6 +2075,10 @@
         {
           "code": "FG21",
           "qty": 10.0
+        },
+        {
+          "code": "FMTS",
+          "qty": 20.0
         }
       ],
       "backlog_rows": [
@@ -2136,7 +2136,7 @@
       "sellable_split": {
         "not_assessed": false,
         "sellable_qty": 54.0,
-        "staging_qty": 0.0,
+        "staging_qty": 20.0,
         "elsewhere_qty": 0.0
       }
     },
@@ -2208,22 +2208,22 @@
       "type": "High Voltage Distribution Fuse Cutout",
       "description": "33kV 8kA 100Amp",
       "state": "has_stock",
-      "qty": 148.0,
+      "qty": 222.0,
       "backlog": 55.0,
-      "available": 93.0,
+      "available": 167.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
           "code": "FG01",
-          "qty": 89.0
+          "qty": 139.0
         },
         {
           "code": "FG21",
-          "qty": 50.0
+          "qty": 10.0
         },
         {
           "code": "FMTS",
-          "qty": 9.0
+          "qty": 73.0
         }
       ],
       "backlog_rows": [
@@ -2320,8 +2320,8 @@
       ],
       "sellable_split": {
         "not_assessed": false,
-        "sellable_qty": 139.0,
-        "staging_qty": 9.0,
+        "sellable_qty": 149.0,
+        "staging_qty": 73.0,
         "elsewhere_qty": 0.0
       }
     },
@@ -2382,14 +2382,14 @@
       "type": "High Voltage Distribution Fuse Cutout",
       "description": "33kV 8kA 100Amp HP New",
       "state": "has_stock",
-      "qty": 25.0,
+      "qty": 22.0,
       "backlog": 12.0,
-      "available": 13.0,
+      "available": 10.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
           "code": "FG21",
-          "qty": 19.0
+          "qty": 16.0
         },
         {
           "code": "FMTO",
@@ -2430,7 +2430,7 @@
       ],
       "sellable_split": {
         "not_assessed": false,
-        "sellable_qty": 19.0,
+        "sellable_qty": 16.0,
         "staging_qty": 6.0,
         "elsewhere_qty": 0.0
       }
@@ -2545,22 +2545,26 @@
       "type": "High Voltage Distribution Fuse link",
       "description": "22kV 3 Amp",
       "state": "has_stock",
-      "qty": 3427.0,
+      "qty": 5513.0,
       "backlog": 5253.0,
-      "available": -1826.0,
+      "available": 260.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
           "code": "FG01",
-          "qty": 1777.0
+          "qty": 1669.0
         },
         {
           "code": "FG21",
-          "qty": 835.0
+          "qty": 829.0
         },
         {
           "code": "FMTO",
           "qty": 809.0
+        },
+        {
+          "code": "FMTS",
+          "qty": 2200.0
         },
         {
           "code": "W4-1",
@@ -3011,8 +3015,8 @@
       ],
       "sellable_split": {
         "not_assessed": false,
-        "sellable_qty": 2612.0,
-        "staging_qty": 809.0,
+        "sellable_qty": 2498.0,
+        "staging_qty": 3009.0,
         "elsewhere_qty": 6.0
       }
     },
@@ -3023,18 +3027,18 @@
       "type": "High Voltage Distribution Fuse link",
       "description": "22kV 6 Amp",
       "state": "has_stock",
-      "qty": 4125.0,
+      "qty": 4020.0,
       "backlog": 2060.0,
-      "available": 2065.0,
+      "available": 1960.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
           "code": "FG01",
-          "qty": 3630.0
+          "qty": 3530.0
         },
         {
           "code": "FG21",
-          "qty": 192.0
+          "qty": 187.0
         },
         {
           "code": "FMTO",
@@ -3199,7 +3203,7 @@
       ],
       "sellable_split": {
         "not_assessed": false,
-        "sellable_qty": 3822.0,
+        "sellable_qty": 3717.0,
         "staging_qty": 303.0,
         "elsewhere_qty": 0.0
       }
@@ -3211,18 +3215,18 @@
       "type": "High Voltage Distribution Fuse link",
       "description": "22kV 8 Amp",
       "state": "has_stock",
-      "qty": 5998.0,
+      "qty": 5891.0,
       "backlog": 2569.0,
-      "available": 3429.0,
+      "available": 3322.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
           "code": "FG01",
-          "qty": 3871.0
+          "qty": 3771.0
         },
         {
           "code": "FG21",
-          "qty": 1827.0
+          "qty": 1820.0
         },
         {
           "code": "FMTO",
@@ -3373,7 +3377,7 @@
       ],
       "sellable_split": {
         "not_assessed": false,
-        "sellable_qty": 5698.0,
+        "sellable_qty": 5591.0,
         "staging_qty": 300.0,
         "elsewhere_qty": 0.0
       }
@@ -3385,22 +3389,26 @@
       "type": "High Voltage Distribution Fuse link",
       "description": "22kV 10 Amp",
       "state": "has_stock",
-      "qty": 3835.0,
+      "qty": 6128.0,
       "backlog": 3903.0,
-      "available": -68.0,
+      "available": 2225.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
           "code": "FG01",
-          "qty": 3217.0
+          "qty": 3117.0
         },
         {
           "code": "FG21",
-          "qty": 118.0
+          "qty": 111.0
         },
         {
           "code": "FMTO",
           "qty": 500.0
+        },
+        {
+          "code": "FMTS",
+          "qty": 2400.0
         }
       ],
       "backlog_rows": [
@@ -3517,8 +3525,8 @@
       ],
       "sellable_split": {
         "not_assessed": false,
-        "sellable_qty": 3335.0,
-        "staging_qty": 500.0,
+        "sellable_qty": 3228.0,
+        "staging_qty": 2900.0,
         "elsewhere_qty": 0.0
       }
     },
@@ -3529,18 +3537,18 @@
       "type": "High Voltage Distribution Fuse link",
       "description": "22kV 15 Amp",
       "state": "has_stock",
-      "qty": 2796.0,
+      "qty": 3882.0,
       "backlog": 4755.0,
-      "available": -1959.0,
+      "available": -873.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
           "code": "FG01",
-          "qty": 1508.0
+          "qty": 1402.0
         },
         {
           "code": "FG21",
-          "qty": 785.0
+          "qty": 777.0
         },
         {
           "code": "FMTO",
@@ -3548,7 +3556,7 @@
         },
         {
           "code": "FMTS",
-          "qty": 3.0
+          "qty": 1203.0
         }
       ],
       "backlog_rows": [
@@ -3745,8 +3753,8 @@
       ],
       "sellable_split": {
         "not_assessed": false,
-        "sellable_qty": 2293.0,
-        "staging_qty": 503.0,
+        "sellable_qty": 2179.0,
+        "staging_qty": 1703.0,
         "elsewhere_qty": 0.0
       }
     },
@@ -3757,22 +3765,22 @@
       "type": "High Voltage Distribution Fuse link",
       "description": "22kV 20 Amp",
       "state": "has_stock",
-      "qty": 2531.0,
+      "qty": 3996.0,
       "backlog": 2153.0,
-      "available": 378.0,
+      "available": 1843.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
           "code": "FG01",
-          "qty": 2116.0
+          "qty": 1996.0
         },
         {
           "code": "FG21",
-          "qty": 115.0
+          "qty": 100.0
         },
         {
           "code": "FMTO",
-          "qty": 300.0
+          "qty": 1900.0
         }
       ],
       "backlog_rows": [
@@ -3889,8 +3897,8 @@
       ],
       "sellable_split": {
         "not_assessed": false,
-        "sellable_qty": 2231.0,
-        "staging_qty": 300.0,
+        "sellable_qty": 2096.0,
+        "staging_qty": 1900.0,
         "elsewhere_qty": 0.0
       }
     },
@@ -3901,14 +3909,14 @@
       "type": "High Voltage Distribution Fuse link",
       "description": "22kV 25 Amp",
       "state": "has_stock",
-      "qty": 754.0,
+      "qty": 5454.0,
       "backlog": 2910.0,
-      "available": -2156.0,
+      "available": 2544.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
           "code": "FG01",
-          "qty": 6.0
+          "qty": 1906.0
         },
         {
           "code": "FG21",
@@ -3916,7 +3924,7 @@
         },
         {
           "code": "FMTS",
-          "qty": 700.0
+          "qty": 3500.0
         }
       ],
       "backlog_rows": [
@@ -4013,8 +4021,8 @@
       ],
       "sellable_split": {
         "not_assessed": false,
-        "sellable_qty": 54.0,
-        "staging_qty": 700.0,
+        "sellable_qty": 1954.0,
+        "staging_qty": 3500.0,
         "elsewhere_qty": 0.0
       }
     },
@@ -4025,22 +4033,22 @@
       "type": "High Voltage Distribution Fuse link",
       "description": "22kV 30 Amp",
       "state": "has_stock",
-      "qty": 2918.0,
+      "qty": 3602.0,
       "backlog": 1110.0,
-      "available": 1808.0,
+      "available": 2492.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
           "code": "FG01",
-          "qty": 2874.0
+          "qty": 2774.0
         },
         {
           "code": "FG21",
-          "qty": 41.0
+          "qty": 25.0
         },
         {
           "code": "FMTS",
-          "qty": 3.0
+          "qty": 803.0
         }
       ],
       "backlog_rows": [
@@ -4107,8 +4115,8 @@
       ],
       "sellable_split": {
         "not_assessed": false,
-        "sellable_qty": 2915.0,
-        "staging_qty": 3.0,
+        "sellable_qty": 2799.0,
+        "staging_qty": 803.0,
         "elsewhere_qty": 0.0
       }
     },
@@ -4119,18 +4127,18 @@
       "type": "High Voltage Distribution Fuse link",
       "description": "22kV 40 Amp",
       "state": "has_stock",
-      "qty": 2685.0,
+      "qty": 2871.0,
       "backlog": 539.0,
-      "available": 2146.0,
+      "available": 2332.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
           "code": "FG01",
-          "qty": 1963.0
+          "qty": 2161.0
         },
         {
           "code": "FG21",
-          "qty": 716.0
+          "qty": 704.0
         },
         {
           "code": "FMTS",
@@ -4211,7 +4219,7 @@
       ],
       "sellable_split": {
         "not_assessed": false,
-        "sellable_qty": 2679.0,
+        "sellable_qty": 2865.0,
         "staging_qty": 6.0,
         "elsewhere_qty": 0.0
       }
@@ -4223,9 +4231,9 @@
       "type": "High Voltage Distribution Fuse link",
       "description": "22kV 50 Amp",
       "state": "has_stock",
-      "qty": 3197.0,
+      "qty": 3181.0,
       "backlog": 12.0,
-      "available": 3185.0,
+      "available": 3169.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
@@ -4234,7 +4242,7 @@
         },
         {
           "code": "FG21",
-          "qty": 816.0
+          "qty": 800.0
         },
         {
           "code": "FMTO",
@@ -4269,7 +4277,7 @@
       ],
       "sellable_split": {
         "not_assessed": false,
-        "sellable_qty": 3185.0,
+        "sellable_qty": 3169.0,
         "staging_qty": 12.0,
         "elsewhere_qty": 0.0
       }
@@ -4281,9 +4289,9 @@
       "type": "High Voltage Distribution Fuse link",
       "description": "22kV 65 Amp",
       "state": "has_stock",
-      "qty": 2603.0,
+      "qty": 2583.0,
       "backlog": 12.0,
-      "available": 2591.0,
+      "available": 2571.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
@@ -4292,7 +4300,7 @@
         },
         {
           "code": "FG21",
-          "qty": 217.0
+          "qty": 197.0
         },
         {
           "code": "FMTO",
@@ -4313,7 +4321,7 @@
       ],
       "sellable_split": {
         "not_assessed": false,
-        "sellable_qty": 2591.0,
+        "sellable_qty": 2571.0,
         "staging_qty": 12.0,
         "elsewhere_qty": 0.0
       }
@@ -4325,9 +4333,9 @@
       "type": "High Voltage Distribution Fuse link",
       "description": "22kV 100 Amp",
       "state": "has_stock",
-      "qty": 622.0,
+      "qty": 603.0,
       "backlog": 51.0,
-      "available": 571.0,
+      "available": 552.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
@@ -4336,7 +4344,7 @@
         },
         {
           "code": "FG21",
-          "qty": 286.0
+          "qty": 267.0
         }
       ],
       "backlog_rows": [
@@ -4363,7 +4371,7 @@
       ],
       "sellable_split": {
         "not_assessed": false,
-        "sellable_qty": 622.0,
+        "sellable_qty": 603.0,
         "staging_qty": 0.0,
         "elsewhere_qty": 0.0
       }
@@ -4542,14 +4550,14 @@
       "type": "High Voltage Distribution Fuse link",
       "description": "33kV 3 Amp",
       "state": "has_stock",
-      "qty": 4070.0,
+      "qty": 3870.0,
       "backlog": 518.0,
-      "available": 3552.0,
+      "available": 3352.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
           "code": "FG01",
-          "qty": 3334.0
+          "qty": 3134.0
         },
         {
           "code": "FG21",
@@ -4628,7 +4636,7 @@
       ],
       "sellable_split": {
         "not_assessed": false,
-        "sellable_qty": 4065.0,
+        "sellable_qty": 3865.0,
         "staging_qty": 3.0,
         "elsewhere_qty": 2.0
       }
@@ -4640,14 +4648,14 @@
       "type": "High Voltage Distribution Fuse link",
       "description": "33kV 6 Amp",
       "state": "has_stock",
-      "qty": 3534.0,
+      "qty": 3234.0,
       "backlog": 300.0,
-      "available": 3234.0,
+      "available": 2934.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
           "code": "FG01",
-          "qty": 2932.0
+          "qty": 2632.0
         },
         {
           "code": "FG21",
@@ -4668,7 +4676,7 @@
       ],
       "sellable_split": {
         "not_assessed": false,
-        "sellable_qty": 3534.0,
+        "sellable_qty": 3234.0,
         "staging_qty": 0.0,
         "elsewhere_qty": 0.0
       }
@@ -4680,14 +4688,14 @@
       "type": "High Voltage Distribution Fuse link",
       "description": "33kV 8 Amp",
       "state": "has_stock",
-      "qty": 4070.0,
+      "qty": 3970.0,
       "backlog": 100.0,
-      "available": 3970.0,
+      "available": 3870.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
           "code": "FG01",
-          "qty": 3430.0
+          "qty": 3330.0
         },
         {
           "code": "FG21",
@@ -4708,7 +4716,7 @@
       ],
       "sellable_split": {
         "not_assessed": false,
-        "sellable_qty": 4070.0,
+        "sellable_qty": 3970.0,
         "staging_qty": 0.0,
         "elsewhere_qty": 0.0
       }
@@ -4720,14 +4728,14 @@
       "type": "High Voltage Distribution Fuse link",
       "description": "33kV 10 Amp",
       "state": "has_stock",
-      "qty": 2543.0,
+      "qty": 2143.0,
       "backlog": 450.0,
-      "available": 2093.0,
+      "available": 1693.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
           "code": "FG01",
-          "qty": 2340.0
+          "qty": 1940.0
         },
         {
           "code": "FG21",
@@ -4758,7 +4766,7 @@
       ],
       "sellable_split": {
         "not_assessed": false,
-        "sellable_qty": 2543.0,
+        "sellable_qty": 2143.0,
         "staging_qty": 0.0,
         "elsewhere_qty": 0.0
       }
@@ -4770,14 +4778,14 @@
       "type": "High Voltage Distribution Fuse link",
       "description": "33kV 15 Amp",
       "state": "has_stock",
-      "qty": 2994.0,
+      "qty": 2794.0,
       "backlog": 606.0,
-      "available": 2388.0,
+      "available": 2188.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
           "code": "FG01",
-          "qty": 2796.0
+          "qty": 2596.0
         },
         {
           "code": "FG21",
@@ -4838,7 +4846,7 @@
       ],
       "sellable_split": {
         "not_assessed": false,
-        "sellable_qty": 2994.0,
+        "sellable_qty": 2794.0,
         "staging_qty": 0.0,
         "elsewhere_qty": 0.0
       }
@@ -4850,14 +4858,14 @@
       "type": "High Voltage Distribution Fuse link",
       "description": "33kV 20 Amp",
       "state": "has_stock",
-      "qty": 2469.0,
+      "qty": 2269.0,
       "backlog": 203.0,
-      "available": 2266.0,
+      "available": 2066.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
           "code": "FG01",
-          "qty": 2392.0
+          "qty": 2192.0
         },
         {
           "code": "FG21",
@@ -4892,7 +4900,7 @@
       ],
       "sellable_split": {
         "not_assessed": false,
-        "sellable_qty": 2466.0,
+        "sellable_qty": 2266.0,
         "staging_qty": 3.0,
         "elsewhere_qty": 0.0
       }
@@ -4904,18 +4912,22 @@
       "type": "High Voltage Distribution Fuse link",
       "description": "33kV 25 Amp",
       "state": "has_stock",
-      "qty": 2674.0,
+      "qty": 2774.0,
       "backlog": 300.0,
-      "available": 2374.0,
+      "available": 2474.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
           "code": "FG01",
-          "qty": 2587.0
+          "qty": 2287.0
         },
         {
           "code": "FG21",
           "qty": 87.0
+        },
+        {
+          "code": "FMTS",
+          "qty": 400.0
         }
       ],
       "backlog_rows": [
@@ -4932,8 +4944,8 @@
       ],
       "sellable_split": {
         "not_assessed": false,
-        "sellable_qty": 2674.0,
-        "staging_qty": 0.0,
+        "sellable_qty": 2374.0,
+        "staging_qty": 400.0,
         "elsewhere_qty": 0.0
       }
     },
@@ -4944,14 +4956,14 @@
       "type": "High Voltage Distribution Fuse link",
       "description": "33kV 30 Amp",
       "state": "has_stock",
-      "qty": 5877.0,
+      "qty": 5777.0,
       "backlog": 110.0,
-      "available": 5767.0,
+      "available": 5667.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
           "code": "FG01",
-          "qty": 2836.0
+          "qty": 2736.0
         },
         {
           "code": "FG21",
@@ -4986,7 +4998,7 @@
       ],
       "sellable_split": {
         "not_assessed": false,
-        "sellable_qty": 5867.0,
+        "sellable_qty": 5767.0,
         "staging_qty": 10.0,
         "elsewhere_qty": 0.0
       }
@@ -4998,22 +5010,18 @@
       "type": "High Voltage Distribution Fuse link",
       "description": "33kV 40 Amp",
       "state": "has_stock",
-      "qty": 2606.0,
+      "qty": 2503.0,
       "backlog": 100.0,
-      "available": 2506.0,
+      "available": 2403.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
           "code": "FG01",
-          "qty": 2542.0
+          "qty": 2442.0
         },
         {
           "code": "FG21",
           "qty": 61.0
-        },
-        {
-          "code": "FMTS",
-          "qty": 3.0
         }
       ],
       "backlog_rows": [
@@ -5030,8 +5038,8 @@
       ],
       "sellable_split": {
         "not_assessed": false,
-        "sellable_qty": 2603.0,
-        "staging_qty": 3.0,
+        "sellable_qty": 2503.0,
+        "staging_qty": 0.0,
         "elsewhere_qty": 0.0
       }
     },
@@ -5357,14 +5365,14 @@
       "type": "HRC fuse",
       "description": "HRC fuse 80A ",
       "state": "has_stock",
-      "qty": 1892.0,
+      "qty": 2292.0,
       "backlog": 2510.0,
-      "available": -618.0,
+      "available": -218.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
           "code": "FG01",
-          "qty": 1760.0
+          "qty": 2160.0
         },
         {
           "code": "FG21",
@@ -5465,7 +5473,7 @@
       ],
       "sellable_split": {
         "not_assessed": false,
-        "sellable_qty": 1892.0,
+        "sellable_qty": 2292.0,
         "staging_qty": 0.0,
         "elsewhere_qty": 0.0
       }
@@ -5477,14 +5485,14 @@
       "type": "HRC fuse",
       "description": "HRC fuse 100A ",
       "state": "has_stock",
-      "qty": 2771.0,
+      "qty": 2220.0,
       "backlog": 3783.0,
-      "available": -1012.0,
+      "available": -1563.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
           "code": "FG01",
-          "qty": 2724.0
+          "qty": 2173.0
         },
         {
           "code": "FG21",
@@ -5605,7 +5613,7 @@
       ],
       "sellable_split": {
         "not_assessed": false,
-        "sellable_qty": 2771.0,
+        "sellable_qty": 2220.0,
         "staging_qty": 0.0,
         "elsewhere_qty": 0.0
       }
@@ -5617,18 +5625,18 @@
       "type": "HRC fuse",
       "description": "HRC fuse 160A ",
       "state": "has_stock",
-      "qty": 3348.0,
+      "qty": 3315.0,
       "backlog": 2527.0,
-      "available": 821.0,
+      "available": 788.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
           "code": "FG01",
-          "qty": 2467.0
+          "qty": 2934.0
         },
         {
           "code": "FG21",
-          "qty": 881.0
+          "qty": 381.0
         }
       ],
       "backlog_rows": [
@@ -5715,7 +5723,7 @@
       ],
       "sellable_split": {
         "not_assessed": false,
-        "sellable_qty": 3348.0,
+        "sellable_qty": 3315.0,
         "staging_qty": 0.0,
         "elsewhere_qty": 0.0
       }
@@ -5727,14 +5735,14 @@
       "type": "HRC fuse",
       "description": "HRC fuse 200A ",
       "state": "has_stock",
-      "qty": 3254.0,
+      "qty": 3239.0,
       "backlog": 15.0,
-      "available": 3239.0,
+      "available": 3224.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
           "code": "FG01",
-          "qty": 3228.0
+          "qty": 3213.0
         },
         {
           "code": "FG21",
@@ -5759,7 +5767,7 @@
       ],
       "sellable_split": {
         "not_assessed": false,
-        "sellable_qty": 3246.0,
+        "sellable_qty": 3231.0,
         "staging_qty": 8.0,
         "elsewhere_qty": 0.0
       }
@@ -5771,14 +5779,14 @@
       "type": "HRC fuse",
       "description": "HRC fuse 250A ",
       "state": "has_stock",
-      "qty": 2808.0,
+      "qty": 2793.0,
       "backlog": 15.0,
-      "available": 2793.0,
+      "available": 2778.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
           "code": "FG01",
-          "qty": 2673.0
+          "qty": 2658.0
         },
         {
           "code": "FG21",
@@ -5799,7 +5807,7 @@
       ],
       "sellable_split": {
         "not_assessed": false,
-        "sellable_qty": 2808.0,
+        "sellable_qty": 2793.0,
         "staging_qty": 0.0,
         "elsewhere_qty": 0.0
       }
@@ -5811,14 +5819,14 @@
       "type": "HRC fuse",
       "description": "HRC fuse 315A ",
       "state": "has_stock",
-      "qty": 2433.0,
+      "qty": 2418.0,
       "backlog": 15.0,
-      "available": 2418.0,
+      "available": 2403.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
           "code": "FG01",
-          "qty": 2364.0
+          "qty": 2349.0
         },
         {
           "code": "FG21",
@@ -5839,7 +5847,7 @@
       ],
       "sellable_split": {
         "not_assessed": false,
-        "sellable_qty": 2433.0,
+        "sellable_qty": 2418.0,
         "staging_qty": 0.0,
         "elsewhere_qty": 0.0
       }
@@ -5880,14 +5888,14 @@
       "type": "HRC fuse",
       "description": "HRC fuse 400A",
       "state": "has_stock",
-      "qty": 2324.0,
+      "qty": 2315.0,
       "backlog": 9.0,
-      "available": 2315.0,
+      "available": 2306.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
           "code": "FG01",
-          "qty": 2209.0
+          "qty": 2200.0
         },
         {
           "code": "FG21",
@@ -5918,7 +5926,7 @@
       ],
       "sellable_split": {
         "not_assessed": false,
-        "sellable_qty": 2324.0,
+        "sellable_qty": 2315.0,
         "staging_qty": 0.0,
         "elsewhere_qty": 0.0
       }
@@ -5930,18 +5938,22 @@
       "type": "Low Tension Fuse Switch",
       "description": "500V 400Amp Private",
       "state": "has_stock",
-      "qty": 785.0,
+      "qty": 931.0,
       "backlog": 963.0,
-      "available": -178.0,
+      "available": -32.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
           "code": "FG01",
-          "qty": 765.0
+          "qty": 711.0
         },
         {
           "code": "FG21",
           "qty": 20.0
+        },
+        {
+          "code": "FMTS",
+          "qty": 200.0
         }
       ],
       "backlog_rows": [
@@ -6028,8 +6040,8 @@
       ],
       "sellable_split": {
         "not_assessed": false,
-        "sellable_qty": 785.0,
-        "staging_qty": 0.0,
+        "sellable_qty": 731.0,
+        "staging_qty": 200.0,
         "elsewhere_qty": 0.0
       }
     },
@@ -6140,14 +6152,14 @@
       "type": "Low Voltage Surge Arrester",
       "description": "LOZA, Silicone Housing",
       "state": "has_stock",
-      "qty": 5451.0,
+      "qty": 6243.0,
       "backlog": 5053.0,
-      "available": 398.0,
+      "available": 1190.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
           "code": "FG01",
-          "qty": 4251.0
+          "qty": 4543.0
         },
         {
           "code": "FG21",
@@ -6155,7 +6167,7 @@
         },
         {
           "code": "FMTO",
-          "qty": 500.0
+          "qty": 1000.0
         }
       ],
       "backlog_rows": [
@@ -6362,8 +6374,8 @@
       ],
       "sellable_split": {
         "not_assessed": false,
-        "sellable_qty": 4951.0,
-        "staging_qty": 500.0,
+        "sellable_qty": 5243.0,
+        "staging_qty": 1000.0,
         "elsewhere_qty": 0.0
       }
     },
@@ -6555,14 +6567,14 @@
       "type": "Medium Voltage Surge Arrester",
       "description": "21kV 5kA type LAZ-P21 Private",
       "state": "has_stock",
-      "qty": 413.0,
+      "qty": 633.0,
       "backlog": 271.0,
-      "available": 142.0,
+      "available": 362.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
           "code": "FG01",
-          "qty": 242.0
+          "qty": 465.0
         },
         {
           "code": "FG21",
@@ -6574,7 +6586,7 @@
         },
         {
           "code": "FMTS",
-          "qty": 12.0
+          "qty": 9.0
         }
       ],
       "backlog_rows": [
@@ -6881,8 +6893,8 @@
       ],
       "sellable_split": {
         "not_assessed": false,
-        "sellable_qty": 383.0,
-        "staging_qty": 30.0,
+        "sellable_qty": 606.0,
+        "staging_qty": 27.0,
         "elsewhere_qty": 0.0
       }
     },
@@ -7201,22 +7213,22 @@
       "type": "Medium Voltage Surge Arrester",
       "description": "24kV 5kA type LAZ-P24 Private",
       "state": "has_stock",
-      "qty": 509.0,
+      "qty": 459.0,
       "backlog": 182.0,
-      "available": 327.0,
+      "available": 277.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
           "code": "FG01",
-          "qty": 369.0
+          "qty": 319.0
         },
         {
           "code": "FG21",
-          "qty": 84.0
+          "qty": 81.0
         },
         {
           "code": "FMTO",
-          "qty": 53.0
+          "qty": 56.0
         },
         {
           "code": "W4-1",
@@ -7447,8 +7459,8 @@
       ],
       "sellable_split": {
         "not_assessed": false,
-        "sellable_qty": 453.0,
-        "staging_qty": 53.0,
+        "sellable_qty": 400.0,
+        "staging_qty": 56.0,
         "elsewhere_qty": 3.0
       }
     },
@@ -7553,14 +7565,14 @@
       "type": "Medium Voltage Surge Arrester",
       "description": "30kV 5kA type LAZ-P30 Private",
       "state": "has_stock",
-      "qty": 170.0,
+      "qty": 157.0,
       "backlog": 88.0,
-      "available": 82.0,
+      "available": 69.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
           "code": "FG01",
-          "qty": 129.0
+          "qty": 116.0
         },
         {
           "code": "FG21",
@@ -7675,7 +7687,7 @@
       ],
       "sellable_split": {
         "not_assessed": false,
-        "sellable_qty": 167.0,
+        "sellable_qty": 154.0,
         "staging_qty": 3.0,
         "elsewhere_qty": 0.0
       }
@@ -7687,14 +7699,14 @@
       "type": "Medium Voltage Surge Arrester",
       "description": "30kV 5kA type LAZ-P30 Transformer (PEA)",
       "state": "has_stock",
-      "qty": 285.0,
+      "qty": 135.0,
       "backlog": 150.0,
-      "available": 135.0,
+      "available": -15.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
           "code": "FG21",
-          "qty": 285.0
+          "qty": 135.0
         }
       ],
       "backlog_rows": [
@@ -7711,7 +7723,7 @@
       ],
       "sellable_split": {
         "not_assessed": false,
-        "sellable_qty": 285.0,
+        "sellable_qty": 135.0,
         "staging_qty": 0.0,
         "elsewhere_qty": 0.0
       }
@@ -7979,14 +7991,14 @@
       "type": "Medium Voltage Surge Arrester",
       "description": "21kV 10kA Cl.1 type PAZ-P21-1",
       "state": "has_stock",
-      "qty": 143.0,
+      "qty": 115.0,
       "backlog": 49.0,
-      "available": 94.0,
+      "available": 66.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
           "code": "FG01",
-          "qty": 111.0
+          "qty": 83.0
         },
         {
           "code": "FG21",
@@ -8067,7 +8079,7 @@
       ],
       "sellable_split": {
         "not_assessed": false,
-        "sellable_qty": 143.0,
+        "sellable_qty": 115.0,
         "staging_qty": 0.0,
         "elsewhere_qty": 0.0
       }
@@ -8099,14 +8111,14 @@
       "type": "Medium Voltage Surge Arrester",
       "description": "24kV 10kA Cl.1 type PAZ-P24-1",
       "state": "has_stock",
-      "qty": 85.0,
+      "qty": 111.0,
       "backlog": 17.0,
-      "available": 68.0,
+      "available": 94.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
           "code": "FG01",
-          "qty": 61.0
+          "qty": 87.0
         },
         {
           "code": "FG21",
@@ -8151,7 +8163,7 @@
       ],
       "sellable_split": {
         "not_assessed": false,
-        "sellable_qty": 82.0,
+        "sellable_qty": 108.0,
         "staging_qty": 3.0,
         "elsewhere_qty": 0.0
       }
@@ -9353,14 +9365,14 @@
       "type": "Photo Control Switch ",
       "description": "30A 1POLE 180-240VAC 50HZ",
       "state": "has_stock",
-      "qty": 20.0,
+      "qty": 30.0,
       "backlog": 143.0,
-      "available": -123.0,
+      "available": -113.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
           "code": "FG01",
-          "qty": 20.0
+          "qty": 30.0
         }
       ],
       "backlog_rows": [
@@ -9487,7 +9499,7 @@
       ],
       "sellable_split": {
         "not_assessed": false,
-        "sellable_qty": 20.0,
+        "sellable_qty": 30.0,
         "staging_qty": 0.0,
         "elsewhere_qty": 0.0
       }
@@ -9561,7 +9573,7 @@
       "in_forecast_scope": true,
       "by_warehouse": [
         {
-          "code": "FG22",
+          "code": "FG01",
           "qty": 1.0
         }
       ],
@@ -12058,12 +12070,17 @@
       "category": "Distribution Transformer",
       "type": "1 Phase Distribution Transformer",
       "description": "1 Phase 30kVA 19kV 480/240V Low Loss SC New Spec 047/2568",
-      "state": "zero_stock",
-      "qty": 0.0,
+      "state": "has_stock",
+      "qty": 29.0,
       "backlog": 98.0,
-      "available": -98.0,
+      "available": -69.0,
       "in_forecast_scope": true,
-      "by_warehouse": [],
+      "by_warehouse": [
+        {
+          "code": "FMTS",
+          "qty": 29.0
+        }
+      ],
       "backlog_rows": [
         {
           "doc_id": "CTR-2026-05059",
@@ -12279,7 +12296,7 @@
       "sellable_split": {
         "not_assessed": false,
         "sellable_qty": 0.0,
-        "staging_qty": 0.0,
+        "staging_qty": 29.0,
         "elsewhere_qty": 0.0
       }
     },
@@ -12289,12 +12306,17 @@
       "category": "Distribution Transformer",
       "type": "1 Phase Distribution Transformer",
       "description": "1 Phase 30kVA 22kV 480/240V Low Loss SC New Spec 047/2568",
-      "state": "zero_stock",
-      "qty": 0.0,
+      "state": "has_stock",
+      "qty": 17.0,
       "backlog": 103.0,
-      "available": -103.0,
+      "available": -86.0,
       "in_forecast_scope": true,
-      "by_warehouse": [],
+      "by_warehouse": [
+        {
+          "code": "FMTS",
+          "qty": 17.0
+        }
+      ],
       "backlog_rows": [
         {
           "doc_id": "CTR-2026-04353",
@@ -12600,7 +12622,7 @@
       "sellable_split": {
         "not_assessed": false,
         "sellable_qty": 0.0,
-        "staging_qty": 0.0,
+        "staging_qty": 17.0,
         "elsewhere_qty": 0.0
       }
     },
@@ -12610,12 +12632,17 @@
       "category": "Distribution Transformer",
       "type": "3 Phase Distribution Transformer",
       "description": "3 Phase 50kVA 22kV 416/240V Dyn11 Very Low Loss SC New Spec 035/2568",
-      "state": "zero_stock",
-      "qty": 0.0,
+      "state": "has_stock",
+      "qty": 3.0,
       "backlog": 10.0,
-      "available": -10.0,
+      "available": -7.0,
       "in_forecast_scope": true,
-      "by_warehouse": [],
+      "by_warehouse": [
+        {
+          "code": "FMTS",
+          "qty": 3.0
+        }
+      ],
       "backlog_rows": [
         {
           "doc_id": "CTR-2026-05322",
@@ -12671,7 +12698,7 @@
       "sellable_split": {
         "not_assessed": false,
         "sellable_qty": 0.0,
-        "staging_qty": 0.0,
+        "staging_qty": 3.0,
         "elsewhere_qty": 0.0
       }
     },
@@ -12681,12 +12708,17 @@
       "category": "Distribution Transformer",
       "type": "3 Phase Distribution Transformer",
       "description": "3 Phase 100kVA 22kV 416/240V Dyn11 Very Low Loss SC New Spec 035/2568",
-      "state": "zero_stock",
-      "qty": 0.0,
+      "state": "has_stock",
+      "qty": 10.0,
       "backlog": 85.0,
-      "available": -85.0,
+      "available": -75.0,
       "in_forecast_scope": true,
-      "by_warehouse": [],
+      "by_warehouse": [
+        {
+          "code": "FMTS",
+          "qty": 10.0
+        }
+      ],
       "backlog_rows": [
         {
           "doc_id": "CTR-2026-04863",
@@ -13232,7 +13264,7 @@
       "sellable_split": {
         "not_assessed": false,
         "sellable_qty": 0.0,
-        "staging_qty": 0.0,
+        "staging_qty": 10.0,
         "elsewhere_qty": 0.0
       }
     },
@@ -13242,12 +13274,17 @@
       "category": "Distribution Transformer",
       "type": "3 Phase Distribution Transformer",
       "description": "3 Phase 160kVA 22kV 416/240V Dyn11 Very Low Loss SC New Spec 035/2568",
-      "state": "zero_stock",
-      "qty": 0.0,
+      "state": "has_stock",
+      "qty": 3.0,
       "backlog": 20.0,
-      "available": -20.0,
+      "available": -17.0,
       "in_forecast_scope": true,
-      "by_warehouse": [],
+      "by_warehouse": [
+        {
+          "code": "FMTS",
+          "qty": 3.0
+        }
+      ],
       "backlog_rows": [
         {
           "doc_id": "CTR-2026-05129",
@@ -13453,7 +13490,7 @@
       "sellable_split": {
         "not_assessed": false,
         "sellable_qty": 0.0,
-        "staging_qty": 0.0,
+        "staging_qty": 3.0,
         "elsewhere_qty": 0.0
       }
     },
@@ -13584,12 +13621,21 @@
       "category": "Distribution Transformer",
       "type": "3 Phase Distribution Transformer",
       "description": "3 Phase 100kVA 33kV 416/240V Dyn11 Very Low Loss SC New Spec 035/2568",
-      "state": "zero_stock",
-      "qty": 0.0,
+      "state": "has_stock",
+      "qty": 3.0,
       "backlog": 32.0,
-      "available": -32.0,
+      "available": -29.0,
       "in_forecast_scope": true,
-      "by_warehouse": [],
+      "by_warehouse": [
+        {
+          "code": "FG23",
+          "qty": 1.0
+        },
+        {
+          "code": "FMTS",
+          "qty": 2.0
+        }
+      ],
       "backlog_rows": [
         {
           "doc_id": "CTR-2026-04637",
@@ -13774,8 +13820,8 @@
       ],
       "sellable_split": {
         "not_assessed": false,
-        "sellable_qty": 0.0,
-        "staging_qty": 0.0,
+        "sellable_qty": 1.0,
+        "staging_qty": 2.0,
         "elsewhere_qty": 0.0
       }
     },
@@ -13785,12 +13831,17 @@
       "category": "Distribution Transformer",
       "type": "3 Phase Distribution Transformer",
       "description": "3 Phase 160kVA 33kV 416/240V Dyn11 Very Low Loss SC New Spec 035/2568",
-      "state": "zero_stock",
-      "qty": 0.0,
+      "state": "has_stock",
+      "qty": 1.0,
       "backlog": 17.0,
-      "available": -17.0,
+      "available": -16.0,
       "in_forecast_scope": true,
-      "by_warehouse": [],
+      "by_warehouse": [
+        {
+          "code": "FMTS",
+          "qty": 1.0
+        }
+      ],
       "backlog_rows": [
         {
           "doc_id": "CTR-2026-05349",
@@ -13956,7 +14007,7 @@
       "sellable_split": {
         "not_assessed": false,
         "sellable_qty": 0.0,
-        "staging_qty": 0.0,
+        "staging_qty": 1.0,
         "elsewhere_qty": 0.0
       }
     },
@@ -13966,12 +14017,17 @@
       "category": "Distribution Transformer",
       "type": "3 Phase Distribution Transformer",
       "description": "3 Phase 250kVA 33kV 416/240V Dyn11 Very Low Loss SC New Spec 035/2568",
-      "state": "zero_stock",
-      "qty": 0.0,
+      "state": "has_stock",
+      "qty": 1.0,
       "backlog": 9.0,
-      "available": -9.0,
+      "available": -8.0,
       "in_forecast_scope": true,
-      "by_warehouse": [],
+      "by_warehouse": [
+        {
+          "code": "FMTS",
+          "qty": 1.0
+        }
+      ],
       "backlog_rows": [
         {
           "doc_id": "CTR-2026-04638",
@@ -14057,7 +14113,7 @@
       "sellable_split": {
         "not_assessed": false,
         "sellable_qty": 0.0,
-        "staging_qty": 0.0,
+        "staging_qty": 1.0,
         "elsewhere_qty": 0.0
       }
     },
@@ -14389,17 +14445,12 @@
       "category": "Instrument Transformer (Dry Type)",
       "type": "Current Transformer Type LDB",
       "description": "LDB-35 : 200/5A, 5VA, Cl.0.5",
-      "state": "has_stock",
-      "qty": 3.0,
+      "state": "zero_stock",
+      "qty": 0.0,
       "backlog": 350.0,
-      "available": -347.0,
+      "available": -350.0,
       "in_forecast_scope": true,
-      "by_warehouse": [
-        {
-          "code": "WH24",
-          "qty": 3.0
-        }
-      ],
+      "by_warehouse": [],
       "backlog_rows": [
         {
           "doc_id": "CTR-2026-01382",
@@ -14424,7 +14475,7 @@
       ],
       "sellable_split": {
         "not_assessed": false,
-        "sellable_qty": 3.0,
+        "sellable_qty": 0.0,
         "staging_qty": 0.0,
         "elsewhere_qty": 0.0
       }
@@ -15573,17 +15624,12 @@
       "category": "Instrument Transformer (Dry Type)",
       "type": "Current Transformer Type CExL",
       "description": "CExL-24 : 300/5A, 30VA, Cl.0.5Fs10",
-      "state": "has_stock",
-      "qty": 12.0,
+      "state": "zero_stock",
+      "qty": 0.0,
       "backlog": 12.0,
-      "available": 0.0,
+      "available": -12.0,
       "in_forecast_scope": true,
-      "by_warehouse": [
-        {
-          "code": "FMTS",
-          "qty": 12.0
-        }
-      ],
+      "by_warehouse": [],
       "backlog_rows": [
         {
           "doc_id": "CTR-2026-02766",
@@ -15599,7 +15645,7 @@
       "sellable_split": {
         "not_assessed": false,
         "sellable_qty": 0.0,
-        "staging_qty": 12.0,
+        "staging_qty": 0.0,
         "elsewhere_qty": 0.0
       }
     },
@@ -15609,17 +15655,12 @@
       "category": "Instrument Transformer (Dry Type)",
       "type": "Current Transformer Type CExL",
       "description": "CExL-24 : 400/5A, 30VA, Cl.0.5Fs10",
-      "state": "has_stock",
-      "qty": 12.0,
+      "state": "zero_stock",
+      "qty": 0.0,
       "backlog": 12.0,
-      "available": 0.0,
+      "available": -12.0,
       "in_forecast_scope": true,
-      "by_warehouse": [
-        {
-          "code": "FMTS",
-          "qty": 12.0
-        }
-      ],
+      "by_warehouse": [],
       "backlog_rows": [
         {
           "doc_id": "CTR-2026-02766",
@@ -15635,7 +15676,7 @@
       "sellable_split": {
         "not_assessed": false,
         "sellable_qty": 0.0,
-        "staging_qty": 12.0,
+        "staging_qty": 0.0,
         "elsewhere_qty": 0.0
       }
     },
@@ -15886,14 +15927,22 @@
       "type": "Voltage Transformer Type VOL",
       "description": "VOL-24 : 22000/110V, 50VA, Cl.0.5 (Private)",
       "state": "has_stock",
-      "qty": 30.0,
+      "qty": 88.0,
       "backlog": 129.0,
-      "available": -99.0,
+      "available": -41.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
           "code": "FG01",
           "qty": 4.0
+        },
+        {
+          "code": "FG27",
+          "qty": 56.0
+        },
+        {
+          "code": "FMTO",
+          "qty": 2.0
         },
         {
           "code": "FMTS",
@@ -15968,8 +16017,8 @@
       ],
       "sellable_split": {
         "not_assessed": false,
-        "sellable_qty": 6.0,
-        "staging_qty": 24.0,
+        "sellable_qty": 62.0,
+        "staging_qty": 26.0,
         "elsewhere_qty": 0.0
       }
     },
@@ -16025,24 +16074,20 @@
       "type": "Voltage Transformer Type VOL",
       "description": "VOL-24 : 22000/110V, 500VA, Cl.3 For LBS Op.4",
       "state": "has_stock",
-      "qty": 8.0,
+      "qty": 7.0,
       "backlog": 0.0,
-      "available": 8.0,
+      "available": 7.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
           "code": "FG22",
           "qty": 7.0
-        },
-        {
-          "code": "WH22",
-          "qty": 1.0
         }
       ],
       "backlog_rows": [],
       "sellable_split": {
         "not_assessed": false,
-        "sellable_qty": 8.0,
+        "sellable_qty": 7.0,
         "staging_qty": 0.0,
         "elsewhere_qty": 0.0
       }
@@ -16281,9 +16326,9 @@
       "type": "Voltage Transformer Type VOG",
       "description": "VOG-242 : 22000/√3:110/√3&110/√3V 50VA, Cl.0.5&3P (yn0&yn0)",
       "state": "has_stock",
-      "qty": 17.0,
+      "qty": 16.0,
       "backlog": 33.0,
-      "available": -16.0,
+      "available": -17.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
@@ -16296,15 +16341,15 @@
         },
         {
           "code": "FG27",
-          "qty": 9.0
+          "qty": 6.0
         },
         {
           "code": "FMTO",
-          "qty": 2.0
+          "qty": 3.0
         },
         {
           "code": "FMTS",
-          "qty": 2.0
+          "qty": 3.0
         },
         {
           "code": "WH24",
@@ -16625,8 +16670,8 @@
       ],
       "sellable_split": {
         "not_assessed": false,
-        "sellable_qty": 12.0,
-        "staging_qty": 4.0,
+        "sellable_qty": 9.0,
+        "staging_qty": 6.0,
         "elsewhere_qty": 1.0
       }
     },
@@ -17047,14 +17092,18 @@
       "type": "Current Transformer Type COL",
       "description": "COL-24 : 20/5A, 30VA, Cl.0.5",
       "state": "has_stock",
-      "qty": 8.0,
+      "qty": 18.0,
       "backlog": 26.0,
-      "available": -18.0,
+      "available": -8.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
           "code": "FG27",
-          "qty": 4.0
+          "qty": 12.0
+        },
+        {
+          "code": "FMTO",
+          "qty": 2.0
         },
         {
           "code": "FMTS",
@@ -17085,8 +17134,8 @@
       ],
       "sellable_split": {
         "not_assessed": false,
-        "sellable_qty": 4.0,
-        "staging_qty": 4.0,
+        "sellable_qty": 12.0,
+        "staging_qty": 6.0,
         "elsewhere_qty": 0.0
       }
     },
@@ -17571,18 +17620,14 @@
       "type": "Current Transformer Type COL",
       "description": "COL-24 : 150/5A, 30VA, Cl.0.5",
       "state": "has_stock",
-      "qty": 19.0,
+      "qty": 16.0,
       "backlog": 11.0,
-      "available": 8.0,
+      "available": 5.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
-          "code": "FG23",
-          "qty": 15.0
-        },
-        {
           "code": "FG27",
-          "qty": 4.0
+          "qty": 16.0
         }
       ],
       "backlog_rows": [
@@ -17629,9 +17674,9 @@
       ],
       "sellable_split": {
         "not_assessed": false,
-        "sellable_qty": 4.0,
+        "sellable_qty": 16.0,
         "staging_qty": 0.0,
-        "elsewhere_qty": 15.0
+        "elsewhere_qty": 0.0
       }
     },
     {
@@ -17803,7 +17848,11 @@
       "by_warehouse": [
         {
           "code": "FG27",
-          "qty": 11.0
+          "qty": 8.0
+        },
+        {
+          "code": "FMTS",
+          "qty": 3.0
         }
       ],
       "backlog_rows": [
@@ -17820,8 +17869,8 @@
       ],
       "sellable_split": {
         "not_assessed": false,
-        "sellable_qty": 11.0,
-        "staging_qty": 0.0,
+        "sellable_qty": 8.0,
+        "staging_qty": 3.0,
         "elsewhere_qty": 0.0
       }
     },
@@ -18087,14 +18136,14 @@
       "type": "Current Transformer Type COL",
       "description": "COL-24 : 200:5/5A, 30VA, Cl.0.5&5P20 (2 Core)",
       "state": "has_stock",
-      "qty": 6.0,
+      "qty": 3.0,
       "backlog": 6.0,
-      "available": 0.0,
+      "available": -3.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
-          "code": "FG27",
-          "qty": 6.0
+          "code": "FMTO",
+          "qty": 3.0
         }
       ],
       "backlog_rows": [
@@ -18121,8 +18170,8 @@
       ],
       "sellable_split": {
         "not_assessed": false,
-        "sellable_qty": 6.0,
-        "staging_qty": 0.0,
+        "sellable_qty": 0.0,
+        "staging_qty": 3.0,
         "elsewhere_qty": 0.0
       }
     },
@@ -18913,14 +18962,14 @@
       "type": "SLOC/D",
       "description": "22 kV DS 630A type: SLOC/D 27-630 (PEA) 1040050001",
       "state": "has_stock",
-      "qty": 1.0,
+      "qty": 16.0,
       "backlog": 48.0,
-      "available": -47.0,
+      "available": -32.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
           "code": "FG01",
-          "qty": 1.0
+          "qty": 16.0
         }
       ],
       "backlog_rows": [
@@ -19071,14 +19120,14 @@
       "type": "SLOC/D",
       "description": "38 kV DS 630A type: SLOC/D 38-630 (Substation)",
       "state": "has_stock",
-      "qty": 24.0,
+      "qty": 14.0,
       "backlog": 16.0,
-      "available": 8.0,
+      "available": -2.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
           "code": "FG01",
-          "qty": 24.0
+          "qty": 14.0
         }
       ],
       "backlog_rows": [
