@@ -130,6 +130,12 @@ def test_an_override_for_an_item_that_is_not_in_the_conflict_class_is_refused(ra
         bd.apply_class_decisions(raw_items, {"class_overrides": {"PEM101": {"stock_policy": ["NO-SUCH-CODE"]}}})
 
 
+_STOCK_COVERAGE = os.path.relpath(bd.STOCK_COVERAGE_PATH, PROJECT_ROOT).replace(os.sep, "/")
+needs_stock_coverage = pytest.mark.xfail(condition=not _tracked(bd.STOCK_COVERAGE_PATH), run=True, strict=False,
+                                         reason="the page builder reads the untracked " + _STOCK_COVERAGE + " (disabled-division reasons), so this cannot pass from the repository alone")
+
+
+@needs_stock_coverage
 def test_the_calibrated_target_note_states_the_fitted_count_from_the_ensemble_output():
     """Week 1: the section is fitted on the 92 stock_policy items (the Max-Min v1 ensemble), so the note states that count, from the
     ensemble output, and no longer says it was not refitted; it would say so again if the stock_policy set grew past the fitted set."""
