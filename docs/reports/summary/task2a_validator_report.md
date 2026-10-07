@@ -132,7 +132,7 @@ year (matches the grouping `delivery_performance.py` already uses for its own by
 | 2025 | 10,190 | 10,194 | 98.888626 | 98.888650 | **DISCREPANCY (small)** — +4 rows, +28 qty |
 | 2026 | 7,403 | 8,336 | 98.254706 | 98.291130 | **DISCREPANCY (larger)** — +933 rows, +124,385 qty |
 
-Full detail: `output/summary/task2a_validator_not_late_comparison.csv`.
+Full detail: `docs/reports/summary/task2a_validator_not_late_comparison.csv`.
 
 **Interpretation, stated as inference not fact**: 2023 and 2024 match to full displayed precision,
 which proves the filters, dedup/assessability rule, and weighting are reproduced identically. The
@@ -194,7 +194,7 @@ mtime 2026-09-08 13:15, **MATCH**). **Verdict: MATCH** on every row checked. **C
 (direct filesystem mtime check + direct CSV column read, this session).
 
 ### `forecast/inventory.html`
-`model_calibrated_at` = "2026-09-23" / "2026-07" — matches `output/summary/phaseJ3_report.md`'s
+`model_calibrated_at` = "2026-09-23" / "2026-07" — matches `docs/reports/summary/phaseJ3_report.md`'s
 own header date and stated `ForecastDelDate` bound as cited on the page (read directly). PEM101's
 `snapshot_pull_date` = "2026-09-25 11:51:56" — same value as, and independently verified against,
 the sales report's own `processed_full_category_sales_monthly_forecastDate.csv` check above —

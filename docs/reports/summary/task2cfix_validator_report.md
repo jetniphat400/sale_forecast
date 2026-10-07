@@ -73,11 +73,11 @@ Figures for the two requested divisions (my fresh re-run; identical to what was 
 (Note: the "per-division summary" MAE for CI101/PEM107 above is the Type-level rolling-origin
 Combination-forecast MAE reported by `backtest_all_divisions.py`; Direct/Naive/Top-down rows are
 `transferability_all_divisions.py`'s separate item-level comparison — both scripts' full output is
-in `output/summary/task2cfix_validator_backtest_rerun_diff_qty.csv`, all 5 divisions.)
+in `docs/reports/summary/task2cfix_validator_backtest_rerun_diff_qty.csv`, all 5 divisions.)
 
 **Verdict: MATCH. Confidence: V1, high** — this is a direct, independent re-execution of the
 refactored code path (not a re-read of the same file), producing byte-identical output to what
-was already on disk. Evidence: `output/summary/task2cfix_validator_backtest_rerun_diff_qty.csv`
+was already on disk. Evidence: `docs/reports/summary/task2cfix_validator_backtest_rerun_diff_qty.csv`
 (this task), `output/summary/phaseC_step2_per_division_summary_qty.csv`,
 `output/summary/phaseC_step2_transferability_per_division.csv`.
 

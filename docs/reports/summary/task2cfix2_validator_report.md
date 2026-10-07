@@ -72,8 +72,8 @@ change-magnitude gate is the **percentage change against each run's own immediat
 run**, which is what step 10 actually reports -- and that figure (0.0% for every division, both my
 run and the implementer's own system32 run) matches exactly.
 
-CSV backing this section: `output/summary/task2cfix2_validator_check1_gate_results.csv`,
-`output/summary/task2cfix2_validator_check1_key_figures.csv`.
+CSV backing this section: `docs/reports/summary/task2cfix2_validator_check1_gate_results.csv`,
+`docs/reports/summary/task2cfix2_validator_check1_key_figures.csv`.
 
 **Confidence: V1** (my own independent execution and direct read of both run logs' raw JSON).
 
@@ -182,7 +182,7 @@ the freshness table still shows 16:35 throughout, i.e. the files' pull time, not
 time -- consistent with reading a recorded column rather than any live clock or file-write
 timestamp at render time.
 
-CSV backing this section: `output/summary/task2cfix2_validator_check3_freshness_comparison.csv`.
+CSV backing this section: `docs/reports/summary/task2cfix2_validator_check3_freshness_comparison.csv`.
 
 **Flag, as instructed either way:** this check wrote its own fresh render to a temp path
 (`D:\_task2cfix2_validator_tmp\sales_report_validator_check.html`, deleted after inspection) --

@@ -1,7 +1,7 @@
 """Phase E0, Validator 3 (E0.3), part 2: per-item reason category + predecessor/analogue check
 for all 82 placeholder items. See phaseE0_placeholder_coherence_validator3.py for part 1
 (Type-total additive vs. carve-out arithmetic) and
-output/summary/phaseE0_validator3_placeholder_coherence_report.md for the full write-up.
+docs/reports/summary/phaseE0_validator3_placeholder_coherence_report.md for the full write-up.
 
 `reason_category` is copied VERBATIM from the existing, already-done characterisation
 (output/summary/phaseC_89items_characterization.csv `trace_pattern` column,

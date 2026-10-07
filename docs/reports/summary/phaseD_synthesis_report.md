@@ -5,9 +5,9 @@ Explorers; gathers no new data, runs no new queries. Per AGENTS.md Rule 9, where
 disagree both positions are reported with their evidence and the decision is left to a human.
 
 **Inputs merged** (read in full):
-- `output/summary/phaseD_check1_report.md` + CSVs (prefix `phaseD_check1_`) — sellable-stock stages.
-- `output/summary/phaseD_check2_report.md` + CSVs (prefix `phaseD_check2_`) — value tied up in stock.
-- `output/summary/phaseD_check3_report.md` + CSVs (prefix `phaseD_check3_`) — CI101/PEM101 stock location.
+- `docs/reports/summary/phaseD_check1_report.md` + CSVs (prefix `phaseD_check1_`) — sellable-stock stages.
+- `docs/reports/summary/phaseD_check2_report.md` + CSVs (prefix `phaseD_check2_`) — value tied up in stock.
+- `docs/reports/summary/phaseD_check3_report.md` + CSVs (prefix `phaseD_check3_`) — CI101/PEM101 stock location.
 - `STATUS.md` §2 (2026-09-02 warehouse-flow investigation; Phase C closure), §4 (Locked Decisions),
   §8 (2026-09-04 business resolutions, especially §8.4 "To be derived from `Cube_Inventory_Exact`").
 
@@ -312,5 +312,5 @@ not filled in by this synthesis, per the Synthesizer's "does not gather new data
 
 ## Deliverables
 
-This report: `output/summary/phaseD_synthesis_report.md`. No CSVs produced (this role does not
+This report: `docs/reports/summary/phaseD_synthesis_report.md`. No CSVs produced (this role does not
 gather new data). No code, config, or pipeline files modified.

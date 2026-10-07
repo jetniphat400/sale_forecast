@@ -208,7 +208,7 @@ def build_page_inputs(cfg: dict = None) -> dict:
            "lead_time_days": {"min": summary["lead_min"], "max": summary["lead_max"], "median": summary["lead_median"]},
            "presets": presets, "not_late_range_pct": [round(min(nl), 3), round(max(nl), 3)],
            "calibrated_on": summary["calibrated_on"], "last_month_of_data": summary["validation_end"][:7],
-           "source_report": "output/summary/week1_leadtime_calibration.md"}
+           "source_report": "docs/reports/summary/week1_leadtime_calibration.md"}
 
     today = obs["not_late_pct"]
     lo_pct, hi_pct = out["not_late_range_pct"]
@@ -356,6 +356,71 @@ def write_assumptions(path: str = None, cfg: dict = None, today: str = None) -> 
     return path
 
 
+# ------------------------------------------------------------------ Min and Max on the stock share of mixed items (week 4, computed only)
+def mixed_item_min_max(page_data: dict, item_level: pd.DataFrame, members: pd.DataFrame, first_month: str) -> dict:
+    """Min and Max for the mixed items, on the share of their demand sold from stock: each month's forecast times the item's MTS share of ordered quantity over the
+    last 12 months (item-level file column mts_share_12m). Nothing in the operation plan, the material plan or any page reads the result.
+
+    * a PEM101 item: the page's calibrated ensemble at the setting the page applies on load (preset today_lowest_stock, reorder level r in months): Min = r x M,
+      Max = the median over the control run's distinct members of (r + gap) x M, gap = order-up-to minus reorder level in months, M = mean monthly stock demand over the
+      forecast horizon (the page's own items use their history's mean daily demand x 30.44; for a mixed item the stock share of the forecast is used, as asked);
+    * any other division: the uncalibrated scenario defaults the page uses for PEM107 stock items (`tier_a_defaults`), the Python mirror of the page's engine, on the
+      stock-share forecast and the history scaled by the same share.
+    Returns {"meta": ..., "items": [{division, item, method, share, months, forecast, stock_demand, min, max, ...}]}."""
+    import inventory_recompute_reference as ref
+    mixed = item_level[item_level["mixed_applied"].astype(bool)].sort_values(["division", "code"])
+    controls, dpm = page_data["tier_a_defaults"], float(page_data["days_per_month"])
+    gaps = (members["s_months"] - members["r_months"]).to_numpy()
+    out = []
+    for _, row in mixed.iterrows():
+        div, code, share = row["division"], row["code"], float(row["mts_share_12m"])
+        hit = [i for i in page_data["divisions"][div]["items"] if i["code"] == code]
+        if not hit:
+            raise MaxMinV1Error(f"{code} of {div} is not on the inventory page, so it has no forecast and history to take the stock share of")
+        it = hit[0]
+        forecast = [float(x) for x in it["forecast"]]
+        stock_demand = [x * share for x in forecast]
+        months = [str(pd.Period(first_month, freq="M") + k) for k in range(len(forecast))]
+        rec = {"division": div, "item": code, "share": share, "months": months, "forecast": forecast, "stock_demand": stock_demand}
+        ct = page_data["divisions"][div].get("curve_target")
+        if ct:
+            r = float(ct["presets"]["today_lowest_stock"]["r"])
+            level = float(np.mean(stock_demand))
+            rec.update({"method": "calibrated_section_default", "r_months": r, "n_members": int(len(gaps)), "level_monthly_stock_demand": level,
+                        "min": r * level, "max": float(np.median((r + gaps) * level))})
+        else:
+            scaled = dict(it, forecast=stock_demand, actual_history=[float(x) * share for x in it["actual_history"]])
+            res = ref.compute_item_min_max(scaled, controls, dpm)
+            rec.update({"method": "scenario_default_uncalibrated", "min": res["min"], "max": res["max"], "ltd": res["ltd"], "safety_stock": res["safety_stock"],
+                        "unreliable": bool(res["unreliable"])})
+        out.append(rec)
+    return {"meta": {"basis": "forecast x MTS share of ordered quantity over the last 12 months", "first_month": first_month, "controls": controls,
+                     "days_per_month": dpm, "n_items": len(out), "calibrated_preset": "today_lowest_stock"}, "items": out}
+
+
+def _hash_payload(payload: dict) -> str:
+    body = json.dumps({"meta": payload["meta"], "items": payload["items"]}, sort_keys=True, ensure_ascii=False, separators=(",", ":"), allow_nan=False)
+    return hashlib.sha256(body.encode("utf-8")).hexdigest()
+
+
+def write_mixed_item_min_max(path: str, payload: dict) -> str:
+    """Writes the recorded output: one JSON file that carries the SHA-256 of its own meta and items (checked by `read_mixed_item_min_max`)."""
+    rec = dict(payload, recorded_at=datetime.now().isoformat(timespec="seconds"), sha256=_hash_payload(payload))
+    os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
+    with open(path, "w", encoding="utf-8", newline="\n") as f:
+        json.dump(rec, f, ensure_ascii=False, indent=1, allow_nan=False)
+        f.write("\n")
+    return path
+
+
+def read_mixed_item_min_max(path: str) -> dict:
+    with open(path, encoding="utf-8") as f:
+        rec = json.load(f)
+    if rec.get("sha256") != _hash_payload(rec):
+        raise MaxMinV1Error(f"{path} does not hash to the value it records")
+    return rec
+
+
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
     cmd = sys.argv[1] if len(sys.argv) > 1 else ""
@@ -365,5 +430,14 @@ if __name__ == "__main__":
         print(write_assumptions())
     elif cmd == "summary":
         print(json.dumps(ensemble_summary(), indent=1))
+    elif cmd == "mixed-item-min-max":
+        import operation_plan as _op
+        _cfg = load_full_config()
+        _mc, _oc = _cfg["maxmin_v1"], _cfg["operation_plan"]
+        verify_ensemble_files(_mc)
+        _om = _op.read_outputs(PROJECT_ROOT, _oc)[2]
+        _res = mixed_item_min_max(_op.read_page_data(path_of(_oc["inventory_page_file"])), pd.read_csv(path_of(_oc["item_class_file"])),
+                                  pd.read_csv(path_of(_mc["ensemble_members_file"])), _om["months"][0])
+        print(write_mixed_item_min_max(path_of(_mc["mixed_item_min_max_file"]), _res))
     else:
-        raise SystemExit("usage: python src/maxmin_v1.py build-inputs | assumptions | summary")
+        raise SystemExit("usage: python src/maxmin_v1.py build-inputs | assumptions | summary | mixed-item-min-max")

@@ -9,15 +9,15 @@ determined** — per this task's ground rules, a Validator's "hypothesis" is nev
 fact here, and where the Validators presented two sides (E0.3), both are restated, not resolved.
 
 **Sources merged**:
-1. `output/summary/phaseE0_validator1_leakage_report.md` (E0.1 — point-in-time leakage), plus
+1. `docs/reports/summary/phaseE0_validator1_leakage_report.md` (E0.1 — point-in-time leakage), plus
    `phaseE0_q1_share_comparison.csv`, `phaseE0_q2_revision_risk_per_origin.csv`,
    `phaseE0_q2_revision_risk_focus_items.csv`, `phaseE0_q2_test_window_knowability.csv`.
-2. `output/summary/phaseE0_validator2_cancellations_report.md` (E0.2 — cancellations). **This
+2. `docs/reports/summary/phaseE0_validator2_cancellations_report.md` (E0.2 — cancellations). **This
    Validator was BLOCKED** — SQL Server login `jetniphat.boo`'s password had expired
    (`pyodbc.InterfaceError` / SQL error 18487, reproduced on two separate query attempts). All four
    of its sub-questions are "cannot be determined." This is treated below as a genuine, open gap,
    not interpreted around.
-3. `output/summary/phaseE0_validator3_placeholder_coherence_report.md` (E0.3 — placeholder
+3. `docs/reports/summary/phaseE0_validator3_placeholder_coherence_report.md` (E0.3 — placeholder
    coherence with Type totals), plus `phaseE0_validator3_placeholder_type_totals.csv`,
    `phaseE0_validator3_82item_reasons.csv`.
 

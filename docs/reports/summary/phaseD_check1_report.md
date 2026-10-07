@@ -241,4 +241,4 @@ essentially identical to the whole-scope figure since forecast items dominate to
   `07_warehouse_sellability_determination.csv`, `08_per_item_sellability_summary.csv`,
   `09_per_type_sellability_summary.csv`, `10_per_division_sellability_summary.csv`,
   `11_overall_summary.csv`
-- This report: `output/summary/phaseD_check1_report.md`
+- This report: `docs/reports/summary/phaseD_check1_report.md`

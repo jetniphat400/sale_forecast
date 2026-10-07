@@ -406,7 +406,7 @@ def gather_primary_results() -> pd.DataFrame:
     src/transferability_all_divisions.py (item-level rolling-origin scoring at every one of the
     project's standard 7 origins), aggregated into
     output/summary/phaseC_step2_transferability_per_division.csv, documented in
-    output/summary/phaseC_step2_report.md Part 3 (confirmed this task by reading both the
+    docs/reports/summary/phaseC_step2_report.md Part 3 (confirmed this task by reading both the
     generator script and that report)."""
     df = load_csv("phaseC_step2_transferability_per_division.csv", "Results §6 PRIMARY table (Top-down)")
     for col in ["division", "approach", "MAE", "RMSE", "Bias", "MASE", "n_scored",
@@ -729,7 +729,7 @@ def render_page(config: dict) -> str:
         <span class="hint">(มีผลกับกราฟ Rolling-origin เท่านั้น · ไม่มีผลกับตารางหลักและตารางรอง)</span>
       </div>
       <h3>ตารางหลัก — ความแม่นของวิธี Top-down (วิธีที่ใช้จริง) ต่อฝ่าย</h3>
-      <!-- Previous wording, kept off screen: this is the Top-down method the project adopted (STATUS.md Locked Decisions, "Final forecasting method"): forecast at Type level, then allocate to items by trailing sales share, recomputed at every rolling origin (not a one-time fixed allocation), scored at item level across the project's standard 7 origins -- src/transferability_all_divisions.py, summary in output/summary/phaseC_step2_transferability_per_division.csv (method detail in output/summary/phaseC_step2_report.md Part 3). -->
+      <!-- Previous wording, kept off screen: this is the Top-down method the project adopted (STATUS.md Locked Decisions, "Final forecasting method"): forecast at Type level, then allocate to items by trailing sales share, recomputed at every rolling origin (not a one-time fixed allocation), scored at item level across the project's standard 7 origins -- src/transferability_all_divisions.py, summary in output/summary/phaseC_step2_transferability_per_division.csv (method detail in docs/reports/summary/phaseC_step2_report.md Part 3). -->
       <p class="hint">ทายยอดรวมระดับประเภทสินค้าก่อน แล้วแบ่งให้แต่ละรหัสตามสัดส่วนที่เคยขาย ทดสอบย้อนหลัง {n_rounds} รอบ</p>
       {cite('phaseC_step2_transferability_per_division.csv', 'MAE / RMSE / Bias / MASE / n_scored')}
       <!-- filtered to rows where approach == 'Top-down' -->

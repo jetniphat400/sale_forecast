@@ -41,7 +41,7 @@ summing units across different product kinds at Category level remains physicall
 Category-level figures are for overview only, never used for allocation, so this caveat does not
 undermine the adopted method.
 
-Full detail: `output/summary/phaseC_step2_report.md` Parts 2-3;
+Full detail: `docs/reports/summary/phaseC_step2_report.md` Parts 2-3;
 `phaseC_step2_transferability_per_division.csv`, `_verdict.csv`, `_significance.csv`.
 
 ---

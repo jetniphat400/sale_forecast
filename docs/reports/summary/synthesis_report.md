@@ -10,9 +10,9 @@ a confidence level is stated for every conclusion, carried over from the source 
 source task itself stated one (not invented here).
 
 **Sources merged** (read in full before writing this synthesis):
-1. `output/summary/task1_crossdivision_report.md` — Explorer+Analyst — cross-division demand.
-2. `output/summary/task2_noHistoryItems_report.md` — Explorer+Validator — no-history/no-sale items.
-3. `output/summary/task3_forwardTestRebuild_report.md` — Modeler — forward-test log rebuild.
+1. `docs/reports/summary/task1_crossdivision_report.md` — Explorer+Analyst — cross-division demand.
+2. `docs/reports/summary/task2_noHistoryItems_report.md` — Explorer+Validator — no-history/no-sale items.
+3. `docs/reports/summary/task3_forwardTestRebuild_report.md` — Modeler — forward-test log rebuild.
 
 ---
 
@@ -179,7 +179,7 @@ zero-summing rows.
 **Stated plainly, per instruction, correcting the record rather than silently overwriting it**:
 **STATUS.md previously recorded a 31-item excluded population (16 zero-row + 15 rows-but-zero-
 sales). This is now found to be incorrect** — the true, live-reconciled population is **16
-items total**, not 31, per `output/summary/task2_noHistoryItems_report.md` §1 and
+items total**, not 31, per `docs/reports/summary/task2_noHistoryItems_report.md` §1 and
 `output/summary/task2_q1_std_filter_per_item.csv`/`task2_q2_any_activity_per_item.csv`. The
 "15" figure that does independently exist (items with zero rows anywhere, any filter) is a
 **subset of the 16**, not an additional 15 on top of it. This correction is being written into

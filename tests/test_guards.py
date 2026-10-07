@@ -234,3 +234,22 @@ def test_no_customer_name_or_id_from_the_saved_pulls_appears_by_exact_match():
     texts = {f: read(f) for f in scope_files()}
     found = sorted({rel(f) for f, t in texts.items() for n in names if n in t} | {rel(f) for f, t in texts.items() for i in ids if i in t})
     assert not found, "a customer name or ID from the saved pulls appears in: " + ", ".join(found[:20])
+
+
+# ---------------------------------------------------------------------------
+# Nothing under output/ is tracked (decision of 2026-10-07): the publishing clone's output/ is a junction into the main copy's output/, so a tracked
+# file there could be changed or deleted in the main copy by a pull in the clone.
+# ---------------------------------------------------------------------------
+HELD_UNDER_OUTPUT = {"output/summary/check_significance_topdown.md"}      # read by tests/test_significance_topdown.py; held for a decision (STATUS.md, week 4 prompt 3)
+
+
+def test_no_file_under_output_is_tracked_except_the_one_held_for_a_decision():
+    import os
+    import subprocess
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    if not os.path.isdir(os.path.join(root, ".git")):
+        pytest.skip("SKIPPED, not passed: not a git working copy (a temporary copy of the project)")
+    tracked = subprocess.run(["git", "ls-files", "output"], cwd=root, capture_output=True, text=True, encoding="utf-8", check=True).stdout.split()
+    assert set(tracked) <= HELD_UNDER_OUTPUT, sorted(set(tracked) - HELD_UNDER_OUTPUT)[:10]
+    ignore = open(os.path.join(root, ".gitignore"), encoding="utf-8").read().split()
+    assert "output/" in ignore

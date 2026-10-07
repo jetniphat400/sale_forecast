@@ -2,7 +2,7 @@
 
 **Role**: Synthesizer (per `AGENTS.md`). Merges A1 (Explorer+Validator, forecast_date revision),
 A2 (Analyst, 2025 decline), A3 (Validator, date-keying) — no new data gathered, no query run, no
-script written, per role boundary. Source reports: `output/summary/phaseA_a1_forecastdate_revision_findings.md`,
+script written, per role boundary. Source reports: `docs/reports/summary/phaseA_a1_forecastdate_revision_findings.md`,
 `phaseA_a2_2025_decline_findings.md`, `phaseA_a3_date_keying_findings.md`. STATUS.md and
 CONVENTIONS.md read in full before writing this.
 

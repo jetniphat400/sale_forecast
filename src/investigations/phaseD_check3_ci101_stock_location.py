@@ -16,7 +16,7 @@ Explorer role (AGENTS.md): reports what a join/query returns, does not interpret
 meaning beyond the plain practical conclusion the task brief asks for directly.
 
 Investigation script only -- no pipeline code touched, no config changed. Writes CSVs to
-output/summary/, prefixed phaseD_check3_, and a report to output/summary/phaseD_check3_report.md.
+output/summary/, prefixed phaseD_check3_, and a report to docs/reports/summary/phaseD_check3_report.md.
 """
 import logging
 import os
@@ -385,7 +385,7 @@ def main():
 
     print("\n" + "=" * 90)
     print(f"DONE -- {len(items_with_pem101)} of 13 CI101 items have PEM101-tagged sales. "
-          f"See output/summary/phaseD_check3_report.md for the full write-up.")
+          f"See docs/reports/summary/phaseD_check3_report.md for the full write-up.")
     print("=" * 90)
 
 

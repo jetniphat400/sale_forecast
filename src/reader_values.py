@@ -64,7 +64,7 @@ def forecast_date_disagreement_pct() -> float:
     """Share of rows where forecast_date disagrees with PlanDelDate, in percent: rows in
     output/summary/phaseA_a1_task2_plandeldate_disagreement_rows.csv over the full-scope row count
     in phaseA_a1_task2_join_match_summary.csv (n_apd_rows_forecast_date_notnull). Verified by the
-    Phase A forecast_date task (output/summary/phaseA_a1_forecastdate_revision_findings.md,
+    Phase A forecast_date task (docs/reports/summary/phaseA_a1_forecastdate_revision_findings.md,
     STATUS.md Phase A verification)."""
     rows = _read_csv("phaseA_a1_task2_plandeldate_disagreement_rows.csv")
     summ = _read_csv("phaseA_a1_task2_join_match_summary.csv")

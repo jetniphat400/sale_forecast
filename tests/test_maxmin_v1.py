@@ -112,7 +112,7 @@ def test_the_lead_range_and_distinct_members_equal_the_members_file(recorded):
 
 
 def test_the_ensemble_reproduces_the_last_tasks_figures(recorded):
-    """The week 1 calibration report's figures (output/summary/week1_leadtime_calibration.md): recomputed here from the recorded files."""
+    """The week 1 calibration report's figures (docs/reports/summary/week1_leadtime_calibration.md): recomputed here from the recorded files."""
     s = mm.ensemble_summary(CFG)
     assert s["n_members"] == 36 and (s["lead_min"], s["lead_max"]) == (1, 30)
     assert round(s["simulated_today"]["not_late_pct"], 2) == 96.95 and round(s["simulated_today"]["stock_value_thb"] / 1e6, 2) == 14.77
@@ -255,3 +255,48 @@ def test_the_monthly_runner_writes_the_file_and_lists_it_as_generated():
     assert "data/assumptions.json" in mr.GENERATED_PATHS
     src = open(os.path.join(PROJECT_ROOT, "src", "monthly_refresh.py"), encoding="utf-8").read()
     assert "maxmin_v1.write_assumptions" in src.split("def step7_rebuild_pages")[1].split("def step8_run_tests")[0]
+
+
+# ------------------------------------------------------------------ Min and Max on the stock share of mixed items (week 4, computed only)
+def _mixed_fixture():
+    controls = {"procurement_lead_time_days": 60, "assembly_time_days": 3, "review_interval_days": 30, "cycle_service_level": 0.95,
+                "holding_cost_rate_annual": 0.2, "obsolescence_threshold_months": 6}
+    hist = [10.0, 0.0, 30.0, 20.0, 0.0, 40.0, 10.0, 0.0, 30.0, 20.0, 0.0, 40.0]
+    item = lambda code: {"code": code, "policy": "conflict", "forecast": [20.0] * 10, "actual_history": hist}
+    page = {"tier_a_defaults": controls, "days_per_month": 30.44,
+            "divisions": {"PEM101": {"items": [item("A")], "curve_target": {"presets": {"today_lowest_stock": {"r": 0.5}}}},
+                          "PEM107": {"items": [item("B")]}}}
+    levels = pd.DataFrame({"division": ["PEM101", "PEM107", "PEM107"], "code": ["A", "B", "C"], "mixed_applied": [True, True, False], "mts_share_12m": [0.25, 0.5, 0.9]})
+    members = pd.DataFrame({"r_months": [0.2, 0.2, 0.4], "s_months": [0.6, 1.0, 1.0]})          # gaps 0.4, 0.8, 0.6: median 0.6
+    return page, levels, members
+
+
+def test_mixed_item_min_max_uses_the_stock_share_of_the_forecast_and_the_method_of_its_division():
+    page, levels, members = _mixed_fixture()
+    res = mm.mixed_item_min_max(page, levels, members, "2026-10")
+    assert [(i["division"], i["item"]) for i in res["items"]] == [("PEM101", "A"), ("PEM107", "B")]          # item C is not mixed
+    a, b = res["items"]
+    assert a["method"] == "calibrated_section_default" and a["stock_demand"] == [5.0] * 10 and a["months"][0] == "2026-10" and a["months"][9] == "2027-07"
+    assert a["min"] == pytest.approx(0.5 * 5.0) and a["max"] == pytest.approx((0.5 + 0.6) * 5.0)                # r x M and the median member's gap
+    assert b["method"] == "scenario_default_uncalibrated" and b["stock_demand"] == [10.0] * 10
+    import inventory_recompute_reference as ref
+    expect = ref.compute_item_min_max({"forecast": [10.0] * 10, "actual_history": [x * 0.5 for x in page["divisions"]["PEM107"]["items"][0]["actual_history"]]},
+                                      page["tier_a_defaults"], 30.44)
+    assert b["min"] == pytest.approx(expect["min"]) and b["max"] == pytest.approx(expect["max"])
+
+
+def test_the_recorded_mixed_item_file_carries_a_hash_that_a_changed_figure_breaks(tmp_path):
+    page, levels, members = _mixed_fixture()
+    path = mm.write_mixed_item_min_max(str(tmp_path / "x.json"), mm.mixed_item_min_max(page, levels, members, "2026-10"))
+    assert mm.read_mixed_item_min_max(path)["items"][0]["item"] == "A"
+    text = open(path, encoding="utf-8").read().replace('"min": 2.5', '"min": 2.6')
+    open(path, "w", encoding="utf-8").write(text)
+    with pytest.raises(mm.MaxMinV1Error, match="does not hash"):
+        mm.read_mixed_item_min_max(path)
+
+
+def test_an_unknown_mixed_item_stops_the_computation():
+    page, levels, members = _mixed_fixture()
+    page["divisions"]["PEM107"]["items"] = []
+    with pytest.raises(mm.MaxMinV1Error, match="not on the inventory page"):
+        mm.mixed_item_min_max(page, levels, members, "2026-10")

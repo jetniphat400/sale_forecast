@@ -144,6 +144,24 @@ Code: `src/investigations/task2b_part2_fulfilment_segmentation.py` (`run_from_pu
 - Reader text: see SENTENCES NEEDING THAI TEXT of this task (demand column header on the material page, a label for the list of divisions covered, a line for the six PEM101 codes never sold, the approved heading for six divisions) (the user's assistant).
 - Category-level view of the two product categories and the three items' settings (brief item "settings"), storms and the other external factors, utility budgets, sales insight and EGP bids: not done (brief table).
 
+### Week 4, prompt 3 -- nothing tracked under output/, netting rule for items that are also components, Min and Max for mixed items, pilot view data, 2023 history tested, calibration windows -- DONE, 2026-10-07 (one read-only database session, used for the 2023 test: 61 scope items had no Cube_CES rows in any saved pull; 8,716 rows pulled with no date filter)
+
+**Decisions of the user, 2026-10-07:** (D5) tracked files under output/ move to docs/reports/ where they are reports and output/ becomes fully untracked, so the publishing clone can never change a tracked file in the main copy; (D6) an item that is both a finished item in the plan and a component of another plan item has its on-hand stock netted against its component requirement only when the operation plan has not already used that stock, that is only for items without a Min and Max.
+
+**Part 0, nothing tracked under output/.** 108 files were tracked there (107 under output/summary, 1 in its archive folder). Classified from code and git log (a file is a pipeline file when any code or test names it as a path to read or write; a mention in a comment, a docstring or a message is not): **70 reports moved** with `git mv` to `docs/reports/` keeping the path under output/ (51 .md, 18 .csv, 1 .txt; 19 of the csv/txt have no code that reads or writes them), **37 untracked** with `git rm --cached` (all phase25 investigation raw pulls and tables, each written by its own pull or analysis script, several read back by the analysis; they stay on disk), **1 held**: `output/summary/check_significance_topdown.md` is read from the repository by tests/test_significance_topdown.py and no code produces it. Every path of a moved file in documentation, config, source comments and the generated pages was updated (38 files). `.gitignore` holds `output/`. A guard test (tests/test_guards.py) fails if any file under output/ is tracked other than the held one. The Validator confirmed the split file by file (no disagreement among the 108) and found the brace shorthand `output/summary/phase25_explorer{1,2,4}_report.md` in DATA_MAP.md and PROJECT_GRAPH.md, fixed. **Safety of the clone:** a commit that removes tracked files, pulled in the clone whose `output/` is a junction, deletes those files in the main copy's `output/` (tested on a scratch pair of repositories: both the moved and the untracked files were deleted through the junction, with or without skip-worktree). So the clone takes this one commit with its junction removed first (rmdir of the link only), then the junction is made again; after that the clone's index holds one tracked file under output/ (the held one) and a pull does not touch the main copy's output/ unless that file changes upstream. Never run git sparse-checkout or git clean in the clone.
+
+**Part 1, netting for items that are both sold and components.** `explode` takes `plan_used_stock`, the items with a Min and Max (planned production in the counted rows, `items_with_min_max`), and does not net their component requirement; every other node is netted as before. 11 counted plan items are a BOM component (VT-F-99-010202, VT-F-99-010205, VT-F-99-010701, VT-F-99-010722, VT-F-99-010820, RS-F-99-090028, TF-F-99-10044211Q1, TF-F-99-15044211Q1, TF-F-99-15074211Q1, HS-F-99-0303, VT-F-99-010306); 9 carry a requirement and **none of the 11 has a Min and Max, so every one is netted as before and no figure changed** (materials changed 0; four of the nine have stock: 5, 1, 24 and 30 units). Counts on 2026-10-07, before and after: within 30 days **150 to 150**, short already **598 to 598**. The Validator reproduced the recorded gross requirement of all 2,244 materials only when sub-assembly stock is netted too (541 materials differ if only the plan items are netted); the half of the rule that says "not netted with a Min and Max" cannot be tested on this data because no such item exists. Page rebuilt through its builder (plan day 2026-10-07).
+
+**Part 2, Min and Max for the 13 mixed items, computed only** (`mixed_item_min_max` in src/maxmin_v1.py; recorded in `output/summary/mixed_item_min_max_v1.json`, which carries its own SHA-256; nothing in the plan or a page reads it). Stock demand = each month's forecast (10 months) x the item's MTS share of ordered quantity over the last 12 months. PEM101 (HS-F-99-0091, share 0.231): calibrated ensemble at the page's default (r = 0.7751 months of demand; 36 distinct members): **Min 0.31, Max 0.70**. The 12 others use the uncalibrated scenario defaults (60 + 3 + 30 days, 95 percent), on the stock-share forecast and the history scaled by the same share: PEM103 TF-F-99-0703811G1 (0.954) Min 248.9 Max 285.6; TF-F-99-0704811G1 (0.687) 68.8 / 90.9; TF-F-99-10044211Q1 (share 0, flagged unreliable) 0 / 0; PEM107 RS-F-99-070004 (0.844) 701.0 / 732.0; VT-F-99-010203 (0.469) 259.4 / 283.9; VT-F-99-010721 (0.995) 174.9 / 212.4; CT-F-99-020501 (0.125) 32.5 / 37.8; -020502 (0.671) 103.9 / 118.9; -020505 (0.920) 95.1 / 114.6; -020507 (0.791) 61.7 / 75.4; -020508 (0.959) 101.9 / 117.6; -020510 (0.983) 118.4 / 130.2. MTS share range 0.000 to 0.995. The Validator recomputed all 13 independently and matched (differences 0). The Min of the scenario items is large against one month of stock demand (for example RS-F-99-070004: Min 701 against a monthly stock demand of 31) because the 95th percentile of the scaled history's rolling windows carries the history's peaks; the page's method does the same for its stock items. The PEM101 Max is the median over all 36 members of (r + gap) x M; read as the median over distinct gap values (7) it would be 0.897.
+
+**Part 3, data for the view of the two pilot categories and three items, computed only** (`write_pilot_view` in src/focus_item_model_selection.py, `--pilot-view`; recorded in `output/summary/pilot_view_data_v1.json` with its own SHA-256; no page built). The price list has no Product Type named "Drop-out Fuse Cutout": the project maps the pilot categories to "High Voltage Distribution Fuse Cutout" (10 items) and "Medium Voltage Surge Arrester" (58 on the list, 48 in the forecast scope; DATA_MAP #42). Method: the locked Top-down combination, 7 origins, test months 2025-03 to 2026-08 (reproduces focus_items_rolling_origin_all.csv, the phase C step 2 files and forward_test_scores.csv to 1e-12). Backtest, the category series' own forecast: **Fuse Cutout MAE 826.35, bias -608.40, MASE 1.541; Surge Arrester MAE 704.73, bias -650.51, MASE 2.237**; mean over the items: Fuse Cutout 123.75 / -60.84 / 1.814 (10 items), Surge Arrester 31.68 / -13.55 / 1.499 (48 items, 46 with a MASE). Items: **EEE-F-FC-1040010002 MAE 760.91, bias -210.92, MASE 1.680; HS-F-99-02110 209.28, -170.38, 3.283; HS-F-99-0213 147.52, -91.23, 1.917.** Forward test: one scored month only (vintage 1, horizon 1, target 2026-08; forecasts 1,614.7, 186.4 and 167.7 against actuals 6,968, 2,865 and 1,447). The category MASE of the series' own and the mean of items differ in scale and are not interchangeable. The alternative reading of "Surge Arrester" (the price list's Product Category, 60 items, 50 in scope) is in the file as well.
+
+**Part 4, three years of history, tested; nothing applied.** Saved data held Cube_CES for 274 of the 335 scope items; one read-only pull for the other 61 (no date filter, 8,716 rows) completed it (all 335 items have rows). 2023 series: Cube_CES, Omni Channel, status Actual or Backlog (= Actual or MPS of cube_Sale_APD), month = ForecastDelDate, quantity PlanQty, rows with ForecastDelDate before CtrDate dropped, no CtrDate floor; 13 months 2023-01 to 2024-01 prepended (cube_Sale_APD is cut off on the left in 2024-01: 51,973 against 63,043 from CES without the floor); 83 items have no demand in any of the 13 months. Overlap 2024-02 to 2026-08 over 335 items x 31 months: 10,342 of 10,385 cells equal (99.59 percent), 310 items equal in every month, total ratio 0.99941, no scale difference; the 43 differing cells (CES below APD in 40) are a few rows the CES pull lacks (largest: 402 units of one item in 2025-06; cause not established). Backtest without and with 2023 on the same 335 items and the same test windows (7 origins, 2025-03 to 2026-08; origins shifted by the 13 added months); the without-2023 run reproduces the recorded files to 1e-12. Top-down MAE without to with: **CI101 11.04 to 13.89, PEM101 315.43 to 324.33, PEM102 1.19 to 1.38, PEM103 2.85 to 2.91, PEM107 11.32 to 11.54**; MASE (project definition) 0.716 to 0.558, 1.615 to 1.695, 1.182 to 1.582, 1.312 to 1.342, 1.019 to 0.906, but with the same denominator in both runs the MASE is worse with 2023 in all five. Paired comparison by Sec.41 (item, MAE over origins): all five divisions "unclear" (PEM101: t +3.37 but Wilcoxon p 0.105, median item difference about zero; items better/worse 73/70). The mean MAE is higher with 2023 in every division (+1.9 to +25.8 percent); 2023 ran at a different level from today (CI101 3.9 times, PEM102 2.3, PEM107 1.9 times the current monthly mean). **Equal or better: no** (never demonstrably better; unclear is not proof of equal). Recommendation: do not extend now.
+
+**Part 5, calibration window sensitivity** (92 stock_policy items, control run, only the windows changed: both the observed not_late target window and the simulated scoring window; nothing changed in the project; the as-configured run reproduces the recorded 36 members, lead 1 to 30, today's point 96.95 percent and THB 14.77M exactly). Observed validation not_late 98.34 percent and stock value THB 15.49M do not depend on the window. As configured 2024-01 to 2025-12: **36 members, lead 1-30 days (median 3), simulated today 96.95 percent at THB 14.77M, trade-off to 99 percent +35.7 percent median (+26.2 min, +81.8 max)**. 2024-07 to 2025-12: **35 members, lead 1-15, 96.95 percent at THB 14.66M, +35.5 percent (+26.2, +63.4)**. 2025-01 to 2025-12: **33 members, lead 1-15, 97.01 percent at THB 14.56M, +38.1 percent (+17.2, +80.0)** (with the series started 2024-07 instead, a second convention: 37 members, 97.27 percent at THB 14.92M, +31.2 percent). The lead maximum falls from 30 to 15 days once the window starts in 2024-07 or later (30-day members drop out); median 3 and minimum 1 in every window. The observed calibration not_late target rises with the shorter windows (97.34, 99.05, 98.87 percent), the likely reason (not isolated). In the as-configured run the observed target window (2024-01 to 2025-12) starts six months before the simulated scoring window (2024-07 to 2025-12); with both set to 2024-01 to 2025-12 the Validator found 29 members, lead 1-15 days, today's point 96.95 percent at THB 14.43M. The Validator (separate agent, own runs) matched Part 3 (all category and item figures, to 1e-13), Part 4 (per-division Top-down MAE in both runs, 83 items without 2023 demand) and Part 5 (36 / 35 / 33 members, lead ranges 1-30 / 1-15 / 1-15, median simulated points) and reproduced the recorded files for the as-configured and without-2023 runs.
+
+**Found, not done (assigned to week 4):** the held file check_significance_topdown.md and the two reports tests/test_class_decisions.py reads from output/ that were never tracked (phaseA_pem101_conflict_lean.md, phaseA_pem107_g3_verification.md): a clean clone lacks them -- decide whether tests read them from docs/reports (the user); the 2023 history decision (the user); the Surge Arrester category definition for the view (the user); why 43 cells of cube_Sale_APD and the Cube_CES pull differ in 2025 (Claude Code, week 4); the new code lives in existing modules (maxmin_v1.py, focus_item_model_selection.py) because no new source file was allowed.
+
 ### Week 4, prompt 2 -- the publishing clone, sub-assembly stock netted, item codes trimmed, the material page's two lists -- DONE, 2026-10-06 (one database session, used for the live daily run from the clone)
 
 **Decisions of the user, 2026-10-06:** **D1 option A** -- a separate publishing clone; **D2** -- the plan nets the on-hand stock of in-house sub-assemblies before exploding them further; **D3** -- item codes are trimmed of leading and trailing spaces before matching in S2 and S3 (job codes are not trimmed). Also decided: the material page shows two lists, by the latest order date, with the window `material_plan.order_window_days` = 30 in config.
@@ -261,7 +279,7 @@ Report: `output/summary/week1_maxmin_v1_validator.md`; code `src/maxmin_v1.py`, 
 
 ### Week 1 progress: items 1.3 (lead time per item) and 1.4 (PEM101 recalibration) -- computed and recorded, 2026-10-05 (one read-only database session; Validator matched except the actual_date row choice)
 
-Report: `output/summary/week1_leadtime_calibration.md`; definition in METRICS.md Sec.5; code `src/lead_time_v1.py`, `src/investigations/week1_recalibration.py`; assumption values in config `lead_time_v1`. Reader text follows in a later task; no page, builder or job changed.
+Report: `docs/reports/summary/week1_leadtime_calibration.md`; definition in METRICS.md Sec.5; code `src/lead_time_v1.py`, `src/investigations/week1_recalibration.py`; assumption values in config `lead_time_v1`. Reader text follows in a later task; no page, builder or job changed.
 
 - **Production time, proved before use.** `Cube_Production_Order.start_date` is the order's release date (median 1 day before the first material issue); `end_date` a planned finish; `actual_date` varies between repeated rows of a job-item and is not usable; `cube_final.final_date` is booked about when the last material is issued. **No column marks the actual start of work.** Start to final is the throughput of a job lot (median 26 days, 291 job-items). `Cube_Standard_Time` is the incoming-inspection plan of raw materials, not production time (covers 6 of 92 stock items as rmid): not used. Sources for the 92 items: standard 0, measured 5, assumed 87 (26 days).
 - **Lead time per item v1 (slowest material + production time):** median 89 days, range 43 to 129. Observed for 50 of 53 walkable items' bottlenecks, none supplier-quoted as bottleneck, assumed for 3; **39 items carry assumed values (5 no BOM, 34 only in-house sub-assemblies whose BOMs were not read)**. Most frequent bottlenecks FC-A-38-00201 (4), FL-R-00-38002 (3), FC-R-CP-00002 (2). Recorded with a SHA-256.
@@ -272,7 +290,7 @@ Report: `output/summary/week1_leadtime_calibration.md`; definition in METRICS.md
 
 ### Week 1 gap check, plan of 2026-10-05 and its Part 1 -- DONE, 2026-10-05 (one read-only database session; documentation only; Validator matched except one classification)
 
-Report: `output/summary/week1_gap_check.md` (queries saved outside the repository). DATA_MAP.md sections 1 and 3 updated.
+Report: `docs/reports/summary/week1_gap_check.md` (queries saved outside the repository). DATA_MAP.md sections 1 and 3 updated.
 
 - **Part 1.** The user's decisions of 2026-10-05 recorded; the work plan replaced (Weeks 1 to 4, verbatim); the Current Status Summary and the critical path in PROJECT_GRAPH.md regenerated.
 - **2a.** 4 accessible databases, 137 readable objects, `salewarehouse` 111 (21 named in DATA_MAP). Newly profiled production and purchasing tables: Cube_Production_Control, Cube_production, Cube_Production_Order, Cube_JobCost(+Detail), Cube_BOM_Exact_V2, cube_po_bom, cube_pr_bom, Cube_Incoming*, Cube_Vendor_List and others, with item joins in both directions.
@@ -361,7 +379,7 @@ Stock and reserved quantities now refresh every day; forecasts, Min and Max and 
 
 ### Check V1, V2, V3 -- DONE, 2026-10-05 (read-only; one database session; Validator matched every item)
 
-Full report: `output/summary/check_v1_v2_v3.md`.
+Full report: `docs/reports/summary/check_v1_v2_v3.md`.
 
 - **C3 outcome (V2) -- MET.** The scheduled task ran unattended on 2026-10-05: started 07:40:43 (the laptop was not running at 07:00; StartWhenAvailable caught it up), ended 07:48:23, result 0. Run `20261005T074101`: 11 of 11 steps ok; step 5 skipped under the one-vintage-per-month guard; the new pull stages (pilot file, `inventory.json`) ran against the database; step 8 271 passed; step 10 passed (MAE change 0.0% for all five divisions); committed and pushed `db1d04b` (`c80d7a8..db1d04b`). Published `index.html` with the cache bypassed: stock panel stock 2026-10-04 21:41, Reserved 2026-10-05 07:35, page built 2026-10-05 07:41, no staleness notice. The C6 gap recurs: with step 5 skipped, step 10's six-month check is empty and its on-hand check carries the old figure forward.
 - **V3 finding.** All five tables loaded again: Cube_CES 2026-10-05 07:37:46, Cube_BOM_Exact 06:42:48, Cube_Inventory_Aging 06:39:02 (the three last seen 2026-09-28), Cube_Inventory_Exact 2026-10-04 21:42:24, cube_Sale_APD 2026-10-04 17:17:46. The 06:00-07:00 job has not stopped and is not daily; Monday loads on 08-31, 09-28 and 10-05 fit a weekly run but the 09-02, 09-22 and 09-25 observations do not. **Schedule unclear**; ETL questions stand (phase R, ETL team).
@@ -382,7 +400,7 @@ Full report: `output/summary/check_v1_v2_v3.md`.
 
 ### Audit -- Max-Min as used today, PEM107's 66 items, seasonality of the pilot scope -- DONE, 2026-10-02 (read-only; one database session)
 
-Full report: `output/summary/audit_minmax_pem107_season.md`. Correction first: **Phase R's finding on brief item 2 was based on the wrong reading** ("drop" and "surge" are the product categories Drop-out Fuse Cutout and Surge Arrester, the pilot scope, not sales-trend groups). Item 2 is **done**, as the pilot scope of the two categories with three items, then extended to 445 codes (the remaining Phase R findings on items 1, 3 and 4 stand).
+Full report: `docs/reports/summary/audit_minmax_pem107_season.md`. Correction first: **Phase R's finding on brief item 2 was based on the wrong reading** ("drop" and "surge" are the product categories Drop-out Fuse Cutout and Surge Arrester, the pilot scope, not sales-trend groups). Item 2 is **done**, as the pilot scope of the two categories with three items, then extended to 445 codes (the remaining Phase R findings on items 1, 3 and 4 stand).
 
 - **A. PEM107's 66 items** (36 confirmed_to_order failing C3 + 30 conflict; the 41 passing items reproduced exactly): 891 late units from May 2026 against 1,880 delivered (11.8% late before May); **9 of the 66 items make 80% of the late units**; **10.4% of late units had notice shorter than the item's normal order-to-delivery time, 89.6% were late despite sufficient notice**. Item table by Product Type in the report.
 - **B1.** 20 code locations read minimum/maximum; none special-cases `maximum` = 0; `has_current_setting` is minimum > 0 OR maximum > 0; only the Phase J baseline replay treats a minimum with a maximum of 0 as "never orders". On today's data no page figure depends on it (0 such items among the 128; 1 warehouse row among the 445 codes).
@@ -395,7 +413,7 @@ Full report: `output/summary/audit_minmax_pem107_season.md`. Correction first: *
 
 ### Phase R -- requirements audit against the original brief -- DONE, 2026-10-02 (P0; two read-only database sessions)
 
-Full findings: `output/summary/phaseR_requirements_audit.md`. Summary:
+Full findings: `docs/reports/summary/phaseR_requirements_audit.md`. Summary:
 - **Brief item 1** done on the old basis, tab not refreshed. **Item 2** DONE (corrected 2026-10-02 after the user's clarification: drop and surge are the product categories Drop-out Fuse Cutout and Surge Arrester, the pilot scope, extended to 445 codes; the earlier "partly done" rested on a wrong reading; one Top-down method was chosen because no model won consistently per group). **Item 3.1** partly done (moving averages only inside the Combination). **Item 3.2** not done, blocked on data. **Item 4** partly done and uncalibrated: lead time is a 60-day assumption, no storms, no MRP export. **Settings line** applied only in the pilot (2026-08-31 to about 2026-09-04); the 445-code path (335 forecast codes) ignores `pilot_categories`, `pilot_item_codes` and the three-item constants except for reporting rows and charts.
 - **Vendor lead time is measurable.** `Cube_PO_Exact` with `Cube_ReceiveRM` and `Cube_Receipt` (joined on PO number and item) give 4,030 usable order-to-first-receipt lead times for 132 of the 209 raw materials the BOM links to PEM101's 82 stock_policy items: median 41 days (37 in 2025-26), p25 19, p75 60, p90 86. The model's 60 is about the observed p75. No finished good has all its raw materials observed.
 - **MRP.** `Cube_Inventory_Exact` carries `minimum` and `maximum` per item x warehouse x company; 1,941 items have a non-zero value (113 of the 445 project codes, in FG, FG01, FG11, WH01); 734 rows have a minimum and no maximum. The 128-item "current Min/Max" file equals this table. The project writes no Max-Min back.
@@ -587,8 +605,8 @@ people do only what Claude Code cannot.
 | P1 | K | Replace the assumed 60-day procurement lead time with the observed order-to-receipt distribution (phase R: median 41 days, p75 60); purchasing confirms which date starts the clock | Claude Code; purchasing team |
 | Done 2026-10-05 (moving-average comparator only) | R1 — brief settings | Moving-average comparator scored beside Top-down from vintage 3 (see the entry above). STILL OPEN: whether per-category and per-item model settings return to the 445-code path | The user decides; Claude Code implements |
 | P2 | K | Find another source of finished-goods receipts for PEM101's stock_policy items (`cube_inventory_tran` has movement for 3 of 82) to describe how the minimum relates to ordering; people read Min/Max and order by hand, so R2's MRP wording is to be reframed as a reference list for buyers | Claude Code |
-| P2 | R2 — MRP hand-off | Max-Min to MRP: the ERP team answers the six questions in `output/summary/phaseR_requirements_audit.md` Part 4, then Claude Code prepares the file | ERP team; Claude Code |
-| P1 | V1 — due-date definition | PENDING the user's definitions: which of PlanDelDate and ForecastDelDate is the due date for on-time and for month of sale, and who enters each (tests done 2026-10-05, nothing decided; `output/summary/check_v1_v2_v3.md`) | The user, with Sales; Claude Code recomputes after |
+| P2 | R2 — MRP hand-off | Max-Min to MRP: the ERP team answers the six questions in `docs/reports/summary/phaseR_requirements_audit.md` Part 4, then Claude Code prepares the file | ERP team; Claude Code |
+| P1 | V1 — due-date definition | PENDING the user's definitions: which of PlanDelDate and ForecastDelDate is the due date for on-time and for month of sale, and who enters each (tests done 2026-10-05, nothing decided; `docs/reports/summary/check_v1_v2_v3.md`) | The user, with Sales; Claude Code recomputes after |
 | P2 | X1 — external factors | Profile Cube_OI, Cube_OI_SaleForecast, Cube_Enq, Cube_OQ, Cube_Target_PMIS in one read-only session; budgets, EGP bids, storms and holiday calendars need a supplier | Claude Code; people supply the data |
 | P5 | D — refactor | after phase C passes | Claude Code |
 | P6 | F — index generator | Trend tab on the 445-code basis; dynamic numbers in the manual; the item-1 trend tab has no generator, a 2.7-year window and is labelled stale (phase R) | Claude Code |
@@ -797,7 +815,7 @@ this is isolated (flagged for the Modeler, not yet done).
 **Phase A — Fix potentially wrong foundations: NEXT, not blocked.** Three checks, all answerable
 with existing data. **Answered 2026-09-02** by a three-agent Explorer+Validator/Analyst/Validator
 investigation, merged by a Synthesizer (per `AGENTS.md`) — full detail in the dated log entry
-below and in `output/summary/phaseA_synthesis.md`; none of the three closes with full certainty:
+below and in `docs/reports/summary/phaseA_synthesis.md`; none of the three closes with full certainty:
 1. **Whether `forecast_date` is revised after the PO is received rather than fixed at intake —
    UNRESOLVED, and found to be fundamentally undetectable from this data (no audit/history table
    or per-row modification timestamp exists anywhere in the schema), high confidence in that
@@ -838,7 +856,7 @@ below and in `output/summary/phaseA_synthesis.md`; none of the three closes with
 
 **Phase B, B1/B2/B3 — DONE (2026-09-02), single Modeler (per `AGENTS.md`: all three
 aggregation levels needed in one view, each step depends on the previous — not split).** Full
-detail, confidence levels and CSVs in `output/summary/b1_rekeying_report.md`,
+detail, confidence levels and CSVs in `docs/reports/summary/b1_rekeying_report.md`,
 `b2_bias_isolation_report.md`, `b3_item_level_approach_report.md`, and the dated log entry
 further down.
 - **B1 (re-key and re-run)**: `load_data.py`/`load_data_full.py` now pull `forecast_date`
@@ -854,7 +872,7 @@ further down.
   the numbers (cross-checked exactly against the existing `rule_part4_test_results_per_series.csv`
   before trusting the new pipeline); moderate confidence only in a proposed explanation (the
   test window sits where forecast_date's smoothing effect concentrates; not proven). **CORRECTED
-  2026-09-02 (see the dated log entry below, and `output/summary/b4_leakage_and_windowposition_report.md`):
+  2026-09-02 (see the dated log entry below, and `docs/reports/summary/b4_leakage_and_windowposition_report.md`):
   this "window-position" framing was too generous — direct per-origin testing found the
   improvement is NOT a smooth gradient at Category/Type level (correlation ≈0, and the trend
   through 6 of 7 origins actually runs the WRONG way, getting worse as origins approach the
@@ -889,7 +907,7 @@ forward-test log, generated for 58 items and six models, which no longer matches
 scope) and the single-agent technical-debt work (writing the tests `CONVENTIONS.md` requires,
 and building a pipeline that runs end to end, since the 21+ committed scripts still have no
 documented run order). **CORRECTED 2026-09-04 (see the dated log entry further down, and
-`output/summary/synthesis_report.md` §3): the "16 items with no history and 15 with no sales"
+`docs/reports/summary/synthesis_report.md` §3): the "16 items with no history and 15 with no sales"
 figure above assumed a 31-item excluded population. A live re-derivation found this is WRONG --
 the true population is 16 items total (the 15 are a SUBSET of the 16, not an additional 15 on
 top); no second bucket of "rows present but zero total sales" items exists at this scope. All
@@ -925,7 +943,7 @@ reversal itself was tested and found to be a genuine business change, not a reco
 Phase 136, level V2). Kept, not deleted — this sentence was accurate at the time it was written.]**
 A full-scope re-validation on the
 corrected basis (445 codes) is DONE — see the dated log entry below and
-`output/summary/phaseC_revalidation_report.md`: no double-counting found between `-OLD`-tagged
+`docs/reports/summary/phaseC_revalidation_report.md`: no double-counting found between `-OLD`-tagged
 and normally-tagged rows, PEM102/PEM107 regain their 2024 history, CI101's totals rise 59.94%,
 PEM102's 38.40%, PEM107's 90.01%. **Broader per-division readiness verdicts (collisions, pricelist
 mismatches, demand classification) are RE-DERIVED for PEM102, PEM107 and CI101 (DONE 2026-09-07,
@@ -941,7 +959,7 @@ see the dated log entry below; the placeholder MECHANISM for those 89 items (Ste
 item 2, below) is still not chosen.
 
 **Phase C Step 2 — DONE (2026-09-07)** for the forecast-scope items (335 across 5 divisions; see
-the dated log entry below and `output/summary/phaseC_step2_report.md`):
+the dated log entry below and `docs/reports/summary/phaseC_step2_report.md`):
 1. ~~Test Category and Type aggregation using value as well as quantity.~~ Summing units across
    different products within a category — e.g. fuse cutouts and fuse links — produces a figure
    without physical meaning (already flagged in Section 7, Red Team Review Findings,
@@ -956,7 +974,7 @@ the dated log entry below and `output/summary/phaseC_step2_report.md`):
    switch from quantity. Quantity basis is kept, by absence of a reason to switch, not a decisive
    win.**
 2. ~~For the 89 items with no Omni Channel history~~ (found by the 2026-09-04 full-scope
-   re-validation, `output/summary/phaseC_revalidation_report.md` §5), **the placeholder method is
+   re-validation, `docs/reports/summary/phaseC_revalidation_report.md` §5), **the placeholder method is
    still not chosen.** The Validator will report, for each item: its Type, the number of sibling
    items in that Type with history, and how concentrated the Type is — so the placeholder logic
    can be chosen on evidence, not assumed. Candidate methods to record, not yet chosen between:
@@ -969,7 +987,7 @@ the dated log entry below and `output/summary/phaseC_step2_report.md`):
    `placeholder_item_assignments_82`): **Rule A (Type mean, top sibling <40%) — 50 items; Rule B
    (Type median, top sibling ≥40%) — 29 items; Rule C (flag only, value 0, no siblings with
    history) — 3 items**, listed explicitly in the dated log entry below. See
-   `output/summary/phaseC_closure_report.md` Part 2 for the full evidence and the 40% threshold's
+   `docs/reports/summary/phaseC_closure_report.md` Part 2 for the full evidence and the 40% threshold's
    status as a stated assumption, not a derived value.
 
 **PHASE C — CLOSED (2026-09-07).** All Phase C work is done: step 1 (data quality, all six divisions), the division source-of-truth
@@ -977,7 +995,7 @@ correction and its full-scope re-validation, step 1 revised (PEM102/PEM107/CI101
 re-derived), step 2 (forecast all 335 in-scope items, value-vs-quantity test, transferability),
 and this closure (final transferability table, placeholder rule set for the 82 no-history items,
 forward-test scoring readiness, config lock-in). Full detail in the dated log entry below and
-`output/summary/phaseC_closure_report.md`.
+`docs/reports/summary/phaseC_closure_report.md`.
 
 **Consolidated item status, all 445 codes** (updated 2026-09-07, see the dated log entry below for
 the full breakdown): **forecast 335; placeholder Rule A (Type mean) 50; placeholder Rule B (Type
@@ -993,14 +1011,14 @@ asked for the flag-only count named explicitly, not because it is a further, sep
 division-level (Top-down vs. Direct vs. Naive, per division); it had not yet specifically
 re-examined whether Top-down remains the right choice for these three codes individually, given
 they are this project's designated focus items for every phase. **DONE (2026-09-08)** — see the
-dated log entry below and `output/summary/focus_item_model_selection_report.md`. **Verdict: keep
+dated log entry below and `docs/reports/summary/focus_item_model_selection_report.md`. **Verdict: keep
 Top-down combination for all three** — no candidate (of 11 evaluated: Naive, MA3/6/12, SES, Holt,
 Croston, SBA, TSB, Combination, Top-down) beats it with statistical significance on any item.
 Phase D may now proceed.
 
 **Phase D — Phase 4 groundwork — DONE (2026-09-08).** Narrowed 2026-09-04 by business input
 (Section 8) to three checks against `Cube_Inventory_Exact`, run as three parallel Explorers plus a
-Synthesizer (per `AGENTS.md`). Full detail: `output/summary/phaseD_synthesis_report.md` and the
+Synthesizer (per `AGENTS.md`). Full detail: `docs/reports/summary/phaseD_synthesis_report.md` and the
 three Explorer reports (`phaseD_check1_report.md`, `phaseD_check2_report.md`,
 `phaseD_check3_report.md`). Headline, stated as plainly as the checks themselves state it:
 **confirmed-sellable stock is 0.00% of the in-scope snapshot; 99.90% is undetermined** (the
@@ -1040,7 +1058,7 @@ has_stock / 222 zero_stock / 57 no_db_record of 445 codes; 92 codes show negativ
 **Phase E0 (pre-check gate) — three parallel Validators + a Synthesizer, then a single-Validator
 E0.2 re-run — CLOSED (2026-09-18).** **[Any stock_value/Min/Max/fill_rate figure this phase feeds
 into is UNCALIBRATED — Phase J2, see banner at top of file.]** See the dated log entries near the end of Section 2 and
-`output/summary/phaseE0_synthesis_report.md` for full detail. Headline: no point-in-time leakage
+`docs/reports/summary/phaseE0_synthesis_report.md` for full detail. Headline: no point-in-time leakage
 found in allocation shares or model settings (E0.1); the DB login was reset and E0.2's cancellation
 re-run found **zero** cancelled `Cube_CES` contracts resurfacing as `Actual`/`MPS` demand anywhere
 in `cube_Sale_APD` (0 of 548 pricelist-scope pairs, 0 of 2,150 table-wide, positive-control-verified
@@ -1055,8 +1073,8 @@ version history) carry forward unchanged from Phase A/E0.1.
 **[UNCALIBRATED — Phase J2, 2026-09-23: every stock_value/Min/Max/fill_rate figure below failed
 calibration against actual delivery performance. See banner at top of file.]**
 **This phase produces no actionable purchase recommendation — it is a scenario analysis for the
-business to evaluate, not a locked policy.** Full detail: `output/summary/phaseE1_modeler_report.md`,
-the five `phaseE1_{1..5}_*.md` sub-reports, and `output/summary/phaseE1_validator_report.md`
+business to evaluate, not a locked policy.** Full detail: `docs/reports/summary/phaseE1_modeler_report.md`,
+the five `phaseE1_{1..5}_*.md` sub-reports, and `docs/reports/summary/phaseE1_validator_report.md`
 (including its two in-place addenda from the Orchestrator's targeted re-checks).
 - **Scope, verified**: 128-item PEM101 pilot (Fuse Cutout + Surge Arrester categories), confirmed
   independently by both the Modeler (from `config['adopted_scope_file']`) and the Validator (from
@@ -2322,7 +2340,7 @@ the D2 service-level decision) ahead of Max-Min actually being computed with it,
 **one** number for PEM101, not two: **59 of 4,130** grid combinations (`stock_definition="current"`)
 within tolerance (`not_late` ±3pp, stock value ±15%) **on both the calibration and validation
 periods jointly** — STATUS.md's own Phase J3 entry above ("**PEM101: PARTIALLY CALIBRATED.** 59/
-4,130 combinations fit both periods within tolerance..."); `output/summary/phaseJ3_report.md` line
+4,130 combinations fit both periods within tolerance..."); `docs/reports/summary/phaseJ3_report.md` line
 46 ("PEM101 | **Partially calibrated** — 59/4,130 combos fit both periods at realistic stock");
 `output/summary/phaseJ3_2_calibration_summary.json` (`"division":"PEM101","stock_definition":
 "current","n_passing":59,"n_total":4130`). **No source anywhere in the record separately states a
@@ -4081,7 +4099,7 @@ task run under the `AGENTS.md` multi-agent structure: three agents dispatched in
 findings. INVESTIGATION ONLY: no min/max calculated, no model built, `config/config.yaml` not
 touched, no code changed. Scripts: `src/investigate_forecastdate_revision.py` (A1),
 `src/investigate_2025_decline.py` (A2); A3 worked from existing pulls, no new script. Reports:
-`output/summary/phaseA_a1_forecastdate_revision_findings.md`,
+`docs/reports/summary/phaseA_a1_forecastdate_revision_findings.md`,
 `phaseA_a2_2025_decline_findings.md`, `phaseA_a3_date_keying_findings.md`,
 `phaseA_synthesis.md`. Supporting CSVs: `output/summary/phaseA_a{1,2,3}_*.csv`;
 raw/processed pulls: `output/data/phaseA_a{1,2}_*.csv`.
@@ -4194,7 +4212,7 @@ Cate. Fuse and Surge Arrester, at Category/Type/Item level, with the three focus
 (`EEE-F-FC-1040010002`, `HS-F-99-02110`, `HS-F-99-0213`) given particular attention throughout.
 Modified: `src/load_data.py`, `src/load_data_full.py`. New: `src/backtest_rekeyed.py`,
 `src/bias_item_isolation.py`, `src/item_level_reconciliation.py`. Full reports:
-`output/summary/b1_rekeying_report.md`, `b2_bias_isolation_report.md`,
+`docs/reports/summary/b1_rekeying_report.md`, `b2_bias_isolation_report.md`,
 `b3_item_level_approach_report.md`; CSVs `output/summary/b1_*.csv`, `b2_*.csv`, `b3_*.csv`; charts
 `output/charts/b1_focus_*.png`, `b3_*_approach_comparison.png`. No model choice written to
 `config/config.yaml`.
@@ -4299,7 +4317,7 @@ Modified: `src/load_data.py`, `src/load_data_full.py`. New: `src/backtest_rekeye
 train/val/test disagree? — DONE (2026-09-02).** Single Validator (per `AGENTS.md`: re-examines
 one series, results must be interpreted together, not split). Script:
 `src/leakage_check_forecastdate.py`. Full detail:
-`output/summary/b4_leakage_and_windowposition_report.md`; CSVs `output/summary/b4_*.csv`; chart
+`docs/reports/summary/b4_leakage_and_windowposition_report.md`; CSVs `output/summary/b4_*.csv`; chart
 `output/charts/b4_per_origin_mae_comparison.png`. No model choice written to `config.yaml`; no
 existing file modified.
 
@@ -4362,7 +4380,7 @@ must be understood together, not split across agents). Motivated by the fact tha
 (0 mismatches vs. the table's own `year`/`month` columns), never from behavioral proof, and a
 separate column `PODate` exists in the same table. INVESTIGATION ONLY: no code/config changed,
 nothing committed. Script: `src/datecol_validator_investigation.py`. Full report with every
-figure's source citation: `output/summary/datecol_validator_report.md`; supporting CSVs
+figure's source citation: `docs/reports/summary/datecol_validator_report.md`; supporting CSVs
 `output/summary/datecol_p*.csv`; charts `output/charts/datecol_*.png`.
 
 - **Part 1 — every date column mapped, high confidence.** `INFORMATION_SCHEMA.COLUMNS` confirms
@@ -4625,7 +4643,7 @@ config change is the one explicitly-instructed exception.
 forward-test log rebuild) -- DONE (2026-09-04), three parallel agents per `AGENTS.md` (independent
 of each other's results, different capabilities: Explorer+Analyst / Explorer+Validator / Modeler),
 merged by a Synthesizer.** Full detail, every figure's citation, and confidence levels in
-`output/summary/synthesis_report.md`; source reports `output/summary/task1_crossdivision_report.md`,
+`docs/reports/summary/synthesis_report.md`; source reports `docs/reports/summary/task1_crossdivision_report.md`,
 `task2_noHistoryItems_report.md`, `task3_forwardTestRebuild_report.md`. No git action taken; no new
 data gathered by the Synthesizer.
 
@@ -4898,7 +4916,7 @@ an applied decision.
 
 **Phase C sheet-to-division mapping (Explorer) — DONE (2026-09-04).** Fresh, single-method,
 Omni-Channel-scoped query across all 445 codes (no reuse of the five Validators' channel-blind
-figures). Full detail in `output/summary/phaseC_sheetmap_report.md`. PEM101 (98.80%), PEM103
+figures). Full detail in `docs/reports/summary/phaseC_sheetmap_report.md`. PEM101 (98.80%), PEM103
 (97.06%) and PEM104 (100.00%, n=12) map cleanly (≥95% threshold) from sheet to same-named
 division; **PEM102 (72.25%), PEM107 (52.63%) and CI101 (62.52%) do not** — the database's
 `division` column, not the sheet name, would be needed as a grouping key under a
@@ -4913,7 +4931,7 @@ Decisions, "Division source-of-truth correction," for the reasoning. This entry 
 re-validation run on the corrected (no-`division`-filter) basis, across all 445 visible-pricelist
 codes, per the six checks specified for this task. Script:
 `src/investigations/phaseC_full_scope_revalidation.py`. Full detail, every figure cited to its
-CSV: `output/summary/phaseC_revalidation_report.md`.
+CSV: `docs/reports/summary/phaseC_revalidation_report.md`.
 
 - **Sheet uniqueness — RECONFIRMED, high confidence.** No item code appears on more than one
   visible sheet (445 distinct codes; the script raises an error and stops if any code did — none
@@ -5080,7 +5098,7 @@ under `src/investigations/phaseC_step1revised_validator_*.py` and
 **Phase C step 2 — forecast all in-scope items, value-vs-quantity test, transferability — DONE
 (2026-09-07).** Single Modeler (per `AGENTS.md`: forecasting all divisions is one continuous run
 needing identical settings throughout, not split). Full detail, every figure cited:
-`output/summary/phaseC_step2_report.md`. New scripts: `src/load_data_all_divisions.py`,
+`docs/reports/summary/phaseC_step2_report.md`. New scripts: `src/load_data_all_divisions.py`,
 `src/backtest_all_divisions.py`, `src/transferability_all_divisions.py`,
 `src/forward_test_all_divisions.py`, `src/charts_all_divisions.py` — additive, alongside (not
 replacing) the existing 128-item PEM101-sheet Fuse+Surge pipeline (`load_data_full.py` etc.),
@@ -5163,7 +5181,7 @@ which STATUS.md still records as "Proven, method locked" for its own scope.
 
 **PHASE C CLOSED — final transferability table, placeholder rule set, scoring readiness, config
 lock-in — DONE (2026-09-07).** Synthesizer then Modeler, same context, one agent (per `AGENTS.md`:
-not split). Full detail: `output/summary/phaseC_closure_report.md`.
+not split). Full detail: `docs/reports/summary/phaseC_closure_report.md`.
 
 - **Final transferability table, all six divisions**:
 
@@ -5242,7 +5260,7 @@ not split). Full detail: `output/summary/phaseC_closure_report.md`.
 
 **Focus-item model selection (EEE-F-FC-1040010002, HS-F-99-02110, HS-F-99-0213) — DONE
 (2026-09-08).** Single Modeler (per `AGENTS.md`: three items, same candidate set/evaluation, one
-context). Full detail, every figure cited: `output/summary/focus_item_model_selection_report.md`.
+context). Full detail, every figure cited: `docs/reports/summary/focus_item_model_selection_report.md`.
 New script `src/focus_item_model_selection.py`; `src/models.py` gains `tsb_forecast` (TSB has no
 auto-optimized variant in `statsforecast`, so `alpha_d`/`alpha_p` are grid-searched over
 `{0.05,0.1,0.2,0.3,0.4}` minimizing in-sample fitted error — a stated assumption, not derived);
@@ -5309,7 +5327,7 @@ Three parallel Explorers (per `AGENTS.md`'s Phase D pattern) plus a Synthesizer.
 narrow, per instruction: `Cube_Inventory_Exact` and the tables it joins to only — no wider database
 search, since earlier exhaustive searches already established finished-goods movement history, MOQ
 and assembly time do not exist, business-confirmed. Full detail:
-`output/summary/phaseD_synthesis_report.md`, `phaseD_check1_report.md`, `phaseD_check2_report.md`,
+`docs/reports/summary/phaseD_synthesis_report.md`, `phaseD_check1_report.md`, `phaseD_check2_report.md`,
 `phaseD_check3_report.md`; scripts `src/investigations/phaseD_check1_sellable_stock.py`,
 `phaseD_check2_stock_value.py`, `phaseD_check3_ci101_stock_location.py`.
 
@@ -5544,7 +5562,7 @@ E result untrustworthy if left unchecked: point-in-time leakage in rolling-origi
 with Type totals under Top-down allocation (E0.3). Full detail: `output/summary/phaseE0_
 validator1_leakage_report.md`, `phaseE0_validator2_cancellations_report.md`,
 `phaseE0_validator3_placeholder_coherence_report.md`, and the merged
-`output/summary/phaseE0_synthesis_report.md`.
+`docs/reports/summary/phaseE0_synthesis_report.md`.
 
 - **E0.1 (leakage) — no leakage found in either checkable mechanism, high confidence; no backtest
   re-run performed because none was triggered.** Historical Top-down allocation shares are
@@ -5569,7 +5587,7 @@ validator1_leakage_report.md`, `phaseE0_validator2_cancellations_report.md`,
   no cancellation contamination found, verified from data; no change to the demand series
   recommended.** After the initial blocked attempt (SQL error 18487, expired password), the human
   reset the SQL Server login and the same Validator re-ran the full task on a live connection (Part
-  0 connectivity confirmed first). Full detail: `output/summary/phaseE0_validator2_cancellations_report.md`,
+  0 connectivity confirmed first). Full detail: `docs/reports/summary/phaseE0_validator2_cancellations_report.md`,
   script `src/investigations/phaseE0_cancellations_validator2.py`.
   - **Cube_CES Cancel rows (fresh, table-wide): 2,423 rows** (matches the 2026-08-31 count, now
     with value/date detail that pull never captured), qty 151,865,368.2, value ฿9,903,099,704.17,
@@ -5697,7 +5715,7 @@ phase, particularly Phase 4. Full methodology, confidence levels and caveats are
   immediately above**: that finding is about orders that *were* placed still being recorded even
   when stock could not fulfil them on time (not censored by stockouts); this correction is about
   demand that never reached the point of becoming an order at all. See
-  `output/summary/phaseE0_synthesis_report.md` §3(a).
+  `docs/reports/summary/phaseE0_synthesis_report.md` §3(a).
 
 ## 4. Locked Decisions (with reasons)
 
@@ -6008,7 +6026,7 @@ phase, particularly Phase 4. Full methodology, confidence levels and caveats are
   once a placeholder value is actually needed for planning, in place of the flat Type mean/median —
   recorded here as **future work, not yet implemented** (no Modeler has backtested whether an
   analogue-based estimate actually forecasts better; this is a supported hypothesis about a better
-  basis, not a proven one). Evidence: `output/summary/phaseE0_validator3_placeholder_coherence_report.md`
+  basis, not a proven one). Evidence: `docs/reports/summary/phaseE0_validator3_placeholder_coherence_report.md`
   and `phaseE0_synthesis_report.md`. Written into `config/config.yaml`
   (`placeholder_hierarchy_treatment`).
 - **`forecast/index.html` is an orphaned stale duplicate and will be deleted in the next code
@@ -6067,7 +6085,7 @@ phase, particularly Phase 4. Full methodology, confidence levels and caveats are
 
 ## 5. Open Questions
 
-- **Phase E0 gap register (found 2026-09-18, full detail `output/summary/phaseE0_synthesis_report.md`
+- **Phase E0 gap register (found 2026-09-18, full detail `docs/reports/summary/phaseE0_synthesis_report.md`
   §2)** — the pre-check gate before Phase E1 closed with one project-wide blocking gap and one
   item-specific blocking decision, both requiring action outside this codebase:
   1. ~~**BLOCKING, project-wide** — SQL Server login's password has expired (SQL
@@ -6076,13 +6094,13 @@ phase, particularly Phase 4. Full methodology, confidence levels and caveats are
      rows still counted as Actual/MPS demand in the series; their share of total/Type demand;
      effect on the three focus items; partial-cancellation bucketing) remain **cannot be
      determined**, and Phase E1's demand-series inputs must be treated as provisional. The query
-     plan is fully scoped in `output/summary/phaseE0_validator2_cancellations_report.md` and needs
+     plan is fully scoped in `docs/reports/summary/phaseE0_validator2_cancellations_report.md` and needs
      no redesign, only execution once connectivity is restored.~~ **RESOLVED 2026-09-18 — password
      reset by IT, E0.2 re-run in full on a live connection. Verdict: zero cancellation
      contamination found (0 of 548 pricelist-scope and 0 of 2,150 table-wide cancelled pairs
      resurface as Actual/MPS demand, positive-control-verified; partial-cancellation signal
      structurally empty for confirmed contracts). No change to the demand series recommended. See
-     the Phase E0 dated log entry and `output/summary/phaseE0_validator2_cancellations_report.md`.**
+     the Phase E0 dated log entry and `docs/reports/summary/phaseE0_validator2_cancellations_report.md`.**
   2. ~~**BLOCKING, item-specific** — Option 1 (additive) vs. Option 2 (carve-out) for how the 82
      no-history placeholder items' Type-mean/median values interact with Top-down's Type totals,
      across 22 (division, Type) pairs (up to +707.3% Type-total inflation under Option 1, or up to
@@ -6106,7 +6124,7 @@ phase, particularly Phase 4. Full methodology, confidence levels and caveats are
      only).
 - **Phase A residual items (found 2026-09-02)** — unresolved, non-blocking for the phases that
   follow, but flagged for specific owning teams (full detail with owner per item in
-  `output/summary/phaseA_synthesis.md` §5): whether `forecast_date` is ever revised in place
+  `docs/reports/summary/phaseA_synthesis.md` §5): whether `forecast_date` is ever revised in place
   after PO intake (undetectable in this schema — needs a genuine audit/snapshot table or IT/
   business confirmation); the cause of the 2.3-3.2% `forecast_date`/`PlanDelDate` disagreement;
   ~~root cause of `EEE-F-FC-1040010002`'s H1-2025 buyer-base pause~~ (needs stock/supply/contract
@@ -6172,7 +6190,7 @@ phase, particularly Phase 4. Full methodology, confidence levels and caveats are
   `jobcode` — currently unprovable from a read-only data investigation.
 
 - **Date-column Validator residual items (found 2026-09-04)** — unresolved, non-blocking; see
-  `output/summary/datecol_validator_report.md` for full detail. Whether createDate/PODate/
+  `docs/reports/summary/datecol_validator_report.md` for full detail. Whether createDate/PODate/
   `Cube_CES.CtrDate` record the literal moment of customer order intent vs. contract-entry date
   (undetectable from this data model — needs an external non-database record or IT/business
   confirmation); the mechanism behind the 15 rows (0.054% of the 128-item scope) where createDate
@@ -6552,7 +6570,7 @@ each explicitly **to be verified, not confirmed**.
 `index.html` half); items 4, 5, 6, 9, 10 remain OPEN, deferred to task 2b (`forecast/inventory.html`
 scope, per task 2a's own stated scope boundary — it touched `inventory.html` only for §26
 timestamps). All three "to be verified" items below are now resolved one way or the other, with an
-independent Validator check on the material ones. Full detail: `output/summary/task2a_validator_report.md`;
+independent Validator check on the material ones. Full detail: `docs/reports/summary/task2a_validator_report.md`;
 commits cited inline below are on `main`.**
 
 **From the factsheet's Part 5 defect list (`manual_factsheet.md` Part 5, items 1-10):**
@@ -6685,7 +6703,7 @@ data on `forecast/inventory.html`, pulled live at page-build time, is not persis
 it cannot be independently re-verified after the fact. The task 2a Validator explicitly reported
 this as **"CANNOT BE INDEPENDENTLY VERIFIED"** for these two divisions' `data_pulled_at`
 timestamps (no persisted external record exists to check them against; internally plausible only
-— `output/summary/task2a_validator_report.md` line 221). Scheduled here as an open item for the
+— `docs/reports/summary/task2a_validator_report.md` line 221). Scheduled here as an open item for the
 next code task to address (e.g. persisting the pull timestamp/snapshot so it can be checked
 independently, consistent with this project's raw-vs-processed-data convention,
 CONVENTIONS.md).
@@ -6704,7 +6722,7 @@ refresh work) — all three RESOLVED, task 2cfix (2026-09-25), see Section 12 fo
   page's embedded JSON) — `output/runs/monthly_refresh_20260925T141119.json`, step
   `8_run_tests.result` (`"passed": false, "returncode": 1`) and step
   `11_commit_and_push.result.gate_results.step8_tests_passed: false`; also flagged as a "side
-  observation" in `output/summary/task2c_validator_report.md`, Check 3. This was a transient,
+  observation" in `docs/reports/summary/task2c_validator_report.md`, Check 3. This was a transient,
   already-resolved timing artifact within that same task (the full suite passed 129/129 once the
   task's own later commits rebuilt the page) — but no run has yet exercised the gate end-to-end
   with every step passing, so this remains open until a dry (or real) run clears steps 8-10
@@ -6714,7 +6732,7 @@ refresh work) — all three RESOLVED, task 2cfix (2026-09-25), see Section 12 fo
   commit — see Section 12. **The GitHub reachability check task 2c was asked to implement was not
   reported on in its final summary [ORIGINAL FINDING, now resolved above] — confirmed genuinely
   unreported in every tracked file, not merely missed by this task.**
-  Checked: `output/summary/task2c_validator_report.md` (no mention), `DATA_MAP.md`'s task-2c-dated
+  Checked: `docs/reports/summary/task2c_validator_report.md` (no mention), `DATA_MAP.md`'s task-2c-dated
   entries (no mention), and this file's own Section 11 (no mention) — a repo-wide search for
   "reachab" (case-insensitive) matches only source code (`src/monthly_refresh.py`, and unrelated
   files), no `.md` documentation. The check IS implemented in code and DOES run:
@@ -6737,7 +6755,7 @@ refresh work) — all three RESOLVED, task 2cfix (2026-09-25), see Section 12 fo
   repo; a repo-wide case-insensitive search for "schtasks" finds only the unrelated, already-correct
   daily posting-delay-snapshot registration (Section 4 above, `/sc daily /st 06:00`, a different
   scheduled task for `src/snapshot_daily.py`) and no monthly-refresh schtasks command anywhere in
-  `DATA_MAP.md`, this file, or `output/summary/task2c_validator_report.md`. Per AGENTS.md's stopping
+  `DATA_MAP.md`, this file, or `docs/reports/summary/task2c_validator_report.md`. Per AGENTS.md's stopping
   rule and CONVENTIONS.md's "verify, never recall," the wrong command is **not quoted here** because
   it cannot be verified from any file in this repository — recorded as a gap, not invented.
   **Whoever holds that final report must not run the command it printed as printed**; the correct
@@ -7033,7 +7051,7 @@ None failed; none were retried after a failure.
 explicitly reserved for the user to run themselves; commands printed above/in the final report,
 never executed by this task.
 
-**Validator confirmation, task 2cfix (2026-09-25, `output/summary/task2cfix_validator_report.md`),
+**Validator confirmation, task 2cfix (2026-09-25, `docs/reports/summary/task2cfix_validator_report.md`),
 reading none of the implementing agent's files:**
 
 1. **Backtest refactor identity: MATCH, independently re-derived.** The Validator re-ran
@@ -7127,7 +7145,7 @@ month guard, both requested directly by this task's own brief, neither a pre-exi
   tracked one, and no database connection. **Level V1** (this task's own tests; Part 5's separate
   Validator has not yet independently re-run them).
 
-**Validator confirmation, task 2cfix2 (2026-09-25, `output/summary/task2cfix2_validator_report.md`),
+**Validator confirmation, task 2cfix2 (2026-09-25, `docs/reports/summary/task2cfix2_validator_report.md`),
 reading none of the implementing agent's files -- all 3 checks MATCH, no discrepancies:**
 
 1. **System32 dry run: MATCH.** The Validator independently re-ran the exact scheduled-task
@@ -7408,7 +7426,7 @@ data, not a business confirmation. No reclassification has been made.
 ## Phase W0 (2026-09-29): S&OP Plan tab provenance -- verification only
 
 Scope: this task only (labelling of the S&OP Plan tab in `index.html`, external file uploaded 2026-08-24,
-commit 88cd3a1). No page edited. Full record: `output/summary/phaseW0_sop_provenance.md`; agent reports
+commit 88cd3a1). No page edited. Full record: `docs/reports/summary/phaseW0_sop_provenance.md`; agent reports
 `phaseW0_worker_report.md` (Explorer+Analyst) and `phaseW0_validator_report.md` (independent Validator).
 2 DB connections (worker 1, Validator 1), both succeeded, no retries.
 

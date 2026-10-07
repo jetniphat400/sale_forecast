@@ -88,11 +88,13 @@ def is_in_house(code: str, has_bom: set, purchased: set) -> bool:
     return code in has_bom and code not in purchased
 
 
-def explode(demand: dict, lines: pd.DataFrame, has_bom: set, purchased: set, n_months: int, max_levels: int = 25, stock: dict = None) -> dict:
+def explode(demand: dict, lines: pd.DataFrame, has_bom: set, purchased: set, n_months: int, max_levels: int = 25, stock: dict = None, plan_used_stock: set = None) -> dict:
     """Through the bill of materials, parents before children: `demand` maps a finished item to its monthly production vector. An in-house sub-assembly is expanded to its
     own components after the requirement that its parents put on it has been netted against its on-hand stock (`stock`, per item; the same net-requirement rule as a
     purchased material, with no arrivals: a cumulative shortfall, so stock covers the earliest months first); the finished items' own plan quantities are not netted
-    (the operation plan already starts from their stock). Without `stock` nothing is netted. A node is processed once all the demand on it has been added (so a
+    (the operation plan already starts from their stock). A finished item that is also a component of another plan item has the requirement its parents put on it netted against its
+    stock only when the operation plan has not used that stock, that is only when it has no Min and Max: `plan_used_stock` is the set of items with a Min and Max, whose component
+    requirement is not netted (decision of 2026-10-07). Without `stock` nothing is netted. A node is processed once all the demand on it has been added (so a
     sub-assembly used at several levels is netted once). Returns {"gross": {material: vector}, "roots": {material: {finished item: units of the material that item
     needs, after netting}}, "levels": the longest chain, "in_house_expanded": set, "no_bom": set of items without a BOM line}. A BOM with a loop, or a chain longer than
     `max_levels`, stops the build."""
@@ -123,7 +125,7 @@ def explode(demand: dict, lines: pd.DataFrame, has_bom: set, purchased: set, n_m
         n = ready.pop()
         done += 1
         parent_need, share = need[n], dict(shares[n])
-        if n in stock and float(parent_need.sum()) > 0:                  # net the parents' requirement against the node's stock
+        if n in stock and float(parent_need.sum()) > 0 and n not in (plan_used_stock or ()):                  # net the parents' requirement against the node's stock
             net = net_requirement(parent_need, float(stock[n]), np.zeros(n_months))[2]
             factor = float(net.sum()) / float(parent_need.sum())
             vec, share = net, {r: u * factor if r not in roots_demand or r != n else u for r, u in share.items()}
@@ -256,6 +258,12 @@ def demand_from_operation_plan(item_month: pd.DataFrame, months: list) -> dict:
     return out
 
 
+def items_with_min_max(item_month: pd.DataFrame) -> set:
+    """Items of the counted rows with a Min and Max: the operation plan gives them a planned production, starting from their stock."""
+    im = item_month[item_month["counted"]]
+    return {key(i) for i in im.loc[im["planned_production"].notna(), "item"]}
+
+
 def build(root: str = PROJECT_ROOT, today: pd.Timestamp = None, op_out_dir: str = None, cfg: dict = None) -> dict:
     """The material plan from the recorded operation plan (hash-checked) and the saved week 3 pulls. Returns {"material_month", "summary", "meta"}."""
     cfg = cfg or load_config(root)
@@ -270,7 +278,8 @@ def build(root: str = PROJECT_ROOT, today: pd.Timestamp = None, op_out_dir: str 
     has_bom = parents_with_bom(w3["bom_tree"])
     purchased = purchased_codes(w3["po_lines"], w3["receipts"])
     rm_list = [str(w).strip() for w in cfg["rm_warehouses"]]
-    ex = explode(demand, lines, has_bom, purchased, len(months), int(cfg["max_bom_levels"]), stock=raw_material_stock(w3["rm_inventory"], rm_list))
+    ex = explode(demand, lines, has_bom, purchased, len(months), int(cfg["max_bom_levels"]), stock=raw_material_stock(w3["rm_inventory"], rm_list),
+                 plan_used_stock=items_with_min_max(im))
     materials = sorted(ex["gross"])
     leads = material_lead_times(materials, w3["po_lines"], w3["receipts"], w3["price"], float(cfg["lead_time_v1"]["fallback_material_days"]),
                                 cfg["usable_lead_days"])

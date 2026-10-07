@@ -27,7 +27,7 @@ SUMMARY_DIR = os.path.join(PROJECT_ROOT, "output", "summary")
 DAYS_PER_MONTH = 30.44
 
 # Today's operating point -- J3 reconciled targets, cited (same figures as phase23_modeler.py):
-# output/summary/phaseJ3_report.md (PEM101 valid not_late 98.28%) and
+# docs/reports/summary/phaseJ3_report.md (PEM101 valid not_late 98.28%) and
 # output/summary/phaseJ3_validator_stock_value_summary.csv (current_stock_value_thb 18,247,625.22).
 TODAY_NOT_LATE_PCT = 98.28
 TODAY_STOCK_VALUE_THB = 18247625.22
@@ -143,7 +143,7 @@ def main():
         "n_distinct_members": int(len(members)),
         "items_order": codes,
         "today_point": {"not_late_pct": TODAY_NOT_LATE_PCT, "stock_value_thb": TODAY_STOCK_VALUE_THB,
-                         "source": "output/summary/phaseJ3_report.md (valid not_late) + "
+                         "source": "docs/reports/summary/phaseJ3_report.md (valid not_late) + "
                                     "output/summary/phaseJ3_validator_stock_value_summary.csv "
                                     "(current_stock_value_thb) -- J3 reconciled targets"},
         "presets": {"today_lowest_stock": preset1, "highest_at_today_stock": preset2, "stretch_99pct": preset3},

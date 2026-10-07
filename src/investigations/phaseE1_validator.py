@@ -26,7 +26,7 @@ the task instructs:
                                     script, not a Phase E1 file, so reading/reusing it is
                                     explicitly in scope.
 
-Every number this script produces is written to output/summary/phaseE1_validator_report.md
+Every number this script produces is written to docs/reports/summary/phaseE1_validator_report.md
 (this script's OWN report; the task's hard exclusion only bans READING existing phaseE1_* files,
 not writing new ones).
 """

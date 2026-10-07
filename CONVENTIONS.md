@@ -38,7 +38,7 @@
   cube-agreement finding in this project should be read and written up as "consistent," never as
   "validated" or "correct," unless a genuinely independent, differently-sourced check (a physical
   stock count, a customer-side record) is also performed. This rule was added during the Phase E0
-  pre-check gate (2026-09-18, `output/summary/phaseE0_synthesis_report.md` §3(b)) after review
+  pre-check gate (2026-09-18, `docs/reports/summary/phaseE0_synthesis_report.md` §3(b)) after review
   found the project's own prior write-ups of Cube_CES/cube_Sale_APD agreement had been read as
   validating correctness rather than merely consistency.
 - **`METRICS.md` is the single source of truth for how every reported metric is defined and

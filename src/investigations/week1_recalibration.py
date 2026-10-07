@@ -4,7 +4,7 @@ its lead_time_v1 value (src/lead_time_v1.py) instead of one fitted or assumed le
 Method otherwise as phaseJ3_run_calibration.py / phaseJ3_calibration_engine.py (imported, not copied): the same simulation, the same
 grid for review interval and for reorder and order-up-to levels (months of mean demand), the same windows (warm-up 2024-01 to 2024-06, calibration
 scoring 2024-07 to 2025-12, validation 2026-01 to the last complete month), the same tolerance (not_late +-3 points, stock value +-15%, both
-windows) and the three usable-stock definitions. Differences, all stated in output/summary/week1_leadtime_calibration.md:
+windows) and the three usable-stock definitions. Differences, all stated in docs/reports/summary/week1_leadtime_calibration.md:
 the item set (92, not the 128-item pilot scope), the data (the 2026-10-05 monthly pull, validation to 2026-09-30), the lead time (per item, not a grid
 dimension), unit cost (the frozen phase I cache, 77 of the 92 items have one).
 

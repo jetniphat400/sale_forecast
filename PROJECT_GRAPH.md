@@ -43,7 +43,7 @@ V2, 12/12 figures match, `phaseJ3_validator2_independent_check.md`):
 
 **Q10 is therefore substantially resolved for PEM101 (data-answerable, with named uncertainty) and
 NARROWED to one specific named business question each for PEM103 and PEM107** (see the Gate detail
-in `output/summary/phaseJ3_report.md` / STATUS.md's Phase J3 entry) — no longer the single, vague
+in `docs/reports/summary/phaseJ3_report.md` / STATUS.md's Phase J3 entry) — no longer the single, vague
 "how does the business fulfil orders" question it was before J3. `cube_final` (the one remaining
 purely-data route, batch dates/sizes for Q17) is still blocked — a second clean connection attempt
 this session again returned 0 rows, contradicting the earlier "crashed session" explanation.
@@ -360,7 +360,7 @@ reading immediately above (late-2024 batch-sharing vs. May-2026 stock/administra
 is a LEVEL-H HYPOTHESIS proposed to reconcile the data with the business's account, not itself a
 finding — and what was separated in May 2026 (stock/warehouses, production lines/staff, or both)
 remains an unconfirmed open point.**
-`output/summary/phase25_explorer{1,2,4}_report.md`, `phase25_analyst3_report.md`,
+`docs/reports/summary/phase25_explorer{1,2,4}_report.md`, `phase25_analyst3_report.md`,
 `phase25_validator_report.md`; DATA_MAP.md §7. **Extended, task 2b (2026-09-28): PEM107's Omni
 Channel not_late, computed fresh from Cube_CES (2024-01-01 onward), fell from 87.1% (n=41,495
 units) before 2026-05-01 to 57.7% (n=2,702 units) from that date — same decline already
@@ -403,10 +403,10 @@ largely resolved; PEM103/PEM107 each now have ONE narrow named business question
 | D7 | done | Q5 (loosely) | G2 | METRICS.md §15, incl. 2026-09-22/2026-09-23 amendments | — |
 | D8 | done | Q15 | D9 | STATUS.md Phase J2 Part 0 entry (revert) | — |
 | D9 | done | D8 | G2 | STATUS.md banner + per-phase tags | — |
-| D10 | done, 2026-10-06 (the user's decision, given in the Week 1 close task prompt as "D2") | Week 1 recalibration on the 92 items (`output/summary/week1_leadtime_calibration.md`) | G2 | **Min/Max use the lead time the calibration supports: the ensemble fitted with lead time free on the 92 stock_policy items (36 distinct members, replenishment lead 1 to 30 days).** The per-item material lead time (median 63 days, slowest purchased material) is shown on the page and kept for the Week 3 material plan; it is not used for Min/Max. Applies to PEM101's calibrated section of `forecast/inventory.html` (PEM107 has no calibrated Min/Max). STATUS.md, "Week 1 close". Labelled D2 in that prompt; D10 here because D1 to D9 already exist. | — |
+| D10 | done, 2026-10-06 (the user's decision, given in the Week 1 close task prompt as "D2") | Week 1 recalibration on the 92 items (`docs/reports/summary/week1_leadtime_calibration.md`) | G2 | **Min/Max use the lead time the calibration supports: the ensemble fitted with lead time free on the 92 stock_policy items (36 distinct members, replenishment lead 1 to 30 days).** The per-item material lead time (median 63 days, slowest purchased material) is shown on the page and kept for the Week 3 material plan; it is not used for Min/Max. Applies to PEM101's calibrated section of `forecast/inventory.html` (PEM107 has no calibrated Min/Max). STATUS.md, "Week 1 close". Labelled D2 in that prompt; D10 here because D1 to D9 already exist. | — |
 | D11 | done, 2026-10-06 (the user's decision, given in the Week 1 close task prompt as "D1") | — | G3 (Week 3 material plan) | **Reading the BOMs of the in-house sub-assemblies (the 82 W-codes, which leave 39 of the 92 PEM101 stock items with an assumed lead time) is allowed, with one read-only database session, in Week 3.** Not used yet. STATUS.md, "Week 1 close". Labelled D1 in that prompt; D11 here for the same reason as D10. | — |
 | D12 | done, 2026-10-06 (the user's decision, given in the Week 2 task prompt as "D3") | Week 1 lead-time output (`output/summary/item_lead_time_v1.csv`) | G2, G3 (Week 3 material plan) | **The material lead-time line on the Min-Max page states the median over the items with observed purchase records only, with their count** (50 of 92 stock_policy items, median 48.5 days on 2026-10-06). Replaces the line that gave the median over all 92 items (63 days, mostly the assumed fallback). STATUS.md, "Week 2". Labelled D3 in that prompt; D12 here because D3 already exists. | — |
-| D13 | done, 2026-10-06 (the user's decision, given in the Week 2 task prompt as "D4") | Week 1 recalibration (`output/summary/week1_leadtime_calibration.md`) | G2 | **The PEM101 calibration keeps the J3 observation window, 2024-01 to 2025-12.** The shorter window (target from 2024-07) gives lead 1 to 15 days with 35 members; it is a sensitivity for the Week 4 review, not used. STATUS.md, "Week 2". Labelled D4 in that prompt; D13 here. | — |
+| D13 | done, 2026-10-06 (the user's decision, given in the Week 2 task prompt as "D4") | Week 1 recalibration (`docs/reports/summary/week1_leadtime_calibration.md`) | G2 | **The PEM101 calibration keeps the J3 observation window, 2024-01 to 2025-12.** The shorter window (target from 2024-07) gives lead 1 to 15 days with 35 members; it is a sensitivity for the Week 4 review, not used. STATUS.md, "Week 2". Labelled D4 in that prompt; D13 here. | — |
 | D14 | done, 2026-10-06 (the user's decision, given in the Week 2 task prompt as the operation plan v1 logic) | D10, Q20 (lower-bound capacity) | G3 | **Operation plan v1 logic:** monthly demand per item is the larger of the forecast and the confirmed orders not yet delivered (Cube_CES Backlog) due that month, overdue backlog in the first month; items with a Min and Max are simulated month by month (production up to Max when the closing position is below Min); confirmed_to_order and conflict items load production by demand; load per division and month is compared with the highest sustained monthly output (a lower bound). METRICS.md Sec.42; STATUS.md, "Week 2". | — |
 | D15 | done, 2026-10-06 (the user's decision, given in the week 3 prompt) | The brief (STATUS.md, "The brief") | all | **Nothing waits for answers from other departments.** Results go on the pages with labels saying how certain they are, and anything uncertain is listed for later verification (STATUS.md, week 4). The PEM101 evidence file is not sent; the week 3 classification of every division replaces it. | — |
 | T1 | in progress | — | G1 | STATUS.md, "First scoreable target month is 2026-08, safe to score only from 2026-09-30" | time |
@@ -470,7 +470,7 @@ scheduled as follow-up work, not yet done. **PEM101 value statement, refined 202
   now also regenerates the order-notice distribution and delivery-timeliness-by-year inputs
   (previously up to 24 days stale), and both dashboards show per-section `data_pulled_at` with
   staleness evaluated per section (METRICS.md Sec.26).
-  **UPDATED 2026-10-05 (check V1-V3):** the first unattended scheduled run took place (2026-10-05 07:40, result 0, 11 of 11 steps, pushed `db1d04b`); see STATUS.md "Check V1, V2, V3" and `output/summary/check_v1_v2_v3.md`. Step 5 skipped under the one-vintage-per-month guard; the next new vintage is due in November.
+  **UPDATED 2026-10-05 (check V1-V3):** the first unattended scheduled run took place (2026-10-05 07:40, result 0, 11 of 11 steps, pushed `db1d04b`); see STATUS.md "Check V1, V2, V3" and `docs/reports/summary/check_v1_v2_v3.md`. Step 5 skipped under the one-vintage-per-month guard; the next new vintage is due in November.
 - **T2 -- posting-delay snapshot.** `src/snapshot_daily.py`, a Windows Scheduled Task, started
   **2026-09-22**; the leakage-guard margin cannot be revisited until **≥60 days of daily snapshots
   exist and the script's own p99 is known from that data** (STATUS.md, "Prospective posting-delay

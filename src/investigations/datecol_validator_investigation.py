@@ -547,4 +547,4 @@ if __name__ == "__main__":
     part3b_window_backdating_check(base)
 
     print("\nDone. See output/summary/datecol_p*.csv for detail, output/charts/datecol_*.png for charts, "
-          "and output/summary/datecol_validator_report.md for the written report.")
+          "and docs/reports/summary/datecol_validator_report.md for the written report.")

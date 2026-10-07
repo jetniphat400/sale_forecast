@@ -67,7 +67,7 @@ project's outputs, and re-deriving them would mean re-running the full rolling-o
 against the database, which is out of this task's scope (three specific recomputations from
 existing files). This limitation is stated, not silently absorbed.
 
-Output: `output/summary/task2c_validator_check1_ci101_topdown.csv`
+Output: `docs/reports/summary/task2c_validator_check1_ci101_topdown.csv`
 
 ---
 
@@ -97,7 +97,7 @@ the task brief expected).
 **Confidence: V1 (high).** Full population comparison, not a sample; own alignment/comparison
 code, not a re-read of the migration script's own diff.
 
-Output: `output/summary/task2c_validator_check2_vintage1_comparison.csv`
+Output: `docs/reports/summary/task2c_validator_check2_vintage1_comparison.csv`
 
 ---
 
@@ -162,7 +162,7 @@ dry run; the underlying test failure is a separate, unresolved data-drift issue 
 `phaseC_step2_per_division_summary_qty.csv` vs. the embedded report JSON that the Orchestrator
 should track as an open item.
 
-Output: `output/summary/task2c_validator_check3_mae_change_gate.csv`
+Output: `docs/reports/summary/task2c_validator_check3_mae_change_gate.csv`
 
 ---
 

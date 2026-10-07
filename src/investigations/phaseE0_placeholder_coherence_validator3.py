@@ -44,7 +44,7 @@ outputs, all cited directly):
 Outputs:
   - output/summary/phaseE0_validator3_placeholder_type_totals.csv
   - output/summary/phaseE0_validator3_82item_reasons.csv
-  - output/summary/phaseE0_validator3_placeholder_coherence_report.md (written by hand from
+  - docs/reports/summary/phaseE0_validator3_placeholder_coherence_report.md (written by hand from
     this script's console output, not generated automatically -- the report is the primary
     deliverable and needs prose the script does not produce)
 """

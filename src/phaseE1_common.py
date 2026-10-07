@@ -223,7 +223,7 @@ def compute_unit_cost(item_codes: list) -> pd.DataFrame:
     """Per item: primary_unit_cost (median of cost/qty over the trailing 12 months, anchored to
     the global max createDate in this pull; falls back to the most-recent transaction's cost/qty
     if no row falls in that 12-month window), and primary_basis stating which was used, or
-    'NO_COST_RECORD'. IDENTICAL methodology to output/summary/phaseD_check2_report.md -- reused,
+    'NO_COST_RECORD'. IDENTICAL methodology to docs/reports/summary/phaseD_check2_report.md -- reused,
     not re-derived, for consistency across phases.
     """
     raw = query_sale_cost(item_codes)

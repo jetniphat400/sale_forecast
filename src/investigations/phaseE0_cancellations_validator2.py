@@ -2,7 +2,7 @@
 
 Re-run of a task first attempted 2026-09-18 and blocked at that time by an
 expired SQL Server password (see the superseded content of
-`output/summary/phaseE0_validator2_cancellations_report.md`, now replaced).
+`docs/reports/summary/phaseE0_validator2_cancellations_report.md`, now replaced).
 That attempt fully scoped the method before the DB became unreachable; this
 script reuses it exactly, with no re-derivation:
 

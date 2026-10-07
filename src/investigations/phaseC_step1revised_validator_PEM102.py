@@ -8,7 +8,7 @@ every check under `WHERE division = 'PEM102'`. That filter has since been remove
 the pricelist alone determines an item's division; every Omni-Channel row for an item's code
 counts regardless of the database's own `division` tag. A full-scope (445-code) re-validation
 (`src/investigations/phaseC_full_scope_revalidation.py`,
-`output/summary/phaseC_revalidation_report.md`) already measured PEM102's aggregate value shift
+`docs/reports/summary/phaseC_revalidation_report.md`) already measured PEM102's aggregate value shift
 (+38.40%) but did NOT re-run PEM102's full per-division readiness checks. This script does that,
 re-running the same checks as the original PEM102 Validator (usable date range, name/code
 collisions, pricelist agreement, duplicates/split lots, Cube_CES reconciliation, demand profile)

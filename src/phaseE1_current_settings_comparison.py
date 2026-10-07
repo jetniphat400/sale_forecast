@@ -26,7 +26,7 @@ from phaseE1_common import (
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 logger = logging.getLogger("phaseE1_current_settings_comparison")
 
-PHASE_D_FULL_445_STOCK_VALUE_THB = 37399005.48  # output/summary/phaseD_check2_report.md, cited, not recomputed here
+PHASE_D_FULL_445_STOCK_VALUE_THB = 37399005.48  # docs/reports/summary/phaseD_check2_report.md, cited, not recomputed here
 
 
 def main():

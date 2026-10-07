@@ -49,7 +49,7 @@ pilot_categories:
 # mirror pattern nobody can explain (STATUS.md Phase C step 1); excluding
 # those rows, as the prior fix did, would have discarded roughly 26% of
 # PEM102's and 40% of PEM107's real Omni-Channel sales value
-# (output/summary/phaseC_sheetmap_report.md). Queries now select by itemcode +
+# (docs/reports/summary/phaseC_sheetmap_report.md). Queries now select by itemcode +
 # revenue_type only -- no `division = ...` clause anywhere, `-OLD` tags
 # included, not excluded.
 division_source: "pricelist"   # Explicit flag: division is attached from the
@@ -62,7 +62,7 @@ division_source: "pricelist"   # Explicit flag: division is attached from the
 # Sheet name (exactly as it appears in reference/pricelist.xlsx) -> division
 # name to record for every item found on that sheet. Confirmed against the
 # pricelist's own `business` column, which matches this mapping exactly for
-# all six sheets (output/summary/phaseC_sheetmap_report.md §1).
+# all six sheets (docs/reports/summary/phaseC_sheetmap_report.md §1).
 sheet_to_division:
   "PEM101-Version 2": "PEM101"    # pilot division -- Fuse/Surge Arrester exist only here
   "PEM102-Version 2": "PEM102"
@@ -191,7 +191,7 @@ forecast_granularity: "monthly"
 # whose test window's LAST month ends too close to the data's snapshot_pull_date. See
 # src/leakage_guard.py for the check itself.
 #
-# Why this exists: output/summary/b4_leakage_and_windowposition_report.md found ZERO
+# Why this exists: docs/reports/summary/b4_leakage_and_windowposition_report.md found ZERO
 # future-dated (forecast_date > pull_date) rows inside the existing 31-month backtest window --
 # but only because that particular pull (2026-09-02) happened to land more than a month after the
 # window's last month (2026-07) had fully elapsed. That gap was incidental, never enforced by any
@@ -310,7 +310,7 @@ placeholder_item_codes:
 # assignments for the 82 no-history items (89 minus the 7 PEM104-sheet
 # codes, which are excluded at division level instead -- see
 # divisions_excluded_from_forecasting above and STATUS.md, "Phase C step 2").
-# Evidence: output/summary/phaseC_step2_report.md (transferability),
+# Evidence: docs/reports/summary/phaseC_step2_report.md (transferability),
 # output/summary/phaseC_89items_characterization_report.md (characterisation),
 # output/summary/phaseC_placeholder_assignment_82items.csv (this rule set applied).
 # ============================================================
@@ -345,7 +345,7 @@ division_forecast_method:
   CI101:
     method: topdown_combination
     reason: "Falls 1.6% behind Naive (not significant, t=0.117, n=13 items) while significantly beating Direct (t=-2.124, borderline given small n). Kept on Top-down for consistency with the project's single-method convention across divisions, NOT because current evidence favours it here."
-    recheck_instruction: "Re-check Top-down vs Naive for CI101 once its item-level history lengthens beyond the current 13-item, 31-month evidence base -- the current gap is small and not statistically significant, so it should not be treated as settled. See output/summary/phaseC_step2_report.md Part 3."
+    recheck_instruction: "Re-check Top-down vs Naive for CI101 once its item-level history lengthens beyond the current 13-item, 31-month evidence base -- the current gap is small and not statistically significant, so it should not be treated as settled. See docs/reports/summary/phaseC_step2_report.md Part 3."
   PEM104:
     method: excluded
     reason: "Excluded from forecasting entirely -- only 12 transactions across 17 months, too few to fit any model at any aggregation level (data-volume reason, unrelated to division tagging). Receives a placeholder for Phase 4 instead. See divisions_excluded_from_forecasting above."
@@ -774,7 +774,7 @@ placeholder_item_assignments_82:
 # Insulator, PEM101); carving them OUT of the existing total ("carve-out", redistributing
 # real items' shares to make room) shrank real items' own forecasts by up to -83.7%
 # (worst: Current Transformer Type CDB, PEM107) with no change in those items' actual
-# sales history. See output/summary/phaseE0_validator3_placeholder_coherence_report.md
+# sales history. See docs/reports/summary/phaseE0_validator3_placeholder_coherence_report.md
 # and phaseE0_synthesis_report.md for the full evidence, and STATUS.md Locked Decisions
 # ("Placeholder items sit outside the Top-down hierarchy entirely") for the reasoning.
 # DECISION: placeholder items are excluded from Top-down hierarchy reconciliation --
@@ -790,8 +790,8 @@ placeholder_hierarchy_treatment:
   preferred_future_basis: "For the 66 of 82 items with an identified pricelist analogue/predecessor code (see output/summary/phaseE0_validator3_82item_reasons.csv), that analogue is the preferred basis once a placeholder value is actually needed for planning, in place of the flat Type mean/median -- FUTURE WORK, not yet implemented (no Modeler has backtested whether it forecasts better; a supported hypothesis, not proven)."
   reason: "E0.3: additive treatment inflates Type totals up to +707.3%; carve-out shrinks real items' forecasts up to -83.7%. Neither is acceptable as a silent default, so placeholders are kept outside the hierarchy entirely."
   evidence:
-    - "output/summary/phaseE0_validator3_placeholder_coherence_report.md"
-    - "output/summary/phaseE0_synthesis_report.md"
+    - "docs/reports/summary/phaseE0_validator3_placeholder_coherence_report.md"
+    - "docs/reports/summary/phaseE0_synthesis_report.md"
     - "output/summary/phaseE0_validator3_placeholder_type_totals.csv"
   decided: "2026-09-18"
 
@@ -868,7 +868,7 @@ warehouse_roles:
 # it produces NO actionable purchase recommendation, only a scenario analysis the business can
 # evaluate. Every key below carries an `owner` (who should confirm/own the value) and is
 # explicitly a modelling/scenario input, never a measured fact, unless the comment says the
-# figure itself is business-confirmed (lead time only). See output/summary/phaseE1_modeler_report.md
+# figure itself is business-confirmed (lead time only). See docs/reports/summary/phaseE1_modeler_report.md
 # for the full reasoning behind each value and every acceptance-criteria self-check.
 # ============================================================
 phase_e1_assumptions:
@@ -1003,7 +1003,7 @@ phase_e1_assumptions:
   # consistency, not re-derived. Which of the two computed bases is treated as PRIMARY is itself a
   # stated choice (Phase D's own reasoning: robust to one-off/outlier rows), carried forward here.
   unit_cost_basis: "median_last_12mo_cost_over_qty_per_row_with_most_recent_transaction_fallback"
-  unit_cost_basis_owner: "Modeler default -- Phase D Check 2 methodology (output/summary/phaseD_check2_report.md), reused for consistency across phases"
+  unit_cost_basis_owner: "Modeler default -- Phase D Check 2 methodology (docs/reports/summary/phaseD_check2_report.md), reused for consistency across phases"
   unit_cost_median_window_months: 12
 
   # --- Obsolescence threshold: "no demand for N consecutive months." No business figure exists.
@@ -1523,7 +1523,7 @@ material_plan:
 lead_time_v1:
   # ASSUMPTION. Used for a material with no observed purchase record and no non-zero supplier-quoted delivery time. Set at the observed 90th
   # percentile across materials (the per-material median order-to-first-receipt days of the 138 of 228 BOM materials of PEM101's 92 stock items
-  # that have purchase records: p90 63.2, 2026-10-05, output/summary/week1_leadtime_calibration.md). To be tuned later.
+  # that have purchase records: p90 63.2, 2026-10-05, docs/reports/summary/week1_leadtime_calibration.md). To be tuned later.
   fallback_material_days: 63
   # ASSUMPTION. Production time (days from Cube_Production_Order.start_date to the latest cube_final.final_date of the same job) for an item with
   # fewer than production_min_jobs matched jobs, and for an item with no usable BOM. Set at the median over all 291 matched job-items since
@@ -1552,6 +1552,8 @@ maxmin_v1:
   dense_grid_file: "output/summary/maxmin_v1_dense_grid_PEM101.json"
   ratio_grid_file: "output/summary/maxmin_v1_ratio_grid_PEM101.json"
   recorded_outputs_integrity_file: "output/summary/maxmin_v1_integrity.json"
+  # Min and Max on the stock share of the 13 mixed items, computed only (week 4); one JSON file that carries the SHA-256 of its own content.
+  mixed_item_min_max_file: "output/summary/mixed_item_min_max_v1.json"
   # Per-item lead time (METRICS.md Sec.5, item lead time version 1) and its integrity file.
   item_lead_time_file: "output/summary/item_lead_time_v1.csv"
   item_lead_time_integrity_file: "output/summary/item_lead_time_v1_integrity.json"
@@ -1624,7 +1626,7 @@ maxmin_v1:
       unknown: "ถ้าใช้ช่วงสั้นลง lead time ที่ได้จะแคบลง"
       used_now: "{calibration_window}"
       affects: "Min/Max ของ PEM101"
-      value_source: "config maxmin_v1.calibration_window (decision D4, 2026-10-06; the J3 window); the shorter window is the sensitivity in output/summary/week1_leadtime_calibration.md"
+      value_source: "config maxmin_v1.calibration_window (decision D4, 2026-10-06; the J3 window); the shorter window is the sensitivity in docs/reports/summary/week1_leadtime_calibration.md"
 
 # ---- Operation plan v1 (week 2, 2026-10-06; METRICS.md Sec.42; src/operation_plan.py) ----
 # D4 (the user, 2026-10-06): the PEM101 calibration keeps the J3 observation window, 2024-01 to 2025-12 (METRICS.md Sec.20). The shorter window

@@ -427,4 +427,4 @@ if __name__ == "__main__":
     task3c_audit_trail_and_timestamp_check(item_codes)
 
     print("\nDone. See output/summary/phaseA_a1_task*.csv for detail and "
-          "output/summary/phaseA_a1_forecastdate_revision_findings.md for the written report.")
+          "docs/reports/summary/phaseA_a1_forecastdate_revision_findings.md for the written report.")

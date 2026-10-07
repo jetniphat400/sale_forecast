@@ -5,7 +5,7 @@ CONVENTIONS.md: "Separate data access, computation and presentation into differe
 guard's computation (no data pulling, no printing/plotting) so src/backtest_rekeyed.py's
 run_train_val_test and run_rolling_origin can both call the identical check.
 
-Motivation (src/leakage_check_forecastdate.py, output/summary/b4_leakage_and_windowposition_report.md):
+Motivation (src/leakage_check_forecastdate.py, docs/reports/summary/b4_leakage_and_windowposition_report.md):
 the existing "zero future-dated rows inside the backtest window" finding was TRUE only because the
 2026-09-02 pull happened to occur more than a month after the 31-month window's last month
 (2026-07) had fully elapsed. That gap was incidental, not enforced by any code -- a future re-run

@@ -304,3 +304,28 @@ def test_a_real_run_and_step_11_refuse_outside_the_publishing_clone(tmp_path, mo
     assert mr.cli([]) == 1                                                                 # refused before any step
     with pytest.raises(daily_stock_job.DailyStop, match="only from the publishing clone"):
         mr.step11_commit_and_push(False, *GATES)
+
+
+# ------------------------------------------------------------------ the pilot view's recorded data (week 4, computed only)
+def test_the_recorded_pilot_view_data_hashes_and_its_figures_equal_the_recorded_focus_item_backtest(tmp_path):
+    import json
+    import focus_item_model_selection as fms
+    path = os.path.join(fms.SUMMARY_DIR, "pilot_view_data_v1.json")
+    focus = os.path.join(fms.SUMMARY_DIR, "focus_items_rolling_origin_all.csv")
+    if not (os.path.exists(path) and os.path.exists(focus)):
+        pytest.skip("SKIPPED, not passed: the recorded pilot view data is not on this machine")
+    payload = fms.read_pilot_view(path)
+    assert set(payload["units"]) >= {"Drop-out Fuse Cutout", "Surge Arrester", "EEE-F-FC-1040010002", "HS-F-99-02110", "HS-F-99-0213"}
+    ro = pd.read_csv(focus)
+    for code in ("EEE-F-FC-1040010002", "HS-F-99-02110", "HS-F-99-0213"):
+        td = payload["units"][code]["topdown_final"]
+        assert td["n_origins"] == 7 and td["first_test_month"] == "2025-03" and td["last_test_month"] == "2026-08"
+        rec = ro[(ro["itemcode"] == code) & (ro["model"].str.startswith("Top-down"))]
+        if len(rec):
+            assert td["MAE"] == pytest.approx(rec["MAE"].mean(), rel=1e-9)               # the recorded focus-item backtest, regenerated
+    tampered = tmp_path / "t.json"
+    rec = json.load(open(path, encoding="utf-8"))
+    rec["payload"]["meta"]["today_checked"] = "1999-01-01"
+    tampered.write_text(json.dumps(rec), encoding="utf-8")
+    with pytest.raises(ValueError, match="does not hash"):
+        fms.read_pilot_view(str(tampered))

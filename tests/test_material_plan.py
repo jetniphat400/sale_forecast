@@ -768,3 +768,22 @@ def test_the_runner_has_the_pull_stage_and_the_plan_no_longer_reads_the_one_off_
     import monthly_refresh as mr
     out = mr.step1_pull_data(dry_run=True, offline=True)
     assert out["material_plan_pull"]["refreshed"] is False
+
+
+# ====================================================================================================== a plan item that is also a component (decision of 2026-10-07)
+def test_a_plan_item_that_is_also_a_component_is_netted_against_its_stock_only_without_a_min_and_max():
+    bom = _bom([("P", None, 1, "PC", 0, "Standard"), ("P", "F", 1, "PC", 1, "Standard"), ("F", None, 1, "PC", 0, "Standard"), ("F", "RM-X", 2, "PC", 1, "Standard")])
+    po = pd.DataFrame({"po_no": ["1"], "item_code": ["RM-X"], "po_date": ["2026-01-01"], "planed_date": ["2026-01-20"], "po_quantity": [10], "received_quantity": [10]})
+    rcv = pd.DataFrame({"PO": ["1"], "Itemcode": ["RM-X"], "Receive_date": ["2026-01-21"], "Items_Received": [10]})
+    args = (mp.bom_component_lines(bom), mp.parents_with_bom(bom), mp.purchased_codes(po, rcv), 1)
+    demand = {"P": np.array([10.0]), "F": np.array([5.0])}               # F is sold (plan quantity 5) and a component of P (10 needed)
+    without = mp.explode(demand, *args, stock={"F": 4.0}, plan_used_stock=set())
+    assert without["gross"]["RM-X"][0] == pytest.approx((10 - 4 + 5) * 2)     # no Min and Max: the 10 that P needs are netted by F's stock of 4; F's own 5 is not
+    with_minmax = mp.explode(demand, *args, stock={"F": 4.0}, plan_used_stock={"F"})
+    assert with_minmax["gross"]["RM-X"][0] == pytest.approx((10 + 5) * 2)     # with a Min and Max the plan has used the stock: nothing netted
+    assert mp.explode(demand, *args, plan_used_stock={"F"})["gross"]["RM-X"][0] == pytest.approx(30)
+
+
+def test_items_with_a_min_and_max_are_those_with_a_planned_production_in_the_counted_rows():
+    im = pd.DataFrame({"item": ["A", "B", "C"], "counted": [True, True, False], "planned_production": [1.0, np.nan, 2.0]})
+    assert mp.items_with_min_max(im) == {"A"}

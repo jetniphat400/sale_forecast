@@ -7,7 +7,7 @@ PEM107 while `division = 'PEM107'` was still used as a query filter. That filter
 removed project-wide -- the pricelist sheet an item appears on determines its division; a query
 must include every Omni Channel row for an item's code regardless of what `division` value the
 database row happens to carry. For PEM107 this raised total Omni-Channel value by 90.01%
-(`output/summary/phaseC_revalidation_report.md` Section 1) -- the largest magnitude change of the
+(`docs/reports/summary/phaseC_revalidation_report.md` Section 1) -- the largest magnitude change of the
 three divisions re-validated in this round. That aggregate re-validation did not re-run PEM107's
 full per-division readiness checks (category/type collisions, pricelist agreement, duplicates,
 demand profile, readiness verdict) -- this script does that.

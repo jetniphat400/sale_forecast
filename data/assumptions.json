@@ -88,7 +88,7 @@
    "unknown": "ถ้าใช้ช่วงสั้นลง lead time ที่ได้จะแคบลง",
    "used_now": "มกราคม 2567 ถึง ธันวาคม 2568",
    "affects": "Min/Max ของ PEM101",
-   "value_source": "config maxmin_v1.calibration_window (decision D4, 2026-10-06; the J3 window); the shorter window is the sensitivity in output/summary/week1_leadtime_calibration.md",
+   "value_source": "config maxmin_v1.calibration_window (decision D4, 2026-10-06; the J3 window); the shorter window is the sensitivity in docs/reports/summary/week1_leadtime_calibration.md",
    "updated_date": "2026-10-06"
   }
  ]

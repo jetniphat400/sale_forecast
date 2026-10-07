@@ -25,7 +25,7 @@ DAYS_PER_MONTH = 30.44
 FOCUS_CODES = ["EEE-F-FC-1040010002", "HS-F-99-02110", "HS-F-99-0213"]
 
 # Today's operating point -- J3 reconciled targets, cited (Verify, never recall):
-# output/summary/phaseJ3_report.md line 21 (PEM101 valid not_late 98.28%), and
+# docs/reports/summary/phaseJ3_report.md line 21 (PEM101 valid not_late 98.28%), and
 # output/summary/phaseJ3_validator_stock_value_summary.csv (PEM101 current_stock_value_thb
 # 18,247,625.22, precise figure -- the report's "THB 18.25M" is this same figure rounded).
 TODAY_NOT_LATE_PCT = 98.28
@@ -156,7 +156,7 @@ def main():
 
     # ================= Part C: today's point vs. the median curve =================
     print(f"\n=== TODAY'S POINT (J3 reconciled targets) ===")
-    print(f"not_late = {TODAY_NOT_LATE_PCT}% (output/summary/phaseJ3_report.md, PEM101 valid not_late)")
+    print(f"not_late = {TODAY_NOT_LATE_PCT}% (docs/reports/summary/phaseJ3_report.md, PEM101 valid not_late)")
     print(f"stock_value = THB {TODAY_STOCK_VALUE_THB:,.2f} "
           f"(output/summary/phaseJ3_validator_stock_value_summary.csv, PEM101 current_stock_value_thb)")
 
