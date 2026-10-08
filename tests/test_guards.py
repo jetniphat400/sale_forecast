@@ -253,3 +253,20 @@ def test_no_file_under_output_is_tracked():
     assert set(tracked) <= HELD_UNDER_OUTPUT, sorted(set(tracked) - HELD_UNDER_OUTPUT)[:10]
     ignore = open(os.path.join(root, ".gitignore"), encoding="utf-8").read().split()
     assert "output/" in ignore
+
+
+# ------------------------------------------------------------------ the test suite never connects to the database (decision of the user, 2026-10-08)
+def test_the_database_block_refuses_every_way_to_connect(monkeypatch):
+    import db
+    import pyodbc
+    from sqlalchemy.engine import Engine
+    monkeypatch.setenv("SALE_FORECAST_DB_EXPECTED", "1")          # these attempts are the block's own test: the session count does not charge them to a test
+    with pytest.raises(db.DatabaseBlockedError, match="refused"):
+        db.run_query("SELECT 1")                                  # the project's own helper
+    with pytest.raises(db.DatabaseBlockedError, match="refused"):
+        with db.session():
+            pass
+    with pytest.raises(db.DatabaseBlockedError, match="pyodbc.connect"):
+        pyodbc.connect("DRIVER={none};SERVER=none")
+    with pytest.raises(db.DatabaseBlockedError, match="Engine.connect"):
+        Engine.connect(None)

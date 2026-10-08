@@ -1244,3 +1244,16 @@ pipeline — no new section is needed for this; it is already covered by section
   combination) and the mean of its items' own figures, both labelled.
 - An item on the price list that is not in the forecast scope is listed with its reason from the item status file (`output/summary/phaseC_step1revised_item_status_445.csv`):
   "excluded - listed but never sold" or "placeholder - method already assigned".
+
+## 45. target_comparison
+
+    The executive summary compares the revenue target with an actual measure; decisions of the user, 2026-10-08:
+      Business            = the item's pricelist division where it differs from the database's `division` column (D1)
+      PO Receive          = not compared for now (D2)
+      revenue target      = Revenue (MB)-Conting, as held in `Cube_Target_PMIS` (TargetRevenueAmount; a plan by year, no month), used once the matching actual
+                            measure is proven (D2); not yet proven (week 4, prompt 7: no database object pairs them, no candidate reproduces it)
+      PEM104 and PEMC     = their targets are shown with a remark saying why they cannot be compared yet (no forecast, no matching database rows); none is left out (D3)
+
+- The workbook's Product Types are matched to database types by exact name or, where marked, by inference; inferred matches are not facts until the user confirms them
+  (list in docs/reports/summary/prompt5_g2_vintage_target_map.md, "Prompt 7", Part 3).
+- Tests never connect to the database: `tests/conftest.py` blocks every connection and `src/db.py` refuses while `SALE_FORECAST_BLOCK_DB` is set (decision of 2026-10-08).

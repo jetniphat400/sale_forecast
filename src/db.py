@@ -19,6 +19,25 @@ load_dotenv(dotenv_path=os.path.join(PROJECT_ROOT, ".env"))
 
 _REQUIRED_ENV_VARS = ["DB_SERVER", "DB_DATABASE", "DB_USER", "DB_PASSWORD", "DB_DRIVER"]
 
+# The test suite must never connect (decision of the user, 2026-10-08). tests/conftest.py sets SALE_FORECAST_BLOCK_DB=1 for the whole test session; every Python process
+# a test starts inherits it, so a connection attempt anywhere fails at once with DatabaseBlockedError instead of reaching the server. Each refusal is appended to the
+# file named by SALE_FORECAST_DB_BLOCK_LOG (the test that was running, from PYTEST_CURRENT_TEST, and whether the attempt was deliberate) so a swallowed error is still counted.
+BLOCK_ENV = "SALE_FORECAST_BLOCK_DB"
+
+
+class DatabaseBlockedError(RuntimeError):
+    """A database connection was attempted while tests have connections blocked."""
+
+
+def refuse_if_blocked(where: str) -> None:
+    if os.environ.get(BLOCK_ENV) != "1":
+        return
+    log = os.environ.get("SALE_FORECAST_DB_BLOCK_LOG")
+    if log:
+        with open(log, "a", encoding="utf-8") as f:
+            f.write("|".join([os.environ.get("SALE_FORECAST_DB_EXPECTED", "0"), os.environ.get("PYTEST_CURRENT_TEST", "-").replace("|", "/"), where]) + chr(10))
+    raise DatabaseBlockedError(f"database connection refused ({where}): the test suite must not connect to the database; run it from tracked data or a fixture")
+
 
 def _get_required_env(name: str) -> str:
     value = os.getenv(name)
@@ -32,6 +51,7 @@ def _get_required_env(name: str) -> str:
 
 def get_connection() -> Engine:
     """Build a SQLAlchemy engine (using pyodbc) from credentials in .env."""
+    refuse_if_blocked("db.get_connection")
     server = _get_required_env("DB_SERVER")
     database = _get_required_env("DB_DATABASE")
     user = _get_required_env("DB_USER")
