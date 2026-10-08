@@ -2023,3 +2023,13 @@ Source: STATUS.md "Week 4, prompt 8"; docs/reports/summary/prompt5_g2_vintage_ta
 - **Material plan, plan items not exploded: 139 of 439** (83 with no quantity in the plan's months, 55 not counted, 1 with a quantity and no component line in the saved bill of materials, `02-05-R-0004`); 300 exploded; 301 items with a quantity = the plan's own `n_items_exploded`. PEM104 has no production in the plan. **V2.**
 - **The reason on record for PEM104 having no forecast is made to order by business model; "insufficient data" is the superseded symptom** (re-read, DATA_MAP.md Locked Decisions entry of 2026-09-23). **V2.**
 - **Only one scored forward-test month exists (2026-08, horizon 1);** its division MAEs: CI101 9.8, PEM101 348.8, PEM102 1.2, PEM103 6.1, PEM107 6.1 (Bias -3.7, -46.0, -0.2, -0.4, 2.8). **V2.**
+
+## Prompt 10 (2026-10-08): unit price and baht view -- verified facts
+
+Source: STATUS.md "Week 4, prompt 10"; docs/reports/summary/prompt5_g2_vintage_target_map.md, heading "Prompt 10". **V2** = recomputed by the implementer and independently by a Validator.
+
+- **Unit price of the 335 forecast items (vintage 2, price window 2025-09 to 2026-08): 277 from the 12-month window, 57 from the fit window, 1 from Market Price, 0 without.** The saved monthly series and the saved raw pull give the same price for all 334 sales-priced items. **V2.**
+- **The Price List "Market Price" column is found by its row-3 header on each visible product sheet; its label "Standard Price" is in row 4.** Columns: PEM101 P, PEM102 Q, PEM103 P, PEM104 Q, PEM107 CT Q, CI101 Q. The sheets hold other price columns (Inside Group, Smart Shop, Dealer-Private, Private, PEA Regional, Dealer-PEA Regional) that are not used.
+- **Baht forecast, first month (2026-09), all divisions: 77,578,311;** PEM101 33,257,728, PEM103 23,068,947, PEM107 10,874,992, PEM102 5,448,423, CI101 4,928,221 (the forecast is flat over the six months). **V2.**
+- **Forward-test month 2026-08 in baht (forecast / actual / difference), division scope of the MAE:** CI101 2,728,378 / 9,916,552 / -7,188,174; PEM101 28,868,690 / 40,099,829 / -11,231,139; PEM102 5,221,306 / 6,277,815 / -1,056,509; PEM103 21,516,978 / 26,695,081 / -5,178,103; PEM107 10,312,689 / 10,958,273 / -645,584. **V2.**
+- **Whether cube_Sale_APD `sale` excludes VAT is not proven; whether the Price List Market Price includes VAT is not stated in the file.** Level: unproven (consistency checks only, same upstream source).

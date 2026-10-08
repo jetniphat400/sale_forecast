@@ -288,3 +288,84 @@ Existing files: `test_index_w3.py` (six labels in order and the two page links, 
 - The S&OP tab is 520 px wide at 390 px (unchanged legacy table): week 5, low, Claude Code (already in the plan, 2026-10-19 to 10-21).
 - `config.yaml` `divisions_excluded_from_forecasting` and the PEM104 entry of `method_selection` still give the data-volume reason that DATA_MAP.md marks as superseded: with the refactor, low, Claude Code.
 - The user manual still describes the Prompt 7 structure: with the manual update of 2026-10-19 to 10-21, medium, Claude Code.
+
+
+## Prompt 10
+
+Baht view of the forecast on `forecast/sales_report.html`, section 2, and baht columns in the forecast-versus-actual table. Run 2026-10-08. Database sessions: 0 of 1 (the saved monthly sale and qty series and the saved raw pull hold everything needed). Test suite: zero database connection attempts.
+
+### Decisions of the user, 2026-10-08
+
+- Price basis (replaces "Price List price"): unit price per item = sum(sale) / sum(qty) of cube_Sale_APD over the 12 most recent complete months inside the fit window of the vintage the page uses; no quantity in those months, the same over the whole fit window; never sold, the Price List Market Price (label "Standard Price"); none of these, no price (left out of the baht values and counted). Rule and window are in config `report.price_basis`.
+- Actual in the forecast-versus-actual table is valued at the same unit price. Baht = units x unit price, no discount.
+- The Trend tab keeps createDate (PO receipt date) as its time axis, labelled on the tab, when it is rebuilt in the next task (no code in this task).
+
+### Part 0
+
+Start: `main` clean, HEAD `b9a8edf`, `git pull` already up to date. Full suite before any change: 682 passed, 0 failed, 0 skipped.
+
+### Part 1, prices
+
+The first answer to "which column" was stopped by VERIFY (seven candidate tier columns); the user then chose the sales-based rule above.
+
+- Latest vintage 2, fit window 2024-02 to 2026-08, price window 2025-09 to 2026-08 (12 months). Items with a forecast: 335. Priced from the 12-month window 277, from the whole fit window 57, from Market Price 1 (`TF-F-99-10044211AF1`), without a price 0. Items without a price: none. Items priced 0: none.
+- Market Price column found by header text per sheet: PEM101-Version 2 P, PEM102-Version 2 Q, PEM103-Version2 P, PEM104 Q, PEM107 CT-Version 2 Q, CI101 Q. **Deviation:** the label "Standard Price" is in row 4 of that column (directly under the row-3 header "Market Price/"), not row 2 as the prompt says; config `market_price_label_row` is 4.
+- Spot check, seed 20261008, 10 items (the one Market Price item plus 9 drawn): 10 of 10 match. Market Price item: builder 112,500, Excel `PEM103-Version2!P84` 112,500. The nine sales-priced items equal sum(sale)/sum(qty) recomputed from the saved raw pull (`raw_all_divisions_sales.csv`, independent of the monthly series the builder reads): HS-F-99-0211, CT-F-99-020503, RS-F-99-041008, EEE-F-FL-5920-353-04100, DS-F-99-0312, FS-F-99-0003, CT-F-99-020531, EEE-F-FL-1040030103, HS-F-99-0301. All 334 sales-priced items match the raw pull, not only the 10. (Confirmed from data: recomputed.)
+- The monthly series and the raw pull are the pulls of 2026-10-05 and the log of vintage 2 is of 2026-10-02; prices use the former.
+
+### Part 2 and 3, page
+
+Switch "หน่วย: ชิ้น · บาท (มีผลกับตารางในส่วนนี้เท่านั้น)", default ชิ้น; baht mode shows the label, the explanation, the summary table "ยอดทายรวมรายเดือน (บาท)" (five divisions and "รวมทุกฝ่าย"), the per-Type table with "รวม {ฝ่าย}", item rows on expansion. The pieces notes are not shown in baht mode (they say the numbers are pieces). The missing-price line with its collapsed list appears only when n > 0 (n = 0 now; tested by removing a price). The baht numbers are rounded to whole baht at item and month level, so every total is a sum of whole numbers and adds up exactly on the page. The first forecast month's "รวมทุกฝ่าย", as rendered: **77,578,311** (every month of the vintage is equal, the forecast being flat). Forecast-versus-actual: three columns added; one rendered row: `PEM101 | ส.ค. 69 | 348.8 | -46.0 | 315.4 | 28,868,690 | 40,099,829 | -11,231,139`. Sign: ต่าง = ยอดทาย − ยอดจริง, the sign of Bias (the mean of forecast − actual units of the same items equals the recorded Bias for every row, checked in the build and in a test): sign convention verified. The table sits in a scroll box (the three columns made the table 532 px wide at 390 px).
+
+### Part 4
+
+- a. Identities: for each division and month Σ items = Σ Types = division total, and Σ divisions = รวมทุกฝ่าย, exactly (36 checks, integers). Holds.
+- b. Equality: the 335 items' forecast units behind the baht values equal the unit view, G2 (`latest_vintage_item_forecasts`) and G3 (`latest_vintage_forecast`), vintage 2 in all, maximum absolute difference 0.0. Holds.
+- c. Back-check sum(actual qty x unit price) / sum(actual sale) from the saved monthly series, per division and year (2026 covers January to August). Inside the 12-month window it is 1.000 for every division. None outside 0.5 to 1.5.
+
+| division | 2024 | 2025 | 2026 | all months |
+|---|---|---|---|---|
+| CI101 | 1.093 | 1.025 | 1.010 | 1.059 |
+| PEM101 | 1.014 | 1.010 | 0.999 | 1.008 |
+| PEM102 | 0.960 | 0.996 | 0.999 | 0.986 |
+| PEM103 | 0.946 | 0.991 | 1.001 | 0.976 |
+| PEM107 | 1.010 | 1.007 | 0.983 | 1.004 |
+| all | 1.001 | 1.007 | 0.998 | 1.002 |
+
+  The check is part of the build (config `back_check_low`/`back_check_high`); a value outside stops it. Items with actual sale and no price: 0.
+- Share of the first forecast month's baht from Market Price items: 0 baht, 0.0 percent (the one Market Price item has a forecast of zero in that month).
+- d. Worked examples (seed 20261008 for the two drawn; months 2026-09 to 2027-02; the forecast is flat so every month is the same):
+
+| item | division / Type | units per month | unit price (source) | baht per month | Type total per month | division total per month |
+|---|---|---|---|---|---|---|
+| EEE-F-FC-1040010002 | PEM101 / High Voltage Distribution Fuse Cutout | 2,526.7676 | 1,872.3752 (12-month window) | 4,731,057 | 10,067,494 | 33,257,728 |
+| HS-F-99-02110 | PEM101 / Medium Voltage Surge Arrester | 363.3064 | 728.5337 (12-month window) | 264,681 | 9,153,870 | 33,257,728 |
+| HS-F-99-0213 | PEM101 / Medium Voltage Surge Arrester | 265.4534 | 798.9714 (12-month window) | 212,090 | 9,153,870 | 33,257,728 |
+| HS-F-99-0215 (drawn) | PEM101 / Medium Voltage Surge Arrester | 397.0113 | 1,124.7778 (12-month window) | 446,549 | 9,153,870 | 33,257,728 |
+| CT-F-99-020503 (drawn) | PEM107 / Current Transformer Type COL | 21.5293 | 12,029.7685 (12-month window) | 258,992 | 5,110,283 | 10,874,992 |
+
+  Hand check: 2,526.7676 x 1,872.3752 = 4,731,057 (rounded).
+
+### VAT (prove, report only)
+
+- **Sale excludes VAT: NOT PROVEN.** Evidence in saved files only (no database session was used): (1) sale − cost = saleGM within 1 baht in 245 of 245 saved rows that hold the three columns (`raw_44groups_full_columns.csv` 131, `task5_actual_mps_full_columns.csv` 11, `task5_normal_contracts_sample.csv` 103); this is a small sample and an identity that holds with or without VAT if cost is on the same basis. (2) Against Cube_CES `ActualPrice` for the same contract and item with equal quantity (6,545 pairs, saved files `phase136_valrecompute_*`): sale within 1 baht in 99.5 percent of pairs, sum(sale) / sum(ActualPrice) = 1.0107; no pair is near a VAT-inclusive ratio. Both are the same upstream source, so this shows consistency, not correctness (CONVENTIONS.md). (3) The VAT-inclusive amount in the database is `Cube_Invoice_Report_PMIS.invoice_total_incl_vat`; only its column name is saved, not its rows. Proof needs one read-only session: the share of cube_Sale_APD rows (page scope) with |sale − cost − saleGM| ≤ 1, and the ratio of the sale of a contract to that invoice total.
+- Price List Market Price includes VAT: **not stated** (no cell of the visible sheets mentions VAT or tax; the only hits for a text search were the word "Private").
+- The method was not changed on these results.
+
+### Validator
+
+An independent subagent recomputed every baht cell from the raw pull, the forward-test log and its metadata, the score file and the Price List file, without seeing these figures: 2,316 table cells compared (summary table, five per-Type tables with item, Type and division rows) and 15 scored-table baht cells; 0 discrepancies. Six cells (PEM101 "Photo Control Switch ", a Type whose name in the log ends in a space) were flagged only because the Validator's own script stripped the space; the implementer checked that the Type's value, 120,488, equals the sum of its items. Counts of items without a price (0) and priced at Market Price (1) agree. Verdict: MATCH (independent recomputation, not a re-read of the same query).
+
+### Rendering (own headless Edge, temp profile, own PID closed)
+
+1440x900 and 390x844, both modes, PEM101 and PEM107 selected: text and layout read from the screenshots in `output/shots_p10/` (untracked); no horizontal page scroll at 390 px in either mode (page width 390); the scored table scrolls inside its own box; no console error. The division selection is kept when the unit is switched (test).
+
+### Tests
+
+New: in `test_build_report.py` (switch and texts verbatim and default, config rule and Market Price column per sheet, every unit price against the raw pull, every baht cell and every identity, a perturbed price and a removed price with the missing-price line and list, the baht columns and note and sign, the back-check and its stop) and `test_sales_report_browser.py` (switch, selection kept in both modes, Type expansion, no horizontal scroll at 390 px in both modes). Two existing assertions changed: the unit tables carry no total row (the baht tables do), and the scored-table row pattern takes the three new cells.
+
+### Found, not done
+
+- Prices follow the forecast-date key and the pull of 2026-10-05; a price drift against the recent months is not reflected in the forecast months (said on the page).
+- Proof of VAT treatment needs one read-only session (above): the user to approve, medium, Claude Code.
+- The Trend tab's time axis (createDate) is recorded for the next task: next task, medium, Claude Code.

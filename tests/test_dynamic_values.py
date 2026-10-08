@@ -278,8 +278,14 @@ class Build:
             seg_copy.write_text(re.sub(r"^S3_THRESHOLD_DAYS\s*=\s*\d+", "S3_THRESHOLD_DAYS = 21", text, flags=re.M), encoding="utf-8")
             mp.setattr(rv, "SEGMENTATION_SCRIPT", str(seg_copy))
             mp.setattr(rv, "vintage_facts", lambda root=None: _perturbed_vintage_facts(real_facts))
+            # the unit prices of the baht view read the saved monthly series, which has no month beyond the real fit window: price on the real window
+            real_prices = rv.unit_prices
+            mp.setattr(rv, "unit_prices", lambda codes, basis, ff, fl, *a, **k: real_prices(codes, basis, real_facts["fit_first"], real_facts["fit_last"], *a, **k))
+            mp.setattr(rv, "price_back_check", lambda *a, **k: {"ratios": {}, "outside": []})        # the perturbed series would trip the price back-check; tested in test_build_report.py
             real_scored = build_report.gather_scored_months
             mp.setattr(build_report, "gather_scored_months", lambda pr: _perturbed_scored(real_scored(pr)))
+            # the perturbed scores no longer match the log the baht columns are computed from (checked against Bias in the build): the baht columns are tested in test_build_report.py
+            mp.setattr(build_report, "attach_scored_baht", lambda sc, prices: sc.assign(baht_forecast=0, baht_actual=0, baht_diff=0, n_no_price=0))
             mp.setattr(build_report, "FOCUS_ITEMS", list(build_report.FOCUS_ITEMS[:2]))
             real_notlate = build_report.gather_notlate
             mp.setattr(build_report, "gather_notlate", lambda: real_notlate().iloc[0:0])

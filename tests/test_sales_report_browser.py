@@ -63,3 +63,69 @@ def test_with_the_charting_library_every_chart_is_drawn_and_the_console_is_clean
             "document.getElementById('filterDivision').dispatchEvent(new Event('change')); 1")
     edge.pump(0.3)
     assert not edge.errors, edge.errors
+
+
+# ---- unit switch of section 2 (pieces / baht), Prompt 10 -------------------------------------------------------------------------------
+
+def _visible_block(edge, selector):
+    return " ".join(edge.ev(f"(function(){{var e=document.querySelector('{selector}'); return e ? e.innerText : '';}})()").split())
+
+
+def _shown(edge, selector):
+    """True when the element exists and is rendered (not display:none, not hidden, inside no hidden parent)."""
+    return bool(edge.ev(f"(function(){{var e=document.querySelector('{selector}'); return !!e && e.getClientRects().length > 0;}})()"))
+
+
+def _click_unit(edge, unit):
+    edge.ev(f"document.querySelector('#unitSwitch button[data-unit={unit}]').click(); 1")
+    edge.pump(0.2)
+
+
+def _select_division(edge, division):
+    edge.ev(f"var s=document.getElementById('fwdDivision'); s.value='{division}'; s.dispatchEvent(new Event('change')); 1")
+    edge.pump(0.2)
+
+
+def test_the_unit_switch_shows_pieces_by_default_and_baht_on_request_and_keeps_the_division(edge, page_path):
+    edge.open(page_path, cdn="stub")
+    text = _visible_block(edge, "#forward-forecast")
+    assert "หน่วย: ชิ้น · บาท (มีผลกับตารางในส่วนนี้เท่านั้น)" in text
+    # default: pieces, the current view
+    assert edge.ev("Array.from(document.querySelectorAll('#unitSwitch button')).map(b => b.getAttribute('aria-pressed')).join()") == "true,false"
+    assert _shown(edge, ".fwd-table-wrap:not([hidden])") and not _shown(edge, "#baht-label") and not _shown(edge, "#baht-summary-table")
+    assert "ยอดทายรวมรายเดือน (บาท)" not in text and "มูลค่าคิดจากราคาขายเฉลี่ยจริงของแต่ละรหัส" not in text
+    divisions = edge.ev("Array.from(document.querySelectorAll('#fwdDivision option')).map(o => o.value)")
+    assert len(divisions) >= 2
+    second = divisions[1]
+    _select_division(edge, second)
+    _click_unit(edge, "baht")
+    # baht mode: label, explanation, summary table, the baht table of the SAME division with its total row; the pieces table is hidden
+    assert edge.ev("document.getElementById('fwdDivision').value") == second
+    text = _visible_block(edge, "#forward-forecast")
+    assert "มูลค่าคิดจากราคาขายเฉลี่ยจริงของแต่ละรหัส" in text and "ยอดทายรวมรายเดือน (บาท)" in text and "รวมทุกฝ่าย" in text
+    assert "▸ ยอดทายคิดเป็นเงินเท่าไหร่ต่อเดือน ▸ ตัวเลข = ยอดทาย (ชิ้น) × ราคาขายเฉลี่ยของรหัสนั้น หน่วยบาท" in text
+    assert "▸ แถว = ประเภทสินค้า · คอลัมน์ = เดือน · ตัวเลข = จำนวนชิ้น" not in text                      # the pieces explanation is not shown over baht
+    assert not _shown(edge, ".fwd-table-wrap") and _shown(edge, f".fwd-baht-wrap[data-division={second}]")
+    assert edge.ev("document.querySelectorAll('.fwd-baht-wrap:not([hidden])').length") == 1
+    assert edge.ev(f"document.querySelector('.fwd-baht-wrap[data-division={second}] tr.total-row td').textContent") == f"รวม {second}"
+    # the division selector keeps working in baht mode, and a Type row expands to its items
+    _select_division(edge, divisions[0])
+    assert _shown(edge, f".fwd-baht-wrap[data-division={divisions[0]}]") and not _shown(edge, f".fwd-baht-wrap[data-division={second}]")
+    edge.ev(f"document.querySelector('.fwd-baht-wrap[data-division={divisions[0]}] tr.fwd-btype').click(); 1")
+    assert edge.ev(f"document.querySelectorAll('.fwd-baht-wrap[data-division={divisions[0]}] tr.fwd-bitem:not([hidden])').length") > 0
+    # back to pieces: the same division is selected and the pieces table of it is shown again
+    _click_unit(edge, "pieces")
+    assert edge.ev("document.getElementById('fwdDivision').value") == divisions[0]
+    assert _shown(edge, f".fwd-table-wrap[data-division={divisions[0]}]") and not _shown(edge, "#baht-summary-table")
+    assert not [x for x in edge.errors if x.startswith("exception")], edge.errors
+
+
+def test_no_horizontal_page_scroll_at_phone_width_in_both_modes(edge, page_path):
+    edge.open(page_path, width=390, height=844, mobile=True, cdn="stub")
+    for unit in ("pieces", "baht"):
+        _click_unit(edge, unit)
+        for division in edge.ev("Array.from(document.querySelectorAll('#fwdDivision option')).map(o => o.value)")[:2]:
+            _select_division(edge, division)
+            assert edge.ev("document.documentElement.scrollWidth") <= edge.ev("document.documentElement.clientWidth"), (unit, division)
+    edge.ev("document.getElementById('scored-table').scrollIntoView(); 1")
+    assert edge.ev("document.documentElement.scrollWidth") <= 390                                         # the forecast-versus-actual table scrolls inside its own box

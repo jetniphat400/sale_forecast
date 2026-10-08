@@ -28,6 +28,7 @@ from the pipeline.
 import html
 import json
 import logging
+import math
 import os
 import sys
 from datetime import datetime
@@ -377,6 +378,81 @@ def gather_forward_forecast(vf: dict, scope_table: pd.DataFrame) -> dict:
     return {"months": months, "divisions": divisions, "n_without_forecast": n_without}
 
 
+def _baht(units: float, price: float) -> int:
+    """Whole baht of `units` at `price`: rounded half up at item and month level, so every total of the baht view is a sum of whole numbers and adds up exactly."""
+    return int(math.floor(float(units) * float(price) + 0.5))
+
+
+def gather_baht(forward: dict, price_info: dict) -> dict:
+    """The baht view of the forward forecast table: per item and month `round(units x unit price)` (unit price by config report.price_basis, see
+    reader_values.unit_prices), a Type's value the sum of its items', a division's the sum of its Types', 'all' the sum of the divisions'. An item with no price has
+    values None, is left out of every sum, and is listed in `no_price` (code, name, division). `market_items` = items priced at Market Price;
+    `market_first_month_baht` = the first forecast month's baht that comes from them."""
+    prices = price_info["prices"]
+    n = len(forward["months"])
+    divisions, no_price, market_items, market_first = {}, [], [], 0
+    grand = [0] * n
+    for d, types in forward["divisions"].items():
+        d_tot, d_types = [0] * n, []
+        for t in types:
+            t_tot, t_items = [0] * n, []
+            for it in t["items"]:
+                pr = prices[it["item"]]
+                if pr["price"] is None:
+                    no_price.append({"item": it["item"], "name": it["name"], "division": d})
+                    t_items.append({"item": it["item"], "name": it["name"], "values": None})
+                    continue
+                vals = [_baht(v, pr["price"]) for v in it["values"]]
+                if pr["source"] == "market_price":
+                    market_items.append(it["item"])
+                    market_first += vals[0]
+                t_items.append({"item": it["item"], "name": it["name"], "values": vals})
+                t_tot = [a + b for a, b in zip(t_tot, vals)]
+            d_tot = [a + b for a, b in zip(d_tot, t_tot)]
+            d_types.append({"type": t["type"], "values": t_tot, "items": t_items})
+        divisions[d] = {"types": d_types, "total": d_tot}
+        grand = [a + b for a, b in zip(grand, d_tot)]
+    return {"divisions": divisions, "all": grand, "no_price": no_price, "market_items": market_items, "market_first_month_baht": market_first}
+
+
+def attach_scored_baht(scored: pd.DataFrame, prices: dict) -> pd.DataFrame:
+    """Adds `baht_forecast`, `baht_actual`, `baht_diff` (forecast minus actual, the sign of the page's Bias) and `n_no_price` to the scored months table.
+
+    For each scored row (vintage, division, month, horizon 1) the items are those the score itself used: the Item rows of the forward-test log of that vintage and
+    month whose fit series (the vintage's fit window, from the raw history) is not all zero (forward_test_scoring.score_items). Each item's forecast and actual units
+    are valued at the item's unit price of the page (`prices`, {code: {'price', 'source'}}); an item without a price is left out and counted in `n_no_price`.
+    The mean of (forecast - actual) units over the same items is checked against the recorded Bias of the row; a difference stops the build."""
+    import forward_test_common as ftc
+    import forward_test_scoring as fts
+    import operation_plan as op
+    cfg = op.load_config(PROJECT_ROOT)
+    log = ftc.read_forward_test_log(op.path_of(PROJECT_ROOT, cfg["forecast_log_file"]))
+    meta = ftc.load_metadata(op.path_of(PROJECT_ROOT, cfg["forecast_log_metadata_file"]))
+    raw = pd.read_csv(fts.RAW_HISTORY_PATH, usecols=["itemcode", "createDate", "forecast_date", "qty"])
+    items = log[log["level"] == "Item"].copy()
+    items["actual_num"] = pd.to_numeric(items["actual_qty"], errors="coerce")
+    rows = []
+    for r in scored.itertuples():
+        g = items[(items["vintage_id"] == r.vintage_id) & (items["target_month"] == r.target_month) & (items["horizon"] == 1) & (items["division"] == r.division)]
+        vm = meta[str(int(r.vintage_id))]
+        series = fts.fit_series_from_raw(raw, g["itemcode"].unique(), vm["fit_first_month"], vm["fit_last_month"])
+        used = fts.score_items(g.assign(actual_qty=g["actual_num"]), series)["itemcode"]
+        g = g[g["itemcode"].isin(set(used))]
+        bias = float((g["forecast_qty"] - g["actual_num"]).mean())
+        if abs(bias - float(r.Bias)) > 1e-6:
+            raise ReportSourceError(f"{r.division} {r.target_month}: mean(forecast - actual) of the scored items is {bias}, the recorded Bias is {r.Bias}; the baht difference cannot take the sign of Bias.")
+        f_b = a_b = n_no = 0
+        for c, f, a in zip(g["itemcode"], g["forecast_qty"], g["actual_num"]):
+            pr = prices[c]["price"] if c in prices else None
+            if pr is None:
+                n_no += 1
+                continue
+            f_b += _baht(f, pr)
+            a_b += _baht(a, pr)
+        rows.append({"baht_forecast": f_b, "baht_actual": a_b, "baht_diff": f_b - a_b, "n_no_price": n_no})
+    return pd.concat([scored.reset_index(drop=True), pd.DataFrame(rows)], axis=1)
+
+
 def gather_pilot_groups(config: dict) -> list:
     """MAE and Bias of the two pilot groups, recomputed here from the saved series by the pilot-category view builder (src/focus_item_model_selection.py
     build_pilot_view_payload; groups defined by config pilot_categories, the Surge Arrester group being the Medium Voltage Type). The group is scored as the
@@ -407,7 +483,7 @@ def gather_scored_months(primary_results: pd.DataFrame) -> pd.DataFrame:
     missing = sorted(set(s["key"]) - set(back.index))
     if missing:
         raise ReportSourceError(f"no backtest MAE for division(s) {missing} in the main results table")
-    out = s[["key", "target_month", "MAE", "Bias"]].rename(columns={"key": "division"}).copy()
+    out = s[["key", "vintage_id", "target_month", "MAE", "Bias"]].rename(columns={"key": "division"}).copy()
     out["MAE_backtest"] = out["division"].map(back)
     return out.sort_values(["target_month", "division"], kind="mergesort").reset_index(drop=True)
 
@@ -655,6 +731,14 @@ def render_page(config: dict) -> str:
     forward = gather_forward_forecast(vf, scope_table)
     pilot_groups = gather_pilot_groups(config)
     scored = gather_scored_months(primary_results)
+    price_basis = require_config_path(config, "report.price_basis")
+    price_info = rv.unit_prices(sorted({it["item"] for ts in forward["divisions"].values() for t in ts for it in t["items"]}), price_basis,
+                                vf["fit_first"], vf["fit_last"], os.path.join(PROJECT_ROOT, "reference", "pricelist.xlsx"), PROJECT_ROOT)
+    back = rv.price_back_check(price_info, price_basis, PROJECT_ROOT)
+    if back["outside"]:
+        raise ReportSourceError(f"the baht view is not published: sum(actual qty x unit price) / sum(actual sale) is outside {price_basis['back_check_low']}..{price_basis['back_check_high']} for {back['outside']}; the price rule or its scope may be wrong.")
+    baht = gather_baht(forward, price_info)
+    scored = attach_scored_baht(scored, price_info["prices"])
     note_values["n_scored_months"] = int(scored["target_month"].nunique())
     fwd_first, fwd_last = rv.thai_month_short(forward["months"][0]), rv.thai_month_short(forward["months"][-1])
 
@@ -699,17 +783,62 @@ def render_page(config: dict) -> str:
     fwd_division_options = "".join(f'<option value="{html.escape(d)}">{html.escape(d)}</option>' for d in forward["divisions"])
     forward_missing = html.escape(report["forward_missing_line"]).format(
         n=forward["n_without_forecast"], scope_link=f'<a href="#scope">{html.escape(report["forward_scope_link_text"])}</a>')
+
+    # Baht view (shown only when the unit switch is on baht): label, explanation, items without a price, summary table, one per-Type table per division.
+    def _bcell(v):
+        return "<td>-</td>" if v is None else f"<td>{v:,}</td>"
+
+    def _bcells(values):
+        return "".join(_bcell(v) for v in values)
+    baht_tables = []
+    for d_i, (d, bd) in enumerate(baht["divisions"].items()):
+        b_rows = []
+        for t_i, t in enumerate(bd["types"]):
+            rid = f"fwdb-{d}-{t_i}"
+            b_rows.append(f'<tr class="fwd-btype" id="{rid}" tabindex="0" role="button" aria-expanded="false"><td>{html.escape(t["type"])}</td>{_bcells(t["values"])}</tr>')
+            for it in t["items"]:
+                label = html.escape(it["item"]) + (f' <span class="fwd-name">{html.escape(it["name"])}</span>' if it["name"] else "")
+                b_rows.append(f'<tr class="fwd-bitem" data-parent="{rid}" hidden><td>{label}</td>{_bcells(it["values"] if it["values"] is not None else [None] * len(forward["months"]))}</tr>')
+        b_rows.append(f'<tr class="total-row"><td>{html.escape(report["baht_division_total_row"].format(division=d))}</td>{_bcells(bd["total"])}</tr>')
+        baht_tables.append(f'<div class="table-scroll fwd-baht-wrap" data-division="{html.escape(d)}"{"" if d_i == 0 else " hidden"}>'
+                           f'<table class="report-table fwd-table" id="fwd-baht-table-{html.escape(d)}"><thead><tr><th>{html.escape(report["forward_table_head"])}</th>{month_heads}</tr></thead>'
+                           f'<tbody>{"".join(b_rows)}</tbody></table></div>')
+    summary_rows = "".join(f'<tr><td>{html.escape(d)}</td>{_bcells(bd["total"])}</tr>' for d, bd in baht["divisions"].items())
+    summary_rows += f'<tr class="total-row"><td>{html.escape(report["baht_all_divisions_row"])}</td>{_bcells(baht["all"])}</tr>'
+    baht_summary = (f'<h3 id="baht-summary-title">{html.escape(report["baht_summary_title"])}</h3>'
+                    f'<div class="table-scroll"><table class="report-table fwd-table" id="baht-summary-table"><thead><tr><th>{html.escape(report["forward_division_label"])}</th>{month_heads}</tr></thead>'
+                    f'<tbody>{summary_rows}</tbody></table></div>')
+    n_market = len(baht["market_items"])
+    baht_label = report["baht_label"].format(first_month=rv.thai_month_short(price_info["recent"][0]), last_month=rv.thai_month_short(price_info["recent"][-1]))
+    if n_market:
+        baht_label += report["baht_label_market_part"].format(m=n_market)
+    no_price_html = ""
+    if baht["no_price"]:
+        np_rows = "".join(f'<tr><td>{html.escape(r["item"])}</td><td>{html.escape(r["name"])}</td><td>{html.escape(r["division"])}</td></tr>' for r in baht["no_price"])
+        np_head = "".join(f"<th>{html.escape(c)}</th>" for c in report["baht_no_price_columns"])
+        no_price_html = (f'<details id="baht-no-price"><summary class="hint">{html.escape(report["baht_no_price_line"].format(n=len(baht["no_price"])))}</summary>'
+                         f'<div class="table-scroll"><table class="report-table" id="baht-no-price-table"><thead><tr>{np_head}</tr></thead><tbody>{np_rows}</tbody></table></div></details>')
+    unit_switch = (f'<span class="unit-switch" id="unitSwitch" role="group" aria-label="{html.escape(report["unit_switch_label"])}">{html.escape(report["unit_switch_label"])} '
+                   f'<button type="button" data-unit="pieces" aria-pressed="true">{html.escape(report["unit_switch_pieces"])}</button> {html.escape(report["unit_switch_separator"])} '
+                   f'<button type="button" data-unit="baht" aria-pressed="false">{html.escape(report["unit_switch_baht"])}</button></span>'
+                   f'<span class="hint">({html.escape(report["unit_switch_hint"])})</span>')
     sec_fwd = f"""
     <section id="forward-forecast">
       <h2>2. {html.escape(report['forward_heading'].format(first_month=fwd_first, last_month=fwd_last))}</h2>
       <!-- source: the Item rows of vintage {vf['vintage_id']} (the latest) of output/summary/forward_test_log_all_divisions.csv after the hash check, the same rows the Min-Max page and the operation plan read; a Type's value is the sum of its items'. -->
-      {render_notes_html('sales_report.html', 'forward-forecast', values=note_values)}
+      <!-- baht: round(units x unit price) per item and month; unit price = sum of sale / sum of qty of the item over the months {price_info['recent'][0]} to {price_info['recent'][-1]} of the saved monthly series (config report.price_basis), else over the fit window {price_info['fit'][0]} to {price_info['fit'][-1]}, else the Market Price of the price list (columns found per sheet: {price_info['market_columns']}), else no price. -->
+      <p class="hint baht-only" id="baht-label">{html.escape(baht_label)}</p>
+      <p class="hint baht-only" id="baht-explanation">{html.escape(report['baht_explanation'])}</p>
+      <div class="pieces-only">{render_notes_html('sales_report.html', 'forward-forecast', values=note_values)}</div>
       <p class="hint" id="forward-missing">{forward_missing}</p>
       <div class="controls">
         <label>{html.escape(report['forward_division_label'])}: <select id="fwdDivision">{fwd_division_options}</select></label>
         <span class="hint">({html.escape(report['forward_division_hint'])})</span>
+        {unit_switch}
       </div>
-      {"".join(fwd_tables)}
+      <div class="baht-only">{no_price_html}{baht_summary}</div>
+      <div class="pieces-only">{"".join(fwd_tables)}</div>
+      <div class="baht-only">{"".join(baht_tables)}</div>
     </section>"""
 
     # ---- Section 3: Scope ----
@@ -819,12 +948,15 @@ def render_page(config: dict) -> str:
 
     # Forecast against actual, month by month, from the recorded forward-test scores.
     scored_rows = "".join(f"<tr><td>{html.escape(r.division)}</td><td>{html.escape(rv.thai_month_short(r.target_month))}</td><td>{r.MAE:.1f}</td><td>{r.Bias:.1f}</td>"
-                          f"<td>{r.MAE_backtest:.1f}</td></tr>" for r in scored.itertuples())
+                          f"<td>{r.MAE_backtest:.1f}</td>"
+                          f"<td>{r.baht_forecast:,}</td><td>{r.baht_actual:,}</td><td>{r.baht_diff:,}</td></tr>" for r in scored.itertuples())
     scored_head = "".join(f"<th>{html.escape(c)}</th>" for c in report["scored_columns"])
     scored_html = f"""<h3 id="scored-months">{html.escape(report['scored_heading'])}</h3>
       <!-- source: output/summary/forward_test_scores.csv (scope division, horizon 1, integrity-checked); backtest MAE = the main table's Top-down MAE of the division -->
       {render_notes_html('sales_report.html', 'forecast-vs-actual-monthly', values=note_values)}
-      <table class="report-table" id="scored-table"><thead><tr>{scored_head}</tr></thead><tbody>{scored_rows}</tbody></table>"""
+      <div class="table-scroll"><table class="report-table" id="scored-table"><thead><tr>{scored_head}</tr></thead><tbody>{scored_rows}</tbody></table></div>
+      <!-- baht: items = the items the row's MAE is computed over; forecast and actual units of each item x its unit price (as section 2); difference = forecast minus actual, the sign of Bias. Items without a price in these rows: {int(scored['n_no_price'].sum())}. -->
+      <p class="hint" id="scored-baht-note">{html.escape(report['scored_baht_note'])}</p>"""
     sec6 = f"""
     <section id="results">
       <h2>7. ผลลัพธ์ (Results)</h2>
@@ -949,6 +1081,13 @@ def render_page(config: dict) -> str:
   .fwd-type[aria-expanded="true"] td:first-child::before {{ content: "▾ "; }}
   .fwd-name {{ color: var(--muted); font-size: 12px; }}
   .table-scroll {{ overflow-x: auto; max-width: 100%; }}
+  #forward-forecast:not([data-unit="baht"]) .baht-only {{ display: none; }}
+  #forward-forecast[data-unit="baht"] .pieces-only {{ display: none; }}
+  .unit-switch button {{ font: inherit; font-size: 13px; padding: 2px 10px; border: 1px solid var(--border); background: #fcfcfb; border-radius: 4px; cursor: pointer; }}
+  .unit-switch button[aria-pressed="true"] {{ background: #eef4fb; font-weight: 700; border-color: var(--series-1); }}
+  .fwd-btype {{ cursor: pointer; font-weight: 600; }}
+  .fwd-btype td:first-child::before {{ content: "▸ "; color: var(--muted); }}
+  .fwd-btype[aria-expanded="true"] td:first-child::before {{ content: "▾ "; }}
 </style>
 </head>
 <body>
@@ -973,20 +1112,27 @@ def render_page(config: dict) -> str:
 </html>"""
 
 
-# The forward forecast table: one division shown at a time (the selector), a click or Enter on a Type row shows or hides its item rows. No number is computed here.
+# The forward forecast tables (pieces and baht): one division shown at a time (the selector), a click or Enter on a Type row shows or hides its item rows, the unit switch shows
+# the pieces or the baht view of the section and leaves the division selection as it is. No number is computed here.
 FORWARD_TABLE_JS = """
 (function () {
   var sel = document.getElementById('fwdDivision');
+  var section = document.getElementById('forward-forecast');
   function showDivision() {
-    document.querySelectorAll('.fwd-table-wrap').forEach(function (w) { w.hidden = (w.dataset.division !== sel.value); });
+    document.querySelectorAll('.fwd-table-wrap, .fwd-baht-wrap').forEach(function (w) { w.hidden = (w.dataset.division !== sel.value); });
   }
   function toggle(row) {
     var open = row.getAttribute('aria-expanded') !== 'true';
     row.setAttribute('aria-expanded', open ? 'true' : 'false');
-    document.querySelectorAll('tr.fwd-item[data-parent="' + row.id + '"]').forEach(function (r) { r.hidden = !open; });
+    document.querySelectorAll('tr.fwd-item[data-parent="' + row.id + '"], tr.fwd-bitem[data-parent="' + row.id + '"]').forEach(function (r) { r.hidden = !open; });
+  }
+  function setUnit(unit) {
+    section.dataset.unit = unit;
+    document.querySelectorAll('#unitSwitch button').forEach(function (b) { b.setAttribute('aria-pressed', b.dataset.unit === unit ? 'true' : 'false'); });
   }
   if (sel) sel.addEventListener('change', showDivision);
-  document.querySelectorAll('tr.fwd-type').forEach(function (row) {
+  document.querySelectorAll('#unitSwitch button').forEach(function (b) { b.addEventListener('click', function () { setUnit(b.dataset.unit); }); });
+  document.querySelectorAll('tr.fwd-type, tr.fwd-btype').forEach(function (row) {
     row.addEventListener('click', function () { toggle(row); });
     row.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(row); } });
   });

@@ -210,3 +210,113 @@ def vintage_facts(root: str = PROJECT_ROOT) -> dict:
     item_rows = log[(log["vintage_id"] == vid) & (log["level"] == cfg["forecast_level"])][["itemcode", "division", "type", "target_month", "forecast_qty"]]
     return {"vintage_id": int(vid), "run_date": str(dates[0]), "fit_first": str(entry["fit_first_month"]), "fit_last": str(entry["fit_last_month"]),
             "forecast_months": [str(m) for m in months], "forecast": wide, "item_rows": item_rows}
+
+
+# ---------------------------------------------------------------------------------------------------------------------------------------------
+# Unit price per item for the baht view of the forecast (decisions of the user, 2026-10-08; config.yaml report.price_basis holds the rule and the window).
+# ---------------------------------------------------------------------------------------------------------------------------------------------
+
+def market_prices(pricelist_path: str, basis: dict) -> tuple:
+    """Market Price (labelled "Standard Price") of every product code, read from each visible product sheet of the price list.
+
+    The column of each sheet is found by its header text (row 3 contains basis['market_price_header'], the row basis['market_price_label_row'] of the same column holds basis['market_price_label']),
+    never by a column letter; a sheet with a product-code column and no such column, or with more than one, stops the build. Returns
+    ({code: {'price': float or None, 'sheet': str, 'cell': 'P7'}}, {sheet: column letter}). A code on two sheets keeps its first sheet's row."""
+    import openpyxl
+    from openpyxl.utils import get_column_letter
+    wb = openpyxl.load_workbook(pricelist_path, read_only=True, data_only=True)
+    out, columns = {}, {}
+    for name in wb.sheetnames:
+        ws = wb[name]
+        if ws.sheet_state != "visible":
+            continue
+        rows = list(ws.iter_rows(min_row=1, max_row=ws.max_row, values_only=True))
+        if len(rows) < 5:
+            continue
+        head2, head3 = rows[int(basis["market_price_label_row"]) - 1], rows[2]
+        code_idx = next((i for i, h in enumerate(head3) if h and "product code" in str(h).lower()), None)
+        if code_idx is None:
+            continue
+        hits = [i for i, h in enumerate(head3) if h and basis["market_price_header"].lower() in str(h).lower()
+                and i < len(head2) and head2[i] and str(head2[i]).strip().lower() == basis["market_price_label"].lower()]
+        if len(hits) != 1:
+            raise ReaderValueError(f"price list sheet {name!r}: {len(hits)} columns match the Market Price header; exactly one is required")
+        col = hits[0]
+        columns[name] = get_column_letter(col + 1)
+        for r_i, r in enumerate(rows[4:], start=5):
+            code = r[code_idx] if code_idx < len(r) else None
+            if code is None or str(code).strip() == "":
+                continue
+            code = str(code).strip()
+            if code in out:
+                continue
+            v = r[col] if col < len(r) else None
+            price = float(v) if isinstance(v, (int, float)) and not isinstance(v, bool) else None
+            out[code] = {"price": price, "sheet": name, "cell": f"{get_column_letter(col + 1)}{r_i}"}
+    return out, columns
+
+
+def price_window(fit_first: str, fit_last: str, available: list, window_months: int) -> tuple:
+    """(recent months, fit-window months): the fit window of the vintage cut to the months the saved series holds, and its last `window_months` months."""
+    fit = [m for m in available if fit_first <= m <= fit_last]
+    if not fit or fit[-1] != fit_last:
+        raise ReaderValueError(f"the saved monthly series does not reach the fit window {fit_first}..{fit_last} of the vintage the page uses")
+    return fit[-window_months:], fit
+
+
+def unit_prices(codes, basis: dict, fit_first: str, fit_last: str, pricelist_path: str, root: str = PROJECT_ROOT) -> dict:
+    """Unit price per item code by the rule of config.yaml report.price_basis (tried in the order of basis['order']).
+
+    Sale and qty are the saved monthly series (forecast-date key, Omni Channel, Price List items, Actual + MPS). Returns {'prices': {code: {'price', 'source'}},
+    'recent': [months], 'fit': [months], 'market_columns': {sheet: column letter}}; source is one of the names in basis['order']; price is None only for 'none'."""
+    sale = pd.read_csv(os.path.join(root, basis["sale_file"]), usecols=["itemcode", "year_month", "sale"])
+    qty = pd.read_csv(os.path.join(root, basis["qty_file"]), usecols=["itemcode", "year_month", "qty"])
+    both = sale.merge(qty, on=["itemcode", "year_month"], how="outer", validate="one_to_one")
+    if both[["sale", "qty"]].isna().any().any():
+        raise ReaderValueError("the saved sale and qty series do not cover the same item-months")
+    recent, fit = price_window(fit_first, fit_last, sorted(both["year_month"].unique()), int(basis["window_months"]))
+    sums = {}
+    for key, months in (("recent", recent), ("fit", fit)):
+        sums[key] = both[both["year_month"].isin(months)].groupby("itemcode")[["sale", "qty"]].sum()
+    market, columns = market_prices(pricelist_path, basis)
+    prices = {}
+    for code in codes:
+        chosen = None
+        for rule in basis["order"]:
+            if rule in ("sales_recent_window", "sales_fit_window"):
+                g = sums["recent" if rule == "sales_recent_window" else "fit"]
+                if code in g.index and g.at[code, "qty"] > 0:
+                    chosen = {"price": float(g.at[code, "sale"] / g.at[code, "qty"]), "source": rule}
+            elif rule == "market_price":
+                m = market.get(code)
+                if m and m["price"] is not None and m["price"] > 0:
+                    chosen = {"price": m["price"], "source": rule}
+            elif rule == "none":
+                chosen = {"price": None, "source": rule}
+            if chosen:
+                break
+        prices[code] = chosen
+    return {"prices": prices, "recent": recent, "fit": fit, "market_columns": columns, "market": market}
+
+
+def price_back_check(price_info: dict, basis: dict, root: str = PROJECT_ROOT) -> dict:
+    """Sum(actual qty x unit price) / sum(actual sale) per division and calendar year of the saved monthly series, for the items that have a price.
+
+    Inside the price window the ratio is 1 for items priced from that window; other years show how far the price has drifted. Returns {division: {year: ratio}};
+    a ratio outside basis['back_check_low']..basis['back_check_high'] is listed in the key 'outside' as (division, year, ratio) so the caller can stop."""
+    sale = pd.read_csv(os.path.join(root, basis["sale_file"]), usecols=["itemcode", "year_month", "sale", "division"])
+    qty = pd.read_csv(os.path.join(root, basis["qty_file"]), usecols=["itemcode", "year_month", "qty"])
+    d = sale.merge(qty, on=["itemcode", "year_month"], validate="one_to_one")
+    d["price"] = d["itemcode"].map(lambda c: (price_info["prices"].get(c) or {}).get("price"))
+    d["year"] = d["year_month"].str[:4]
+    d = d[d["price"].notna()]
+    d = d.assign(value=d["qty"] * d["price"])
+    out, outside = {}, []
+    for (div, year), g in d.groupby(["division", "year"]):
+        if g["sale"].sum() == 0:
+            continue
+        ratio = float(g["value"].sum() / g["sale"].sum())
+        out.setdefault(div, {})[year] = ratio
+        if not basis["back_check_low"] <= ratio <= basis["back_check_high"]:
+            outside.append((div, year, ratio))
+    return {"ratios": out, "outside": outside}

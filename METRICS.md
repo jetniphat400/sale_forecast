@@ -1257,3 +1257,34 @@ pipeline — no new section is needed for this; it is already covered by section
 - The workbook's Product Types are matched to database types by exact name or, where marked, by inference; inferred matches are not facts until the user confirms them
   (list in docs/reports/summary/prompt5_g2_vintage_target_map.md, "Prompt 7", Part 3).
 - Tests never connect to the database: `tests/conftest.py` blocks every connection and `src/db.py` refuses while `SALE_FORECAST_BLOCK_DB` is set (decision of 2026-10-08).
+
+
+## 46. baht_forecast
+
+    The baht view of the forward forecast (sales report, section 2) and the baht columns of the forecast-versus-actual table;
+    decisions of the user, 2026-10-08 (Prompt 10). Defined here before it is computed.
+
+    unit price of an item (baht per piece), the first rule that gives a price:
+      sales_recent_window = sum(sale) / sum(qty) of the item over the last `window_months` months of the fit window of the vintage the page uses
+                            (only when sum(qty) > 0)
+      sales_fit_window    = the same sums over the whole fit window (an item with no quantity in the recent window)
+      market_price        = the Price List "Market Price" (label "Standard Price") of the item, when it is a number above 0
+      none                = no price: the item is left out of every baht value, shown as "-", and counted
+    baht of an item in a forecast month   = floor( forecast units x unit price + 0.5 )     (whole baht, rounded at item and month level)
+    baht of a Type / of a division        = the sum of the whole-baht values of its items / Types; "รวมทุกฝ่าย" = the sum of the divisions
+    forecast-versus-actual, one row (division, month, horizon 1):
+      items          = the items of the row's MAE (the Item rows of that vintage and month whose fit series is not all zero)
+      ยอดทาย (บาท)  = sum over those items of floor(forecast units x unit price + 0.5)
+      ยอดจริง (บาท) = the same with the item's actual units; the same unit price as the forecast
+      ต่าง (บาท)    = ยอดทาย - ยอดจริง   (forecast minus actual, the sign of Bias: negative = forecast below the actual)
+      an item with no price is left out of the three columns and counted (HTML comment of the table)
+
+- Source of sale and qty: the saved monthly series `output/data/processed_all_divisions_monthly_sale.csv` and `..._qty.csv` (cube_Sale_APD, revenue_type
+  'Omni Channel', status Actual + MPS, Price List items, forecast-date key, the scope of the forecast series); no database call. The window months, the rule order and the
+  Market Price header text are in config `report.price_basis`; the page's label states the window and the number of items priced at Market Price at build time.
+- Market Price column: found on each visible product sheet by the row-3 header text "Market Price" and the label "Standard Price" in row 4 of the same column
+  (not row 2); the column letters found are written in an HTML comment of the section.
+- Whether cube_Sale_APD `sale` excludes VAT is NOT PROVEN (STATUS.md, Prompt 10); the Price List does not state whether Market Price includes VAT. The baht figures are
+  not compared with the revenue target (page text says so).
+- Back-check: sum(actual qty x unit price) / sum(actual sale) per division and year; inside the price window it is 1 by construction for items priced from that window.
+  A division outside `back_check_low`..`back_check_high` stops the baht view.

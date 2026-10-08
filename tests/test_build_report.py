@@ -331,7 +331,8 @@ def test_the_forward_forecast_table_equals_the_vintage_the_min_max_page_and_the_
         assert set(page[d]["types"]) == set(by_type.index)
         for t, vals in by_type.iterrows():
             assert page[d]["types"][t] == [build_report.fmt_cell(v) for v in vals], (d, t)
-    assert "total-row" not in re.search(r'<section id="forward-forecast">.*?</section>', h, re.S).group(0)
+    # the pieces tables carry no division total row (the baht tables do: tested below)
+    assert all("total-row" not in t for t in re.findall(r'<table class="report-table fwd-table" id="fwd-table-\w+">.*?</table>', h, re.S))
     # the same vintage as the Min-Max page (G2): its item arrays are the vintage's months, extended flat
     g2, info = bd.latest_vintage_item_forecasts()
     assert info["vintage_id"] == vf["vintage_id"] and info["target_months"] == vf["forecast_months"]
@@ -385,7 +386,7 @@ def test_the_forecast_versus_actual_table_follows_the_recorded_forward_test_scor
     back = pd.read_csv(os.path.join(SUMMARY_DIR, "phaseC_step2_transferability_per_division.csv"))
     back = back[back["approach"] == "Top-down"].set_index("division")["MAE"]
     table = re.search(r'<table class="report-table" id="scored-table">.*?<tbody>(.*?)</tbody>', h, re.S).group(1)
-    rendered = re.findall(r"<tr><td>(\w+)</td><td>(.*?)</td><td>(.*?)</td><td>(.*?)</td><td>(.*?)</td></tr>", table)
+    rendered = re.findall(r"<tr><td>(\w+)</td><td>(.*?)</td><td>(.*?)</td><td>(.*?)</td><td>(.*?)</td><td>.*?</td><td>.*?</td><td>.*?</td></tr>", table)
     assert len(rendered) == len(s) and len(s) > 0
     expected = {(r.key, rv.thai_month_short(r.target_month)): (f"{r.MAE:.1f}", f"{r.Bias:.1f}", f"{back[r.key]:.1f}") for r in s.itertuples()}
     assert {(d, m): (a, b, c) for d, m, a, b, c in rendered} == expected
@@ -400,3 +401,215 @@ def test_the_forward_table_has_a_division_selector_and_types_that_expand_to_item
     assert 'aria-expanded="false"' in sec and "(มีผลกับตารางนี้เท่านั้น)" in sec
     options = re.findall(r'<option value="\w+">', sec.split('id="fwdDivision"')[1].split("</select>")[0])
     assert sec.count('class="table-scroll fwd-table-wrap"') == len(options)
+
+
+# ---------------------------------------------------------------------------------------------------------------------------------------------
+# Baht view (Prompt 10, decisions of the user 2026-10-08): switch, baht tables, unit price, forecast-versus-actual baht columns.
+# ---------------------------------------------------------------------------------------------------------------------------------------------
+
+def _int(cell: str) -> int:
+    return int(cell.replace(",", ""))
+
+
+def _baht_tables(h: str) -> dict:
+    """{division: {"types": {type: [int]}, "items": {code: [int or None]}, "total": (label, [int])}} from the baht tables of the page."""
+    import html as _html
+    out = {}
+    for d, body in re.findall(r'<table class="report-table fwd-table" id="fwd-baht-table-(\w+)">.*?<tbody>(.*?)</tbody>', h, re.S):
+        types, items, total = {}, {}, None
+        for row in re.findall(r'<tr class="(?:fwd-btype|fwd-bitem|total-row)".*?</tr>', body, re.S):
+            cells = re.findall(r"<td>(.*?)</td>", row)
+            vals = [None if c == "-" else _int(c) for c in cells[1:]]
+            label = _html.unescape(re.sub(r"<[^>]+>", "", cells[0].split(" <span")[0]))
+            if 'class="total-row"' in row:
+                total = (label, vals)
+            elif 'class="fwd-btype"' in row:
+                types[label] = vals
+            else:
+                items[label] = vals
+        out[d] = {"types": types, "items": items, "total": total}
+    return out
+
+
+def _page_prices():
+    import reader_values as rv
+    cfg = load_config()["report"]
+    vf = rv.vintage_facts()
+    codes = sorted(vf["item_rows"]["itemcode"].unique())
+    info = rv.unit_prices(codes, cfg["price_basis"], vf["fit_first"], vf["fit_last"], os.path.join(PROJECT_ROOT, "reference", "pricelist.xlsx"), PROJECT_ROOT)
+    return vf, info
+
+
+def test_the_unit_switch_and_the_baht_texts_are_on_the_page_verbatim_and_default_to_pieces():
+    import reader_values as rv
+    h = _tracked_sales_html()
+    sec = re.search(r'<section id="forward-forecast">.*?</section>', h, re.S).group(0)         # default: pieces (no data-unit set, the pieces button pressed)
+    text = " ".join(_visible(sec).split())
+    assert "หน่วย: ชิ้น · บาท (มีผลกับตารางในส่วนนี้เท่านั้น)" in text
+    assert '<button type="button" data-unit="pieces" aria-pressed="true">ชิ้น</button>' in sec and 'data-unit="baht" aria-pressed="false">บาท</button>' in sec
+    vf, info = _page_prices()
+    first, last = rv.thai_month_short(info["recent"][0]), rv.thai_month_short(info["recent"][-1])
+    n_market = sum(1 for p in info["prices"].values() if p["source"] == "market_price")
+    label = f"มูลค่าคิดจากราคาขายเฉลี่ยจริงของแต่ละรหัส {first} ถึง {last}" + (f" · {n_market} รหัสที่ไม่เคยขายใช้ราคาตั้งใน Price List" if n_market else "")
+    assert f'id="baht-label">{label}</p>' in sec
+    assert ("▸ ยอดทายคิดเป็นเงินเท่าไหร่ต่อเดือน ▸ ตัวเลข = ยอดทาย (ชิ้น) × ราคาขายเฉลี่ยของรหัสนั้น หน่วยบาท ▸ ถ้าราคาขายข้างหน้าต่างจากช่วงที่ใช้เฉลี่ย ยอดเงินจะคลาดตาม "
+            "▸ ยังไม่ได้ตรวจว่านับแบบเดียวกับเป้ารายได้ อย่าเพิ่งเทียบกับเป้าตรงๆ") in text
+    assert "ยอดทายรวมรายเดือน (บาท)" in text and "รวมทุกฝ่าย" in text
+    for d in _baht_tables(h):
+        assert f"รวม {d}" in text
+    # the window of the label is config's number of months, ending at the last month of the fit window
+    assert len(info["recent"]) == load_config()["report"]["price_basis"]["window_months"] and info["recent"][-1] == vf["fit_last"]
+    assert "{" not in text and "}" not in text
+
+
+def test_the_price_rule_and_window_are_in_config_and_the_market_price_column_is_found_per_sheet_by_its_header():
+    import openpyxl
+    import reader_values as rv
+    basis = load_config()["report"]["price_basis"]
+    assert basis["window_months"] == 12 and basis["order"] == ["sales_recent_window", "sales_fit_window", "market_price", "none"]
+    path = os.path.join(PROJECT_ROOT, "reference", "pricelist.xlsx")
+    market, columns = rv.market_prices(path, basis)
+    assert len(columns) == 6 and market                                                    # the six visible product sheets
+    wb = openpyxl.load_workbook(path, data_only=True)
+    for sheet, col in columns.items():                                                      # the header text and the label sit in the found column
+        assert str(wb[sheet][f"{col}3"].value).startswith(basis["market_price_header"])
+        assert str(wb[sheet][f"{col}{basis['market_price_label_row']}"].value).strip() == basis["market_price_label"]
+    for code, m in list(market.items())[::7]:                                               # a sample of codes read straight from the cell
+        v = wb[m["sheet"]][m["cell"]].value
+        assert (m["price"] is None and not isinstance(v, (int, float))) or v == m["price"]
+
+
+def test_every_unit_price_is_the_sale_over_qty_of_the_item_in_the_window_or_the_market_price():
+    vf, info = _page_prices()
+    raw = pd.read_csv(os.path.join(PROJECT_ROOT, "output", "data", "raw_all_divisions_sales.csv"), usecols=["itemcode", "createDate", "forecast_date", "qty", "sale", "status", "revenue_type"])
+    raw["createDate"] = pd.to_datetime(raw["createDate"])
+    raw["forecast_date"] = pd.to_datetime(raw["forecast_date"], errors="coerce")
+    raw = raw[raw["revenue_type"].eq("Omni Channel") & raw["status"].isin(["Actual", "MPS"]) & raw["forecast_date"].notna() & (raw["forecast_date"] >= raw["createDate"])]
+    raw["ym"] = raw["forecast_date"].dt.to_period("M").astype(str)
+    for code, pr in info["prices"].items():
+        if pr["source"] in ("sales_recent_window", "sales_fit_window"):
+            months = info["recent"] if pr["source"] == "sales_recent_window" else info["fit"]
+            g = raw[(raw["itemcode"] == code) & raw["ym"].isin(months)]
+            assert g["qty"].sum() > 0 and pr["price"] == pytest.approx(g["sale"].sum() / g["qty"].sum(), rel=1e-9), code
+        elif pr["source"] == "market_price":
+            assert pr["price"] == info["market"][code]["price"] and pr["price"] > 0
+            assert raw[(raw["itemcode"] == code) & raw["ym"].isin(info["fit"])]["qty"].sum() <= 0      # never sold in the fit window
+        else:
+            assert pr["price"] is None
+
+
+def test_every_baht_cell_is_units_times_price_and_the_totals_add_up_exactly():
+    import build_report as br
+    h = _tracked_sales_html()
+    vf, info = _page_prices()
+    page = _baht_tables(h)
+    months = vf["forecast_months"]
+    rows = vf["item_rows"]
+    summary = {}
+    for label, cells in re.findall(r'<tr(?: class="total-row")?><td>([^<]+)</td>((?:<td>[^<]*</td>)+)</tr>', re.search(r'id="baht-summary-table">.*?</table>', h, re.S).group(0)):
+        summary[label] = [_int(c) for c in re.findall(r"<td>(.*?)</td>", cells)]
+    assert set(page) == set(rows["division"].unique())
+    grand = [0] * len(months)
+    for d, g in rows.groupby("division"):
+        units = g.pivot_table(index="itemcode", columns="target_month", values="forecast_qty", aggfunc="sum").reindex(columns=months)
+        assert set(page[d]["items"]) == set(units.index)
+        for code, vals in units.iterrows():
+            price = info["prices"][code]["price"]
+            assert page[d]["items"][code] == [br._baht(v, price) for v in vals], (d, code)       # whole baht of units x price
+        for mi in range(len(months)):
+            types_sum = sum(v[mi] for v in page[d]["types"].values())
+            items_sum = sum(v[mi] for v in page[d]["items"].values() if v[mi] is not None)
+            assert items_sum == types_sum == page[d]["total"][1][mi] == summary[d][mi], (d, months[mi])
+        for t, codes in g.groupby("type")["itemcode"].unique().items():
+            for mi in range(len(months)):
+                assert page[d]["types"][t][mi] == sum(page[d]["items"][c][mi] for c in codes if page[d]["items"][c][mi] is not None), (d, t)
+        assert page[d]["total"][0] == f"รวม {d}"
+        grand = [a + b for a, b in zip(grand, page[d]["total"][1])]
+    assert summary["รวมทุกฝ่าย"] == grand
+
+
+def test_a_perturbed_price_changes_the_baht_values_and_a_missing_price_shows_the_line_and_the_list(tmp_path, monkeypatch):
+    import reader_values as rv
+    h0 = _tracked_sales_html()
+    assert "baht-no-price" not in h0 and "ไม่มีทั้งประวัติขายและราคาใน Price List" not in h0              # n = 0 now: no line
+    vf, info = _page_prices()
+    page0 = _baht_tables(h0)
+    d0 = next(iter(page0))
+    positive = [c for c, v in page0[d0]["items"].items() if v[0] and v[0] > 1000]
+    code_up, code_none = positive[0], positive[1]
+    real = rv.unit_prices
+
+    def perturbed(*a, **k):
+        out = real(*a, **k)
+        out["prices"][code_up] = {"price": out["prices"][code_up]["price"] * 2, "source": "sales_recent_window"}
+        out["prices"][code_none] = {"price": None, "source": "none"}
+        return out
+    monkeypatch.setattr(rv, "unit_prices", perturbed)
+    out = run_build_report(output_path=str(tmp_path / "sales_report.html"))
+    h1 = open(out, encoding="utf-8").read()
+    page1 = _baht_tables(h1)
+    assert all(abs(b - 2 * a) <= 1 for a, b in zip(page0[d0]["items"][code_up], page1[d0]["items"][code_up]))
+    assert page1[d0]["items"][code_none] == [None] * len(vf["forecast_months"])                            # shown as "-", left out of the sums
+    assert page1[d0]["total"][1][0] == page0[d0]["total"][1][0] + (page1[d0]["items"][code_up][0] - page0[d0]["items"][code_up][0]) - page0[d0]["items"][code_none][0]
+    sec = re.search(r'<details id="baht-no-price">.*?</details>', h1, re.S).group(0)
+    assert '<summary class="hint">1 รหัสไม่มีทั้งประวัติขายและราคาใน Price List ไม่ได้รวมในยอดบาท</summary>' in sec
+    assert "open" not in re.match(r"<details[^>]*>", sec).group(0)                                         # closed by default
+    assert "<th>รหัส</th><th>ชื่อ</th><th>ฝ่าย</th>" in sec and f"<td>{code_none}</td>" in sec and f"<td>{d0}</td>" in sec
+    assert "{" not in _visible(h1) and "}" not in _visible(h1)
+
+
+def test_the_forecast_versus_actual_table_has_the_baht_columns_and_the_note_and_the_difference_has_the_sign_of_bias():
+    import forward_test_common as ftc
+    import forward_test_scoring as fts
+    import operation_plan as op
+    import build_report as br
+    import reader_values as rv
+    h = _tracked_sales_html()
+    vf, info = _page_prices()
+    head = re.search(r'<table class="report-table" id="scored-table"><thead><tr>(.*?)</tr>', h, re.S).group(1)
+    assert head.endswith("<th>ยอดทาย (บาท)</th><th>ยอดจริง (บาท)</th><th>ต่าง (บาท)</th>")
+    assert "ตัวเลขบาทคิดทั้งยอดทายและยอดจริงด้วยราคาขายเฉลี่ยเดียวกัน เพื่อดูว่าทายจำนวนพลาดคิดเป็นเงินเท่าไหร่ ต่างติดลบ = ทายต่ำกว่าจริง" in " ".join(_visible(h).split())
+    body = re.search(r'id="scored-table">.*?<tbody>(.*?)</tbody>', h, re.S).group(1)
+    rows = re.findall(r"<tr><td>(\w+)</td><td>(.*?)</td><td>(.*?)</td><td>(.*?)</td><td>.*?</td><td>(-?[\d,]+)</td><td>(-?[\d,]+)</td><td>(-?[\d,]+)</td></tr>", body)
+    assert rows
+    cfg = op.load_config(PROJECT_ROOT)
+    log = ftc.read_forward_test_log(op.path_of(PROJECT_ROOT, cfg["forecast_log_file"]))
+    meta = ftc.load_metadata(op.path_of(PROJECT_ROOT, cfg["forecast_log_metadata_file"]))
+    raw = pd.read_csv(fts.RAW_HISTORY_PATH, usecols=["itemcode", "createDate", "forecast_date", "qty"])
+    scores = pd.read_csv(fts.SCORES_PATH)
+    scores = scores[(scores["scope"] == "division") & (scores["horizon"] == 1)]
+    for division, month, mae, bias, f_b, a_b, diff in rows:
+        sc = scores[(scores["key"] == division) & (scores["target_month"].map(rv.thai_month_short) == month)].iloc[0]
+        g = log[(log["level"] == "Item") & (log["vintage_id"] == sc["vintage_id"]) & (log["target_month"] == sc["target_month"]) & (log["horizon"] == 1) & (log["division"] == division)].copy()
+        g["actual_qty"] = pd.to_numeric(g["actual_qty"])
+        vm = meta[str(int(sc["vintage_id"]))]
+        used = set(fts.score_items(g, fts.fit_series_from_raw(raw, g["itemcode"].unique(), vm["fit_first_month"], vm["fit_last_month"]))["itemcode"])
+        g = g[g["itemcode"].isin(used)]
+        assert len(g) == sc["n_items"]                                                       # the very items of the row's MAE
+        f_exp = sum(br._baht(f, info["prices"][c]["price"]) for c, f in zip(g["itemcode"], g["forecast_qty"]))
+        a_exp = sum(br._baht(a, info["prices"][c]["price"]) for c, a in zip(g["itemcode"], g["actual_qty"]))
+        assert (_int(f_b), _int(a_b), _int(diff)) == (f_exp, a_exp, f_exp - a_exp), (division, month)   # difference = forecast minus actual
+        assert (g["forecast_qty"] - g["actual_qty"]).mean() == pytest.approx(sc["Bias"])      # the Bias of the row is the same forecast-minus-actual
+
+
+def test_the_back_check_of_the_unit_prices_is_inside_its_limits_and_a_value_outside_them_stops_the_build(tmp_path, monkeypatch):
+    import reader_values as rv
+    basis = load_config()["report"]["price_basis"]
+    vf, info = _page_prices()
+    back = rv.price_back_check(info, basis, PROJECT_ROOT)
+    assert back["outside"] == [] and set(back["ratios"]) == set(vf["item_rows"]["division"].unique())
+    # direct recomputation for one division and year from the two saved series
+    sale = pd.read_csv(os.path.join(PROJECT_ROOT, basis["sale_file"]))
+    qty = pd.read_csv(os.path.join(PROJECT_ROOT, basis["qty_file"]))
+    d = sale.merge(qty[["itemcode", "year_month", "qty"]], on=["itemcode", "year_month"])
+    d = d[(d["division"] == "PEM101") & d["year_month"].str.startswith("2025")]
+    value = sum(q * info["prices"][c]["price"] for c, q in zip(d["itemcode"], d["qty"]) if info["prices"][c]["price"] is not None)
+    assert back["ratios"]["PEM101"]["2025"] == pytest.approx(value / d["sale"].sum())
+    # inside the price window the ratio is 1 for the items priced from that window
+    w = d.iloc[0:0]
+    full = sale.merge(qty[["itemcode", "year_month", "qty"]], on=["itemcode", "year_month"])
+    full = full[full["year_month"].isin(info["recent"]) & full["itemcode"].map(lambda c: info["prices"][c]["source"] == "sales_recent_window")]
+    assert sum(q * info["prices"][c]["price"] for c, q in zip(full["itemcode"], full["qty"])) == pytest.approx(full["sale"].sum())
+    monkeypatch.setattr(rv, "price_back_check", lambda *a, **k: {"ratios": {}, "outside": [("PEM101", "2025", 1.7)]})
+    with pytest.raises(ReportSourceError, match="not published"):
+        run_build_report(output_path=str(tmp_path / "sales_report.html"))

@@ -1121,7 +1121,40 @@ report:
   pilot_warn_line: "▸ ถ้าใช้ยอดทายของสองกลุ่มนี้วางแผน ให้ระวังว่ามักทายต่ำ"
   pilot_scope_note: "Surge Arrester ในตารางนี้นับเฉพาะ Medium Voltage"
   scored_heading: "ยอดทายเทียบยอดขายจริง"
-  scored_columns: ["ฝ่าย", "เดือน", "MAE", "Bias", "MAE ในการทดสอบย้อนหลัง"]
+  scored_columns: ["ฝ่าย", "เดือน", "MAE", "Bias", "MAE ในการทดสอบย้อนหลัง", "ยอดทาย (บาท)", "ยอดจริง (บาท)", "ต่าง (บาท)"]
+
+  # Baht view of the forecast (decisions of the user, 2026-10-08, Prompt 10). Approved Thai text, verbatim; {braced} names are filled at build time.
+  unit_switch_label: "หน่วย:"
+  unit_switch_pieces: "ชิ้น"
+  unit_switch_baht: "บาท"
+  unit_switch_separator: "·"
+  unit_switch_hint: "มีผลกับตารางในส่วนนี้เท่านั้น"
+  baht_label: "มูลค่าคิดจากราคาขายเฉลี่ยจริงของแต่ละรหัส {first_month} ถึง {last_month}"
+  baht_label_market_part: " · {m} รหัสที่ไม่เคยขายใช้ราคาตั้งใน Price List"
+  baht_summary_title: "ยอดทายรวมรายเดือน (บาท)"
+  baht_all_divisions_row: "รวมทุกฝ่าย"
+  baht_division_total_row: "รวม {division}"
+  baht_explanation: "▸ ยอดทายคิดเป็นเงินเท่าไหร่ต่อเดือน ▸ ตัวเลข = ยอดทาย (ชิ้น) × ราคาขายเฉลี่ยของรหัสนั้น หน่วยบาท ▸ ถ้าราคาขายข้างหน้าต่างจากช่วงที่ใช้เฉลี่ย ยอดเงินจะคลาดตาม ▸ ยังไม่ได้ตรวจว่านับแบบเดียวกับเป้ารายได้ อย่าเพิ่งเทียบกับเป้าตรงๆ"
+  baht_no_price_line: "{n} รหัสไม่มีทั้งประวัติขายและราคาใน Price List ไม่ได้รวมในยอดบาท"
+  baht_no_price_columns: ["รหัส", "ชื่อ", "ฝ่าย"]
+  scored_baht_note: "ตัวเลขบาทคิดทั้งยอดทายและยอดจริงด้วยราคาขายเฉลี่ยเดียวกัน เพื่อดูว่าทายจำนวนพลาดคิดเป็นเงินเท่าไหร่ ต่างติดลบ = ทายต่ำกว่าจริง"
+
+  # Unit price per item for the baht view (decisions of the user, 2026-10-08). Tried in this order; the first rule that gives a price is used.
+  #   sales_recent_window : sum of sale / sum of qty over the most recent `window_months` complete months inside the fit window of the vintage the page uses
+  #   sales_fit_window    : the same over the whole fit window (an item with no sales in the recent window)
+  #   market_price        : the Price List column whose row-3 header contains `market_price_header` and whose label in row `market_price_label_row` is `market_price_label`, on each visible product sheet
+  #   none                : no price; the item is left out of the baht values and counted
+  # Sale and qty come from the saved monthly series (the same scope and date key as the forecast series), no database call.
+  price_basis:
+    window_months: 12
+    order: [sales_recent_window, sales_fit_window, market_price, none]
+    market_price_header: "Market Price"
+    market_price_label: "Standard Price"
+    market_price_label_row: 4   # 1-indexed row under the header row (row 3); on all six visible product sheets the label sits in row 4, not row 2
+    sale_file: "output/data/processed_all_divisions_monthly_sale.csv"
+    qty_file: "output/data/processed_all_divisions_monthly_qty.csv"
+    back_check_low: 0.5
+    back_check_high: 1.5
 
 # ============================================================
 # Three-tier parameter classification (documented 2026-09-19, Phase G intent -- NOT implemented
