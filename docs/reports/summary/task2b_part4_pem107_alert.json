@@ -1,0 +1,72 @@
+{
+  "not_late_before_may_2026_pct": 87.13579949391493,
+  "units_before_may_2026": 41495,
+  "not_late_from_may_2026_pct": 57.66099185788305,
+  "units_from_may_2026": 2702,
+  "split_date": "2026-05-01",
+  "before_window_start": "2024-01-01",
+  "data_pulled_at": "2026-09-28 12:43:31",
+  "source": {
+    "pricelist": "reference/pricelist.xlsx, PEM107 visible sheet (PRICELIST RULE)",
+    "delivery": "Cube_CES, Status='Actual', RevenueType='Omni Channel', ActualDelDate vs ForecastDelDate",
+    "metric": "METRICS.md Sec.19 (not_late, unit-weighted)"
+  },
+  "limitations": [
+    "\"Before May 2026\" is bounded at 2024-01-01 (this project's established Omni-forecast usable-era start), not Cube_CES's full ~14-year history -- comparing all history against 5 post-May months would not be like-for-like.",
+    "Post-May-2026 volume is small (n=2702 units) relative to the prior period (n=41495 units) -- a few large orders can move the percentage a lot.",
+    "The cause of the decline is undetermined -- DATA_MAP.md Sec.7 (PEM107 branch): the business-stated May-2026 production/stock separation has no reliable, uniquely-attributable data trace (the one candidate field, cube_final.division, shows an identical step a year earlier with no known cause), and no behavioural measure shows a discrete shift exactly at May 2026 (the drop is volatile, concentrated in June).",
+    "What was actually separated in May 2026 (stock/warehouses, production lines/staff, or both) is not confirmed by any data check to date -- an open point for the business to clarify, not inferred here."
+  ],
+  "subtotal_by_product_type": [
+    {
+      "product_type": "Current Transformer Type CEL",
+      "units_ordered_from_may": 14.0,
+      "units_late": 0.0
+    },
+    {
+      "product_type": "Current Transformer Type CExL",
+      "units_ordered_from_may": 207.0,
+      "units_late": 60.0
+    },
+    {
+      "product_type": "Current Transformer Type COL",
+      "units_ordered_from_may": 1425.0,
+      "units_late": 500.0
+    },
+    {
+      "product_type": "Current Transformer Type LDB",
+      "units_ordered_from_may": 405.0,
+      "units_late": 390.0
+    },
+    {
+      "product_type": "Current Transformer Type LExM-IOT",
+      "units_ordered_from_may": 14.0,
+      "units_late": 0.0
+    },
+    {
+      "product_type": "Voltage Transformer Type VEG",
+      "units_ordered_from_may": 15.0,
+      "units_late": 0.0
+    },
+    {
+      "product_type": "Voltage Transformer Type VEL",
+      "units_ordered_from_may": 2.0,
+      "units_late": 0.0
+    },
+    {
+      "product_type": "Voltage Transformer Type VExL",
+      "units_ordered_from_may": 2.0,
+      "units_late": 0.0
+    },
+    {
+      "product_type": "Voltage Transformer Type VOG",
+      "units_ordered_from_may": 410.0,
+      "units_late": 100.0
+    },
+    {
+      "product_type": "Voltage Transformer Type VOL",
+      "units_ordered_from_may": 208.0,
+      "units_late": 94.0
+    }
+  ]
+}

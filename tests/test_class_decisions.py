@@ -111,7 +111,9 @@ def test_the_calibrated_target_note_states_the_fitted_count_from_the_ensemble_ou
     """Week 1: the section is fitted on the 92 stock_policy items (the Max-Min v1 ensemble), so the note states that count, from the
     ensemble output, and no longer says it was not refitted; it would say so again if the stock_policy set grew past the fitted set."""
     from page_helpers import fresh_inventory_data
-    monkeypatch.setattr(bd, "STOCK_COVERAGE_PATH", os.path.join(PROJECT_ROOT, "docs", "reports", "summary", "phaseE2_1_item_to_warehouse_reverse.csv"))      # the tracked copy of the builder's stock-coverage input
+    tracked = os.path.join(PROJECT_ROOT, "docs", "reports", "summary")            # the tracked copies of the two files the reader-text step reads from output/summary
+    monkeypatch.setattr(bd, "SUMMARY_DIR", tracked)
+    monkeypatch.setattr(bd, "STOCK_COVERAGE_PATH", os.path.join(tracked, "phaseE2_1_item_to_warehouse_reverse.csv"))
     pem101 = fresh_inventory_data()["divisions"]["PEM101"]
     n_stock = sum(1 for i in pem101["items"] if i["policy"] == "stock_policy")
     ct = pem101["curve_target"]
