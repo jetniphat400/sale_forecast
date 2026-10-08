@@ -2009,3 +2009,17 @@ Source: STATUS.md "Week 4, prompt 6"; docs/reports/summary/prompt5_g2_vintage_ta
 - **The workbook's Business follows the pricelist division (or the database `division` column), not `sale_division`; its Revenue Stream Type "2. Omni Channel" equals `revenue_type` "Omni Channel"; its product types match the database/pricelist types by name after normalisation (the pricelist's "Medium Voltage Surge Arrester" items carry the database type "High Voltage Surge Arrester").** **V1.**
 - **Conting against Base (workbook revenue columns) is undetermined:** equal on 97.6 percent of 2026 Omni rows; no tested dimension separates the rest. **V1.**
 - **The hidden sheet POR is a cube_Sale_APD-like extract** (createDate 2024-01-01 to 2026-05-08, Actual + MPS) that reproduces Omni and Total Customer Solution within 0.4 to 4.6 percent but not Tendering (the database is 1.56 to 1.61 times POR). **V1.**
+
+
+## Prompt 8 (2026-10-08): pages, vintage, plan items -- verified facts
+
+Source: STATUS.md "Week 4, prompt 8"; docs/reports/summary/prompt5_g2_vintage_target_map.md, heading "Prompt 8". **V2** = recomputed by the implementer and independently by a Validator.
+
+- **The latest forecast vintage (2) is used by the sales report's forward table, the Min-Max page and the operation plan alike:** run 2026-10-02, fit window 2024-02 to 2026-08, target months 2026-09 to 2027-02, 335 Item rows (CI101 13, PEM101 144, PEM102 16, PEM103 50, PEM107 112), 40 Types; the three consumers' values agree cell by cell (2,250 cells). **V2.**
+- **The old "no forecast" list of the Min-Max page listed every item without a computed mean forecast**, i.e. every confirmed_to_order and conflict item (PEM101 52, PEM103 50, PEM107 108), all but one of which have a forecast in the vintage. Replaced by: no positive forecast month in the vintage and sellable stock; today no item qualifies. **V2.**
+- **The PEM101 calibrated section's Min and Max use sales history from 2024-01-01 to 2026-09-30** (daily series by delivery date), not the forecast. **V2.**
+- **Operation plan, no-forecast group:** 104 items (PEM101 21, PEM103 37, PEM107 24, PEM102 10, PEM104 12); none has a received order (`backlog_due` 0) in the plan's months. **V2.**
+- **55 plan items are marked no production in the system and are in no division total;** for 5 of them (PEM101 stock-policy items) the item table shows planned production in its monthly cells, which is not in the totals. **V2.**
+- **Material plan, plan items not exploded: 139 of 439** (83 with no quantity in the plan's months, 55 not counted, 1 with a quantity and no component line in the saved bill of materials, `02-05-R-0004`); 300 exploded; 301 items with a quantity = the plan's own `n_items_exploded`. PEM104 has no production in the plan. **V2.**
+- **The reason on record for PEM104 having no forecast is made to order by business model; "insufficient data" is the superseded symptom** (re-read, DATA_MAP.md Locked Decisions entry of 2026-09-23). **V2.**
+- **Only one scored forward-test month exists (2026-08, horizon 1);** its division MAEs: CI101 9.8, PEM101 348.8, PEM102 1.2, PEM103 6.1, PEM107 6.1 (Bias -3.7, -46.0, -0.2, -0.4, 2.8). **V2.**

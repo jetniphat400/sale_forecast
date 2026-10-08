@@ -264,6 +264,32 @@ def items_with_min_max(item_month: pd.DataFrame) -> set:
     return {key(i) for i in im.loc[im["planned_production"].notna(), "item"]}
 
 
+COVERAGE_REASONS = ("exploded", "no_demand", "no_production", "no_bom")
+
+
+def plan_item_coverage(item_month: pd.DataFrame, months: list, bom_parents: set) -> pd.DataFrame:
+    """One row per item of the operation plan: (item, division, reason), the reason the item is or is not exploded into materials, in this order of precedence:
+    `no_production` (marked no_production_in_system, so the plan does not count it, `demand_from_operation_plan` leaves it out), `no_demand` (counted, with no planned
+    production or load in any of the plan's months), `no_bom` (counted, with a quantity, and no component line in the bill of materials: `explode` stops at it),
+    otherwise `exploded`. `bom_parents` = the keys of the parents that have component lines (`bom_component_lines`)."""
+    im = item_month.copy()
+    im["key"] = im["item"].map(key)
+    demand = demand_from_operation_plan(im.drop(columns=["key"]), months)
+    rows = []
+    for item, g in im.groupby("item", sort=False):
+        k = key(item)
+        if not bool(g["counted"].iloc[0]):
+            reason = "no_production"
+        elif k not in demand:
+            reason = "no_demand"
+        elif k not in bom_parents:
+            reason = "no_bom"
+        else:
+            reason = "exploded"
+        rows.append({"item": item, "division": g["division"].iloc[0], "reason": reason})
+    return pd.DataFrame(rows, columns=["item", "division", "reason"])
+
+
 def build(root: str = PROJECT_ROOT, today: pd.Timestamp = None, op_out_dir: str = None, cfg: dict = None) -> dict:
     """The material plan from the recorded operation plan (hash-checked) and the saved week 3 pulls. Returns {"material_month", "summary", "meta"}."""
     cfg = cfg or load_config(root)

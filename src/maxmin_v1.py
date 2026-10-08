@@ -152,6 +152,15 @@ def _interp_presets(dense_grid: list, today_not_late_pct: float, today_stock_thb
     return {"today_lowest_stock": p1, "highest_at_today_stock": p2, "stretch_99pct": p3}
 
 
+def demand_history_window(cfg: dict = None) -> tuple:
+    """(first month, last month) of the sales history the PEM101 Min and Max are computed from: the daily series from the calibration start to the end of the
+    last complete month of the saved sales pull (`build_page_inputs`: mean daily demand over jc.CALIBRATION_START..validation_end). The forecast is not an input."""
+    sys.path.insert(0, os.path.join(HERE, "investigations"))
+    import phaseJ3_calibration_engine as jc
+    cfg = cfg or load_config()
+    return str(jc.CALIBRATION_START)[:7], str(ensemble_summary(cfg)["validation_end"])[:7]
+
+
 def build_page_inputs(cfg: dict = None) -> dict:
     """Builds the dense grid and the ratio grid the PEM101 calibrated section of forecast/inventory.html reads, from the control run's
     recorded files (verified first), and records both with a SHA-256. No database. The only simulation-engine call is the daily demand

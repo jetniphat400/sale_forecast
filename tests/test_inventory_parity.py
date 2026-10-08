@@ -54,13 +54,15 @@ def _extract_recompute_js():
     return m.group(0)
 
 
-def _run_js_compute_all(division: str, controls: dict, tmp_path, checked_warehouses=None) -> dict:
+def _run_js_compute_all(division: str, controls: dict, tmp_path, checked_warehouses=None, mutate=None) -> dict:
     """Writes the page's REAL extracted JS (not a hand re-implementation) to a temp file, with the
     document.getElementById(...) DOM read replaced by a literal JSON injection (Node has no DOM),
     and calls computeAll(controls, DATA.divisions[division], checkedWarehouses) via a tiny runner
     appended at the end."""
     js_block = _extract_recompute_js()
     data = _extract_embedded_data()
+    if mutate:
+        mutate(data)
     js_block = js_block.replace(
         "const DATA = JSON.parse(document.getElementById('inventory-data').textContent);",
         f"const DATA = {json.dumps(data)};")
@@ -82,6 +84,7 @@ def _compare(js_result: dict, py_result: dict, label: str, check_excess: bool = 
     js_by_code = {r["code"]: r for r in js_result["perItem"]}
     py_by_code = {r["code"]: r for r in py_result["per_item"]}
     assert set(js_by_code) == set(py_by_code), f"[{label}] item sets differ between JS and Python"
+    assert {c for c, r in js_by_code.items() if r["noVintageForecast"]} == {c for c, r in py_by_code.items() if r["no_vintage_forecast"]},         f"[{label}] the items with no forecast in the page's vintage differ between JS and Python"
     mismatches = []
     for code, py_r in py_by_code.items():
         js_r = js_by_code[code]
@@ -166,3 +169,30 @@ def test_js_matches_python_for_warehouse_selection_and_threshold(division, selec
     _compare(js_result, py_result,
              f"{division} warehouses={selection_name}({checked}) threshold={threshold}mo",
              check_excess=True)
+
+
+def _drop_forecast_of_three_items(data):
+    """PEM101: the first stock_policy item, the first confirmed_to_order item and the first conflict item lose their forecast (a vintage with no row for them)."""
+    items = data["divisions"]["PEM101"]["items"]
+    for policy in ("stock_policy", "confirmed_to_order", "conflict"):
+        next(i for i in items if i["policy"] == policy)["forecast"] = []
+
+
+def test_the_no_forecast_rule_is_the_same_in_js_and_python_and_selects_items_with_stock_and_no_forecast_month(tmp_path):
+    """The list "สินค้าที่มีของแต่ไม่มียอดทาย" is the items with no positive forecast month in the page's vintage and a positive sellable stock: an item with a forecast
+    is never in it, whatever its class, and an item with no forecast but no stock is not either."""
+    payload = load_stock_payload()
+    base = stock_daily.apply_to_data(_extract_embedded_data(), payload)
+    data = _extract_embedded_data()
+    _drop_forecast_of_three_items(data)
+    data = stock_daily.apply_to_data(data, payload)
+    py = python_compute_all(data["divisions"]["PEM101"], DEFAULT_CONTROLS, data["days_per_month"])
+    js = _run_js_compute_all("PEM101", DEFAULT_CONTROLS, tmp_path, mutate=_drop_forecast_of_three_items)
+    _compare(js, py, "PEM101 with three items without a forecast", check_excess=True)
+    no_forecast = {r["code"]: r for r in py["per_item"] if r["no_vintage_forecast"]}
+    assert len(no_forecast) == 3
+    listed = {c for c, r in no_forecast.items() if r["on_hand_sellable"] > 0}
+    with_stock = {i["code"] for i in base["divisions"]["PEM101"]["items"]
+                  if sum(w["qty"] for w in i.get("by_warehouse", []) if w["code"] in base["divisions"]["PEM101"]["sellable_warehouse_codes"]) > 0}
+    assert listed == set(no_forecast) & with_stock
+    assert all(r["no_vintage_forecast"] is False for c, r in {r["code"]: r for r in python_compute_all(base["divisions"]["PEM101"], DEFAULT_CONTROLS, base["days_per_month"])["per_item"]}.items())

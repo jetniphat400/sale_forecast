@@ -36,7 +36,7 @@ def test_without_the_charting_library_text_and_tables_render_and_charts_show_the
         assert edge.ev(f"document.getElementById('{chart}').textContent").strip() == CHART_FAIL_MSG, chart
     # text and sections
     assert edge.ev("document.querySelectorAll('section').length") >= 8
-    assert edge.ev("document.querySelector('#results h2').textContent").startswith("6.")
+    assert edge.ev("document.querySelector('#results h2').textContent").startswith("7.")
     # the tables the page's script fills, and the data-date table
     assert edge.ev("document.querySelectorAll('#primary-results-table tbody tr').length") > 0
     assert edge.ev("document.querySelectorAll('#div-results-table tbody tr').length") > 0

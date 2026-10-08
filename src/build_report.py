@@ -36,7 +36,7 @@ import pandas as pd
 import yaml
 
 import reader_values as rv
-from manual_notes import render_notes_html
+from manual_notes import load_manual_notes, render_notes_html
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 logger = logging.getLogger("build_report")
@@ -350,21 +350,66 @@ def _source_pull_date(rel_path: str, column: str = "snapshot_pull_date") -> str:
     return pd.Timestamp(value).strftime("%Y-%m-%d %H:%M")
 
 
-def gather_usable_range_end(config: dict) -> str:
-    """Last calendar month ACTUALLY PRESENT in the pipeline's own monthly series -- replaces the
-    hand-maintained config.yaml date_range.end (STATUS.md Sec.10 item 3 / manual_factsheet.md
-    Part 5 item 3: that value had gone stale). date_range.start remains config -- it is real
-    project-wide filtering (used by src/load_data_full.py and others), never just display."""
-    path = os.path.join(DATA_DIR, "processed_full_category_sales_monthly_forecastDate.csv")
-    if not os.path.exists(path):
-        raise ReportSourceError(
-            f"Required source file missing: {path} (needed to derive the Usable range end date). "
-            f"Run src/load_data_full.py first."
-        )
-    df = pd.read_csv(path, usecols=["year_month"])
-    if df.empty:
-        raise ReportSourceError(f"{path} has no rows -- cannot derive the usable range end date.")
-    return str(df["year_month"].max())
+def gather_forward_forecast(vf: dict, scope_table: pd.DataFrame) -> dict:
+    """The forward forecast table's data: the latest vintage's Item rows of the forward-test log (read after the hash check, `rv.vintage_facts`), the very rows G2
+    (src/build_inventory_page_data.py latest_vintage_item_forecasts) and G3 (src/operation_plan.py latest_vintage_forecast) read. Per division in the operation
+    plan's order: Types (descending by their total over the months) with their items. Product names come from the price list. A Type's month value is the sum of
+    its items' values; no division total is made. `n_without_forecast` = placeholder + excluded codes of the scope table."""
+    import operation_plan as op
+    from pricelist_reader import load_visible_product_rows
+    rows = vf["item_rows"].copy()
+    months = vf["forecast_months"]
+    wide = rows.pivot_table(index=["division", "type", "itemcode"], columns="target_month", values="forecast_qty", aggfunc="sum").reindex(columns=months)
+    pl = load_visible_product_rows(os.path.join(PROJECT_ROOT, "reference", "pricelist.xlsx")).drop_duplicates("code")
+    names = {c: " ".join(str(n).split()) if pd.notna(n) else "" for c, n in zip(pl["code"], pl["description"])}
+    order = [d for d in op.load_config(PROJECT_ROOT)["divisions"] if d in set(wide.index.get_level_values(0))]
+    divisions = {}
+    for d in order:
+        w = wide.loc[d]
+        types = []
+        for t, g in w.groupby(level=0):
+            g = g.droplevel(0)
+            g = g.loc[g.sum(axis=1).sort_values(ascending=False, kind="mergesort").index]
+            types.append({"type": t, "values": [float(x) for x in g.sum(axis=0)], "items": [{"item": c, "name": names.get(c, ""), "values": [float(x) for x in g.loc[c]]} for c in g.index]})
+        types.sort(key=lambda r: (-sum(r["values"]), r["type"]))
+        divisions[d] = types
+    n_without = int(scope_table["placeholder"].sum() + scope_table["excluded"].sum())
+    return {"months": months, "divisions": divisions, "n_without_forecast": n_without}
+
+
+def gather_pilot_groups(config: dict) -> list:
+    """MAE and Bias of the two pilot groups, recomputed here from the saved series by the pilot-category view builder (src/focus_item_model_selection.py
+    build_pilot_view_payload; groups defined by config pilot_categories, the Surge Arrester group being the Medium Voltage Type). The group is scored as the
+    Type's own Combination forecast over the project's rolling-origin backtest (`series_own`): errors are forecast minus actual (src/backtest_rekeyed.py
+    compute_metrics), so a negative Bias is a forecast below the actual. Returns [{key, label, MAE, Bias}] in the order of the config."""
+    import focus_item_model_selection as fims
+    report = require_config_path(config, "report")
+    payload_keys = {"fuse_cutout": "Drop-out Fuse Cutout", "surge_arrester": "Surge Arrester"}
+    units = fims.build_pilot_view_payload()["units"]
+    out = []
+    for key, label in report["pilot_labels"].items():
+        own = units[payload_keys[key]]["series_own"]
+        out.append({"key": key, "label": label, "MAE": float(own["MAE"]), "Bias": float(own["Bias"])})
+    return out
+
+
+def gather_scored_months(primary_results: pd.DataFrame) -> pd.DataFrame:
+    """Forecast against actual per division and month at horizon 1, from the recorded forward-test scores (output/summary/forward_test_scores.csv, scored by
+    src/forward_test_scoring.py after its integrity check; scope 'division'), with the backtest MAE of the same division (the main table's Top-down MAE).
+    Stops when no scored month is recorded."""
+    import forward_test_scoring as fts
+    fts.verify_score_record()
+    s = pd.read_csv(fts.SCORES_PATH)
+    s = s[(s["scope"] == "division") & (s["horizon"] == 1)]
+    if s.empty:
+        raise ReportSourceError("output/summary/forward_test_scores.csv holds no scored division row at horizon 1: the forecast-versus-actual table cannot be built.")
+    back = primary_results.set_index("division")["MAE"]
+    missing = sorted(set(s["key"]) - set(back.index))
+    if missing:
+        raise ReportSourceError(f"no backtest MAE for division(s) {missing} in the main results table")
+    out = s[["key", "target_month", "MAE", "Bias"]].rename(columns={"key": "division"}).copy()
+    out["MAE_backtest"] = out["division"].map(back)
+    return out.sort_values(["target_month", "division"], kind="mergesort").reset_index(drop=True)
 
 
 def gather_freshness() -> dict:
@@ -534,7 +579,7 @@ def render_page(config: dict) -> str:
     fva = gather_forecast_vs_actual()
     primary_results = gather_primary_results()
     notlate = gather_notlate()
-    usable_range_end = gather_usable_range_end(config)
+    vf = rv.vintage_facts(PROJECT_ROOT)
     freshness = gather_freshness()
     backtest_window = gather_backtest_window(primary_results, results["per_division"])
 
@@ -563,11 +608,12 @@ def render_page(config: dict) -> str:
         ยังคงใช้ข้อมูลที่ทันสมัย (ไม่ถือว่าทั้งหน้าเก่าเพียงเพราะส่วนใดส่วนหนึ่งเก่า)<!-- METRICS.md §26 --></p>"""
         if stale_sections else ""
     )
+    freshness_line = report["freshness_line"].format(round=rv.thai_month_short(vf["run_date"]), fit_last=rv.thai_month_short(vf["fit_last"]),
+                                                     built_at=rv.thai_datetime_short(page_built_at))
     timestamps_html = f"""
-    <details class="note-box" style="margin:10px 0">
-      <summary style="cursor:pointer"><!-- data_pulled_at --><b>ข้อมูลดึงเมื่อ:</b> {data_pulled_at} {ICT_LABEL}
-        (เก่าที่สุดในหน้านี้, ดูรายละเอียดต่อส่วนด้านล่าง) &nbsp;|&nbsp; <!-- page_built_at --><b>หน้าสร้างเมื่อ:</b> {page_built_at} {ICT_LABEL}
-        &nbsp;<!-- source: src/build_report.py gather_freshness()/datetime.now(), this build run --></summary>
+    <details class="note-box" style="margin:10px 0" id="page-data-line">
+      <summary style="cursor:pointer"><!-- round = run month of vintage {vf['vintage_id']} of the forward-test log; fit_last = that vintage's last fit month; built_at = page_built_at; oldest data_pulled_at of the page: {data_pulled_at} {ICT_LABEL}, per section below
+        --><span id="freshness-line">{html.escape(freshness_line)}</span><!-- source: src/build_report.py rv.vintage_facts()/datetime.now(), this build run --></summary>
       <h3 style="margin-top:10px">ข้อมูลแต่ละส่วนดึงเมื่อ</h3>
       <table class="report-table" style="margin-top:8px">
         <thead><tr><th>ส่วน</th><th>ดึงเมื่อ</th><th>สถานะ</th></tr></thead>
@@ -605,6 +651,13 @@ def render_page(config: dict) -> str:
         "first_scoring_month": rv.first_scoring_month_label(config),
     }
 
+    # ---- values of the sections added 2026-10-08 ----
+    forward = gather_forward_forecast(vf, scope_table)
+    pilot_groups = gather_pilot_groups(config)
+    scored = gather_scored_months(primary_results)
+    note_values["n_scored_months"] = int(scored["target_month"].nunique())
+    fwd_first, fwd_last = rv.thai_month_short(forward["months"][0]), rv.thai_month_short(forward["months"][-1])
+
     # ---- Section 1: Executive summary ----
     sec1 = f"""
     <section id="exec-summary">
@@ -625,7 +678,41 @@ def render_page(config: dict) -> str:
       </p>
     </section>"""
 
-    # ---- Section 2: Scope ----
+    # ---- Section 2: forward forecast (the latest vintage of the forward-test log, the rows G2 and G3 read) ----
+    month_heads = "".join(f"<th>{html.escape(rv.thai_month_short(m))}</th>" for m in forward["months"])
+
+    def _cells(values):
+        return "".join(f"<td>{fmt_cell(v)}</td>" for v in values)
+    fwd_tables = []
+    for d_i, (d, types) in enumerate(forward["divisions"].items()):
+        body_rows = []
+        for t_i, t in enumerate(types):
+            rid = f"fwd-{d}-{t_i}"
+            body_rows.append(f'<tr class="fwd-type" id="{rid}" data-division="{html.escape(d)}" tabindex="0" role="button" aria-expanded="false">'
+                             f'<td>{html.escape(t["type"])}</td>{_cells(t["values"])}</tr>')
+            for it in t["items"]:
+                label = html.escape(it["item"]) + (f' <span class="fwd-name">{html.escape(it["name"])}</span>' if it["name"] else "")
+                body_rows.append(f'<tr class="fwd-item" data-parent="{rid}" data-division="{html.escape(d)}" hidden><td>{label}</td>{_cells(it["values"])}</tr>')
+        fwd_tables.append(f'<div class="table-scroll fwd-table-wrap" data-division="{html.escape(d)}"{"" if d_i == 0 else " hidden"}>'
+                          f'<table class="report-table fwd-table" id="fwd-table-{html.escape(d)}"><thead><tr><th>{html.escape(report["forward_table_head"])}</th>{month_heads}</tr></thead>'
+                          f'<tbody>{"".join(body_rows)}</tbody></table></div>')
+    fwd_division_options = "".join(f'<option value="{html.escape(d)}">{html.escape(d)}</option>' for d in forward["divisions"])
+    forward_missing = html.escape(report["forward_missing_line"]).format(
+        n=forward["n_without_forecast"], scope_link=f'<a href="#scope">{html.escape(report["forward_scope_link_text"])}</a>')
+    sec_fwd = f"""
+    <section id="forward-forecast">
+      <h2>2. {html.escape(report['forward_heading'].format(first_month=fwd_first, last_month=fwd_last))}</h2>
+      <!-- source: the Item rows of vintage {vf['vintage_id']} (the latest) of output/summary/forward_test_log_all_divisions.csv after the hash check, the same rows the Min-Max page and the operation plan read; a Type's value is the sum of its items'. -->
+      {render_notes_html('sales_report.html', 'forward-forecast', values=note_values)}
+      <p class="hint" id="forward-missing">{forward_missing}</p>
+      <div class="controls">
+        <label>{html.escape(report['forward_division_label'])}: <select id="fwdDivision">{fwd_division_options}</select></label>
+        <span class="hint">({html.escape(report['forward_division_hint'])})</span>
+      </div>
+      {"".join(fwd_tables)}
+    </section>"""
+
+    # ---- Section 3: Scope ----
     scope_rows = "".join(
         f"<tr><td>{div}</td><td>{cite('phaseC_step1revised_item_status_445.csv', 'status_category')}{int(row['forecast'])}</td>"
         f"<td>{int(row['placeholder'])}</td><td>{int(row['excluded'])}</td><td>{int(row.sum())}</td></tr>"
@@ -633,7 +720,7 @@ def render_page(config: dict) -> str:
     )
     sec2 = f"""
     <section id="scope">
-      <h2>2. ขอบเขตข้อมูล (Scope)</h2>
+      <h2>3. ขอบเขตข้อมูล (Scope)</h2>
       <p>ขอบเขต Omni Channel ครอบคลุมสินค้าทุกฝ่ายตาม Price List รวม {total_codes} รหัส</p>
       <table class="report-table">
         <thead><tr><th>ฝ่าย (Division)</th><th>พยากรณ์ (Forecast)</th><th>Placeholder</th><th>ตัดออก (Excluded)</th><th>รวม</th></tr></thead>
@@ -646,7 +733,7 @@ def render_page(config: dict) -> str:
     # ---- Section 3: Business findings (Plotly) ----
     sec3 = f"""
     <section id="business-findings">
-      <h2>3. ข้อค้นพบทางธุรกิจ (Business Findings)</h2>
+      <h2>4. ข้อค้นพบทางธุรกิจ (Business Findings)</h2>
       <p>
         {cite('leadtime_overall_distribution.csv', 'median')}
         Median customer notice: <b>{fmt_num(biz['median_notice'], 0)}</b> วัน &nbsp;|&nbsp;
@@ -672,13 +759,12 @@ def render_page(config: dict) -> str:
     # ---- Section 4: Data ----
     sec4 = f"""
     <section id="data">
-      <h2>4. ข้อมูลที่ใช้ (Data)</h2>
+      <h2>5. ข้อมูลที่ใช้ (Data)</h2>
       <table class="report-table">
         <tbody>
           <tr><td>แหล่งข้อมูล (Source table)</td><td>{cite_config('source_table')}<!-- table: {html.escape(str(config['source_table']))} -->ระบบขายของบริษัท</td></tr>
-          <tr><td>ช่วงข้อมูลที่ใช้ได้ (Usable range)</td><td>{cite_config('date_range.start')}<!-- source: output/data/processed_full_category_sales_monthly_forecastDate.csv, column year_month (max) -->{config['date_range']['start']} — {usable_range_end}
-            <!-- previously: last month with real data, computed at build time, no longer typed in config.yaml -->
-            <span class="hint">(เดือนล่าสุดที่ข้อมูลครบ)</span></td></tr>
+          <!-- source: the fit window (first and last month) of vintage {vf['vintage_id']} of the forward-test log metadata, the series every figure of this page's forecast is fitted on -->
+          <tr><td colspan="2" id="fit-range-line">{html.escape(report['fit_range_line'].format(first_month=rv.thai_month_short(vf['fit_first']), last_month=rv.thai_month_short(vf['fit_last'])))}</td></tr>
           <!-- Split lots; STATUS.md, Locked Decisions -->
           <tr><td colspan="2">รายการที่ดูเหมือนซ้ำแต่เป็นการแบ่งส่งหลายงวด นับครบทุกงวด</td></tr>
           <!-- MPS retained; STATUS.md, Locked Decisions -->
@@ -694,7 +780,7 @@ def render_page(config: dict) -> str:
     # ---- Section 5: Model (Plotly, legend-toggle bar chart) ----
     sec5 = f"""
     <section id="model">
-      <h2>5. โมเดลพยากรณ์ (Model)</h2>
+      <h2>6. โมเดลพยากรณ์ (Model)</h2>
       <p>{html.escape(report['model_description'].format(**report_values))}</p>
       <p>{html.escape(report['why_not_single_model'].format(**report_values))}</p>
       <p>{html.escape(report['why_not_ml'].format(**report_values))}</p>
@@ -716,9 +802,32 @@ def render_page(config: dict) -> str:
     )
 
     significance_html = significance_block_html(results["topdown_sig"])
+
+    # Pilot groups: MAE and Bias of the group's own forecast; one sentence per group whose Bias is negative (a forecast below the actual).
+    negative = [g for g in pilot_groups if g["Bias"] < 0]
+    pilot_lines = list(load_manual_notes()["sales_report.html"]["pilot-group"])
+    pilot_lines += [report["pilot_group_line"].format(group=g["label"], x=f"{abs(g['Bias']):.1f}") for g in negative]
+    if negative:
+        pilot_lines.append(report["pilot_warn_line"])
+    pilot_rows = "".join(f"<tr><td>{html.escape(g['label'])}</td><td>{g['MAE']:.1f}</td><td>{g['Bias']:.1f}</td></tr>" for g in pilot_groups)
+    pilot_head = "".join(f"<th>{html.escape(c)}</th>" for c in report["pilot_columns"])
+    pilot_html = f"""<h3 id="pilot-groups">{html.escape(report['pilot_heading'])}</h3>
+      <!-- source: build_pilot_view_payload() (src/focus_item_model_selection.py), units[..].series_own, groups from config pilot_categories; Bias = forecast minus actual -->
+      <p class="hint" id="pilot-notes">{"<br>".join(html.escape(l) for l in pilot_lines)}</p>
+      <table class="report-table" id="pilot-table"><thead><tr>{pilot_head}</tr></thead><tbody>{pilot_rows}</tbody></table>
+      <p class="hint" id="pilot-scope-note">{html.escape(report['pilot_scope_note'])}</p>"""
+
+    # Forecast against actual, month by month, from the recorded forward-test scores.
+    scored_rows = "".join(f"<tr><td>{html.escape(r.division)}</td><td>{html.escape(rv.thai_month_short(r.target_month))}</td><td>{r.MAE:.1f}</td><td>{r.Bias:.1f}</td>"
+                          f"<td>{r.MAE_backtest:.1f}</td></tr>" for r in scored.itertuples())
+    scored_head = "".join(f"<th>{html.escape(c)}</th>" for c in report["scored_columns"])
+    scored_html = f"""<h3 id="scored-months">{html.escape(report['scored_heading'])}</h3>
+      <!-- source: output/summary/forward_test_scores.csv (scope division, horizon 1, integrity-checked); backtest MAE = the main table's Top-down MAE of the division -->
+      {render_notes_html('sales_report.html', 'forecast-vs-actual-monthly', values=note_values)}
+      <table class="report-table" id="scored-table"><thead><tr>{scored_head}</tr></thead><tbody>{scored_rows}</tbody></table>"""
     sec6 = f"""
     <section id="results">
-      <h2>6. ผลลัพธ์ (Results)</h2>
+      <h2>7. ผลลัพธ์ (Results)</h2>
       {cite('phaseC_step2_transferability_per_division.csv', 'first_test_month / last_test_month')}
       <!-- rolling-origin backtest window, {backtest_window['n_origins']} origins; METRICS.md §39 -->
       <p class="hint">ตัวเลขทุกตัวด้านล่างมาจากการทดสอบช่วง {backtest_window['first_test_month']} ถึง {backtest_window['last_test_month']}</p>
@@ -745,6 +854,7 @@ def render_page(config: dict) -> str:
         <thead><tr><th>ฝ่าย</th><th>MAE</th><th>RMSE</th><th>MASE</th><th>Bias</th><th>จำนวนสินค้า</th></tr></thead>
         <tbody></tbody>
       </table>
+      {pilot_html}
       <h3>Rolling-origin MAE (Type level) — คลิก legend เพื่อซ่อน/แสดงแต่ละโมเดล</h3>
       {cite('phaseC_step2_rolling_origin_qty.csv', 'origin / model / MAE')}
       <div id="chart-rolling" class="plotly-chart"></div>
@@ -762,13 +872,14 @@ def render_page(config: dict) -> str:
       {render_notes_html('sales_report.html', 'chart-fva', values=note_values)}
       {cite('topdown_significance.csv', 'verdict / rel_diff_pct')}
       {significance_html}
+      {scored_html}
     </section>"""
 
     # ---- Section 7: Limitations ----
     limitations_html = "".join(f"<li>{html.escape(x.format(**report_values))}</li>" for x in report["limitations"])
     sec7 = f"""
     <section id="limitations">
-      <h2>7. ข้อจำกัด (Limitations)</h2>
+      <h2>8. ข้อจำกัด (Limitations)</h2>
       <ul>{limitations_html}</ul>
     </section>"""
 
@@ -776,7 +887,7 @@ def render_page(config: dict) -> str:
     next_steps_html = "".join(f"<li>{html.escape(x.format(**report_values))}</li>" for x in report["next_steps"])
     sec8 = f"""
     <section id="next-steps">
-      <h2>8. ขั้นตอนต่อไป (Next Steps)</h2>
+      <h2>9. ขั้นตอนต่อไป (Next Steps)</h2>
       <ul>{next_steps_html}</ul>
     </section>"""
 
@@ -784,7 +895,7 @@ def render_page(config: dict) -> str:
     <!-- Previous wording, kept off screen: the controls on this page (Division/Type/Item/Origin selectors, legend toggles) change only the view shown, not the model or the forecasts already computed; structural changes (Tier B parameters: base models, combination method, scope, series key, aggregation level) are made in config.yaml and need a pipeline re-run, per the Tier A/B/C grouping in config.yaml's comment block "Three-tier parameter classification". -->
     <div class="controls-note">ตัวกรองในส่วนนี้เปลี่ยนแค่สิ่งที่แสดง ไม่ได้เปลี่ยนการทาย</div>"""
 
-    body = sec1 + sec2 + sec3 + sec4 + sec5 + controls_note + sec6 + sec7 + sec8
+    body = sec1 + sec_fwd + sec2 + sec3 + sec4 + sec5 + controls_note + sec6 + sec7 + sec8
 
     return f"""<!DOCTYPE html>
 <html lang="th">
@@ -832,11 +943,19 @@ def render_page(config: dict) -> str:
     padding:10px 12px; font-size:12.5px; margin: 20px 0; }}
   .item-check-list {{ display:flex; gap:12px; flex-wrap:wrap; margin: 6px 0; font-size:12.5px; }}
   label.item-check {{ background:#f0efec; border-radius: 4px; padding: 2px 8px; }}
+  .fwd-table td:not(:first-child), .fwd-table th:not(:first-child) {{ text-align: right; white-space: nowrap; }}
+  .fwd-type {{ cursor: pointer; font-weight: 600; }}
+  .fwd-type td:first-child::before {{ content: "▸ "; color: var(--muted); }}
+  .fwd-type[aria-expanded="true"] td:first-child::before {{ content: "▾ "; }}
+  .fwd-name {{ color: var(--muted); font-size: 12px; }}
+  .table-scroll {{ overflow-x: auto; max-width: 100%; }}
+  {NAV_CSS}
 </style>
 </head>
 <body>
 <div class="wrap">
   <a class="back-link" href="../index.html">&larr; กลับหน้าหลัก</a>
+  {rv.nav_bar_html('sales')}
   <h1>รายงานการพยากรณ์ยอดขาย (Sales Forecast Report) — PEM Group</h1>
   <!-- สร้างโดย src/build_report.py — ทุกตัวเลขมีที่มาระบุไว้ในซอร์สโค้ด HTML (ดู source comments) -->
   {timestamps_html}
@@ -849,8 +968,42 @@ def render_page(config: dict) -> str:
 <script>
 {render_client_js()}
 </script>
+<script>
+{FORWARD_TABLE_JS}
+</script>
 </body>
 </html>"""
+
+
+# The forward forecast table: one division shown at a time (the selector), a click or Enter on a Type row shows or hides its item rows. No number is computed here.
+FORWARD_TABLE_JS = """
+(function () {
+  var sel = document.getElementById('fwdDivision');
+  function showDivision() {
+    document.querySelectorAll('.fwd-table-wrap').forEach(function (w) { w.hidden = (w.dataset.division !== sel.value); });
+  }
+  function toggle(row) {
+    var open = row.getAttribute('aria-expanded') !== 'true';
+    row.setAttribute('aria-expanded', open ? 'true' : 'false');
+    document.querySelectorAll('tr.fwd-item[data-parent="' + row.id + '"]').forEach(function (r) { r.hidden = !open; });
+  }
+  if (sel) sel.addEventListener('change', showDivision);
+  document.querySelectorAll('tr.fwd-type').forEach(function (row) {
+    row.addEventListener('click', function () { toggle(row); });
+    row.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(row); } });
+  });
+  if (sel) showDivision();
+})();
+"""
+NAV_CSS = rv.NAV_CSS
+
+
+def fmt_cell(x: float) -> str:
+    """A forecast cell: whole units from 10 up, one decimal below, a hyphen for none (the operation plan page's cell format)."""
+    x = float(x)
+    if abs(x) < 1e-9:
+        return "-"
+    return f"{x:,.1f}" if abs(x) < 10 else f"{int(round(x)):,}"
 
 
 def render_client_js() -> str:

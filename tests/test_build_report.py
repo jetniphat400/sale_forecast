@@ -248,3 +248,155 @@ def test_plotly_loaded_from_pinned_cdn_url():
     assert "@latest" not in html_text
     m = re.search(r"plotly\.js/([\d.]+)/plotly", html_text)
     assert m, "No pinned Plotly version found in the CDN script tag"
+
+
+# ====================================================================================================== sections added on 2026-10-08
+# Read from the tracked page (rebuilt by the monthly runner); the values are recomputed here from their sources.
+
+def _tracked_sales_html() -> str:
+    with open(FORECAST_OUT, "r", encoding="utf-8") as f:
+        return f.read()
+
+
+def _visible(html_text: str) -> str:
+    import html as _html
+    t = re.sub(r'<script type="application/json".*?</script>|<style.*?</style>|<script.*?</script>|<!--.*?-->', "", html_text, flags=re.S)
+    return _html.unescape(re.sub(r"[ \t]+", " ", re.sub(r"<[^>]+>", "\n", t)))
+
+
+def test_the_three_approved_lines_are_on_the_page_with_their_values_filled():
+    import reader_values as rv
+    h = _tracked_sales_html()
+    vf = rv.vintage_facts()
+    m = re.search(r'id="freshness-line">ยอดทายรอบ (.*?) · ใช้ยอดขายถึง (.*?) · หน้าสร้างเมื่อ (\d{1,2} \S+ \d{2} \d{2}:\d{2})</span>', h)
+    assert m, "the freshness line is missing or not in the approved shape"
+    assert m.group(1) == rv.thai_month_short(vf["run_date"]) and m.group(2) == rv.thai_month_short(vf["fit_last"])
+    assert f'id="fit-range-line">ยอดขายที่ใช้ทาย {rv.thai_month_short(vf["fit_first"])} ถึง {rv.thai_month_short(vf["fit_last"])}</td>' in h
+    first, last = rv.thai_month_short(vf["forecast_months"][0]), rv.thai_month_short(vf["forecast_months"][-1])
+    assert f"<h2>2. ยอดทาย {first} ถึง {last}</h2>" in h
+    scope = build_report.gather_scope_table()
+    n = int(scope["placeholder"].sum() + scope["excluded"].sum())
+    assert f'<p class="hint" id="forward-missing">รหัสที่ยังไม่มียอดทาย {n} รหัส ดูเหตุผลใน<a href="#scope">ตารางขอบเขตข้อมูล</a></p>' in h
+    assert "ข้อมูลดึงเมื่อ:" not in h and "ช่วงข้อมูลที่ใช้ได้" not in h
+    assert "ทุกต้นเดือนระบบเทียบยอดทายกับยอดขายจริงของเดือนที่ผ่านมา และเพิ่มผลในตารางนี้" in h
+    assert "ทุกเดือนระบบจะเทียบการทายกับยอดขายจริงเดือนล่าสุด" not in h
+    heads = re.findall(r"<h2>(\d)\. ", h)
+    assert heads == [str(i) for i in range(1, 10)]                                    # the sections are numbered 1 to 9 without a gap
+
+
+def test_every_approved_note_line_is_on_the_page_verbatim_and_no_brace_is_left():
+    h = _tracked_sales_html()
+    text = _visible(h)
+    for line in ["▸ เดือนข้างหน้าสินค้าแต่ละประเภทน่าจะขายกี่ชิ้น", "▸ แถว = ประเภทสินค้า · คอลัมน์ = เดือน · ตัวเลข = จำนวนชิ้น", "▸ คลิกประเภทเพื่อดูรายรหัส",
+                 "▸ เป็นค่ากลางค่าเดียว ยังไม่มีช่วงสูงต่ำ ดูว่าพลาดได้แค่ไหนจากส่วนผลลัพธ์",
+                 "▸ สองกลุ่มนำร่องทายแม่นแค่ไหน", "▸ MAE = พลาดเฉลี่ยกี่ชิ้นต่อเดือน · Bias ติดลบ = ทายต่ำกว่าจริง",
+                 "▸ ถ้าใช้ยอดทายของสองกลุ่มนี้วางแผน ให้ระวังว่ามักทายต่ำ", "Surge Arrester ในตารางนี้นับเฉพาะ Medium Voltage",
+                 "▸ ยอดที่ทายไว้ล่วงหน้า พอถึงเดือนจริงพลาดแค่ไหน", "▸ MAE เดือนจริงสูงกว่าผลทดสอบย้อนหลังมาก = ช่วงนี้ทายยากกว่าปกติ",
+                 "กลุ่มนำร่อง: Fuse Cutout และ Surge Arrester", "ยอดทายเทียบยอดขายจริง"]:
+        assert line in text, line
+    assert "{" not in text and "}" not in text, "a placeholder or a brace is left in the visible text of the sales report"
+
+
+def _forward_rows(h: str) -> dict:
+    """{division: {"types": {type: [cells]}, "items": {code: [cells]}}} from the forward forecast tables of the page."""
+    import html as _html
+    out = {}
+    for d, body in re.findall(r'<table class="report-table fwd-table" id="fwd-table-(\w+)">.*?<tbody>(.*?)</tbody>', h, re.S):
+        types, items = {}, {}
+        for row in re.findall(r'<tr class="fwd-(?:type|item)".*?</tr>', body, re.S):
+            cells = re.findall(r"<td>(.*?)</td>", row)
+            label = _html.unescape(re.sub(r"<[^>]+>", "", cells[0].split(" <span")[0]))
+            (types if 'class="fwd-type"' in row else items)[label] = cells[1:]
+        out[d] = {"types": types, "items": items}
+    return out
+
+
+def test_the_forward_forecast_table_equals_the_vintage_the_min_max_page_and_the_operation_plan_use():
+    import numpy as np
+    import build_inventory_page_data as bd
+    import operation_plan as op
+    import reader_values as rv
+    vf = rv.vintage_facts()
+    rows = vf["item_rows"]
+    h = _tracked_sales_html()
+    page = _forward_rows(h)
+    assert set(page) == set(rows["division"].unique())
+    for d, g in rows.groupby("division"):
+        # every item and month of the vintage, formatted as the page formats a cell; a Type is the sum of its items; no division total row
+        by_item = g.pivot_table(index="itemcode", columns="target_month", values="forecast_qty", aggfunc="sum").reindex(columns=vf["forecast_months"])
+        assert set(page[d]["items"]) == set(by_item.index)
+        for code, vals in by_item.iterrows():
+            assert page[d]["items"][code] == [build_report.fmt_cell(v) for v in vals], (d, code)
+        by_type = g.pivot_table(index="type", columns="target_month", values="forecast_qty", aggfunc="sum").reindex(columns=vf["forecast_months"])
+        assert set(page[d]["types"]) == set(by_type.index)
+        for t, vals in by_type.iterrows():
+            assert page[d]["types"][t] == [build_report.fmt_cell(v) for v in vals], (d, t)
+    assert "total-row" not in re.search(r'<section id="forward-forecast">.*?</section>', h, re.S).group(0)
+    # the same vintage as the Min-Max page (G2): its item arrays are the vintage's months, extended flat
+    g2, info = bd.latest_vintage_item_forecasts()
+    assert info["vintage_id"] == vf["vintage_id"] and info["target_months"] == vf["forecast_months"]
+    for code, arr in g2.items():
+        assert np.allclose(arr[:len(vf["forecast_months"])], vf["forecast"].loc[code, vf["forecast_months"]].to_numpy(dtype=float)), code
+    # and the operation plan (G3): its forecast column for the plan's months is the vintage's value for the item and month
+    cfg = op.load_config()
+    im, _dm, meta = op.read_outputs(PROJECT_ROOT, cfg)
+    assert meta["vintage_id"] == vf["vintage_id"]
+    plan = im[im["status_category"] == "forecast"]
+    for r in plan.itertuples():
+        assert abs(r.forecast - vf["forecast"].loc[r.item, r.month]) < 1e-6, (r.item, r.month)
+
+
+def test_bias_is_forecast_minus_actual_so_a_negative_bias_is_a_forecast_below_the_actual():
+    import inspect
+    import numpy as np
+    import backtest_rekeyed as bk
+    m = bk.compute_metrics(np.array([10.0]), np.array([7.0]), np.array([1.0, 2.0, 3.0, 4.0]))      # (actual, forecast, fit series): 3 units too low
+    assert m["Bias"] == -3.0 and m["MAE"] == 3.0
+    src = inspect.getsource(bk.compute_metrics)
+    assert re.search(r"errors?\s*=\s*\w+\s*-\s*\w+", src), "compute_metrics no longer computes an error as one array minus another; re-check the sign of Bias"
+
+
+def test_the_pilot_group_table_and_sentences_follow_the_pilot_view_data():
+    import focus_item_model_selection as fims
+    h = _tracked_sales_html()
+    recorded = fims.read_pilot_view(os.path.join(SUMMARY_DIR, "pilot_view_data_v1.json"))["units"]       # hash-checked record of week 4
+    fresh = fims.build_pilot_view_payload()["units"]
+    cfg = load_config()["report"]
+    for key, unit in (("fuse_cutout", "Drop-out Fuse Cutout"), ("surge_arrester", "Surge Arrester")):
+        label = cfg["pilot_labels"][key]
+        own = fresh[unit]["series_own"]
+        assert own["MAE"] == pytest.approx(recorded[unit]["series_own"]["MAE"]) and own["Bias"] == pytest.approx(recorded[unit]["series_own"]["Bias"])
+        assert f"<tr><td>{label}</td><td>{own['MAE']:.1f}</td><td>{own['Bias']:.1f}</td></tr>" in h
+        if own["Bias"] < 0:
+            assert f"▸ {label} ทายต่ำกว่าจริงเฉลี่ยเดือนละ {abs(own['Bias']):.1f} ชิ้น" in h
+        else:
+            assert f"▸ {label} ทายต่ำกว่าจริง" not in h
+    if all(fresh[u]["series_own"]["Bias"] >= 0 for u in ("Drop-out Fuse Cutout", "Surge Arrester")):
+        assert "ให้ระวังว่ามักทายต่ำ" not in h
+    assert "Surge Arrester ในตารางนี้นับเฉพาะ Medium Voltage" in h
+
+
+def test_the_forecast_versus_actual_table_follows_the_recorded_forward_test_scores():
+    import forward_test_scoring as fts
+    import reader_values as rv
+    h = _tracked_sales_html()
+    scores = pd.read_csv(fts.SCORES_PATH)
+    s = scores[(scores["scope"] == "division") & (scores["horizon"] == 1)]
+    back = pd.read_csv(os.path.join(SUMMARY_DIR, "phaseC_step2_transferability_per_division.csv"))
+    back = back[back["approach"] == "Top-down"].set_index("division")["MAE"]
+    table = re.search(r'<table class="report-table" id="scored-table">.*?<tbody>(.*?)</tbody>', h, re.S).group(1)
+    rendered = re.findall(r"<tr><td>(\w+)</td><td>(.*?)</td><td>(.*?)</td><td>(.*?)</td><td>(.*?)</td></tr>", table)
+    assert len(rendered) == len(s) and len(s) > 0
+    expected = {(r.key, rv.thai_month_short(r.target_month)): (f"{r.MAE:.1f}", f"{r.Bias:.1f}", f"{back[r.key]:.1f}") for r in s.itertuples()}
+    assert {(d, m): (a, b, c) for d, m, a, b, c in rendered} == expected
+    assert f"▸ ตอนนี้มีผล {s['target_month'].nunique()} เดือน ยังสรุปไม่ได้ว่าวิธีทายดีขึ้นหรือแย่ลง" in h
+    assert "MAE ในการทดสอบย้อนหลัง" in h
+
+
+def test_the_forward_table_has_a_division_selector_and_types_that_expand_to_items():
+    h = _tracked_sales_html()
+    sec = re.search(r'<section id="forward-forecast">.*?</section>', h, re.S).group(0)
+    assert '<select id="fwdDivision">' in sec and sec.count('class="fwd-type"') > 5 and 'class="fwd-item"' in sec
+    assert 'aria-expanded="false"' in sec and "(มีผลกับตารางนี้เท่านั้น)" in sec
+    options = re.findall(r'<option value="\w+">', sec.split('id="fwdDivision"')[1].split("</select>")[0])
+    assert sec.count('class="table-scroll fwd-table-wrap"') == len(options)

@@ -96,6 +96,10 @@ def page(edge, tmp_path_factory):
     try:
         edge.open(url)
         time.sleep(1.5)
+        out["default_tab"] = edge.ev("[...document.querySelectorAll('#tabBar .actv')].map(b => b.textContent.trim())")
+        out["bar"] = edge.ev("[...document.querySelectorAll('#tabBar > *')].map(e => e.textContent.trim())")
+        out["sep_visible"] = edge.ev("(function(){var r=document.querySelector('#tabBar .navsep').getBoundingClientRect(); return r.width > 0 && r.height > 0})()")
+        edge.ev("omniShowTab(1); 1")                 # the S&OP tab is no longer the one that opens by default
         out["sop"] = edge.ev("document.getElementById('origTab').innerText")
         out["sop_badges"] = edge.ev("(function(){var r={};document.querySelectorAll('#itemTable .badge').forEach(function(b){r[b.textContent]=(r[b.textContent]||0)+1});return r})()")
         out["sop_labels"] = edge.ev("[...document.querySelectorAll('#origTab td.rowlabel')].map(c=>c.textContent.trim())")
@@ -279,3 +283,114 @@ def test_limitations_hold_no_significance_claim_the_block_replaced():
         html_text = f.read()
     limitations = re.search(r'<section id="limitations">.*?</section>', html_text, re.S).group(0)
     assert "นัยสำคัญ" not in limitations and "Naive" not in limitations
+
+
+# ====================================================================================================== 2026-10-08: one bar in task order, the stock panel as a tab, the URL fragment
+LABELS = ["ยอดขายย้อนหลัง", "พยากรณ์ยอดขาย ↗", "แผนสต็อก ↗", "สต็อกวันนี้", "แผนการผลิต ↗", "แผนวัตถุดิบ ↗", "‖", "สมมติฐานที่ใช้อยู่", "คู่มือการใช้งาน", "S&OP Plan (เดิม)"]
+PAGE_FILES = {"sales": "sales_report.html", "inventory": "inventory.html", "operation": "operation_plan.html", "material": "material_plan.html"}
+
+
+def test_the_bar_labels_and_their_order_are_the_approved_ones_in_the_source_of_the_bar():
+    import reader_values as rv
+    assert [t["label"] if t["key"] != "|" else "‖" for t in rv.NAV_TABS] == LABELS
+
+
+def test_index_html_has_the_bar_in_task_order_with_the_reference_group_after_a_separator():
+    import html as _html
+    text = open(INDEX, encoding="utf-8").read()
+    bar = re.search(r'<div id="tabBar">(.*?)</div>', text, re.S).group(1)
+    items = re.findall(r'<(?:button|a|span)\b[^>]*>(.*?)</(?:button|a|span)>', bar, re.S)
+    assert [_html.unescape(x).strip() for x in items] == LABELS
+    assert re.findall(r'<a id="(\w+)" href="([^"]+)"', bar) == [("tbSales", "forecast/sales_report.html"), ("tbInv", "forecast/inventory.html"),
+                                                                ("tbOp", "forecast/operation_plan.html"), ("tbMat", "forecast/material_plan.html")]
+    assert 'class="navsep"' in bar and bar.index('class="navsep"') > bar.index("แผนวัตถุดิบ ↗") and 'id="tb2" class="actv"' in bar
+    # the links that repeated the bar inside the S&OP tab are gone; the row titles stay, and so does the link to the manufacturing dashboard (another address)
+    assert 'href="forecast/sales_report.html"' not in text.split('<div id="origTab"')[1] and 'href="forecast/inventory.html"' not in text.split('<div id="origTab"')[1]
+    assert "Sales — ยอดขาย</td>" in text and "Inventory — แผนสต็อค</span>" in text
+    assert "manufacturing-management-dashboard" in text
+
+
+def test_the_four_working_pages_carry_the_same_bar_with_their_own_label_bold_and_not_a_link():
+    import html as _html
+    for key, name in PAGE_FILES.items():
+        text = open(os.path.join(PROJECT_ROOT, "forecast", name), encoding="utf-8").read()
+        nav = re.search(r'<nav class="page-nav" id="page-nav">(.*?)</nav>', text, re.S).group(1)
+        items = re.findall(r'<(?:a|b|span)\b[^>]*>(.*?)</(?:a|b|span)>', nav, re.S)
+        assert [_html.unescape(x) for x in items] == LABELS, name
+        assert re.findall(r'<b data-nav="(\w+)">', nav) == [key], name                                    # the current label is bold ...
+        assert f'data-nav="{key}" href' not in nav, name                                                  # ... and is not a link
+        hrefs = dict(re.findall(r'<a data-nav="(\w+)" href="([^"]+)"', nav))
+        expected = {"trend": "../index.html#trend", "stock": "../index.html#stock", "assumptions": "../index.html#assumptions", "manual": "../index.html#manual",
+                    "sop": "../index.html#sop", **{k: f for k, f in PAGE_FILES.items()}}
+        assert hrefs == {k: v for k, v in expected.items() if k != key}, name
+        assert text.index('class="back-link"') < text.index('id="page-nav"') < text.index('id="page-title"') if 'id="page-title"' in text else True
+
+
+def test_the_default_tab_is_sales_history_and_the_s_and_op_tab_no_longer_opens_first(page):
+    assert page["default_tab"] == ["ยอดขายย้อนหลัง"]
+    assert page["bar"] == LABELS
+    assert page["sep_visible"] is True
+
+
+def _tab_state(edge, url):
+    edge.open(url)
+    time.sleep(1.5)
+    return edge.ev("""(function(){
+      var shown = ['origTab','omniTab','manualTab','assumptionsTab','invPanel'].filter(function(i){return getComputedStyle(document.getElementById(i)).display !== 'none'});
+      return {shown: shown, active: [...document.querySelectorAll('#tabBar .actv')].map(b => b.textContent.trim())}})()""")
+
+
+@pytest.mark.parametrize("fragment,container,label", [("trend", "omniTab", "ยอดขายย้อนหลัง"), ("stock", "invPanel", "สต็อกวันนี้"), ("manual", "manualTab", "คู่มือการใช้งาน"),
+                                                      ("assumptions", "assumptionsTab", "สมมติฐานที่ใช้อยู่"), ("sop", "origTab", "S&OP Plan (เดิม)")])
+def test_a_url_fragment_opens_its_tab(edge, tmp_path_factory, fragment, container, label):
+    site = _site(tmp_path_factory, f"w8_{fragment}")
+    server, url = _serve(site)
+    try:
+        state = _tab_state(edge, f"{url}#{fragment}")
+        assert state == {"shown": [container], "active": [label]}
+        none = _tab_state(edge, url)                                       # no fragment: the first tab
+        assert none == {"shown": ["omniTab"], "active": ["ยอดขายย้อนหลัง"]}
+        unknown = _tab_state(edge, f"{url}#nothing")
+        assert unknown == {"shown": ["omniTab"], "active": ["ยอดขายย้อนหลัง"]}
+        edge.ev("location.hash = '#stock'; 1")                                # a change of the fragment on the open page switches the tab
+        time.sleep(0.8)
+        assert edge.ev("getComputedStyle(document.getElementById('invPanel')).display") == "block"
+    finally:
+        server.shutdown()
+
+
+def test_the_stock_tab_shows_the_daily_stock_panel_unchanged_and_the_s_and_op_row_opens_it(edge, tmp_path_factory):
+    site = _site(tmp_path_factory, "w8_stock")
+    server, url = _serve(site)
+    try:
+        edge.open(url + "#sop")
+        time.sleep(1.5)
+        edge.ev("document.getElementById('invMenuRow').click(); 1")             # the S&OP row's "ดูข้อมูลสต็อคจริง" control opens the tab
+        assert _wait(edge, "document.getElementById('invContent').style.display === 'block'"), "the stock panel did not load"
+        assert edge.ev("[...document.querySelectorAll('#tabBar .actv')].map(b => b.textContent.trim())") == ["สต็อกวันนี้"]
+        assert edge.ev("getComputedStyle(document.getElementById('origTab')).display") == "none"
+        assert edge.ev("document.querySelector('#invPanel h1').innerText") == "รายละเอียดสต็อคสินค้า (Inventory Detail)"
+        assert edge.ev("document.getElementById('invBackBtn')") is None          # no way back to a tab it no longer belongs to: the bar is the way
+        shown = edge.ev("document.getElementById('invSnapshotLabel').innerText")
+        inv = json.load(open(os.path.join(PROJECT_ROOT, "data", "inventory.json"), encoding="utf-8"))
+        assert shown.strip() != "" and "กำลังโหลด" not in shown
+        n_rows = edge.ev("document.querySelectorAll('#invTableBody tr').length")
+        assert n_rows == len(inv["items"]) or n_rows > 0
+    finally:
+        server.shutdown()
+
+
+@pytest.mark.parametrize("width,height,mobile", [(1440, 900, False), (390, 844, True)])
+def test_the_bar_fits_without_a_sideways_scroll_and_shows_its_separator(edge, tmp_path_factory, width, height, mobile):
+    site = _site(tmp_path_factory, f"w8_layout_{width}")
+    server, url = _serve(site)
+    try:
+        edge.open(url, width=width, height=height, mobile=mobile)
+        time.sleep(1.5)
+        facts = edge.ev("""(function(){var s=document.querySelector('#tabBar .navsep').getBoundingClientRect();
+          var last=[...document.querySelectorAll('#tabBar > *')].map(e=>e.getBoundingClientRect().right);
+          return {scrollW: document.documentElement.scrollWidth, innerW: window.innerWidth, sepW: s.width, sepH: s.height, maxRight: Math.max.apply(null,last)}})()""")
+        assert facts["scrollW"] <= facts["innerW"] and facts["maxRight"] <= facts["innerW"] + 1, facts
+        assert facts["sepW"] > 0 and facts["sepH"] > 0, facts
+    finally:
+        server.shutdown()

@@ -131,23 +131,17 @@ def test_build_report_source_never_reads_date_range_end():
     assert "date_range']['end" not in src.replace('"', "'")
 
 
-def test_usable_range_end_equals_data_derived_value_not_a_literal():
-    """The rendered 'Usable range' end date must equal gather_usable_range_end()'s own
-    data-derived output (the max year_month in the pipeline's monthly series) -- checkable and
-    concrete: it must never equal the OLD removed config literal '2026-08-28', regardless of
-    whatever the data currently contains."""
+def test_the_data_range_line_follows_the_fit_window_of_the_latest_vintage_not_a_literal():
+    """The line "ยอดขายที่ใช้ทาย {เดือนแรก} ถึง {เดือนสุดท้าย}" (it replaced the old 'Usable range' row, whose end came from the 128-item pilot file) is the
+    fit window of the latest vintage of the forward-test log, in the shared month format; no 'Usable range' row and no typed end date is left on the page."""
+    import reader_values as rv
     with open(SALES_REPORT_HTML, "r", encoding="utf-8") as f:
         html_text = f.read()
-    m = re.search(r"Usable range.*?(\d{4}-\d{2}-\d{2}) — (\S+)", html_text, re.DOTALL)
-    assert m, "Usable range row not found in forecast/sales_report.html"
-    rendered_end = m.group(2)
-    assert rendered_end != "2026-08-28", (
-        "Usable range end date still equals the old hand-maintained config.yaml literal -- "
-        "the display path may have regressed to reading a typed value."
-    )
-    config = build_report.load_config()
-    expected_end = build_report.gather_usable_range_end(config)
-    assert rendered_end == expected_end
+    assert "Usable range" not in html_text and "2024-01-01" not in re.sub(r"<script.*?</script>", "", html_text, flags=re.S)
+    m = re.search(r'id="fit-range-line">(.*?)</td>', html_text)
+    assert m, "the fit range line is not on forecast/sales_report.html"
+    vf = rv.vintage_facts()
+    assert m.group(1) == f"ยอดขายที่ใช้ทาย {rv.thai_month_short(vf['fit_first'])} ถึง {rv.thai_month_short(vf['fit_last'])}"
 
 
 # ---------------------------------------------------------------------------------------------

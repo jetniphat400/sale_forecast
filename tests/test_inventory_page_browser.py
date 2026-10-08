@@ -396,3 +396,53 @@ def test_each_of_the_21_decided_items_carries_the_label_beside_its_class_and_no_
     assert n_stock == 92
     assert f"{n_stock} รายการ" in e.ev("document.body.textContent")
     assert not [x for x in e.errors if x.startswith("exception")], e.errors
+
+
+# ====================================================================================================== 2026-10-08: the data line, the PEM101 demand note, the no-forecast list, the bar
+@pytest.mark.parametrize("division", DIVISIONS)
+def test_the_no_forecast_list_holds_only_items_with_stock_and_no_forecast_month_in_the_page_vintage(desktop, division):
+    import stock_daily
+    from inventory_recompute_reference import compute_all
+    from page_helpers import fresh_inventory_data, load_stock_payload
+    data = stock_daily.apply_to_data(fresh_inventory_data(), load_stock_payload())
+    r = compute_all(data["divisions"][division], data["tier_a_defaults"], data["days_per_month"])
+    expected = sorted(p["code"] for p in r["per_item"] if p["no_vintage_forecast"] and p["on_hand_sellable"] > 0)
+    select_division(desktop, division)
+    rows = desktop.ev(SNAP)["noForecast"]
+    assert sorted(x[0] for x in rows) == expected
+    # an item with a forecast is never listed, whatever its class
+    with_forecast = {i["code"] for i in data["divisions"][division]["items"] if any(v > 0 for v in i["forecast"])}
+    assert not {x[0] for x in rows} & with_forecast
+
+
+def test_the_data_line_shows_the_round_and_the_stock_pull_time_and_the_script_formats_dates_like_the_shared_formatter(desktop):
+    import reader_values as rv
+    from page_helpers import load_stock_payload
+    payload = load_stock_payload()
+    expected = f"ยอดทายรอบ {rv.thai_month_short(rv.vintage_facts()['run_date'])} · ข้อมูล stock ดึงเมื่อ {rv.thai_datetime_short(payload['pull_time'])}"
+    assert desktop.ev("document.getElementById('data-line').innerText") == expected
+    assert desktop.ev("document.getElementById('page-title').nextElementSibling.id") == "data-line"
+    for stamp in ("2026-10-08 08:01:01", "2027-01-05 00:09:59", "2026-12-31 23:59:00", "2026-03-09 12:00:00"):
+        assert desktop.ev(f"thaiDateTime('{stamp}')") == rv.thai_datetime_short(stamp), stamp
+
+
+def test_the_pem101_section_says_its_min_and_max_come_from_sales_history(desktop):
+    import yaml
+    import maxmin_v1
+    import reader_values as rv
+    select_division(desktop, "PEM101")
+    first, last = maxmin_v1.demand_history_window()
+    with open(__import__("os").path.join(__import__("page_helpers").PROJECT_ROOT, "config", "config.yaml"), encoding="utf-8") as f:
+        template = yaml.safe_load(f)["inventory_page"]["pem101_demand_note"]
+    expected = template.format(first_month=rv.thai_month_short(first), last_month=rv.thai_month_short(last))
+    assert expected.startswith("Min/Max ส่วนนี้คิดจากยอดขายจริงย้อนหลัง ") and expected.endswith("ยังไม่ได้คิดจากยอดทาย ถ้ายอดขายข้างหน้าเพิ่มหรือลดมาก ค่านี้จะยังไม่ขยับตาม")
+    assert desktop.ev("document.getElementById('curve-demand-note').textContent") == expected
+    assert desktop.ev("document.getElementById('curve-demand-note').previousElementSibling.tagName") == "H2"
+    assert "{" not in expected and "}" not in expected
+
+
+def test_the_bar_is_under_the_back_link_with_the_current_page_bold_and_not_a_link(desktop):
+    assert desktop.ev("document.querySelector('a.back-link').nextElementSibling.id") == "page-nav"
+    assert desktop.ev("[...document.querySelectorAll('#page-nav b')].map(e => e.textContent)") == ["แผนสต็อก ↗"]
+    assert desktop.ev("document.querySelector('#page-nav a[data-nav=inventory]')") is None
+    assert desktop.ev("document.getElementById('plan-link')") is None

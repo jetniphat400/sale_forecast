@@ -266,6 +266,10 @@ def _build_curve_target_pem101() -> dict:
     data["item_set_note"] = f"ปรับให้ตรงกับผลจริงจากสินค้า {n_fitted} รายการ"
     if n_current_set != n_fitted:
         data["item_set_note"] += f" ตอนนี้สินค้าที่เข้าเกณฑ์เก็บ stock มี {n_current_set} รายการ ยังไม่ได้ปรับใหม่ตามชุดนี้"
+    first, last = maxmin_v1.demand_history_window(cfg)
+    with open(CONFIG_PATH, "r", encoding="utf-8") as f:
+        data["demand_input_note"] = yaml.safe_load(f)["inventory_page"]["pem101_demand_note"].format(
+            first_month=rv.thai_month_short(first), last_month=rv.thai_month_short(last))
     data["item_set_ref"] = ("count: n_items_calibrated of the Max-Min v1 ensemble output (src/maxmin_v1.py, week1_recal_targets.json n_items); "
                             "stock_policy count: task2b_part2_item_level.csv class stock_policy; METRICS.md Sec.23")
     lead = maxmin_v1.material_lead_for_page(data["items_order"], cfg)
@@ -594,6 +598,7 @@ def apply_reader_text(data: dict) -> dict:
     ct = _build_curve_target_pem101()
     data["divisions"]["PEM101"]["curve_target"] = ct
     data["pem107_alert"] = _load_pem107_alert()
+    data["forecast_round_label"] = rv.thai_month_short(rv.vintage_facts()["run_date"])        # the round of the vintage the page uses (shared formatter)
     # Gap between this page's monthly-prorated stock value and the recorded daily-window figure,
     # PEM101, default scenario (src/reader_values.py::pipeline_gap_pct).
     data["pipeline_gap_pct"] = rv.pipeline_gap_pct(data["divisions"]["PEM101"], data["tier_a_defaults"],

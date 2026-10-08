@@ -18,6 +18,7 @@ PROJECT_ROOT = os.path.dirname(HERE)
 sys.path.insert(0, HERE)
 import operation_plan as op  # noqa: E402
 import material_plan as mp  # noqa: E402
+import reader_values as rv  # noqa: E402
 from build_operation_plan_page import CSS, thai_month, thai_datetime, fmt_cell  # noqa: E402
 
 logger = logging.getLogger("build_material_plan_page")
@@ -45,6 +46,10 @@ TEXT = {
     "no_unit_flag": "ไม่มีหน่วยซื้อในระบบ",
     "demand_col": "ความต้องการ",
     "divisions_label": "ฝ่ายที่รวมในแผนนี้:",
+    "division_no_production": "{division} ไม่มียอดผลิตในแผน จึงไม่มีวัตถุดิบ",
+    "coverage_line": "สินค้าในแผนการผลิต {n_items} รหัส คิดวัตถุดิบ {n_exploded} รหัส ไม่ได้คิด {n_not} รหัส: ไม่มียอดผลิตใน {n_months} เดือนนี้ {n_no_demand} รหัส · ไม่พบการผลิตในระบบ {n_no_production} รหัส · ไม่มี BOM ในระบบ {n_no_bom} รหัส",
+    "coverage_cols": ["รหัส", "ชื่อ", "ฝ่าย", "เหตุผล"],
+    "coverage_reason": {"no_demand": "ไม่มียอดผลิต", "no_production": "ไม่พบการผลิตในระบบ", "no_bom": "ไม่มี BOM ในระบบ"},
 }
 
 
@@ -72,7 +77,7 @@ def used_in_text(codes: str, n_products: int, shown: int) -> str:
     return ", ".join(c) + (f" +{extra}" if extra > 0 else "")
 
 
-def compute_values(material_month: pd.DataFrame, summary: pd.DataFrame, meta: dict, n_days: int) -> dict:
+def compute_values(material_month: pd.DataFrame, summary: pd.DataFrame, meta: dict, n_days: int, coverage: pd.DataFrame = None, names: dict = None) -> dict:
     """Every value the page shows, from the recorded plan read back. Two lists by each material's latest order date (the order date of its first month with a net
     requirement), against the day the plan was built (`meta["today"]`): the first holds the dates from that day to that day plus `n_days` (both included), the second
     the dates before it. A material with no purchase unit in the system, or whose purchase unit differs from its BOM unit, carries a flag and no figure. The quantity to
@@ -101,15 +106,40 @@ def compute_values(material_month: pd.DataFrame, summary: pd.DataFrame, meta: di
     rest = s.assign(_first=s["first_short_month"].replace("", "9999-99")).sort_values(["_first", "total_net", "material"], ascending=[True, False, True], kind="mergesort")
     listed = set(late["material"]) | set(within["material"])
     main = pd.concat([late, within, rest[~rest["material"].isin(listed)]]).drop(columns=["_first", "qty"], errors="ignore")
-    return {"n_months": len(months), "months": months, "month_labels": [thai_month(m) for m in months], "n_days": int(n_days), "today": str(today.date()),
+    cov = None
+    if coverage is not None:
+        # Every item of the operation plan falls into exactly one reason (mp.plan_item_coverage); the exploded count must be the plan's own count of items it exploded
+        # (meta n_items_exploded counts every item with a quantity, a bill of materials or not).
+        n_by = coverage["reason"].value_counts().to_dict()
+        n_items, n_exploded = int(len(coverage)), int(n_by.get("exploded", 0))
+        n_not = n_items - n_exploded
+        n_reason = {r: int(n_by.get(r, 0)) for r in mp.COVERAGE_REASONS}
+        if n_reason["no_demand"] + n_reason["no_production"] + n_reason["no_bom"] != n_not or set(n_by) - set(mp.COVERAGE_REASONS):
+            raise mp.MaterialPlanError(f"the items not exploded do not split into the three reasons: {n_by}")
+        if n_exploded + n_reason["no_bom"] != int(meta["n_items_exploded"]):
+            raise mp.MaterialPlanError(f"the coverage counts {n_exploded + n_reason['no_bom']} items with a quantity, the material plan exploded {meta['n_items_exploded']}")
+        order = list(meta["divisions"])
+        listed = coverage[coverage["reason"] != "exploded"].copy()
+        listed["name"] = listed["item"].map(lambda c: (names or {}).get(c, ""))
+        listed["_d"] = listed["division"].map(lambda d: order.index(d) if d in order else len(order))
+        listed["_r"] = listed["reason"].map(lambda r: list(TEXT["coverage_reason"]).index(r))
+        listed = listed.sort_values(["_d", "_r", "item"], kind="mergesort")
+        has_production = {d: bool(coverage[(coverage["division"] == d) & coverage["reason"].isin(["exploded", "no_bom"])].shape[0]) for d in order}
+        cov = {"n_items": n_items, "n_exploded": n_exploded, "n_not": n_not, "n_months": len(months), "n_no_demand": n_reason["no_demand"],
+               "n_no_production": n_reason["no_production"], "n_no_bom": n_reason["no_bom"], "listed": listed,
+               "divisions_with_production": [d for d in order if has_production[d]], "divisions_without_production": [d for d in order if not has_production[d]]}
+    return {"coverage": cov, "n_months": len(months), "months": months, "month_labels": [thai_month(m) for m in months], "n_days": int(n_days), "today": str(today.date()),
             "n_unit_flag": int(s["unit_flag"].sum()), "n_no_unit": int(s["no_unit_flag"].sum()),
             "n_within": int(len(within)), "n_late": int(len(late)), "n_within_flagged": int(within["no_figure"].sum()), "n_late_flagged": int(late["no_figure"].sum()),
             "plan_month": thai_month(str(meta["operation_plan_today"])[:7]), "pull_time": thai_datetime(meta["rm_pulled_at_local"]),
-            "rm_warehouses": ", ".join(meta["rm_warehouses"]), "open_orders_used": bool(meta["open_orders_used"]), "divisions": ", ".join(meta["divisions"]),
+            "rm_warehouses": ", ".join(meta["rm_warehouses"]), "open_orders_used": bool(meta["open_orders_used"]),
+            "divisions": ", ".join(cov["divisions_with_production"]) if cov else ", ".join(meta["divisions"]),
             "within": within, "late": late, "main": main, "gross": gross, "net": net}
 
 
 CSS_EXTRA = """
+  #coverage-details { margin: 6px 0 12px; }
+  #coverage-details summary { cursor: pointer; }
   .notice { background: #fdecea; border: 2px solid #8f2b2b; color: #5b1414; font-weight: 700; font-size: 15px; border-radius: 6px; padding: 12px 16px; margin: 0 0 14px; }
   .flag.unit { display: inline-block; margin: 0 0 0 8px; font-size: 11.5px; }
   .report-table td.num, .report-table th.num { text-align: right; }
@@ -136,14 +166,31 @@ def order_table(rows_df: pd.DataFrame, table_id: str) -> str:
     return f'<div class="table-scroll"><table class="report-table" id="{table_id}"><thead><tr>{th}</tr></thead><tbody>{"".join(rows)}</tbody></table></div>'
 
 
+def coverage_html(v: dict) -> list:
+    """The line saying how many plan items were exploded and why the others were not, with the list of those items (closed until opened)."""
+    c = v["coverage"]
+    if not c:
+        return []
+    line = TEXT["coverage_line"].format(n_items=c["n_items"], n_exploded=c["n_exploded"], n_not=c["n_not"], n_months=c["n_months"], n_no_demand=c["n_no_demand"],
+                                        n_no_production=c["n_no_production"], n_no_bom=c["n_no_bom"])
+    th = "".join(f'<th class="name">{_e(x)}</th>' for x in TEXT["coverage_cols"])
+    rows = "".join(f'<tr data-item="{_e(r.item)}"><td class="code">{_e(r.item)}</td><td class="name">{_e(r.name or DASH)}</td><td class="name">{_e(r.division)}</td>'
+                   f'<td class="name">{_e(TEXT["coverage_reason"][r.reason])}</td></tr>' for r in c["listed"].itertuples())
+    return [f'<details id="coverage-details"><summary class="note-line" id="coverage-line">{_e(line)}</summary>'
+            f'<div class="table-scroll"><table class="report-table" id="coverage-table"><thead><tr>{th}</tr></thead><tbody>{rows}</tbody></table></div></details>']
+
+
 def render(values: dict) -> str:
     """The page as one HTML string. Reader-facing text is the approved text; comments hold what must stay off screen."""
     T, v = TEXT, values
     heading = T["heading"].format(n_months=v["n_months"])
-    parts = [f'<div class="notice" id="verification-notice">{_e(T["notice"])}</div>', f'<a class="back-link" href="../index.html">{_e(T["back_link"])}</a>',
+    parts = [f'<div class="notice" id="verification-notice">{_e(T["notice"])}</div>', f'<a class="back-link" href="../index.html">{_e(T["back_link"])}</a>', rv.nav_bar_html("material"),
              f'<h1 id="page-title">{_e(heading)}</h1>',
              f'<p class="scope-note" id="data-line">{_e(T["data_line"].format(plan_month=v["plan_month"], pull_time=v["pull_time"]))}</p>',
              f'<p class="scope-note" id="divisions-covered">{_e(T["divisions_label"])} {_e(v["divisions"])}</p>',
+             *[f'<p class="scope-note division-no-production" data-division="{_e(d)}">{_e(T["division_no_production"].format(division=d))}</p>'
+               for d in (v["coverage"]["divisions_without_production"] if v["coverage"] else [])],
+             *coverage_html(v),
              f'<h2 id="within-title">{_e(T["within_title"].format(n_days=v["n_days"]))}</h2>',
              f'<p class="note-line" id="within-line">{_e(T["within_line"].format(n_days=v["n_days"]))}</p>', order_table(v["within"], "within-table"),
              f'<h2 id="late-title">{_e(T["late_title"])}</h2>', f'<p class="note-line" id="late-line">{_e(T["late_line"])}</p>', order_table(v["late"], "late-table")]
@@ -171,7 +218,14 @@ def render(values: dict) -> str:
 def build_values(root: str = PROJECT_ROOT, out_dir: str = None) -> dict:
     cfg = mp.load_config(root)
     mm, sm, meta = mp.read_outputs(root, cfg, out_dir)
-    return compute_values(mm, sm, meta, int(cfg["order_window_days"]))
+    # The items of the operation plan the material plan was built from (hash-checked), and which of them have a bill of materials (the saved week 3 pulls).
+    from build_operation_plan_page import product_names
+    im, _dm, op_meta = op.read_outputs(root, cfg["operation_plan"])
+    if str(op_meta["built_at"]) != str(meta["operation_plan_built_at"]):
+        raise mp.MaterialPlanError(f"the recorded operation plan was built {op_meta['built_at']}, the material plan used the one built {meta['operation_plan_built_at']}")
+    parents = set(mp.bom_component_lines(op.load_week3_inputs(root, cfg["operation_plan"])["bom_tree"])["parent"])
+    coverage = mp.plan_item_coverage(im, list(op_meta["months"]), parents)
+    return compute_values(mm, sm, meta, int(cfg["order_window_days"]), coverage, product_names(root))
 
 
 def build_page(root: str = PROJECT_ROOT, out_dir: str = None, out_path: str = None) -> str:

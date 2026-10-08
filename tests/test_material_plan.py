@@ -7,6 +7,7 @@ import hashlib
 import json
 import os
 import re
+import shutil
 import sys
 
 import numpy as np
@@ -361,6 +362,8 @@ def project(tmp_path):
     target = os.path.join(root, *full["operation_plan"]["week3_inputs_file"].split("/"))
     os.makedirs(os.path.dirname(target), exist_ok=True)
     pd.to_pickle(w3, target)
+    os.makedirs(os.path.join(root, "reference"), exist_ok=True)           # the page builder names the plan's items from the price list
+    shutil.copy(os.path.join(PROJECT_ROOT, "reference", "pricelist.xlsx"), os.path.join(root, "reference", "pricelist.xlsx"))
     return root
 
 
@@ -542,7 +545,9 @@ def test_the_operation_plan_page_and_the_inventory_page_show_all_six_divisions_a
         li = re.search(r"<li><b>%s</b>: (.*?)</li>" % d, notes).group(1)
         assert li.endswith("ไม่มีสินค้าที่เข้าเกณฑ์เก็บ stock") or "ยังไม่ได้คำนวณ Min/Max ให้" in li
     mat = open(os.path.join(tracked, "material_plan.html"), encoding="utf-8").read()
-    assert re.search(r'id="divisions-covered">ฝ่ายที่รวมในแผนนี้: %s</p>' % re.escape(", ".join(SIX)), mat)
+    covered = re.search(r'id="divisions-covered">ฝ่ายที่รวมในแผนนี้: (.*?)</p>', mat).group(1).split(", ")
+    without = re.findall(r'<p class="scope-note division-no-production" data-division="(\w+)">\1 ไม่มียอดผลิตในแผน จึงไม่มีวัตถุดิบ</p>', mat)
+    assert sorted(covered + without) == sorted(SIX) and not set(covered) & set(without)       # every division is either covered or named with the reason
     assert mat.index('id="verification-notice"') < mat.index('class="back-link"')
 
 
@@ -794,3 +799,100 @@ def test_the_material_plan_meta_records_the_vintage_of_the_operation_plan_it_was
     _, _, meta = mp.read_outputs(project)
     _, _, op_meta = op.read_outputs(project, mp.load_config(project)["operation_plan"])
     assert meta["vintage_id"] == op_meta["vintage_id"]
+
+
+# ====================================================================================================== 2026-10-08: the divisions that have production, the items that are not exploded
+def _coverage_item_month():
+    """Items: COUNTED-A (counted, quantity, has a BOM), COUNTED-NOBOM (counted, quantity, no BOM), COUNTED-ZERO (counted, no quantity), OFF-1 (not counted)."""
+    rows = []
+    for item, d, vals, counted in (("A", "PEM101", [5.0, 0.0, 0.0], True), ("NOBOM", "PEM107", [0.0, 3.0, 0.0], True), ("ZERO", "PEM107", [0.0, 0.0, 0.0], True),
+                                   ("OFF", "PEM103", [9.0, 9.0, 9.0], False)):
+        for m, v in zip(MONTHS, vals):
+            rows.append({"division": d, "item": item, "class": "confirmed_to_order", "month": m, "demand": v, "load": v, "counted": counted, "status_category": "forecast",
+                         "class_label": "confirmed_to_order", "data_inconsistent": False})
+    return pd.DataFrame(rows).reindex(columns=op.ITEM_MONTH_COLUMNS)
+
+
+def test_every_plan_item_has_exactly_one_reason_to_be_exploded_or_not():
+    cov = mp.plan_item_coverage(_coverage_item_month(), MONTHS, {"A"})
+    assert dict(zip(cov["item"], cov["reason"])) == {"A": "exploded", "NOBOM": "no_bom", "ZERO": "no_demand", "OFF": "no_production"}
+    assert set(cov["reason"]) <= set(mp.COVERAGE_REASONS) and len(cov) == cov["item"].nunique() == 4
+    # a not-counted item is never also reported as having no demand or no BOM, whatever its quantities
+    im = _coverage_item_month()
+    im.loc[im["item"] == "OFF", ["load", "demand"]] = 0.0
+    assert dict(zip(*[mp.plan_item_coverage(im, MONTHS, set())[c] for c in ("item", "reason")]))["OFF"] == "no_production"
+
+
+def test_the_page_says_how_many_plan_items_are_exploded_and_why_the_others_are_not_with_the_list_closed(project):
+    page, v = _page(project)
+    c = v["coverage"]
+    mm_, sm_, meta = mp.read_outputs(project)
+    assert (c["n_items"], c["n_exploded"], c["n_no_production"], c["n_no_demand"], c["n_no_bom"]) == (3, 2, 1, 0, 0)
+    assert c["n_exploded"] + c["n_no_bom"] == meta["n_items_exploded"]
+    line = "สินค้าในแผนการผลิต 3 รหัส คิดวัตถุดิบ 2 รหัส ไม่ได้คิด 1 รหัส: ไม่มียอดผลิตใน 3 เดือนนี้ 0 รหัส · ไม่พบการผลิตในระบบ 1 รหัส · ไม่มี BOM ในระบบ 0 รหัส"
+    assert f'<summary class="note-line" id="coverage-line">{line}</summary>' in page
+    assert '<details id="coverage-details">' in page and '<details id="coverage-details" open' not in page            # closed until opened
+    head = re.findall(r'<th class="name">(.*?)</th>', page.split('id="coverage-table"')[1].split("</thead>")[0])
+    assert head == ["รหัส", "ชื่อ", "ฝ่าย", "เหตุผล"]
+    rows = re.findall(r'<tr data-item="([^"]+)"><td class="code">.*?</td><td class="name">(.*?)</td><td class="name">(.*?)</td><td class="name">(.*?)</td></tr>',
+                      page.split('id="coverage-table"')[1])
+    assert [(r[0], r[2], r[3]) for r in rows] == [("FG9", "PEM103", "ไม่พบการผลิตในระบบ")]
+    assert page.index('id="divisions-covered"') < page.index('id="coverage-details"') < page.index('id="within-title"')
+    assert "{" not in re.sub(r"<style.*?</style>", "", page, flags=re.S)
+
+
+def test_the_divisions_without_production_each_get_their_line_and_are_not_in_the_list_of_included_divisions(project):
+    page, v = _page(project)
+    covered = re.search(r'id="divisions-covered">ฝ่ายที่รวมในแผนนี้: (.*?)</p>', page).group(1).split(", ")
+    without = re.findall(r'<p class="scope-note division-no-production" data-division="(\w+)">(\w+) ไม่มียอดผลิตในแผน จึงไม่มีวัตถุดิบ</p>', page)
+    assert covered == ["PEM101", "PEM107"] and all(a == b for a, b in without)
+    assert sorted(covered + [a for a, _ in without]) == sorted(mp.load_config(project)["operation_plan"]["divisions"])
+    assert [a for a, _ in without] == [d for d in mp.load_config(project)["operation_plan"]["divisions"] if d not in covered]
+
+
+def test_the_counts_on_the_page_follow_the_plan_and_the_three_reasons_add_up_to_the_items_not_exploded():
+    """The recorded plan the page is built from: N, M, K and the three reasons from the page's own line equal a recomputation from the recorded item-month file and
+    the bill of materials of the saved pulls; a + b + c = K; the list holds each of the K items once with its reason."""
+    tracked = os.path.join(PROJECT_ROOT, "forecast", "material_plan.html")
+    cfg = mp.load_config(PROJECT_ROOT)
+    p = op.path_of(PROJECT_ROOT, cfg["operation_plan"]["week3_inputs_file"])
+    if not os.path.exists(tracked) or not os.path.exists(p):
+        pytest.skip("SKIPPED, not passed: the built material plan page or the saved week 3 pulls are not on this machine")
+    page = open(tracked, encoding="utf-8").read()
+    m = re.search(r"สินค้าในแผนการผลิต (\d+) รหัส คิดวัตถุดิบ (\d+) รหัส ไม่ได้คิด (\d+) รหัส: ไม่มียอดผลิตใน (\d+) เดือนนี้ (\d+) รหัส · ไม่พบการผลิตในระบบ (\d+) รหัส · ไม่มี BOM ในระบบ (\d+) รหัส", page)
+    assert m, "the coverage line is not on the built page"
+    n, mexp, k, months, a, b, c = map(int, m.groups())
+    im, _dm, opmeta = op.read_outputs(PROJECT_ROOT, cfg["operation_plan"])
+    parents = set(mp.bom_component_lines(op.load_week3_inputs(PROJECT_ROOT, cfg["operation_plan"])["bom_tree"])["parent"])
+    cov = mp.plan_item_coverage(im, list(opmeta["months"]), parents)
+    counts = cov["reason"].value_counts().to_dict()
+    assert (n, mexp, k, months) == (len(cov), counts.get("exploded", 0), len(cov) - counts.get("exploded", 0), len(opmeta["months"]))
+    assert (a, b, c) == (counts.get("no_demand", 0), counts.get("no_production", 0), counts.get("no_bom", 0)) and a + b + c == k
+    listed = re.findall(r'<tr data-item="([^"]+)"><td class="code">.*?</td><td class="name">.*?</td><td class="name">(\w+)</td><td class="name">(.*?)</td></tr>',
+                        page.split('id="coverage-table"')[1])
+    assert len(listed) == k == len({x[0] for x in listed})
+    label = {"no_demand": "ไม่มียอดผลิต", "no_production": "ไม่พบการผลิตในระบบ", "no_bom": "ไม่มี BOM ในระบบ"}
+    assert {x[0]: x[2] for x in listed} == {i: label[r] for i, r in zip(cov["item"], cov["reason"]) if r != "exploded"}
+    assert mexp + c == mp.read_outputs(PROJECT_ROOT, cfg)[2]["n_items_exploded"]
+
+
+def test_the_coverage_line_and_the_divisions_follow_the_plan_items_given_to_the_page():
+    """Two plans that differ in their items give different numbers in the line and a different list of divisions: nothing in the line is typed."""
+    def values(items):
+        mm_, sm_, meta = _list_frames("2026-10-06", {"M1": "2026-10-10"}, {})
+        meta = dict(meta, divisions=["PEM101", "PEM104"], n_items_exploded=sum(1 for _i, _d, r in items if r in ("exploded", "no_bom")))
+        cov = pd.DataFrame(items, columns=["item", "division", "reason"])
+        return bm.compute_values(mm_, sm_, meta, 30, cov, {})
+    one = values([("A", "PEM101", "exploded"), ("B", "PEM101", "no_demand"), ("C", "PEM104", "no_production")])
+    two = values([("A", "PEM101", "exploded"), ("A2", "PEM101", "exploded"), ("B", "PEM101", "no_bom"), ("C", "PEM104", "exploded"), ("D", "PEM104", "no_demand"),
+                  ("E", "PEM104", "no_demand")])
+    l1, l2 = (bm.TEXT["coverage_line"].format(n_items=v["coverage"]["n_items"], n_exploded=v["coverage"]["n_exploded"], n_not=v["coverage"]["n_not"],
+                                              n_months=v["coverage"]["n_months"], n_no_demand=v["coverage"]["n_no_demand"],
+                                              n_no_production=v["coverage"]["n_no_production"], n_no_bom=v["coverage"]["n_no_bom"]) for v in (one, two))
+    assert l1 == "สินค้าในแผนการผลิต 3 รหัส คิดวัตถุดิบ 1 รหัส ไม่ได้คิด 2 รหัส: ไม่มียอดผลิตใน 2 เดือนนี้ 1 รหัส · ไม่พบการผลิตในระบบ 1 รหัส · ไม่มี BOM ในระบบ 0 รหัส"
+    assert l2 == "สินค้าในแผนการผลิต 6 รหัส คิดวัตถุดิบ 3 รหัส ไม่ได้คิด 3 รหัส: ไม่มียอดผลิตใน 2 เดือนนี้ 2 รหัส · ไม่พบการผลิตในระบบ 0 รหัส · ไม่มี BOM ในระบบ 1 รหัส"
+    assert one["divisions"] == "PEM101" and one["coverage"]["divisions_without_production"] == ["PEM104"]
+    assert two["divisions"] == "PEM101, PEM104" and two["coverage"]["divisions_without_production"] == []
+    with pytest.raises(mp.MaterialPlanError):                    # a count that does not match the plan's own count of exploded items stops the page
+        mm_, sm_, meta = _list_frames("2026-10-06", {"M1": "2026-10-10"}, {})
+        bm.compute_values(mm_, sm_, dict(meta, divisions=["PEM101"], n_items_exploded=5), 30, pd.DataFrame([("A", "PEM101", "exploded")], columns=["item", "division", "reason"]), {})

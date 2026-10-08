@@ -113,12 +113,14 @@
 </style>
 
 <style id="omniTabCss">
-#tabBar{position:sticky;top:0;z-index:999;background:#0f2540;display:flex;gap:6px;padding:10px 16px;box-shadow:0 2px 6px rgba(0,0,0,.25);font-family:'Segoe UI',Tahoma,sans-serif}
+#tabBar{position:sticky;top:0;z-index:999;background:#0f2540;display:flex;flex-wrap:wrap;align-items:flex-end;gap:6px;padding:10px 16px;box-shadow:0 2px 6px rgba(0,0,0,.25);font-family:'Segoe UI',Tahoma,sans-serif}
 #tabBar button{border:0;padding:9px 18px;border-radius:8px 8px 0 0;cursor:pointer;font-size:14px;font-weight:600;background:#1d3d63;color:#cfe0f4}
 #tabBar button.actv{background:#fff;color:#0f2540}
 #tabBar a{padding:9px 18px;border-radius:8px 8px 0 0;font-size:14px;font-weight:600;background:#1d3d63;color:#cfe0f4;text-decoration:none}
 #tabBar a:hover{background:#2a5588}
-#omniTab{display:none;font-family:'Segoe UI',Tahoma,sans-serif;background:#f4f7fb;padding:18px 22px 60px;color:#17324f}
+#tabBar .navsep{align-self:center;color:#8fb0d6;font-size:20px;font-weight:700;padding:0 6px;line-height:1}
+@media (max-width:600px){#tabBar{position:static;padding:8px 10px}#tabBar button,#tabBar a{padding:7px 11px;font-size:13px}}
+#omniTab{display:block;font-family:'Segoe UI',Tahoma,sans-serif;background:#f4f7fb;padding:18px 22px 60px;color:#17324f}
 #omniTab .note{background:#fff8e6;border:1px solid #e8cf87;border-radius:8px;padding:10px 14px;font-size:12.5px;margin:0 0 14px}
 #omniTab h2{font-size:19px;margin:6px 0 2px}
 #omniTab .sub{font-size:12px;color:#5b7188;margin-bottom:12px}
@@ -173,10 +175,6 @@ tr.section[role="button"]:focus-visible{outline:2px solid var(--series-1);outlin
 .inv-caveat{font-weight:400;font-style:italic;font-size:11px;color:var(--text-secondary);margin-top:4px;white-space:normal;clear:both}
 
 #invPanel{display:none;background:var(--page)}
-#invBackBtn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;margin-bottom:14px;
-  border:1px solid var(--baseline);border-radius:8px;background:var(--surface);color:var(--text-primary);
-  font-size:13px;cursor:pointer}
-#invBackBtn:hover{background:#f0efec}
 
 #invTable{table-layout:fixed}
 #invTable th[data-k]{cursor:pointer;user-select:none}
@@ -235,13 +233,18 @@ tr.section[role="button"]:focus-visible{outline:2px solid var(--series-1);outlin
 <body>
 
 <div id="tabBar">
- <button id="tb1" class="actv" onclick="omniShowTab(1)">S&amp;OP Plan (เดิม)</button>
- <button id="tb2" onclick="omniShowTab(2)">Trend Pricelist Omni 2024–2026</button>
- <button id="tb3" onclick="omniShowTab(3)">คู่มือการใช้งาน</button>
+ <button id="tb2" class="actv" onclick="omniShowTab(2)">ยอดขายย้อนหลัง</button>
+ <a id="tbSales" href="forecast/sales_report.html">พยากรณ์ยอดขาย ↗</a>
+ <a id="tbInv" href="forecast/inventory.html">แผนสต็อก ↗</a>
+ <button id="tbStock" onclick="omniShowTab(5)">สต็อกวันนี้</button>
+ <a id="tbOp" href="forecast/operation_plan.html">แผนการผลิต ↗</a>
+ <a id="tbMat" href="forecast/material_plan.html">แผนวัตถุดิบ ↗</a>
+ <span class="navsep" aria-hidden="true">‖</span>
  <button id="tb4" onclick="omniShowTab(4)">สมมติฐานที่ใช้อยู่</button>
- <a id="tbPlan" href="forecast/operation_plan.html">แผนการผลิต</a>
+ <button id="tb3" onclick="omniShowTab(3)">คู่มือการใช้งาน</button>
+ <button id="tb1" onclick="omniShowTab(1)">S&amp;OP Plan (เดิม)</button>
 </div>
-<div id="origTab">
+<div id="origTab" style="display:none">
 
 <div class="wrap">
 
@@ -291,7 +294,7 @@ tr.section[role="button"]:focus-visible{outline:2px solid var(--series-1);outlin
         <tr><th class="rowlabel"></th><th class="modulecol">Odoo Module (อ้างอิง)</th><th class="hist">ม.ค.</th><th class="hist">ก.พ.</th><th class="hist">มี.ค.</th><th class="hist">เม.ย.</th><th class="hist">พ.ค.</th><th class="hist">มิ.ย.</th><th class="hist">ก.ค.</th><th class="plan">ส.ค.</th><th class="plan">ก.ย.</th><th class="plan">ต.ค.</th><th class="plan">พ.ย.</th><th class="plan">ธ.ค.</th></tr>
       </thead>
       <tbody>
-        <tr class="section"><td colspan="14"><a class="oplink" href="forecast/sales_report.html">Sales — ยอดขาย</a></td></tr>
+        <tr class="section"><td colspan="14">Sales — ยอดขาย</td></tr>
 <tr class="note-row"><td colspan="14">หมายเหตุ: Forecast ปัจจุบันคำนวณจากยอดขายย้อนหลัง 3 เดือนล่าสุด ตามหลักการ Moving Average — อยู่ระหว่างเพิ่ม <b>ปัจจัยประกาศจัดซื้อจัดจ้างของการไฟฟ้า (กฟภ./กฟน.)</b> เป็นตัวแปรพยากรณ์เพิ่มเติม</td></tr>
 <tr class=""><td class="rowlabel">Forecast (ล้านบาท)</td><td class="modulecol">Sales · Reporting/Forecast</td><td class="hist">66.2</td><td class="hist">67.1</td><td class="hist">82.1</td><td class="hist">80.1</td><td class="hist">84.3</td><td class="hist">77.1</td><td class="hist">35.4</td><td class="plan">65.6</td><td class="plan">65.6</td><td class="plan">65.6</td><td class="plan">65.6</td><td class="plan">65.6</td></tr>
 <tr class=""><td class="rowlabel">Actual (ล้านบาท)</td><td class="modulecol">Sales · Sales Orders / Invoicing</td><td class="hist">66.2</td><td class="hist">67.1</td><td class="hist">82.1</td><td class="hist">80.1</td><td class="hist">84.3</td><td class="hist">77.1</td><td class="hist">35.4</td><td class="plan na">-</td><td class="plan na">-</td><td class="plan na">-</td><td class="plan na">-</td><td class="plan na">-</td></tr>
@@ -300,7 +303,7 @@ tr.section[role="button"]:focus-visible{outline:2px solid var(--series-1);outlin
 <tr class=""><td class="rowlabel">Actual Production (ล้านบาท, ใช้ยอดขายจริงแทน)</td><td class="modulecol">Manufacturing (MRP) · Manufacturing Orders</td><td class="hist">66.2</td><td class="hist">67.1</td><td class="hist">82.1</td><td class="hist">80.1</td><td class="hist">84.3</td><td class="hist">77.1</td><td class="hist">35.4</td><td class="plan na">-</td><td class="plan na">-</td><td class="plan na">-</td><td class="plan na">-</td><td class="plan na">-</td></tr>
 <tr class=""><td class="rowlabel">Working days/mo.</td><td class="modulecol">Employees (HR) · Working Schedules / Resource Calendar</td><td class="hist">22</td><td class="hist">20</td><td class="hist">22</td><td class="hist">22</td><td class="hist">21</td><td class="hist">22</td><td class="hist">23</td><td class="plan">21</td><td class="plan">22</td><td class="plan">22</td><td class="plan">21</td><td class="plan">23</td></tr>
 <tr class=""><td class="rowlabel">Employees (สมมติ)</td><td class="modulecol">Employees (HR) · Employees</td><td class="hist">265</td><td class="hist">268</td><td class="hist">328</td><td class="hist">320</td><td class="hist">337</td><td class="hist">308</td><td class="hist">142</td><td class="plan">262</td><td class="plan">262</td><td class="plan">262</td><td class="plan">262</td><td class="plan">262</td></tr>
-<tr class="section" id="invMenuRow" tabindex="0" role="button" aria-label="เปิดมุมมองรายละเอียดสต็อคสินค้า ข้อมูลจริงจากฐานข้อมูล"><td colspan="14"><span style="color:var(--series-1)">Inventory — แผนสต็อค</span><span class="inv-affordance">▸ ดูข้อมูลสต็อคจริง (คลิกหรือกด Enter)</span> <a class="oplink" href="forecast/inventory.html" onclick="event.stopPropagation()">→ Min/Max Scenario</a><div class="inv-caveat">หมายเหตุ: ตัวเลขรายเดือนในหมวดนี้ด้านล่างเป็นข้อมูลสมมติ (placeholder) เพื่อประกอบการนำเสนอเท่านั้น — มุมมองรายละเอียดที่เปิดจากแถวนี้ใช้ข้อมูลสต็อคจริงจากฐานข้อมูล<!-- Cube_Inventory_Exact --></div></td></tr>
+<tr class="section" id="invMenuRow" tabindex="0" role="button" aria-label="เปิดมุมมองรายละเอียดสต็อคสินค้า ข้อมูลจริงจากฐานข้อมูล"><td colspan="14"><span style="color:var(--series-1)">Inventory — แผนสต็อค</span><span class="inv-affordance">▸ ดูข้อมูลสต็อคจริง (คลิกหรือกด Enter)</span><div class="inv-caveat">หมายเหตุ: ตัวเลขรายเดือนในหมวดนี้ด้านล่างเป็นข้อมูลสมมติ (placeholder) เพื่อประกอบการนำเสนอเท่านั้น — มุมมองรายละเอียดที่เปิดจากแถวนี้ใช้ข้อมูลสต็อคจริงจากฐานข้อมูล<!-- Cube_Inventory_Exact --></div></td></tr>
 <tr class="note-row"><td colspan="14">หมายเหตุ: Inventory Plan ปัจจุบันคำนวณจากยอดขายย้อนหลัง 3 เดือนล่าสุด ตามหลักการ Moving Average เช่นเดียวกับ Sales Forecast — อยู่ระหว่างเพิ่ม <b>ปัจจัยสภาพอากาศและพายุจากประเทศจีน</b> ซึ่งส่งผลให้ Lead Time (LT) การนำเข้า/จัดหาวัตถุดิบเพิ่มขึ้น เข้าไปในการคำนวณ Safety Stock และ Min-Max Stock ต่อไป</td></tr>
 <tr class=""><td class="rowlabel">Inventory Plan (ล้านบาท)</td><td class="modulecol">Inventory · Reordering Rules / Replenishment</td><td class="hist">60.2</td><td class="hist">67.1</td><td class="hist">74.6</td><td class="hist">72.8</td><td class="hist">80.3</td><td class="hist">70.1</td><td class="hist">30.8</td><td class="plan">62.5</td><td class="plan">59.7</td><td class="plan">59.7</td><td class="plan">62.5</td><td class="plan">57.1</td></tr>
 <tr class=""><td class="rowlabel">Inventory Actual (ล้านบาท, สมมติ)</td><td class="modulecol">Inventory · Stock Valuation / On-hand Quantity</td><td class="hist">54.1</td><td class="hist">71.1</td><td class="hist">75.4</td><td class="hist">69.9</td><td class="hist">73.1</td><td class="hist">75.0</td><td class="hist">31.4</td><td class="plan">60.6</td><td class="plan">54.9</td><td class="plan">64.4</td><td class="plan">64.4</td><td class="plan">55.9</td></tr>
@@ -7437,7 +7440,6 @@ tr.section[role="button"]:focus-visible{outline:2px solid var(--series-1);outlin
 
 <div id="invPanel">
  <div class="wrap">
-  <button type="button" id="invBackBtn">← กลับไปหน้า S&amp;OP Plan (Tab 1)</button>
   <header class="top">
    <h1>รายละเอียดสต็อคสินค้า (Inventory Detail)</h1>
    <p id="invSnapshotLabel">กำลังโหลดข้อมูล…</p>
@@ -8005,14 +8007,27 @@ function omniShowTab(n){
   document.getElementById('omniTab').style.display = n==2?'block':'none';
   document.getElementById('manualTab').style.display = n==3?'block':'none';
   document.getElementById('assumptionsTab').style.display = n==4?'block':'none';
+  document.getElementById('invPanel').style.display = n==5?'block':'none';
   document.getElementById('tb1').className = n==1?'actv':'';
   document.getElementById('tb2').className = n==2?'actv':'';
   document.getElementById('tb3').className = n==3?'actv':'';
   document.getElementById('tb4').className = n==4?'actv':'';
+  document.getElementById('tbStock').className = n==5?'actv':'';
   if (n==3 && window.loadManualTab) window.loadManualTab();
   if (n==4 && window.loadAssumptionsTab) window.loadAssumptionsTab();
+  if (n==5 && window.loadInventoryPanel) window.loadInventoryPanel();
+  try { history.replaceState(null, '', '#' + OMNI_TAB_FRAGMENTS[n]); } catch (e) { /* a page opened in a way that does not allow it keeps its address */ }
   window.scrollTo(0,0);
 }
+// The tab a URL fragment opens: index.html#trend, #stock, #manual, #assumptions, #sop; no or an unknown fragment opens the first tab (ยอดขายย้อนหลัง).
+var OMNI_TAB_FRAGMENTS = {1: 'sop', 2: 'trend', 3: 'manual', 4: 'assumptions', 5: 'stock'};
+function omniTabFromHash() {
+  var h = (location.hash || '').replace(/^#/, '');
+  for (var n in OMNI_TAB_FRAGMENTS) { if (OMNI_TAB_FRAGMENTS[n] === h) return Number(n); }
+  return 2;
+}
+window.addEventListener('hashchange', function () { omniShowTab(omniTabFromHash()); });
+window.addEventListener('DOMContentLoaded', function () { omniShowTab(omniTabFromHash()); });
 </script>
 
 <script id="invPanelJs">
@@ -8020,7 +8035,6 @@ function omniShowTab(n){
   let invItems = [];
   let invLoaded = false;
   let invSort = {key:'qty', dir:-1};
-  let invSavedScrollY = 0;
 
   const INV_LT_STORAGE_KEY = 'saleForecast.inventoryPanel.leadTimeDays.v1';
   let invLtStorageBroken = false;
@@ -8088,17 +8102,11 @@ function omniShowTab(n){
   }
 
   function invOpenPanel(){
-    invSavedScrollY = window.scrollY;
-    document.getElementById('origTab').style.display = 'none';
-    document.getElementById('invPanel').style.display = 'block';
-    window.scrollTo(0,0);
+    omniShowTab(5);
+  }
+  window.loadInventoryPanel = function(){
     if(!invLoaded) invLoadData();
-  }
-  function invClosePanel(){
-    document.getElementById('invPanel').style.display = 'none';
-    document.getElementById('origTab').style.display = '';
-    window.scrollTo(0, invSavedScrollY);
-  }
+  };
 
   async function invLoadData(){
     try{
@@ -8508,7 +8516,6 @@ function omniShowTab(n){
   document.getElementById('invMenuRow').addEventListener('keydown', e => {
     if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); invOpenPanel(); }
   });
-  document.getElementById('invBackBtn').addEventListener('click', invClosePanel);
   document.getElementById('invWhClose').addEventListener('click', () => {
     document.getElementById('invWhModal').style.display = 'none';
   });

@@ -175,6 +175,8 @@ function computeAll(controls, divisionData, checkedWarehouses) {
     const hasForecast = r.meanMonthlyForecast && r.meanMonthlyForecast > 0;
     const monthsOfCover = hasForecast ? onHandSellable / r.meanMonthlyForecast : Infinity;
     const noForecastDemand = !hasForecast;
+    // The list "สินค้าที่มีของแต่ไม่มียอดทาย" holds the items with no positive forecast month in the vintage the page uses (item.forecast) that have stock.
+    const noVintageForecast = !(Array.isArray(item.forecast) && item.forecast.some(v => v > 0));
     const excess = noForecastDemand
       ? onHandSellable > 0
       : monthsOfCover > controls.obsolescence_threshold_months;
@@ -182,7 +184,7 @@ function computeAll(controls, divisionData, checkedWarehouses) {
                    stockValueContribution: contribution, monthsOfCover, unreliable: r.unreliable,
                    currentMin: item.current_min, currentMax: item.current_max, currentHasRecord: item.current_has_record, classBasis: item.class_basis,
                    unitCost: item.unit_cost, noUnitCost: item.no_unit_cost_item,
-                   onHandSellable, excess, noForecastDemand,
+                   onHandSellable, excess, noForecastDemand, noVintageForecast,
                    // task 2b Part 2 (METRICS.md Sec.23) -- undefined for PEM103 (no segmentation)
                    label: item.fulfilment_label, S1: item.S1, S2: item.S2,
                    S2_computable: item.S2_computable, S3: item.S3, type: item.type });
@@ -307,6 +309,7 @@ def build_page(**data_sources) -> str:
   p.note-box {{ font-size: 12.5px; color: var(--text-secondary); background: #eef4fb;
     border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px; }}
   a.back-link {{ color: var(--series-1); text-decoration: none; font-size: 13px; }}
+  {rv.NAV_CSS}
   .plotly-chart {{ width:100%; min-height: 320px; margin: 6px 0 14px; }}
   .chart-fail {{ padding: 24px 12px; text-align: center; background: #f0efec; border-radius: 6px; }}
   .alert-banner {{ background:#fdecea; border:2px solid #d03b3b; border-radius:8px; padding:14px 18px; margin:12px 0; }}
@@ -369,8 +372,10 @@ def build_page(**data_sources) -> str:
 </head>
 <body>
 <div class="wrap">
-  <a class="back-link" href="../index.html">&larr; กลับไปหน้าหลัก (Dashboard)</a> &nbsp;·&nbsp; <a class="back-link" id="plan-link" href="operation_plan.html">แผนการผลิต</a>
+  <a class="back-link" href="../index.html">&larr; กลับไปหน้าหลัก (Dashboard)</a>
+  {rv.nav_bar_html('inventory')}
   <h1 id="page-title">แผนสต็อค — Inventory Min/Max Scenario</h1>
+  <p class="scope-note" id="data-line"></p>
   <p class="scope-note" id="page-timestamps-note"></p>
 
   <div class="layout">
@@ -496,6 +501,7 @@ def build_page(**data_sources) -> str:
   <div id="curve-target-section" style="display:none;">
     <!-- Previous heading: PEM101 — Trade-off Curve Target (METRICS.md Sec.22) — PARTIALLY CALIBRATED. Previous note: the data cannot identify the correct reorder level on its own (every item gives the same range ratio, no item-level information); choosing the not_late target is what fixes the reorder level (METRICS.md Sec.22). -->
     <h2>PEM101 — เลือกเป้าการส่งทัน แล้วดูว่าต้องถือของเท่าไหร่ (ค่าแนะนำ)</h2>
+    <p class="note-box" id="curve-demand-note"></p>
     <p class="hint" id="curve-own-controls">ส่วนนี้ปรับได้ด้วยปุ่มเป้าและ slider ในส่วนนี้เท่านั้น</p>
     <p class="note-box" id="curve-target-summary"></p>
     <p class="note-box" id="curve-lead-lines"></p>
@@ -693,7 +699,7 @@ function renderNoForecastTable(perItem) {{
   const tbody = document.getElementById('no-forecast-table-body');
   tbody.innerHTML = '';
   for (const r of perItem) {{
-    if (!r.noForecastDemand) continue;
+    if (!r.noVintageForecast || (STOCK_OK && !(r.onHandSellable > 0))) continue;
     const tr = document.createElement('tr');
     tr.innerHTML = `<td>${{r.code}}</td><td>${{policyCell(r)}}</td>` +
       `<td>${{STOCK_OK ? Math.round(r.onHandSellable).toLocaleString() : STOCK_UNKNOWN}}</td>` +
@@ -943,6 +949,7 @@ function renderCurveTarget(divisionData) {{
     `<br><span style="color:#b45309;">${{ct.item_set_note}}</span>` + htmlComment(ct.item_set_ref || '');
 
   // Two approved lines; the numbers come from the section's own data (lead range across the members; median slowest-material lead time over the items with observed purchase records, their count and the items shown).
+  document.getElementById('curve-demand-note').textContent = ct.demand_input_note;
   const ll = ct.lead_time_lines;
   document.getElementById('curve-lead-lines').innerHTML =
     `Min/Max คำนวณจาก lead time ที่ทำให้การจำลองส่งของทันและถือ stock ใกล้เคียงของจริงที่สุด อยู่ระหว่าง ${{ll.lead_min}} ถึง ${{ll.lead_max}} วัน<br>` +
@@ -1160,9 +1167,15 @@ function renderStockLabels() {{
     '<span id="stock-label-pulled">ดึงข้อมูลเมื่อ ' + thaiDateTime(STOCK.pull_time) + '</span>';
 }}
 
+function renderDataLine() {{
+  document.getElementById('data-line').textContent =
+    'ยอดทายรอบ ' + DATA.forecast_round_label + ' · ข้อมูล stock ดึงเมื่อ ' + (STOCK_OK ? thaiDateTime(STOCK.pull_time) : STOCK_UNKNOWN);
+}}
+
 function startPage() {{
   renderPageTimestamps();
   renderStockLabels();
+  renderDataLine();
   document.getElementById('division-select').value = DATA.default_division;
   if (window.matchMedia('(max-width: 899px)').matches) {{
     document.getElementById('control-panel').classList.add('collapsed');

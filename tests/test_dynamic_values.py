@@ -81,14 +81,6 @@ def _all_items_smooth(df):
     return df
 
 
-def _later_target_months(df):
-    if "target_month" not in df.columns:
-        return df
-    df = df.copy()
-    df["target_month"] = [str(pd.Period(m, freq="M") + 3) for m in df["target_month"]]
-    return df
-
-
 def _extra_notice_bucket(df):
     if "min_notice_days" not in df.columns:
         return df
@@ -125,13 +117,6 @@ def _slower_materials(df):
     return df
 
 
-CSV_TRANSFORMS = {"item_lead_time_v1.csv": _slower_materials, "topdown_significance.csv": _different_significance, STOCK_VALUE_FILE: _scale_stock_value, NO_MINMAX_FILE: _more_missing_minmax, DISAGREE_FILE: _double_rows,
-                  ITEM_LEVEL_FILE: _extra_signal_and_fewer_stock_policy, ON_TIME_FILE: _drop_first_year,
-                  "delivery_not_late_by_year.csv": _drop_first_year, POLICY_FILE: _fewer_calibrated_items,
-                  "processed_all_divisions_monthly_qty.csv": _all_items_smooth,
-                  "forward_test_log_all_divisions.csv": _later_target_months,
-                  "leadtime_notice_buckets_overall.csv": _extra_notice_bucket}
-
 
 def _perturb_grid(d):
     d = copy.deepcopy(d)
@@ -142,6 +127,53 @@ def _perturb_grid(d):
     d["today_point"]["stock_value_thb"] = d["today_point"]["stock_value_thb"] * 2
     d["presets"]["extra_preset"] = copy.deepcopy(d["presets"]["stretch_99pct"])
     return d
+
+
+def _perturb_targets(d):
+    """The sales history behind the PEM101 Min and Max ends two months later (the section's note names the window)."""
+    d = copy.deepcopy(d)
+    if "validation_end" in d:
+        d["validation_end"] = "2026-11-30"
+    return d
+
+
+def _more_placeholders(df):
+    """Seven forecast-status codes become placeholders (the total stays 445): the count of codes with no forecast changes by seven."""
+    if "status_category" not in df.columns:
+        return df
+    df = df.copy()
+    idx = df.index[df["status_category"] == "forecast"][:7]
+    df.loc[idx, "status_category"] = "placeholder - pending method"
+    return df
+
+
+def _shift_months(ym, k):
+    return str(pd.Period(ym, freq="M") + k)
+
+
+def _perturbed_vintage_facts(f):
+    """The latest vintage as another vintage: run three months later, fit window and forecast months three months later, every forecast doubled
+    (the forward-test log itself cannot be altered as it is read: its rows are checked against a recorded hash)."""
+    g = dict(f)
+    g.update(run_date="2027-01-04", fit_first=_shift_months(f["fit_first"], 3), fit_last=_shift_months(f["fit_last"], 3),
+             forecast_months=[_shift_months(m, 3) for m in f["forecast_months"]])
+    rows = f["item_rows"].copy()
+    rows["target_month"] = rows["target_month"].map(lambda m: _shift_months(m, 3))
+    rows["forecast_qty"] = rows["forecast_qty"] * 2
+    g["item_rows"] = rows
+    w = f["forecast"].copy()
+    w.columns = [_shift_months(c, 3) for c in w.columns]
+    g["forecast"] = w * 2
+    return g
+
+
+def _perturbed_scored(df):
+    """Two scored months instead of one, every MAE and Bias doubled."""
+    later = df.copy()
+    later["target_month"] = later["target_month"].map(lambda m: _shift_months(m, 1))
+    out = pd.concat([df, later], ignore_index=True)
+    out["MAE"], out["Bias"] = out["MAE"] * 2, out["Bias"] * 2
+    return out
 
 
 def _perturb_alert(d):
@@ -159,8 +191,14 @@ def _perturb_ratio(d):
     return d
 
 
-JSON_TRANSFORMS = {"maxmin_v1_dense_grid_PEM101.json": _perturb_grid, "task2b_part4_pem107_alert.json": _perturb_alert,
+JSON_TRANSFORMS = {"week1_recal_targets.json": _perturb_targets, "maxmin_v1_dense_grid_PEM101.json": _perturb_grid, "task2b_part4_pem107_alert.json": _perturb_alert,
                    "maxmin_v1_ratio_grid_PEM101.json": _perturb_ratio}
+
+CSV_TRANSFORMS = {"phaseC_step1revised_item_status_445.csv": _more_placeholders, "item_lead_time_v1.csv": _slower_materials, "topdown_significance.csv": _different_significance, STOCK_VALUE_FILE: _scale_stock_value, NO_MINMAX_FILE: _more_missing_minmax, DISAGREE_FILE: _double_rows,
+                  ITEM_LEVEL_FILE: _extra_signal_and_fewer_stock_policy, ON_TIME_FILE: _drop_first_year,
+                  "delivery_not_late_by_year.csv": _drop_first_year, POLICY_FILE: _fewer_calibrated_items,
+                  "processed_all_divisions_monthly_qty.csv": _all_items_smooth,
+                  "leadtime_notice_buckets_overall.csv": _extra_notice_bucket}
 
 
 def _perturb_config(cfg):
@@ -210,6 +248,7 @@ class Build:
         import build_report
         mp = self.mp
         seg_copy = None
+        real_facts = rv.vintage_facts()          # read (and hash-checked) before any source is perturbed
         set_pilot_data_date(mp, PILOT_AGE_PERTURBED_DAYS if self.perturbed else PILOT_AGE_BASE_DAYS)
         if self.perturbed:
             orig_read = pd.read_csv
@@ -238,6 +277,9 @@ class Build:
             seg_copy = self.tmp / "segmentation_copy.py"
             seg_copy.write_text(re.sub(r"^S3_THRESHOLD_DAYS\s*=\s*\d+", "S3_THRESHOLD_DAYS = 21", text, flags=re.M), encoding="utf-8")
             mp.setattr(rv, "SEGMENTATION_SCRIPT", str(seg_copy))
+            mp.setattr(rv, "vintage_facts", lambda root=None: _perturbed_vintage_facts(real_facts))
+            real_scored = build_report.gather_scored_months
+            mp.setattr(build_report, "gather_scored_months", lambda pr: _perturbed_scored(real_scored(pr)))
             mp.setattr(build_report, "FOCUS_ITEMS", list(build_report.FOCUS_ITEMS[:2]))
             real_notlate = build_report.gather_notlate
             mp.setattr(build_report, "gather_notlate", lambda: real_notlate().iloc[0:0])
@@ -367,9 +409,7 @@ def test_numbers_from_the_remaining_typed_list_follow_their_sources(two_builds):
     # first scoring month from the forward-test log
     with open(os.path.join(rv.PROJECT_ROOT, "config", "config.yaml"), encoding="utf-8") as f:
         real_cfg = yaml.safe_load(f)
-    assert f"ผลรอบแรกต้นเดือน {rv.first_scoring_month_label(real_cfg)}" in b
-    lb, lp = _first(r"ผลรอบแรกต้นเดือน ([^<]+)<", b), _first(r"ผลรอบแรกต้นเดือน ([^<]+)<", p)
-    assert lb != lp, "first scoring month is typed"
+    assert "ทุกต้นเดือนระบบเทียบยอดทายกับยอดขายจริงของเดือนที่ผ่านมา และเพิ่มผลในตารางนี้" in b and "ผลรอบแรกต้นเดือน" not in b
     # the |t| and Wilcoxon thresholds are applied when topdown_significance.csv is written (METRICS.md Sec.41), not typed in the page;
     # the report only states them in an HTML comment read from that file
     assert "|t| &gt;= 2" in b and "Wilcoxon p &lt; 0.05" in b
@@ -445,7 +485,7 @@ def test_operation_plan_page_numbers_dates_and_items_follow_their_sources():
     pert = bp.render(bp.compute_values(im2, dm2, meta2, {}, "2027-01-04", ["PEM101", "PEM107"]))
     lines = lambda page: _re.findall(r'<p class="note-line">(.*?)</p>', page)
     assert "6 ต.ค. 69 08:00" in base and "15 ม.ค. 70 17:45" in pert and "6 ต.ค. 69" not in pert
-    assert "ยอดทายจากรอบ ต.ค. 69" in base and "ยอดทายจากรอบ ม.ค. 70" in pert
+    assert "ยอดทายรอบ ต.ค. 69" in base and "ยอดทายรอบ ม.ค. 70" in pert
     lb, lp = lines(base), lines(pert)
     assert lb[0].startswith("ต.ค. 69 PEM101") and lp[0].startswith("ก.พ. 70 PEM101")
     assert "A7" in lb[1] and "Z9" in lp[1] and "Z9" not in lb[1] and "A7" not in lp[1]
@@ -467,7 +507,7 @@ def test_operation_plan_division_lines_follow_the_counts_of_the_plan():
     meta2["counts"]["no_production_items_by_division"]["PEM103"] = 17
     meta2["counts"]["stock_items_by_division"]["PEM102"] = 3          # a division that has stock items no longer says it has none
     pert = bp.render(bp.compute_values(im, dm, meta2, {}, "2026-10-02", SIX))
-    assert "1 รหัสไม่มียอดทาย ใช้เฉพาะออเดอร์ที่รับแล้ว" in base and "41 รหัสไม่มียอดทาย ใช้เฉพาะออเดอร์ที่รับแล้ว" in pert and "41 รหัส" not in base
+    assert "1 รหัสยังไม่มียอดทาย แผนนับเฉพาะออเดอร์ที่รับแล้ว ตอนนี้มีออเดอร์ค้าง 1 รหัส" in base and "41 รหัสยังไม่มียอดทาย แผนนับเฉพาะออเดอร์ที่รับแล้ว ตอนนี้มีออเดอร์ค้าง 1 รหัส" in pert and "41 รหัส" not in base
     assert "1 รหัสไม่พบการผลิตในระบบ ไม่นับเป็นภาระผลิต" in base and "17 รหัสไม่พบการผลิตในระบบ ไม่นับเป็นภาระผลิต" in pert
     assert "PEM102 ไม่มีสินค้าที่เข้าเกณฑ์เก็บ stock" in base and "PEM102 ไม่มีสินค้าที่เข้าเกณฑ์เก็บ stock" not in pert
 
@@ -498,3 +538,60 @@ def test_material_plan_page_text_values_follow_their_sources():
     assert ca[3:6] == ["250", "11 ก.ย. 69", "20"] and cb[3:6] == ["231", "20 ม.ค. 70", "33"] and ca[6] == "ใบสั่งซื้อจริง"      # the quantity sums the months whose order date is in the list's span
     assert "ต้องสั่งภายใน 30 วัน</h2>" in a and "ต้องสั่งภายใน 45 วัน</h2>" in b
     assert "วัตถุดิบที่ต้องสั่งภายใน 30 วันข้างหน้า ถึงจะได้ของทันตามแผน" in a and "วัตถุดิบที่ต้องสั่งภายใน 45 วันข้างหน้า ถึงจะได้ของทันตามแผน" in b
+
+
+# ------------------------------------------------------------------ 2026-10-08: the new lines and tables follow their sources
+
+def _forward_cells(html_text):
+    """First division's first item row of the forward forecast table: (code, [cells])."""
+    row = re.search(r'<tr class="fwd-item".*?</tr>', html_text, re.S).group(0)
+    return re.search(r"<td>([^<\s]+)", row).group(1), re.findall(r"<td>(.*?)</td>", row)[1:]
+
+
+def test_new_sales_report_lines_and_tables_follow_their_sources(two_builds):
+    base, pert = two_builds
+    b, p = base.sales_html, pert.sales_html
+    # the round, the last month of the sales used and the build time come from the vintage and the clock
+    fb, fp = _first(r'id="freshness-line">(.*?)</span>', b), _first(r'id="freshness-line">(.*?)</span>', p)
+    assert fb != fp and fp.startswith("ยอดทายรอบ ม.ค. 70 · ใช้ยอดขายถึง พ.ย. 69 · หน้าสร้างเมื่อ ")
+    assert re.fullmatch(r"ยอดทายรอบ \S+ \d\d · ใช้ยอดขายถึง \S+ \d\d · หน้าสร้างเมื่อ \d{1,2} \S+ \d\d \d\d:\d\d", fb)
+    # the fit window, the forecast months
+    rb, rp = _first(r'id="fit-range-line">(.*?)</td>', b), _first(r'id="fit-range-line">(.*?)</td>', p)
+    assert rb != rp and rp == "ยอดขายที่ใช้ทาย พ.ค. 67 ถึง พ.ย. 69"
+    hb, hp = _first(r"<h2>2\. (.*?)</h2>", b), _first(r"<h2>2\. (.*?)</h2>", p)
+    assert hb != hp and hp == "ยอดทาย ธ.ค. 69 ถึง พ.ค. 70"
+    # the count of codes with no forecast follows the scope table (seven codes moved from forecast to placeholder)
+    nb, np_ = int(_first(r"รหัสที่ยังไม่มียอดทาย (\d+) รหัส", b)), int(_first(r"รหัสที่ยังไม่มียอดทาย (\d+) รหัส", p))
+    assert np_ == nb + 7
+    # the forward forecast follows the vintage: every forecast doubled in the second build
+    cb, vb = _forward_cells(b)
+    cp, vp = _forward_cells(p)
+    assert cb == cp
+    for x, y in zip(vb, vp):
+        xv, yv = float(x.replace(",", "")), float(y.replace(",", ""))
+        assert yv == pytest.approx(2 * xv, abs=0.51 if xv >= 10 else 0.11), (x, y)
+    assert vb != vp
+    # the pilot groups: MAE and Bias are recomputed from the series, so another series gives other values; the sentence repeats the Bias of its row
+    for html_text in (b, p):
+        for label in ("Fuse Cutout", "Surge Arrester"):
+            mae, bias = re.search(rf"<tr><td>{label}</td><td>(-?[\d.]+)</td><td>(-?[\d.]+)</td></tr>", html_text).groups()
+            if float(bias) < 0:
+                assert f"▸ {label} ทายต่ำกว่าจริงเฉลี่ยเดือนละ {abs(float(bias)):.1f} ชิ้น" in html_text
+            else:
+                assert f"▸ {label} ทายต่ำกว่าจริง" not in html_text
+    assert re.findall(r'<tr><td>(?:Fuse Cutout|Surge Arrester)</td><td>[-\d.]+</td><td>[-\d.]+</td></tr>', b) != \
+        re.findall(r'<tr><td>(?:Fuse Cutout|Surge Arrester)</td><td>[-\d.]+</td><td>[-\d.]+</td></tr>', p)
+    # the monthly scored table and its count of months
+    assert "▸ ตอนนี้มีผล 1 เดือน" in b and "▸ ตอนนี้มีผล 2 เดือน" in p
+    sb, sp_ = re.findall(r'<table class="report-table" id="scored-table">.*?<tbody>(.*?)</tbody>', b, re.S)[0], re.findall(r'<table class="report-table" id="scored-table">.*?<tbody>(.*?)</tbody>', p, re.S)[0]
+    assert sb != sp_ and sp_.count("<tr>") == 2 * sb.count("<tr>")
+
+
+def test_new_inventory_page_values_follow_their_sources(two_builds):
+    base, pert = two_builds
+    assert base.data["forecast_round_label"] != pert.data["forecast_round_label"] and pert.data["forecast_round_label"] == "ม.ค. 70"
+    nb = base.data["divisions"]["PEM101"]["curve_target"]["demand_input_note"]
+    np_ = pert.data["divisions"]["PEM101"]["curve_target"]["demand_input_note"]
+    assert nb != np_ and "{" not in nb and "}" not in np_
+    mb, mp_ = re.search(r"ย้อนหลัง (\S+ \d\d) ถึง (\S+ \d\d) ", nb), re.search(r"ย้อนหลัง (\S+ \d\d) ถึง (\S+ \d\d) ", np_)
+    assert mb.group(1) == mp_.group(1) and mb.group(2) != mp_.group(2) and mp_.group(2) == "พ.ย. 69"        # the end of the sales history moved two months, the start did not

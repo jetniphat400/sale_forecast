@@ -164,3 +164,85 @@ def first_scoring_month_label(config: dict) -> str:
     return thai_month_year(str((eligible + pd.Timedelta(1, unit="D")).date()))
 
 
+
+
+# ---------------------------------------------------------------------------------------------------------------------------------
+# One shared formatter for the dates the dashboard pages write (decision of the prompt of 2026-10-08): a round ('ต.ค. 69'), a month
+# ('ส.ค. 69') and a date-time ('8 ต.ค. 69 08:01'), Buddhist year as two digits. The Min-Max page's script writes the same date-time form
+# with the same month list (tests/test_inventory_page_browser.py checks the two agree); every Python page builder imports these.
+
+def thai_month_short(ym: str) -> str:
+    """'2026-10' (or any 'YYYY-MM...' text) -> 'ต.ค. 69'."""
+    y, m = int(str(ym)[:4]), int(str(ym)[5:7])
+    return f"{THAI_MONTH_ABBR[m]} {str(y + 543)[-2:]}"
+
+
+def thai_datetime_short(s) -> str:
+    """'2026-10-06 08:00:40' -> '6 ต.ค. 69 08:00' (d MMM yy HH:mm, this machine's own clock, Buddhist year)."""
+    t = pd.Timestamp(str(s)[:19])
+    return f"{t.day} {THAI_MONTH_ABBR[t.month]} {str(t.year + 543)[-2:]} {t.strftime('%H:%M')}"
+
+
+def vintage_facts(root: str = PROJECT_ROOT) -> dict:
+    """What a page states about the latest forecast vintage it uses, read from the forward-test log and its metadata after the same hash check the plan
+    uses (operation_plan.latest_vintage_forecast): vintage id, run date, the fit window (first and last month of the series the vintage was fitted on) and
+    the forecast months, the forecast per item and month and the Item rows of the vintage (division and Type of each item). Stops when the metadata does not
+    name the fit window."""
+    import forward_test_common as ftc
+    import operation_plan as op
+    cfg = op.load_config(root)
+    wide, vid, months, _ = op.latest_vintage_forecast(root, cfg)
+    log = ftc.read_forward_test_log(op.path_of(root, cfg["forecast_log_file"]))
+    meta = ftc.load_metadata(op.path_of(root, cfg["forecast_log_metadata_file"]))
+    entry = meta[str(vid)] if str(vid) in meta else meta[vid]
+    dates = sorted(set(log.loc[log["vintage_id"] == vid, "forecast_run_date"]))
+    if len(dates) != 1:
+        raise ReaderValueError(f"vintage {vid} has {len(dates)} run dates in the forward-test log: {dates}")
+    for k in ("fit_first_month", "fit_last_month"):
+        if not entry.get(k):
+            raise ReaderValueError(f"the forward-test metadata of vintage {vid} has no {k}")
+    item_rows = log[(log["vintage_id"] == vid) & (log["level"] == cfg["forecast_level"])][["itemcode", "division", "type", "target_month", "forecast_qty"]]
+    return {"vintage_id": int(vid), "run_date": str(dates[0]), "fit_first": str(entry["fit_first_month"]), "fit_last": str(entry["fit_last_month"]),
+            "forecast_months": [str(m) for m in months], "forecast": wide, "item_rows": item_rows}
+
+
+# The bar of tabs on index.html and the four working pages, in task order (decision of the prompt of 2026-10-08): sales history, forecast, stock
+# policy, stock today, production, materials; the reference tabs sit apart after a separator. `key` names the page; `fragment` is the index.html tab
+# a label opens; a working page's key has a `page` file inside forecast/.
+NAV_TABS = [
+    {"key": "trend", "label": "ยอดขายย้อนหลัง", "fragment": "trend"},
+    {"key": "sales", "label": "พยากรณ์ยอดขาย ↗", "page": "sales_report.html"},
+    {"key": "inventory", "label": "แผนสต็อก ↗", "page": "inventory.html"},
+    {"key": "stock", "label": "สต็อกวันนี้", "fragment": "stock"},
+    {"key": "operation", "label": "แผนการผลิต ↗", "page": "operation_plan.html"},
+    {"key": "material", "label": "แผนวัตถุดิบ ↗", "page": "material_plan.html"},
+    {"key": "|"},
+    {"key": "assumptions", "label": "สมมติฐานที่ใช้อยู่", "fragment": "assumptions"},
+    {"key": "manual", "label": "คู่มือการใช้งาน", "fragment": "manual"},
+    {"key": "sop", "label": "S&OP Plan (เดิม)", "fragment": "sop"},
+]
+NAV_CSS = """
+  .page-nav { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; margin: 6px 0 12px; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+  .page-nav a { color: var(--series-1); text-decoration: none; }
+  .page-nav a:hover { text-decoration: underline; }
+  .page-nav b { color: var(--text-primary); }
+  .page-nav .nav-sep { color: var(--muted); font-weight: 700; }
+"""
+
+
+def nav_bar_html(current: str) -> str:
+    """The tab bar for a working page (a file in forecast/): the current page's label is bold and not a link, the other pages link to their files, the
+    index.html tabs to index.html#<fragment>."""
+    import html as _html
+    parts = []
+    for t in NAV_TABS:
+        if t["key"] == "|":
+            parts.append('<span class="nav-sep" aria-hidden="true">‖</span>')
+            continue
+        label = _html.escape(t["label"])
+        if t["key"] == current:
+            parts.append(f'<b data-nav="{t["key"]}">{label}</b>')
+        else:
+            href = t["page"] if "page" in t else f'../index.html#{t["fragment"]}'
+            parts.append(f'<a data-nav="{t["key"]}" href="{href}">{label}</a>')
+    return f'<nav class="page-nav" id="page-nav">{"".join(parts)}</nav>'

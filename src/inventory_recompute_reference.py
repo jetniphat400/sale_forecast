@@ -92,14 +92,16 @@ def compute_all(division_data, controls, days_per_month, checked_warehouses=None
         if in_fg:
             stock_value += contribution
         on_hand_sellable = on_hand_sellable_for(item, checked_set)
-        has_forecast = bool(r.get("mean_monthly_forecast"))
+        mf = r.get("mean_monthly_forecast")
+        has_forecast = bool(mf) and mf == mf and mf > 0              # as the page script: an item with no forecast month (mean not a number) has no forecast demand
         moc = (on_hand_sellable / r["mean_monthly_forecast"]) if has_forecast else float("inf")
         no_forecast_demand = not has_forecast
+        no_vintage_forecast = not any(v > 0 for v in (item.get("forecast") or []))      # no positive forecast month in the vintage the page uses
         excess = (on_hand_sellable > 0) if no_forecast_demand else (moc > controls["obsolescence_threshold_months"])
         per_item.append({"code": item["code"], "policy": item["policy"], "min": r["min"], "max": r["max"],
                           "stock_value_contribution": contribution, "months_of_cover": moc,
                           "on_hand_sellable": on_hand_sellable, "excess": excess,
-                          "no_forecast_demand": no_forecast_demand})
+                          "no_forecast_demand": no_forecast_demand, "no_vintage_forecast": no_vintage_forecast})
     holding_cost = stock_value * controls["holding_cost_rate_annual"]
     excess_count = sum(1 for r in per_item if r["excess"])
     return {"stock_value": stock_value, "holding_cost": holding_cost, "per_item": per_item,

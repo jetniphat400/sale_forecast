@@ -171,7 +171,11 @@ def test_static_visible_text_is_reader_text(page, built_pages):
     with open(built_pages[page], encoding="utf-8") as f:
         lines = visible_lines(f.read())
     assert len(lines) > 20, f"{page}: visible text extraction looks empty"
-    found = violations(lines, _config_keys())
+    import html as _html
+    with open(built_pages[page], encoding="utf-8") as f:
+        # item rows of the forward forecast table read "code name", the name coming from the price list (exempt from the English-only-line rule only)
+        names = {" ".join(_html.unescape(f"{c} {n}").split()) for c, n in re.findall(r'<td>([^<]+) <span class="fwd-name">(.*?)</span></td>', f.read())}
+    found = violations(lines, _config_keys(), english_exempt=names)
     assert not found, f"{page}: reader-facing text carries project internals:\n" + "\n".join(found)
 
 
@@ -234,7 +238,7 @@ def test_rendered_text_is_reader_text(view, rendered_texts):
 # rules below apply to that tab's text all the same. Product names and descriptions in table cells come from the price
 # list and are exempt from the English-only-line rule only; every other rule applies to them too.
 INDEX_VIEWS = {
-    "S&OP": ("origTab", None),
+    "S&OP": ("origTab", "omniShowTab(1)"),
     "Trend": ("omniTab", "omniShowTab(2)"),
     "Manual": ("manualTab", "omniShowTab(3)"),
     "Assumptions": ("assumptionsTab", "omniShowTab(4)"),
@@ -380,3 +384,14 @@ def test_material_page_rendered_text_is_reader_text(material_page):
     assert len([x for x in lines if x.strip()]) > 100
     found = violations(lines, _config_keys(), english_exempt=cells)
     assert not found, "material plan page: rendered reader-facing text carries project internals:\n" + "\n".join(found)
+
+
+# ------------------------------------------------------------------ 2026-10-08: no placeholder is left on any of the five pages
+@pytest.mark.parametrize("name", ["sales_report.html", "inventory.html", "operation_plan.html", "material_plan.html"])
+def test_no_brace_is_left_in_the_visible_text_of_a_built_page(name):
+    path = os.path.join(PROJECT_ROOT, "forecast", name)
+    if not os.path.exists(path):
+        pytest.skip(f"SKIPPED, not passed: forecast/{name} is not built yet")
+    with open(path, encoding="utf-8") as f:
+        text = " ".join(visible_lines(f.read()))
+    assert "{" not in text and "}" not in text, f"{name}: a placeholder or a brace is left in the visible text"
