@@ -172,3 +172,49 @@ def test_step5_new_vintage_no_same_month_row_computes_normally_without_force(tmp
     assert result["skipped"] is False
     assert "force_override_used" not in result
     assert result["vintage_id"] == 2
+
+
+# ------------------------------------------------------------------ step 7d: one forecast vintage for G1, G2, G3 and the material plan (decision D2, 2026-10-08)
+def _stage(vid):
+    return {"vintage_id": vid, "source": "test"}
+
+
+def test_the_vintage_gate_passes_when_all_four_stages_carry_the_same_vintage():
+    r = mr.vintage_gate(_stage(2), _stage(2), _stage(2), _stage(2))
+    assert r["vintage_id"] == 2 and len(r["stages"]) == 4
+
+
+@pytest.mark.parametrize("ids", [(2, 1, 2, 2), (2, 2, 1, 2), (2, 2, 2, 1), (1, 2, 2, 2), (2, 2, None, 2), (None, None, None, None)])
+def test_the_vintage_gate_fails_when_any_stage_differs_or_records_none_and_names_the_stages(ids):
+    with pytest.raises(mr.MonthlyRefreshAbort, match="do not carry one forecast vintage") as e:
+        mr.vintage_gate(*[_stage(i) for i in ids])
+    for name in ("G1", "G2", "G3", "material plan"):
+        assert name in str(e.value)
+
+
+def test_the_runner_runs_the_gate_after_the_material_plan_and_before_the_tests_and_the_gate_is_counted():
+    order = mr.STEP_ORDER
+    assert order.index("7_rebuild_pages") < order.index("7b_operation_plan") < order.index("7c_material_plan") < order.index("7d_vintage_gate") < order.index("8_run_tests")
+    gates = mr.gate_outcomes({"passed": True, "summary_line": "x"}, {"passed": True, "findings": []}, {"gates": {}}, {"vintage_id": 2})
+    assert gates["gates"]["vintage_consistency"]["status"] == "passed" and gates["counts"]["passed"] == 3
+    assert "vintage_consistency" not in mr.gate_outcomes({"passed": True}, {"passed": True, "findings": []}, {"gates": {}})["gates"]
+
+
+def test_the_gate_reads_the_recorded_files_of_the_four_stages_and_stops_on_a_page_of_another_vintage(tmp_path, monkeypatch):
+    import operation_plan as op
+    import material_plan as mpl
+    cfg = op.load_config(mr.PROJECT_ROOT)
+    try:
+        op.read_outputs(mr.PROJECT_ROOT, cfg)
+        mpl.read_outputs(mr.PROJECT_ROOT)
+    except Exception:                       # noqa: BLE001
+        pytest.skip("SKIPPED, not passed: the recorded operation plan or material plan is not on this machine")
+    page = os.path.join(mr.PROJECT_ROOT, "forecast", "inventory.html")
+    if op.read_page_data(page).get("forecast_vintage") is None:
+        pytest.skip("SKIPPED, not passed: the tracked inventory page carries no forecast_vintage yet")
+    monkeypatch.setattr(mr, "FORECAST_DIR", os.path.join(mr.PROJECT_ROOT, "forecast"))
+    assert mr.step7d_vintage_gate(False, str(tmp_path))["passed"]
+    real = op.read_page_data
+    monkeypatch.setattr(op, "read_page_data", lambda p: dict(real(p), forecast_vintage={"vintage_id": 99}))
+    with pytest.raises(mr.MonthlyRefreshAbort, match="G2"):
+        mr.step7d_vintage_gate(False, str(tmp_path))

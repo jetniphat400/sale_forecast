@@ -787,3 +787,10 @@ def test_a_plan_item_that_is_also_a_component_is_netted_against_its_stock_only_w
 def test_items_with_a_min_and_max_are_those_with_a_planned_production_in_the_counted_rows():
     im = pd.DataFrame({"item": ["A", "B", "C"], "counted": [True, True, False], "planned_production": [1.0, np.nan, 2.0]})
     assert mp.items_with_min_max(im) == {"A"}
+
+
+def test_the_material_plan_meta_records_the_vintage_of_the_operation_plan_it_was_built_from(project):
+    mp.run(project, TODAY)
+    _, _, meta = mp.read_outputs(project)
+    _, _, op_meta = op.read_outputs(project, mp.load_config(project)["operation_plan"])
+    assert meta["vintage_id"] == op_meta["vintage_id"]

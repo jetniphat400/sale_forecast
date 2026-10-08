@@ -13,26 +13,9 @@ PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(PROJECT_ROOT, "src"))
 import build_inventory_page_data as bd
 
-LEAN_REPORT = os.path.join(PROJECT_ROOT, "output", "summary", "phaseA_pem101_conflict_lean.md")
-G3_REPORT = os.path.join(PROJECT_ROOT, "output", "summary", "phaseA_pem107_g3_verification.md")
-ITEM_LEVEL = os.path.join(PROJECT_ROOT, "output", "summary", "task2b_part2_item_level.csv")
-
-
-def _tracked(path: str) -> bool:
-    """True when git tracks `path` (False in a checkout without git, such as the runner's temporary copy)."""
-    import subprocess
-    if not os.path.isdir(os.path.join(PROJECT_ROOT, ".git")):
-        return False
-    rel = os.path.relpath(path, PROJECT_ROOT).replace(os.sep, "/")
-    return subprocess.run(["git", "ls-files", "--error-unmatch", rel], cwd=PROJECT_ROOT, capture_output=True).returncode == 0
-
-
-# The three inputs below are untracked files (output/ is not tracked since 2026-10-07: the reports were never tracked, the item-level file is a pipeline output). A test that needs
-# them cannot pass from the repository alone, so it is marked as an expected failure instead of passing or skipping with whatever is on this disk; where the files are present it
-# still runs and shows as XPASS. Every assertion is kept. Decision needed (STATUS.md, week 4 prompt 4): track the two reports under docs/reports and a recorded item-level file.
-UNTRACKED_INPUTS = [os.path.relpath(p, PROJECT_ROOT).replace(os.sep, "/") for p in (LEAN_REPORT, G3_REPORT, ITEM_LEVEL) if not _tracked(p)]
-needs_untracked = pytest.mark.xfail(condition=bool(UNTRACKED_INPUTS), run=True, strict=False,
-                                    reason="reads untracked files, so it cannot pass from the repository alone: " + ", ".join(UNTRACKED_INPUTS))
+LEAN_REPORT = os.path.join(PROJECT_ROOT, "docs", "reports", "summary", "phaseA_pem101_conflict_lean.md")
+G3_REPORT = os.path.join(PROJECT_ROOT, "docs", "reports", "summary", "phaseA_pem107_g3_verification.md")
+ITEM_LEVEL = os.path.join(PROJECT_ROOT, "docs", "reports", "summary", "task2b_part2_item_level.csv")        # the recorded item-level file (a copy of the pipeline output of 2026-10-08), tracked
 
 
 def decisions():
@@ -62,13 +45,12 @@ def g3_from_report() -> list:
 def raw_items():
     for p in (LEAN_REPORT, G3_REPORT, ITEM_LEVEL):
         if not os.path.exists(p):
-            pytest.fail(f"{os.path.relpath(p, PROJECT_ROOT)} is not in this checkout (an untracked input of this test)")
+            pytest.fail(f"{os.path.relpath(p, PROJECT_ROOT)} is not in this checkout (a tracked input of this test)")
     df = pd.read_csv(ITEM_LEVEL)
     return df[df["status_category"] == "forecast"] if "status_category" in df.columns else df   # the file also holds placeholders and other divisions (week 3)
 
 
 # ------------------------------------------------------------------ E1
-@needs_untracked
 def test_the_g3_list_in_config_is_the_41_codes_of_the_verification_and_each_is_already_confirmed_to_order(raw_items):
     listed = decisions()["g3_made_to_order"]["PEM107"]
     assert sorted(listed) == sorted(g3_from_report()) and len(listed) == 41 == len(set(listed))
@@ -76,7 +58,6 @@ def test_the_g3_list_in_config_is_the_41_codes_of_the_verification_and_each_is_a
     assert len(have) == 41 and set(have["class"]) == {"confirmed_to_order"}
 
 
-@needs_untracked
 def test_applying_the_decisions_changes_no_pem107_class(raw_items):
     out = bd.apply_class_decisions(raw_items, decisions())
     a = raw_items[raw_items["division"] == "PEM107"].set_index("code")["class"]
@@ -84,7 +65,6 @@ def test_applying_the_decisions_changes_no_pem107_class(raw_items):
     assert a.equals(b)
 
 
-@needs_untracked
 def test_a_g3_code_that_is_not_confirmed_to_order_stops_the_build(raw_items):
     stock_code = raw_items[(raw_items["division"] == "PEM107") & (raw_items["class"] == "stock_policy")]["code"].iloc[0]
     with pytest.raises(ValueError, match="not classed confirmed_to_order"):
@@ -92,7 +72,6 @@ def test_a_g3_code_that_is_not_confirmed_to_order_stops_the_build(raw_items):
 
 
 # ------------------------------------------------------------------ E3
-@needs_untracked
 def test_the_21_overrides_match_the_lean_report_and_the_20_undetermined_stay_as_they_are(raw_items):
     lean = lean_from_report()
     assert len(lean) == 41
@@ -109,7 +88,6 @@ def test_the_21_overrides_match_the_lean_report_and_the_20_undetermined_stay_as_
     assert sum(v == "leaning stock" for v in lean.values()) == 10 and sum(v == "leaning made-to-order" for v in lean.values()) == 11
 
 
-@needs_untracked
 def test_no_other_item_changes_class_and_the_counts_move_as_stated(raw_items):
     lean = lean_from_report()
     out = bd.apply_class_decisions(raw_items, decisions())
@@ -121,7 +99,6 @@ def test_no_other_item_changes_class_and_the_counts_move_as_stated(raw_items):
     assert (p["stock_policy"], p["confirmed_to_order"], p["conflict"]) == (92, 32, 20)
 
 
-@needs_untracked
 def test_an_override_for_an_item_that_is_not_in_the_conflict_class_is_refused(raw_items):
     stock_code = raw_items[(raw_items["division"] == "PEM101") & (raw_items["class"] == "stock_policy")]["code"].iloc[0]
     with pytest.raises(ValueError, match="not in the conflict class"):
@@ -130,16 +107,11 @@ def test_an_override_for_an_item_that_is_not_in_the_conflict_class_is_refused(ra
         bd.apply_class_decisions(raw_items, {"class_overrides": {"PEM101": {"stock_policy": ["NO-SUCH-CODE"]}}})
 
 
-_STOCK_COVERAGE = os.path.relpath(bd.STOCK_COVERAGE_PATH, PROJECT_ROOT).replace(os.sep, "/")
-needs_stock_coverage = pytest.mark.xfail(condition=not _tracked(bd.STOCK_COVERAGE_PATH), run=True, strict=False,
-                                         reason="the page builder reads the untracked " + _STOCK_COVERAGE + " (disabled-division reasons), so this cannot pass from the repository alone")
-
-
-@needs_stock_coverage
-def test_the_calibrated_target_note_states_the_fitted_count_from_the_ensemble_output():
+def test_the_calibrated_target_note_states_the_fitted_count_from_the_ensemble_output(monkeypatch):
     """Week 1: the section is fitted on the 92 stock_policy items (the Max-Min v1 ensemble), so the note states that count, from the
     ensemble output, and no longer says it was not refitted; it would say so again if the stock_policy set grew past the fitted set."""
     from page_helpers import fresh_inventory_data
+    monkeypatch.setattr(bd, "STOCK_COVERAGE_PATH", os.path.join(PROJECT_ROOT, "docs", "reports", "summary", "phaseE2_1_item_to_warehouse_reverse.csv"))      # the tracked copy of the builder's stock-coverage input
     pem101 = fresh_inventory_data()["divisions"]["PEM101"]
     n_stock = sum(1 for i in pem101["items"] if i["policy"] == "stock_policy")
     ct = pem101["curve_target"]

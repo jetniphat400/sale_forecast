@@ -86,6 +86,27 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 logger = logging.getLogger("build_inventory_page_data")
 
 FORECAST_HORIZON_MONTHS = 10
+
+
+def latest_vintage_item_forecasts(horizon: int = FORECAST_HORIZON_MONTHS, root: str = PROJECT_ROOT) -> tuple:
+    """(item forecast arrays, vintage info) from the LATEST vintage of the forward-test log, hash-checked (decision D2 of the user, 2026-10-08: Max-Min is built on the
+    latest forecast vintage, not on a refit of its own). Each item's array holds the vintage's monthly forecasts in target-month order, extended to `horizon` months by
+    repeating the vintage's last month (the Top-down combination is flat over its horizon, and the page's engine reads only the first months). The info names the
+    vintage, its run date, data cutoff, fit end and target months; it is embedded in the page data as `forecast_vintage` so the runner's gate can compare it."""
+    import operation_plan as op
+    import forward_test_common as ftc
+    cfg = op.load_config(root)
+    wide, vid, months, _ = op.latest_vintage_forecast(root, cfg)
+    log = ftc.read_forward_test_log(op.path_of(root, cfg["forecast_log_file"]))
+    rows = log[(log["vintage_id"] == vid) & (log["level"] == cfg["forecast_level"])]
+    out = {}
+    for code, r in wide.iterrows():
+        vals = [float(r[m]) for m in months]
+        vals = vals + [vals[-1]] * max(0, horizon - len(vals))
+        out[str(code).strip()] = np.asarray(vals[:horizon], dtype=float)
+    info = {"vintage_id": int(vid), "forecast_run_date": str(rows["forecast_run_date"].iloc[0]), "data_cutoff_date": str(rows["data_cutoff_date"].iloc[0]),
+            "fit_last_month": str(rows["fit_last_month"].iloc[0]), "target_months": [str(m) for m in months], "source": "forward-test log, level " + cfg["forecast_level"]}
+    return out, info
 CONFIG_PATH = os.path.join(PROJECT_ROOT, "config", "config.yaml")
 PILOT_DIVISIONS = ["PEM101", "PEM103", "PEM107"]
 # Short option label per disabled division. Reasons are built by disabled_division_reasons() so the
@@ -236,8 +257,7 @@ def _build_pem101_division(config: dict, inventory_source=None) -> dict:
     unit_cost_df = pd.read_csv(os.path.join(SUMMARY_DIR, "phaseE1fix_2_unit_cost.csv"))
     inv_summary = pd.read_csv(os.path.join(SUMMARY_DIR, "phaseE1fix_2_current_stock_value_inputs.csv"))
 
-    fc_all = topdown_item_forecast(scope, series, fit_end=len(next(iter(series.values()))[0]),
-                                    horizon=FORECAST_HORIZON_MONTHS)
+    fc_all, _vintage = latest_vintage_item_forecasts(FORECAST_HORIZON_MONTHS)
 
     # Task 2b Part 2 (METRICS.md Sec.23): item universe is now every PEM101 FORECAST-STATUS item
     # (144), classified stock_policy/confirmed_to_order/conflict -- superseding section 15's
@@ -262,7 +282,7 @@ def _build_pem101_division(config: dict, inventory_source=None) -> dict:
         uc_row = unit_cost_df[unit_cost_df["itemcode"] == code]
         oh_row = inv_summary[inv_summary["code"] == code]
         qty_hist = series[code][0].tolist() if code in series else []
-        forecast = fc_all.get(code, np.zeros(FORECAST_HORIZON_MONTHS)).tolist() if code in series else []
+        forecast = fc_all[code].tolist() if code in fc_all else []
         items.append({
             "code": code, "type": seg_row["type"] if pd.notna(seg_row.get("type")) else policy_by_code.get(code),
             "policy": fulfilment_class, "class_basis": seg_row["class_basis"],
@@ -327,8 +347,7 @@ def _build_pilot_division(config: dict, division: str, raw: pd.DataFrame, invent
     series_bundle = build_monthly_series(raw_div, codes)
     series = series_bundle["series"]
 
-    fc_all = topdown_item_forecast(scope, series, fit_end=len(next(iter(series.values()))[0]),
-                                    horizon=FORECAST_HORIZON_MONTHS)
+    fc_all, _vintage = latest_vintage_item_forecasts(FORECAST_HORIZON_MONTHS)
 
     policy_df = pd.read_csv(os.path.join(SUMMARY_DIR, f"phaseE2pilot_{division}_1_item_policy.csv"))
     detail_df = pd.read_csv(os.path.join(SUMMARY_DIR, f"phaseE2pilot_{division}_2_minmax_stockvalue_twogroup.csv"))
@@ -575,6 +594,7 @@ def build_data(inventory_source=None, sales_source=None, pull_labels: dict = Non
         "focus_items": ["EEE-F-FC-1040010002", "HS-F-99-02110", "HS-F-99-0213"],
         "days_per_month": 30.44,
         "forecast_horizon_months": FORECAST_HORIZON_MONTHS,
+        "forecast_vintage": latest_vintage_item_forecasts(FORECAST_HORIZON_MONTHS)[1],
         # METRICS.md Sec.26 (page_timestamps), added 2026-09-25 (task 2a, Part 2 -- ONLY these two
         # fields touched on this page this task; Min/Max logic, segmentation, PEM107 alert etc.
         # are explicitly out of scope, per task instruction, for a separate task 2b).

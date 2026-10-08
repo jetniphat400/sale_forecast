@@ -318,7 +318,7 @@ def build(root: str = PROJECT_ROOT, today: pd.Timestamp = None, op_out_dir: str 
     material_month = pd.DataFrame(rows, columns=MONTH_COLUMNS)
     summary = pd.DataFrame(summ, columns=SUMMARY_COLUMNS)
     meta = {"built_at": datetime.now().isoformat(timespec="seconds"), "today": str(today.date()), "months": months,
-            "operation_plan_today": op_meta["today"], "operation_plan_built_at": op_meta["built_at"],
+            "operation_plan_today": op_meta["today"], "operation_plan_built_at": op_meta["built_at"], "vintage_id": op_meta["vintage_id"],
             "rm_pulled_at_local": str(w3["rm_pulled_at_local"]), "rm_warehouses": [str(w).strip() for w in cfg["rm_warehouses"]],
             "divisions": list(cfg["operation_plan"]["divisions"]),
             "open_orders_used": use_open, "open_orders_lines_after_last_month": n_after,

@@ -131,7 +131,7 @@ SENSITIVE_PATTERNS = [
 
 
 STEP_ORDER = ["1_pull_data", "2_validate", "3_frozen_snapshot", "4_backtest", "5_new_forward_test_vintage",
-              "6_fill_and_score", "7_rebuild_pages", "7b_operation_plan", "7c_material_plan", "8_run_tests", "9_scan_sensitive_content",
+              "6_fill_and_score", "7_rebuild_pages", "7b_operation_plan", "7c_material_plan", "7d_vintage_gate", "8_run_tests", "9_scan_sensitive_content",
               "10_change_magnitude", "11_commit_and_push"]
 
 
@@ -1008,6 +1008,47 @@ def step7c_material_plan(dry_run: bool, staged_dir: str) -> dict:
 
 
 # ---------------------------------------------------------------------------------------------
+# Step 7d: one forecast vintage for G1, G2, G3 and the material plan (decision D2 of the user, 2026-10-08)
+# ---------------------------------------------------------------------------------------------
+
+def vintage_gate(g1: dict, g2: dict, g3: dict, material: dict) -> dict:
+    """Passes only when the four stages carry the same forecast vintage id. Each argument is {"vintage_id": ..., "source": ...} (a missing id is None and fails). Returns the
+    four values; raises MonthlyRefreshAbort naming every stage and its value otherwise, so the run stops before the tests and the commit."""
+    stages = {"G1 (latest vintage of the forward-test log)": g1, "G2 (Max-Min page data)": g2, "G3 (operation plan)": g3, "material plan": material}
+    ids = {name: s.get("vintage_id") for name, s in stages.items()}
+    if None in ids.values() or len(set(ids.values())) != 1:
+        raise MonthlyRefreshAbort("Step 7d STOPPED: the stages do not carry one forecast vintage: " + "; ".join(
+            f"{n} = {v if v is not None else 'none recorded'} ({stages[n].get('source', '?')})" for n, v in ids.items()))
+    return {"vintage_id": next(iter(ids.values())), "stages": {n: stages[n].get("source") for n in stages}}
+
+
+def step7d_vintage_gate(dry_run: bool, staged_dir: str) -> dict:
+    """Reads the vintage each stage recorded: G1 = the latest vintage of the forward-test log (where the forecast of G1, G2 and G3 comes from), G2 = `forecast_vintage` in the
+    embedded data of forecast/inventory.html, G3 = the operation plan's meta, the material plan = its meta (a plan recorded before that field existed counts through the
+    operation plan it names by build time). A dry run reads the staged copies."""
+    import material_plan
+    import operation_plan
+    import forward_test_common as ftc
+    cfg = operation_plan.load_config(PROJECT_ROOT)
+    plan_dir = os.path.join(staged_dir, "operation_plan") if dry_run else None
+    log = ftc.read_forward_test_log(operation_plan.path_of(PROJECT_ROOT, cfg["forecast_log_file"]))
+    g1 = {"vintage_id": int(log["vintage_id"].max()), "source": "forward-test log"}
+    page = os.path.join(staged_dir, "inventory.html") if dry_run else os.path.join(FORECAST_DIR, "inventory.html")
+    g2v = (operation_plan.read_page_data(page).get("forecast_vintage") or {}).get("vintage_id")
+    g2 = {"vintage_id": g2v, "source": "forecast_vintage in " + os.path.basename(page)}
+    _, _, op_meta = operation_plan.read_outputs(PROJECT_ROOT, cfg, plan_dir)
+    g3 = {"vintage_id": op_meta.get("vintage_id"), "source": "operation_plan_v1_meta.json"}
+    _, _, mat_meta = material_plan.read_outputs(PROJECT_ROOT, material_plan.load_config(PROJECT_ROOT), plan_dir)
+    mv = mat_meta.get("vintage_id")
+    if mv is None and mat_meta.get("operation_plan_built_at") == op_meta.get("built_at"):
+        mv = op_meta.get("vintage_id")
+    material = {"vintage_id": mv, "source": "material plan meta"}
+    result = vintage_gate(g1, g2, g3, material)
+    result["passed"] = True
+    return result
+
+
+# ---------------------------------------------------------------------------------------------
 # Step 8: run the full test suite
 # ---------------------------------------------------------------------------------------------
 
@@ -1202,13 +1243,15 @@ def step10_change_magnitude(config: dict, step4_result: dict, step5_result: dict
     }
 
 
-def gate_outcomes(step8: dict, step9: dict, step10: dict) -> dict:
+def gate_outcomes(step8: dict, step9: dict, step10: dict, step7d: dict = None) -> dict:
     """Every gate of the run (tests, sensitive-content scan, the three change-magnitude gates) as passed, failed or not tested, with
     the counts. A skipped test run is not tested, not passed."""
     gates = {"tests": (_gate(GATE_NOT_TESTED, step8.get("summary_line", "tests skipped")) if step8.get("skipped") else
                        _gate(GATE_PASSED if step8.get("passed") else GATE_FAILED, step8.get("summary_line", ""))),
              "sensitive_content_scan": _gate(GATE_PASSED if step9.get("passed") else GATE_FAILED,
                                              f"{len(step9.get('findings', []))} findings in {step9.get('n_changed_files_scanned', 0)} files")}
+    if step7d is not None:
+        gates["vintage_consistency"] = _gate(GATE_PASSED, f"G1, G2, G3 and the material plan all carry vintage {step7d['vintage_id']}")
     for name, g in step10.get("gates", {}).items():
         gates["step10_" + name] = g
     return {"gates": gates, "counts": count_gates(gates), "not_tested": sorted(n for n, g in gates.items() if g["status"] == GATE_NOT_TESTED)}
@@ -1412,12 +1455,13 @@ def main(dry_run: bool, force_new_vintage: bool = False, sandbox: bool = False, 
     step7 = record("7_rebuild_pages", step7_rebuild_pages, steps_dry, staged_dir, step1)
     record("7b_operation_plan", step7b_operation_plan, steps_dry, staged_dir, step7)
     record("7c_material_plan", step7c_material_plan, steps_dry, staged_dir)
+    step7d = record("7d_vintage_gate", step7d_vintage_gate, steps_dry, staged_dir)
     step8 = record("8_run_tests", step8_run_tests, skip_tests)
     step9 = record("9_scan_sensitive_content", step9_scan_sensitive_content, started_mtime if sandbox else None)
     step10 = record("10_change_magnitude", step10_change_magnitude, config, step4, step5)
     step11 = record("11_commit_and_push", step11_commit_and_push, dry_run, step8, step9, step10)
 
-    run_log["gate_outcomes"] = gate_outcomes(step8, step9, step10)
+    run_log["gate_outcomes"] = gate_outcomes(step8, step9, step10, step7d)
     run_log["finished_at"] = datetime.now().isoformat(timespec="seconds")
     _write_run_log(run_log, run_id, run_log_dir)
     return run_log
