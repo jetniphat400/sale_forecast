@@ -107,14 +107,12 @@ def test_an_override_for_an_item_that_is_not_in_the_conflict_class_is_refused(ra
         bd.apply_class_decisions(raw_items, {"class_overrides": {"PEM101": {"stock_policy": ["NO-SUCH-CODE"]}}})
 
 
-def test_the_calibrated_target_note_states_the_fitted_count_from_the_ensemble_output(monkeypatch):
+def test_the_calibrated_target_note_states_the_fitted_count_from_the_ensemble_output():
     """Week 1: the section is fitted on the 92 stock_policy items (the Max-Min v1 ensemble), so the note states that count, from the
-    ensemble output, and no longer says it was not refitted; it would say so again if the stock_policy set grew past the fitted set."""
-    from page_helpers import fresh_inventory_data
-    tracked = os.path.join(PROJECT_ROOT, "docs", "reports", "summary")            # the tracked copies of the two files the reader-text step reads from output/summary
-    monkeypatch.setattr(bd, "SUMMARY_DIR", tracked)
-    monkeypatch.setattr(bd, "STOCK_COVERAGE_PATH", os.path.join(tracked, "phaseE2_1_item_to_warehouse_reverse.csv"))
-    pem101 = fresh_inventory_data()["divisions"]["PEM101"]
+    ensemble output, and no longer says it was not refitted; it would say so again if the stock_policy set grew past the fitted set.
+    Read from the tracked page's embedded data (prompt 5, decision D1 of 2026-10-08: tests read tracked files only)."""
+    import operation_plan as op
+    pem101 = op.read_page_data(os.path.join(PROJECT_ROOT, "forecast", "inventory.html"))["divisions"]["PEM101"]
     n_stock = sum(1 for i in pem101["items"] if i["policy"] == "stock_policy")
     ct = pem101["curve_target"]
     assert ct["n_items_calibrated"] == 92 == n_stock
