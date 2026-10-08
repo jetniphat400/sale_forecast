@@ -184,7 +184,7 @@ def render(values: dict) -> str:
     """The page as one HTML string. Reader-facing text is the approved text; comments hold what must stay off screen."""
     T, v = TEXT, values
     heading = T["heading"].format(n_months=v["n_months"])
-    parts = [f'<div class="notice" id="verification-notice">{_e(T["notice"])}</div>', f'<a class="back-link" href="../index.html">{_e(T["back_link"])}</a>', rv.nav_bar_html("material"),
+    parts = [f'<div class="notice" id="verification-notice">{_e(T["notice"])}</div>', f'<a class="back-link" href="../index.html">{_e(T["back_link"])}</a>',
              f'<h1 id="page-title">{_e(heading)}</h1>',
              f'<p class="scope-note" id="data-line">{_e(T["data_line"].format(plan_month=v["plan_month"], pull_time=v["pull_time"]))}</p>',
              f'<p class="scope-note" id="divisions-covered">{_e(T["divisions_label"])} {_e(v["divisions"])}</p>',

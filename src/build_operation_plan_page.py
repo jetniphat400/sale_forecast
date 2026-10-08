@@ -57,7 +57,9 @@ TEXT = {
     "stock_note": "stock ตอนนี้ แสดงเฉพาะสินค้าเก็บ stock",
     "flag_inconsistent": "ข้อมูลไม่สอดคล้อง",
     "flag_inconsistent_tip": "ประเภทที่บันทึกในระบบขัดกับวิธีส่งจริง ใช้วิธีส่งจริงตัดสิน",
-    "no_production_note": "แถวที่ขึ้นว่า ไม่พบการผลิตในระบบ ตัวเลขรายเดือนคือความต้องการ ไม่ได้รวมในยอดผลิตของฝ่าย",
+    "material_link": "แผนวัตถุดิบ",
+    "no_production_note": "แถวที่ขึ้นว่า ไม่พบการผลิตในระบบ ไม่ได้รวมในยอดผลิตของฝ่าย",
+    "line_made_to_order": "{division} ผลิตตามสั่งทั้งหมด จึงไม่ได้ทายยอดขาย",
     "back_link": "← กลับไปหน้าหลัก (Dashboard)",       # wording of the same link on the Min-Max page
 }
 
@@ -117,7 +119,7 @@ def top_backlog_items(excess: pd.Series) -> list:
     return picked
 
 
-def compute_values(item_month: pd.DataFrame, division_month: pd.DataFrame, meta: dict, names: dict, forecast_run_date: str, divisions: list) -> dict:
+def compute_values(item_month: pd.DataFrame, division_month: pd.DataFrame, meta: dict, names: dict, forecast_run_date: str, divisions: list, exclusion_reasons: dict = None) -> dict:
     """Every value the page shows. `item_month`, `division_month`, `meta` are the recorded plan (read back), `names` maps item code to product name,
     `forecast_run_date` is the forecast vintage's run date, `divisions` the divisions in the order shown. The summary total must equal the recorded
     division-month total (checked); rows of items the plan does not count are in the item table but in no total."""
@@ -165,11 +167,14 @@ def compute_values(item_month: pd.DataFrame, division_month: pd.DataFrame, meta:
     nf = im[im["status_category"] != "forecast"]
     with_orders = nf.groupby(["division", "item"])["backlog_due"].sum().gt(0)
     no_forecast_with_orders = {d: int(with_orders.loc[d].sum()) if d in with_orders.index.get_level_values(0) else 0 for d in divisions}
+    forecast_items = im[im["status_category"] == "forecast"].groupby("division")["item"].nunique().to_dict()       # items with a forecast, per division
     division_lines = {}
     for d in divisions:
         lines = []
         if counts["stock_items_by_division"][d] == 0:
-            lines.append(TEXT["line_no_stock"].format(division=d))
+            # a division with no forecast item whose recorded reason is made to order says so; any other division with no stock item keeps the general line
+            made_to_order = forecast_items.get(d, 0) == 0 and (exclusion_reasons or {}).get(d) == "made_to_order"
+            lines.append(TEXT["line_made_to_order" if made_to_order else "line_no_stock"].format(division=d))
         if counts["no_forecast_items_by_division"][d] > 0:
             k = no_forecast_with_orders[d]
             lines.append((TEXT["line_no_forecast"] if k > 0 else TEXT["line_no_forecast_no_orders"]).format(n=counts["no_forecast_items_by_division"][d], k=k))
@@ -220,7 +225,7 @@ CSS = """
   .filters { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; margin: 14px 0 6px; }
   .filters select { font-size: 14px; padding: 5px 8px; border-radius: 6px; border: 1px solid var(--border); }
   @media (max-width: 899px) { .wrap { padding: 12px 12px 60px; } }
-""" + rv.NAV_CSS
+"""
 
 JS = """
 function applyFilters() {
@@ -245,10 +250,10 @@ def render(values: dict) -> str:
     divisions = v["divisions"]
     parts = []
     parts.append(f'<a class="back-link" href="../index.html">{_e(T["back_link"])}</a>')
-    parts.append(rv.nav_bar_html("operation"))
     heading = T["heading"].format(n_months=v["n_months"])
     parts.append(f'<h1 id="page-title">{_e(heading)}</h1>')
     parts.append(f'<p class="scope-note" id="data-line">{_e(T["data_line"].format(pull_time=v["pull_time"], forecast_run_month=v["forecast_run_month"]))}</p>')
+    parts.append(f'<div class="links"><a class="page-link" id="material-plan-link" href="{MATERIAL_PAGE_RELATIVE}">{_e(T["material_link"])}</a></div>')
     for d in divisions:
         parts.append(f'<h2>{d}</h2>')
         head = "".join(f"<th>{_e(T[k])}</th>" for k in ("col_month", "col_demand", "col_refill", "col_mto", "col_total", "col_capacity"))
@@ -320,7 +325,7 @@ def product_names(root: str) -> dict:
 def build_values(root: str = PROJECT_ROOT, out_dir: str = None) -> dict:
     cfg = op.load_config(root)
     im, dm, meta = op.read_outputs(root, cfg, out_dir)
-    return compute_values(im, dm, meta, product_names(root), forecast_run_date(root, cfg, meta["vintage_id"]), list(cfg["divisions"]))
+    return compute_values(im, dm, meta, product_names(root), forecast_run_date(root, cfg, meta["vintage_id"]), list(cfg["divisions"]), cfg.get("exclusion_reasons", {}))
 
 
 def build_page(root: str = PROJECT_ROOT, out_dir: str = None, out_path: str = None) -> str:

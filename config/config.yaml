@@ -1588,6 +1588,23 @@ maxmin_v1:
     assumed: "ค่าประมาณ"
   # The assumptions in use (week 1, approved text of 2026-10-05, used verbatim). Braces name values the builder (src/maxmin_v1.py) computes from
   # recorded outputs and config; value_source says where each comes from (never shown on a page).
+  # The table "เกณฑ์ที่รอกำหนด" of the assumptions tab (data/assumptions.json, key pending_criteria): criteria nobody has set yet, with the draft the project shows.
+  # DRAFT values, pending the user (decision of 2026-10-08); nothing passes or fails against them yet. Sources:
+  #   mase_pass 1 and mase_good 0.7: Morlidge's naive-ratio evidence (Gilliland / SAS, "The avoidability of forecast error, Part 4"): a forecast no better than
+  #   the naive one (ratio 1) adds nothing; MASE for intermittent demand: Hyndman (2006).
+  #   tracking_signal_limit 4: the common tracking-signal control limit (APICS / CPIM practice).
+  #   decision_date: the criteria are decided after the 2026-12-05 run (the run after the first forward results).
+  pending_criteria_values: {mase_pass: 1, mase_good: 0.7, tracking_signal_limit: 4, decision_date: "2026-12-05"}
+  # Approved text of 2026-10-08 (verbatim); {braces} are filled from pending_criteria_values (the date with the shared Thai date formatter).
+  pending_criteria_rows:
+    - {topic: "ยอดทายดีกว่าวิธีง่ายไหม", to_decide: "MASE ต่ำแค่ไหนถึงผ่าน", now_used: "ร่าง: ต่ำกว่า {mase_pass} ผ่าน, ต่ำกว่า {mase_good} ดี", who: "ผู้บริหาร", when: "หลังรอบ {decision_date}"}
+    - {topic: "ยอดทายเอียงต่อเนื่อง", to_decide: "tracking signal เกินเท่าไหร่ถึงเตือน", now_used: "ร่าง: ±{tracking_signal_limit}", who: "ผู้บริหาร", when: "ทุกเดือน"}
+    - {topic: "ฝ่ายที่ยอดทายไม่ชนะวิธีง่าย", to_decide: "ใช้วิธีง่ายแทนไหม", now_used: "ยังใช้วิธีเดิม และแสดงผลเทียบ", who: "ผู้บริหาร", when: "หลังรอบ {decision_date}"}
+    - {topic: "เป้าการส่งไม่สาย", to_decide: "บริษัทต้องการกี่ %", now_used: "ให้เลือกเองบนหน้าแผนสต็อก", who: "ผู้บริหาร", when: "ยังไม่กำหนด"}
+    - {topic: "Min/Max ที่จำลอง", to_decide: "การส่งไม่สายจำลองห่างจากผลจริงได้แค่ไหน", now_used: "ยังไม่กำหนด", who: "ฝ่ายวางแผน", when: "หลังรอบ {decision_date}"}
+    - {topic: "แผนวัตถุดิบ", to_decide: "ตรงกับใบสั่งซื้อจริงแค่ไหนถึงใช้สั่งของได้", now_used: "ยังไม่กำหนด หน้าขึ้นว่ายังอยู่ระหว่างตรวจสอบ", who: "ฝ่ายจัดซื้อ", when: "ยังไม่กำหนด"}
+    - {topic: "เป้ารายได้", to_decide: "นับจากวันออก invoice หรือวันส่งของ", now_used: "ใช้วันส่งของไปก่อน", who: "เจ้าของเป้า", when: "ยังไม่กำหนด"}
+    - {topic: "จับคู่ประเภทสินค้ากับเป้า", to_decide: "ยืนยันการจับคู่ที่จับจากชื่อ เช่น MV/HV Surge Arrester", now_used: "แสดงพร้อมป้ายยังไม่ยืนยัน", who: "ฝ่ายขาย", when: "ยังไม่กำหนด"}
   assumptions:
     - id: minmax_lead_time
       topic: "lead time ที่ใช้คำนวณ Min/Max"
@@ -1656,6 +1673,11 @@ maxmin_v1:
 operation_plan:
   # Week 3 (2026-10-06): all six divisions, in the order the pages show them.
   divisions: [PEM101, PEM103, PEM107, PEM102, PEM104, CI101]
+  # The recorded reason a division has no forecast item (the page says it in its own words): made_to_order = the division is made to order by business model, so no
+  # stock policy applies and no sales forecast is made (business-confirmed 2026-09-23; DATA_MAP.md, Locked Decisions "Exclusion -- PEM104"; this supersedes the older
+  # "insufficient data" reason, which was a symptom). A division with no forecast item and no entry here keeps the line that says it has no stock item.
+  exclusion_reasons:
+    PEM104: made_to_order
   # Only these divisions have a Min and Max (read from the inventory page); every other item's load equals its demand.
   divisions_min_max_from_page: [PEM101, PEM107]
   # The Sec.23 item-level file: class, display label and flags per item of the six divisions (output/summary, untracked).

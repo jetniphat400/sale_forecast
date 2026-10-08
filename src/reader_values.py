@@ -183,6 +183,12 @@ def thai_datetime_short(s) -> str:
     return f"{t.day} {THAI_MONTH_ABBR[t.month]} {str(t.year + 543)[-2:]} {t.strftime('%H:%M')}"
 
 
+def thai_date_short(iso_date) -> str:
+    """'2026-12-05' -> '5 ธ.ค. 69' (d MMM yy, Buddhist year as two digits)."""
+    t = pd.Timestamp(str(iso_date)[:10])
+    return f"{t.day} {THAI_MONTH_ABBR[t.month]} {str(t.year + 543)[-2:]}"
+
+
 def vintage_facts(root: str = PROJECT_ROOT) -> dict:
     """What a page states about the latest forecast vintage it uses, read from the forward-test log and its metadata after the same hash check the plan
     uses (operation_plan.latest_vintage_forecast): vintage id, run date, the fit window (first and last month of the series the vintage was fitted on) and
@@ -204,45 +210,3 @@ def vintage_facts(root: str = PROJECT_ROOT) -> dict:
     item_rows = log[(log["vintage_id"] == vid) & (log["level"] == cfg["forecast_level"])][["itemcode", "division", "type", "target_month", "forecast_qty"]]
     return {"vintage_id": int(vid), "run_date": str(dates[0]), "fit_first": str(entry["fit_first_month"]), "fit_last": str(entry["fit_last_month"]),
             "forecast_months": [str(m) for m in months], "forecast": wide, "item_rows": item_rows}
-
-
-# The bar of tabs on index.html and the four working pages, in task order (decision of the prompt of 2026-10-08): sales history, forecast, stock
-# policy, stock today, production, materials; the reference tabs sit apart after a separator. `key` names the page; `fragment` is the index.html tab
-# a label opens; a working page's key has a `page` file inside forecast/.
-NAV_TABS = [
-    {"key": "trend", "label": "ยอดขายย้อนหลัง", "fragment": "trend"},
-    {"key": "sales", "label": "พยากรณ์ยอดขาย ↗", "page": "sales_report.html"},
-    {"key": "inventory", "label": "แผนสต็อก ↗", "page": "inventory.html"},
-    {"key": "stock", "label": "สต็อกวันนี้", "fragment": "stock"},
-    {"key": "operation", "label": "แผนการผลิต ↗", "page": "operation_plan.html"},
-    {"key": "material", "label": "แผนวัตถุดิบ ↗", "page": "material_plan.html"},
-    {"key": "|"},
-    {"key": "assumptions", "label": "สมมติฐานที่ใช้อยู่", "fragment": "assumptions"},
-    {"key": "manual", "label": "คู่มือการใช้งาน", "fragment": "manual"},
-    {"key": "sop", "label": "S&OP Plan (เดิม)", "fragment": "sop"},
-]
-NAV_CSS = """
-  .page-nav { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; margin: 6px 0 12px; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
-  .page-nav a { color: var(--series-1); text-decoration: none; }
-  .page-nav a:hover { text-decoration: underline; }
-  .page-nav b { color: var(--text-primary); }
-  .page-nav .nav-sep { color: var(--muted); font-weight: 700; }
-"""
-
-
-def nav_bar_html(current: str) -> str:
-    """The tab bar for a working page (a file in forecast/): the current page's label is bold and not a link, the other pages link to their files, the
-    index.html tabs to index.html#<fragment>."""
-    import html as _html
-    parts = []
-    for t in NAV_TABS:
-        if t["key"] == "|":
-            parts.append('<span class="nav-sep" aria-hidden="true">‖</span>')
-            continue
-        label = _html.escape(t["label"])
-        if t["key"] == current:
-            parts.append(f'<b data-nav="{t["key"]}">{label}</b>')
-        else:
-            href = t["page"] if "page" in t else f'../index.html#{t["fragment"]}'
-            parts.append(f'<a data-nav="{t["key"]}" href="{href}">{label}</a>')
-    return f'<nav class="page-nav" id="page-nav">{"".join(parts)}</nav>'

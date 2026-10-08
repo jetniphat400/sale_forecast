@@ -295,7 +295,7 @@ def test_the_filter_row_the_stock_note_and_the_material_plan_link_are_the_approv
     opts = re.findall(r'<option value="(\w+)">(.*?)</option>', page.split('id="filter-class"')[1].split("</select>")[0])
     assert [k for k, _ in opts if k != "all"] == bp.CLASS_ORDER and dict(opts)["mixed"] == "ผสม (เก็บ stock บางส่วน)"
     assert '<p class="table-note" id="stock-note">stock ตอนนี้ แสดงเฉพาะสินค้าเก็บ stock</p>' in page
-    assert 'id="material-plan-link"' not in page and '<a data-nav="material" href="material_plan.html">แผนวัตถุดิบ ↗</a>' in page      # the link is a label of the bar
+    assert '<a class="page-link" id="material-plan-link" href="material_plan.html">แผนวัตถุดิบ</a>' in page
 
 
 def test_stock_now_min_and_max_show_only_for_stock_items_and_the_uncounted_item_is_listed_but_in_no_total():
@@ -540,8 +540,8 @@ def test_the_two_min_max_texts_the_link_and_the_heading_suffix_show(edge, site):
     assert edge.ev("getComputedStyle(document.getElementById('item-table-note')).display") != "none"
     # the note sits directly under the main item table
     assert edge.ev("document.getElementById('item-table').parentElement.nextElementSibling.id") == "item-table-note"
-    link = edge.ev("(function(){const a=document.querySelector('#page-nav a[data-nav=operation]'); return [a.innerText.trim(), a.getAttribute('href')]})()")
-    assert link == ["แผนการผลิต ↗", "operation_plan.html"]
+    link = edge.ev("(function(){const a=document.getElementById('plan-link'); return [a.innerText.trim(), a.getAttribute('href')]})()")
+    assert link == ["แผนการผลิต", "operation_plan.html"]
     edge.ev("document.getElementById('division-select').value='PEM107'; onDivisionChange(); 1")
     edge.pump(0.4)
     assert edge.ev("getComputedStyle(document.getElementById('item-table-note')).display") == "none"
@@ -551,11 +551,13 @@ def test_the_two_min_max_texts_the_link_and_the_heading_suffix_show(edge, site):
 def test_the_index_has_the_link_and_the_assumptions_tab_shows_ten_rows(edge, site):
     edge.open(site + "/index.html")
     time.sleep(1.5)
-    link = edge.ev("(function(){const a=document.getElementById('tbOp'); return [a.innerText.trim(), a.getAttribute('href')]})()")
-    assert link == ["แผนการผลิต ↗", "forecast/operation_plan.html"]
+    link = edge.ev("(function(){const a=document.querySelector('#tabBar a'); return [a.innerText.trim(), a.getAttribute('href')]})()")
+    assert link == ["แผนการผลิต", "forecast/operation_plan.html"]
+    link = edge.ev("(function(){const a=document.getElementById('tbMat'); return [a.innerText.trim(), a.getAttribute('href'), getComputedStyle(a).backgroundColor === getComputedStyle(document.getElementById('tbPlan')).backgroundColor]})()")
+    assert link == ["แผนวัตถุดิบ", "forecast/material_plan.html", True]
     edge.ev("omniShowTab(4); 1")
-    assert _wait(edge, "document.querySelectorAll('#assumptionsTab tbody tr').length > 0")
-    rows = edge.ev("[...document.querySelectorAll('#assumptionsTab tbody tr')].map(r=>[...r.children].map(c=>c.innerText.trim()))")
+    assert _wait(edge, "document.querySelectorAll('#assumptionsTable tbody tr').length > 0")
+    rows = edge.ev("[...document.querySelectorAll('#assumptionsTable tbody tr')].map(r=>[...r.children].map(c=>c.innerText.trim()))")
     assert len(rows) == 10
     window = mm.thai_window(mm.load_config()["calibration_window"]["start"], mm.load_config()["calibration_window"]["end"])
     texts = {r[0]: r for r in rows}
@@ -588,8 +590,8 @@ def test_the_six_divisions_the_lines_the_labels_the_flag_and_the_filter_row_show
     flags = edge.ev("[...document.querySelectorAll('#item-table-body .flag')].map(f=>[f.innerText.trim(), f.title])")
     assert len(flags) == sum(1 for i in v["items"] if i["inconsistent"])
     assert all(f == ["ข้อมูลไม่สอดคล้อง", "ประเภทที่บันทึกในระบบขัดกับวิธีส่งจริง ใช้วิธีส่งจริงตัดสิน"] for f in flags)
-    link = edge.ev("(function(){const a=document.querySelector('#page-nav a[data-nav=material]'); return [a.innerText.trim(), a.getAttribute('href'), a.href]})()")
-    assert link[0] == "แผนวัตถุดิบ ↗" and link[1] == "material_plan.html" and link[2].endswith("/forecast/material_plan.html")
+    link = edge.ev("(function(){const a=document.getElementById('material-plan-link'); return [a.innerText.trim(), a.getAttribute('href'), a.href]})()")
+    assert link[0] == "แผนวัตถุดิบ" and link[1] == "material_plan.html" and link[2].endswith("/forecast/material_plan.html")
     assert not [e for e in edge.errors if e.startswith("exception")], edge.errors
 
 
@@ -704,7 +706,7 @@ def test_the_count_of_received_orders_k_follows_the_plan_input_and_the_zero_word
 
 def test_the_note_under_the_item_table_is_the_approved_text_and_the_rows_it_describes_are_in_no_division_total():
     page = bp.render(_six())
-    note = '<p class="table-note" id="no-production-note">แถวที่ขึ้นว่า ไม่พบการผลิตในระบบ ตัวเลขรายเดือนคือความต้องการ ไม่ได้รวมในยอดผลิตของฝ่าย</p>'
+    note = '<p class="table-note" id="no-production-note">แถวที่ขึ้นว่า ไม่พบการผลิตในระบบ ไม่ได้รวมในยอดผลิตของฝ่าย</p>'
     assert note in page and page.index('id="item-table"') < page.index('id="stock-note"') < page.index('id="no-production-note"')
     # the exclusion the note states: a row marked no_production_in_system is a row the plan does not count (counted False), and the division totals the page
     # shows (checked against the recorded totals when the values are computed) are the sums over the counted rows only
@@ -733,10 +735,33 @@ def test_the_recorded_plan_excludes_every_row_without_production_from_its_divisi
         assert all(abs(shown[m] - recorded[m]) < 1e-3 for m in recorded.index), d
 
 
-def test_a_division_with_no_stock_item_keeps_its_approved_line_and_the_page_has_no_stand_alone_material_link():
-    """PEM104's line stays as it was: the reason proposed for replacing it (too little sales history) is not the reason on record (made to order by business model,
-    DATA_MAP.md, the "insufficient data" reason being superseded), so the text that depends on it is not used."""
-    page = bp.render(_six())
-    assert "PEM104 ไม่มีสินค้าที่เข้าเกณฑ์เก็บ stock แผนจึงเป็นการผลิตตามความต้องการทั้งหมด" in page
-    assert "ยังไม่มียอดทาย เพราะประวัติขายไม่พอ" not in page
-    assert 'id="material-plan-link"' not in page and "class=\"links\"" not in page
+def test_a_made_to_order_division_with_no_forecast_item_says_so_and_every_other_division_keeps_its_line():
+    """The recorded exclusion reason (config operation_plan.exclusion_reasons: made_to_order, business-confirmed 2026-09-23) decides: a division with no forecast item
+    and that reason says it is made to order; the line that follows (the count of items without a forecast) stays; a division with no reason, or with forecast items,
+    keeps the general line."""
+    im, dm, meta = _plan_all()
+    vals = bp.compute_values(im, dm, meta, {}, "2026-10-02", SIX, {"PEM104": "made_to_order"})
+    page = bp.render(vals)
+    lines = {d: [l.strip() for l in re.findall(r'<p class="note-line division-line" data-division="%s">(.*?)</p>' % d, page)] for d in SIX}
+    assert lines["PEM104"] == ["PEM104 ผลิตตามสั่งทั้งหมด จึงไม่ได้ทายยอดขาย", "1 รหัสยังไม่มียอดทาย แผนนับเฉพาะออเดอร์ที่รับแล้ว ตอนนี้มีออเดอร์ค้าง 1 รหัส"]
+    assert "PEM104 ไม่มีสินค้าที่เข้าเกณฑ์เก็บ stock" not in page
+    for d in ("PEM102", "CI101", "PEM103"):                                     # the general line stays where the reason does not apply
+        assert f"{d} ไม่มีสินค้าที่เข้าเกณฑ์เก็บ stock แผนจึงเป็นการผลิตตามความต้องการทั้งหมด" in page
+    # the reason on a division that has forecast items (PEM103) does not change its line; nor does an unknown reason on PEM104
+    other = bp.render(bp.compute_values(im, dm, meta, {}, "2026-10-02", SIX, {"PEM103": "made_to_order", "PEM104": "too_little_history"}))
+    assert "ผลิตตามสั่งทั้งหมด จึงไม่ได้ทายยอดขาย" not in other and "PEM104 ไม่มีสินค้าที่เข้าเกณฑ์เก็บ stock" in other
+    none = bp.render(bp.compute_values(im, dm, meta, {}, "2026-10-02", SIX))
+    assert "ผลิตตามสั่งทั้งหมด จึงไม่ได้ทายยอดขาย" not in none
+    assert 'id="material-plan-link"' in page and 'class="links"' in page
+
+
+def test_the_recorded_plan_page_reads_the_reason_from_config_not_from_a_typed_division():
+    cfg = op.load_config()
+    for k in ("output_item_month_file", "output_division_month_file", "output_meta_file", "output_integrity_file"):
+        if not os.path.exists(op.path_of(PROJECT_ROOT, cfg[k])):
+            pytest.skip("SKIPPED, not passed: the recorded operation plan is not on this machine")
+    assert cfg["exclusion_reasons"] == {"PEM104": "made_to_order"}
+    page = bp.render(bp.build_values())
+    assert re.findall(r'<p class="note-line division-line" data-division="PEM104">(.*?)</p>', page)[0] == "PEM104 ผลิตตามสั่งทั้งหมด จึงไม่ได้ทายยอดขาย"
+    src = open(os.path.join(PROJECT_ROOT, "src", "build_operation_plan_page.py"), encoding="utf-8").read()
+    assert "PEM104" not in src, "the builder names a division in code: the reason must come from config"

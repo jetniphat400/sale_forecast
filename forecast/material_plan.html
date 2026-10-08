@@ -30,12 +30,6 @@
   .filters select { font-size: 14px; padding: 5px 8px; border-radius: 6px; border: 1px solid var(--border); }
   @media (max-width: 899px) { .wrap { padding: 12px 12px 60px; } }
 
-  .page-nav { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; margin: 6px 0 12px; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
-  .page-nav a { color: var(--series-1); text-decoration: none; }
-  .page-nav a:hover { text-decoration: underline; }
-  .page-nav b { color: var(--text-primary); }
-  .page-nav .nav-sep { color: var(--muted); font-weight: 700; }
-
   #coverage-details { margin: 6px 0 12px; }
   #coverage-details summary { cursor: pointer; }
   .notice { background: #fdecea; border: 2px solid #8f2b2b; color: #5b1414; font-weight: 700; font-size: 15px; border-radius: 6px; padding: 12px 16px; margin: 0 0 14px; }
@@ -49,7 +43,6 @@
 <div class="wrap">
 <div class="notice" id="verification-notice">แผนนี้ยังอยู่ระหว่างตรวจสอบ ตัวเลขต้องสั่งยังใช้สั่งซื้อจริงไม่ได้</div>
 <a class="back-link" href="../index.html">← กลับไปหน้าหลัก (Dashboard)</a>
-<nav class="page-nav" id="page-nav"><a data-nav="trend" href="../index.html#trend">ยอดขายย้อนหลัง</a><a data-nav="sales" href="sales_report.html">พยากรณ์ยอดขาย ↗</a><a data-nav="inventory" href="inventory.html">แผนสต็อก ↗</a><a data-nav="stock" href="../index.html#stock">สต็อกวันนี้</a><a data-nav="operation" href="operation_plan.html">แผนการผลิต ↗</a><b data-nav="material">แผนวัตถุดิบ ↗</b><span class="nav-sep" aria-hidden="true">‖</span><a data-nav="assumptions" href="../index.html#assumptions">สมมติฐานที่ใช้อยู่</a><a data-nav="manual" href="../index.html#manual">คู่มือการใช้งาน</a><a data-nav="sop" href="../index.html#sop">S&amp;OP Plan (เดิม)</a></nav>
 <h1 id="page-title">แผนวัตถุดิบ 5 เดือน</h1>
 <p class="scope-note" id="data-line">จากแผนการผลิตรอบ ต.ค. 69 · stock วัตถุดิบดึงเมื่อ 6 ต.ค. 69 14:49</p>
 <p class="scope-note" id="divisions-covered">ฝ่ายที่รวมในแผนนี้: PEM101, PEM103, PEM107, PEM102, CI101</p>

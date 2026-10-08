@@ -97,9 +97,8 @@ def page(edge, tmp_path_factory):
         edge.open(url)
         time.sleep(1.5)
         out["default_tab"] = edge.ev("[...document.querySelectorAll('#tabBar .actv')].map(b => b.textContent.trim())")
+        out["default_visible"] = edge.ev("['origTab','omniTab','manualTab','assumptionsTab','invPanel'].filter(i => getComputedStyle(document.getElementById(i)).display !== 'none')")
         out["bar"] = edge.ev("[...document.querySelectorAll('#tabBar > *')].map(e => e.textContent.trim())")
-        out["sep_visible"] = edge.ev("(function(){var r=document.querySelector('#tabBar .navsep').getBoundingClientRect(); return r.width > 0 && r.height > 0})()")
-        edge.ev("omniShowTab(1); 1")                 # the S&OP tab is no longer the one that opens by default
         out["sop"] = edge.ev("document.getElementById('origTab').innerText")
         out["sop_badges"] = edge.ev("(function(){var r={};document.querySelectorAll('#itemTable .badge').forEach(function(b){r[b.textContent]=(r[b.textContent]||0)+1});return r})()")
         out["sop_labels"] = edge.ev("[...document.querySelectorAll('#origTab td.rowlabel')].map(c=>c.textContent.trim())")
@@ -285,112 +284,88 @@ def test_limitations_hold_no_significance_claim_the_block_replaced():
     assert "นัยสำคัญ" not in limitations and "Naive" not in limitations
 
 
-# ====================================================================================================== 2026-10-08: one bar in task order, the stock panel as a tab, the URL fragment
-LABELS = ["ยอดขายย้อนหลัง", "พยากรณ์ยอดขาย ↗", "แผนสต็อก ↗", "สต็อกวันนี้", "แผนการผลิต ↗", "แผนวัตถุดิบ ↗", "‖", "สมมติฐานที่ใช้อยู่", "คู่มือการใช้งาน", "S&OP Plan (เดิม)"]
+# ====================================================================================================== 2026-10-09: the original tabs and links restored, only แผนวัตถุดิบ added
+LABELS = ["S&OP Plan (เดิม)", "Trend Pricelist Omni 2024–2026", "แผนการผลิต", "แผนวัตถุดิบ", "สมมติฐานที่ใช้อยู่", "คู่มือการใช้งาน"]
 PAGE_FILES = {"sales": "sales_report.html", "inventory": "inventory.html", "operation": "operation_plan.html", "material": "material_plan.html"}
 
 
-def test_the_bar_labels_and_their_order_are_the_approved_ones_in_the_source_of_the_bar():
-    import reader_values as rv
-    assert [t["label"] if t["key"] != "|" else "‖" for t in rv.NAV_TABS] == LABELS
-
-
-def test_index_html_has_the_bar_in_task_order_with_the_reference_group_after_a_separator():
+def test_the_bar_has_exactly_the_six_labels_in_order_with_the_two_page_links():
     import html as _html
     text = open(INDEX, encoding="utf-8").read()
     bar = re.search(r'<div id="tabBar">(.*?)</div>', text, re.S).group(1)
-    items = re.findall(r'<(?:button|a|span)\b[^>]*>(.*?)</(?:button|a|span)>', bar, re.S)
+    items = re.findall(r'<(?:button|a)\b[^>]*>(.*?)</(?:button|a)>', bar, re.S)
     assert [_html.unescape(x).strip() for x in items] == LABELS
-    assert re.findall(r'<a id="(\w+)" href="([^"]+)"', bar) == [("tbSales", "forecast/sales_report.html"), ("tbInv", "forecast/inventory.html"),
-                                                                ("tbOp", "forecast/operation_plan.html"), ("tbMat", "forecast/material_plan.html")]
-    assert 'class="navsep"' in bar and bar.index('class="navsep"') > bar.index("แผนวัตถุดิบ ↗") and 'id="tb2" class="actv"' in bar
-    # the links that repeated the bar inside the S&OP tab are gone; the row titles stay, and so does the link to the manufacturing dashboard (another address)
-    assert 'href="forecast/sales_report.html"' not in text.split('<div id="origTab"')[1] and 'href="forecast/inventory.html"' not in text.split('<div id="origTab"')[1]
-    assert "Sales — ยอดขาย</td>" in text and "Inventory — แผนสต็อค</span>" in text
-    assert "manufacturing-management-dashboard" in text
+    assert re.findall(r'<(button|a) id="(\w+)"', bar) == [("button", "tb1"), ("button", "tb2"), ("a", "tbPlan"), ("a", "tbMat"), ("button", "tb4"), ("button", "tb3")]
+    assert re.findall(r'<a id="(\w+)" href="([^"]+)"', bar) == [("tbPlan", "forecast/operation_plan.html"), ("tbMat", "forecast/material_plan.html")]
+    assert 'id="tb1" class="actv"' in bar and "สต็อกวันนี้" not in text.split('<div id="origTab"')[0]
+    for removed in ("tbStock", "tbSales", "tbInv", "OMNI_TAB_FRAGMENTS", "hashchange", "navsep"):
+        assert removed not in text, removed
+    # the two page links are styled alike (the same rule covers every link of the bar)
+    assert "#tabBar a{" in text and "#tabBar a:hover" in text
 
 
-def test_the_four_working_pages_carry_the_same_bar_with_their_own_label_bold_and_not_a_link():
-    import html as _html
-    for key, name in PAGE_FILES.items():
-        text = open(os.path.join(PROJECT_ROOT, "forecast", name), encoding="utf-8").read()
-        nav = re.search(r'<nav class="page-nav" id="page-nav">(.*?)</nav>', text, re.S).group(1)
-        items = re.findall(r'<(?:a|b|span)\b[^>]*>(.*?)</(?:a|b|span)>', nav, re.S)
-        assert [_html.unescape(x) for x in items] == LABELS, name
-        assert re.findall(r'<b data-nav="(\w+)">', nav) == [key], name                                    # the current label is bold ...
-        assert f'data-nav="{key}" href' not in nav, name                                                  # ... and is not a link
-        hrefs = dict(re.findall(r'<a data-nav="(\w+)" href="([^"]+)"', nav))
-        expected = {"trend": "../index.html#trend", "stock": "../index.html#stock", "assumptions": "../index.html#assumptions", "manual": "../index.html#manual",
-                    "sop": "../index.html#sop", **{k: f for k, f in PAGE_FILES.items()}}
-        assert hrefs == {k: v for k, v in expected.items() if k != key}, name
-        assert text.index('class="back-link"') < text.index('id="page-nav"') < text.index('id="page-title"') if 'id="page-title"' in text else True
-
-
-def test_the_default_tab_is_sales_history_and_the_s_and_op_tab_no_longer_opens_first(page):
-    assert page["default_tab"] == ["ยอดขายย้อนหลัง"]
+def test_the_s_and_op_tab_opens_by_default(page):
+    assert page["default_tab"] == ["S&OP Plan (เดิม)"]
+    assert page["default_visible"] == ["origTab"]
     assert page["bar"] == LABELS
-    assert page["sep_visible"] is True
 
 
-def _tab_state(edge, url):
-    edge.open(url)
-    time.sleep(1.5)
-    return edge.ev("""(function(){
-      var shown = ['origTab','omniTab','manualTab','assumptionsTab','invPanel'].filter(function(i){return getComputedStyle(document.getElementById(i)).display !== 'none'});
-      return {shown: shown, active: [...document.querySelectorAll('#tabBar .actv')].map(b => b.textContent.trim())}})()""")
+def test_the_s_and_op_in_tab_links_are_back_and_the_stock_panel_has_its_back_control():
+    text = open(INDEX, encoding="utf-8").read()
+    sop = text.split('<div id="origTab"')[1].split("<!--/origTab-->")[0]
+    assert '<a class="oplink" href="forecast/sales_report.html">Sales — ยอดขาย</a>' in sop
+    assert '<a class="oplink" href="forecast/inventory.html" onclick="event.stopPropagation()">→ Min/Max Scenario</a>' in sop
+    assert 'id="invMenuRow"' in sop and "▸ ดูข้อมูลสต็อคจริง (คลิกหรือกด Enter)" in sop
+    assert '<button type="button" id="invBackBtn">← กลับไปหน้า S&amp;OP Plan (Tab 1)</button>' in text
+    assert "tabBar a" in text and 'id="invPanel"' in text
 
 
-@pytest.mark.parametrize("fragment,container,label", [("trend", "omniTab", "ยอดขายย้อนหลัง"), ("stock", "invPanel", "สต็อกวันนี้"), ("manual", "manualTab", "คู่มือการใช้งาน"),
-                                                      ("assumptions", "assumptionsTab", "สมมติฐานที่ใช้อยู่"), ("sop", "origTab", "S&OP Plan (เดิม)")])
-def test_a_url_fragment_opens_its_tab(edge, tmp_path_factory, fragment, container, label):
-    site = _site(tmp_path_factory, f"w8_{fragment}")
+def test_the_stock_panel_opens_from_the_inventory_row_shows_the_daily_data_and_the_back_control_returns(edge, tmp_path_factory):
+    site = _site(tmp_path_factory, "w9_stock")
     server, url = _serve(site)
     try:
-        state = _tab_state(edge, f"{url}#{fragment}")
-        assert state == {"shown": [container], "active": [label]}
-        none = _tab_state(edge, url)                                       # no fragment: the first tab
-        assert none == {"shown": ["omniTab"], "active": ["ยอดขายย้อนหลัง"]}
-        unknown = _tab_state(edge, f"{url}#nothing")
-        assert unknown == {"shown": ["omniTab"], "active": ["ยอดขายย้อนหลัง"]}
-        edge.ev("location.hash = '#stock'; 1")                                # a change of the fragment on the open page switches the tab
-        time.sleep(0.8)
-        assert edge.ev("getComputedStyle(document.getElementById('invPanel')).display") == "block"
-    finally:
-        server.shutdown()
-
-
-def test_the_stock_tab_shows_the_daily_stock_panel_unchanged_and_the_s_and_op_row_opens_it(edge, tmp_path_factory):
-    site = _site(tmp_path_factory, "w8_stock")
-    server, url = _serve(site)
-    try:
-        edge.open(url + "#sop")
+        edge.open(url)
         time.sleep(1.5)
-        edge.ev("document.getElementById('invMenuRow').click(); 1")             # the S&OP row's "ดูข้อมูลสต็อคจริง" control opens the tab
+        assert edge.ev("getComputedStyle(document.getElementById('origTab')).display") != "none"
+        edge.ev("document.getElementById('invMenuRow').click(); 1")
         assert _wait(edge, "document.getElementById('invContent').style.display === 'block'"), "the stock panel did not load"
-        assert edge.ev("[...document.querySelectorAll('#tabBar .actv')].map(b => b.textContent.trim())") == ["สต็อกวันนี้"]
         assert edge.ev("getComputedStyle(document.getElementById('origTab')).display") == "none"
-        assert edge.ev("document.querySelector('#invPanel h1').innerText") == "รายละเอียดสต็อคสินค้า (Inventory Detail)"
-        assert edge.ev("document.getElementById('invBackBtn')") is None          # no way back to a tab it no longer belongs to: the bar is the way
-        shown = edge.ev("document.getElementById('invSnapshotLabel').innerText")
+        assert edge.ev("getComputedStyle(document.getElementById('invPanel')).display") == "block"
         inv = json.load(open(os.path.join(PROJECT_ROOT, "data", "inventory.json"), encoding="utf-8"))
-        assert shown.strip() != "" and "กำลังโหลด" not in shown
-        n_rows = edge.ev("document.querySelectorAll('#invTableBody tr').length")
-        assert n_rows == len(inv["items"]) or n_rows > 0
+        assert edge.ev("document.getElementById('invSnapshotLabel').innerText").strip() != ""
+        assert edge.ev("document.querySelectorAll('#invTableBody tr').length") > 0 and len(inv["items"]) > 0
+        edge.ev("document.getElementById('invBackBtn').click(); 1")
+        assert edge.ev("getComputedStyle(document.getElementById('invPanel')).display") == "none"
+        assert edge.ev("getComputedStyle(document.getElementById('origTab')).display") != "none"
+        assert [e for e in edge.errors if e.startswith("exception")] == []
     finally:
         server.shutdown()
+
+
+def test_the_four_working_pages_have_no_bar_and_keep_their_back_link_and_in_page_links():
+    for name in PAGE_FILES.values():
+        text = open(os.path.join(PROJECT_ROOT, "forecast", name), encoding="utf-8").read()
+        assert "page-nav" not in text and "data-nav" not in text, name
+        assert re.search(r'<a class="back-link" href="\.\./index\.html">(&larr;|←) กลับ', text), name
+    inv = open(os.path.join(PROJECT_ROOT, "forecast", PAGE_FILES["inventory"]), encoding="utf-8").read()
+    assert '<a class="back-link" id="plan-link" href="operation_plan.html">แผนการผลิต</a>' in inv
+    op_page = open(os.path.join(PROJECT_ROOT, "forecast", PAGE_FILES["operation"]), encoding="utf-8").read()
+    assert '<a class="page-link" id="material-plan-link" href="material_plan.html">แผนวัตถุดิบ</a>' in op_page
 
 
 @pytest.mark.parametrize("width,height,mobile", [(1440, 900, False), (390, 844, True)])
-def test_the_bar_fits_without_a_sideways_scroll_and_shows_its_separator(edge, tmp_path_factory, width, height, mobile):
-    site = _site(tmp_path_factory, f"w8_layout_{width}")
+def test_the_bar_fits_or_wraps_without_a_sideways_scroll_and_the_s_and_op_tab_opens_first(edge, tmp_path_factory, width, height, mobile):
+    site = _site(tmp_path_factory, f"w9_layout_{width}")
     server, url = _serve(site)
     try:
         edge.open(url, width=width, height=height, mobile=mobile)
         time.sleep(1.5)
-        facts = edge.ev("""(function(){var s=document.querySelector('#tabBar .navsep').getBoundingClientRect();
-          var last=[...document.querySelectorAll('#tabBar > *')].map(e=>e.getBoundingClientRect().right);
-          return {scrollW: document.documentElement.scrollWidth, innerW: window.innerWidth, sepW: s.width, sepH: s.height, maxRight: Math.max.apply(null,last)}})()""")
-        assert facts["scrollW"] <= facts["innerW"] and facts["maxRight"] <= facts["innerW"] + 1, facts
-        assert facts["sepW"] > 0 and facts["sepH"] > 0, facts
+        facts = edge.ev("""(function(){var rights=[...document.querySelectorAll('#tabBar > *')].map(e=>e.getBoundingClientRect().right);
+          return {innerW: window.innerWidth, maxRight: Math.max.apply(null, rights), barW: document.getElementById('tabBar').scrollWidth,
+                  barClientW: document.getElementById('tabBar').clientWidth,
+                  active: [...document.querySelectorAll('#tabBar .actv')].map(b => b.textContent.trim()),
+                  origShown: getComputedStyle(document.getElementById('origTab')).display !== 'none'}})()""")
+        assert facts["maxRight"] <= facts["innerW"] + 1 and facts["barW"] <= facts["barClientW"] + 1, facts       # the bar fits (it wraps on a narrow screen)
+        assert facts["active"] == ["S&OP Plan (เดิม)"] and facts["origShown"], facts
     finally:
         server.shutdown()

@@ -309,7 +309,6 @@ def build_page(**data_sources) -> str:
   p.note-box {{ font-size: 12.5px; color: var(--text-secondary); background: #eef4fb;
     border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px; }}
   a.back-link {{ color: var(--series-1); text-decoration: none; font-size: 13px; }}
-  {rv.NAV_CSS}
   .plotly-chart {{ width:100%; min-height: 320px; margin: 6px 0 14px; }}
   .chart-fail {{ padding: 24px 12px; text-align: center; background: #f0efec; border-radius: 6px; }}
   .alert-banner {{ background:#fdecea; border:2px solid #d03b3b; border-radius:8px; padding:14px 18px; margin:12px 0; }}
@@ -372,8 +371,7 @@ def build_page(**data_sources) -> str:
 </head>
 <body>
 <div class="wrap">
-  <a class="back-link" href="../index.html">&larr; กลับไปหน้าหลัก (Dashboard)</a>
-  {rv.nav_bar_html('inventory')}
+  <a class="back-link" href="../index.html">&larr; กลับไปหน้าหลัก (Dashboard)</a> &nbsp;·&nbsp; <a class="back-link" id="plan-link" href="operation_plan.html">แผนการผลิต</a>
   <h1 id="page-title">แผนสต็อค — Inventory Min/Max Scenario</h1>
   <p class="scope-note" id="data-line"></p>
   <p class="scope-note" id="page-timestamps-note"></p>

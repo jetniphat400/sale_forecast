@@ -50,25 +50,17 @@
   .fwd-type[aria-expanded="true"] td:first-child::before { content: "▾ "; }
   .fwd-name { color: var(--muted); font-size: 12px; }
   .table-scroll { overflow-x: auto; max-width: 100%; }
-  
-  .page-nav { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; margin: 6px 0 12px; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
-  .page-nav a { color: var(--series-1); text-decoration: none; }
-  .page-nav a:hover { text-decoration: underline; }
-  .page-nav b { color: var(--text-primary); }
-  .page-nav .nav-sep { color: var(--muted); font-weight: 700; }
-
 </style>
 </head>
 <body>
 <div class="wrap">
   <a class="back-link" href="../index.html">&larr; กลับหน้าหลัก</a>
-  <nav class="page-nav" id="page-nav"><a data-nav="trend" href="../index.html#trend">ยอดขายย้อนหลัง</a><b data-nav="sales">พยากรณ์ยอดขาย ↗</b><a data-nav="inventory" href="inventory.html">แผนสต็อก ↗</a><a data-nav="stock" href="../index.html#stock">สต็อกวันนี้</a><a data-nav="operation" href="operation_plan.html">แผนการผลิต ↗</a><a data-nav="material" href="material_plan.html">แผนวัตถุดิบ ↗</a><span class="nav-sep" aria-hidden="true">‖</span><a data-nav="assumptions" href="../index.html#assumptions">สมมติฐานที่ใช้อยู่</a><a data-nav="manual" href="../index.html#manual">คู่มือการใช้งาน</a><a data-nav="sop" href="../index.html#sop">S&amp;OP Plan (เดิม)</a></nav>
   <h1>รายงานการพยากรณ์ยอดขาย (Sales Forecast Report) — PEM Group</h1>
   <!-- สร้างโดย src/build_report.py — ทุกตัวเลขมีที่มาระบุไว้ในซอร์สโค้ด HTML (ดู source comments) -->
   
     <details class="note-box" style="margin:10px 0" id="page-data-line">
       <summary style="cursor:pointer"><!-- round = run month of vintage 2 of the forward-test log; fit_last = that vintage's last fit month; built_at = page_built_at; oldest data_pulled_at of the page: 2026-10-05 07:41 ICT (UTC+7), per section below
-        --><span id="freshness-line">ยอดทายรอบ ต.ค. 69 · ใช้ยอดขายถึง ส.ค. 69 · หน้าสร้างเมื่อ 8 ต.ค. 69 14:25</span><!-- source: src/build_report.py rv.vintage_facts()/datetime.now(), this build run --></summary>
+        --><span id="freshness-line">ยอดทายรอบ ต.ค. 69 · ใช้ยอดขายถึง ส.ค. 69 · หน้าสร้างเมื่อ 8 ต.ค. 69 15:40</span><!-- source: src/build_report.py rv.vintage_facts()/datetime.now(), this build run --></summary>
       <h3 style="margin-top:10px">ข้อมูลแต่ละส่วนดึงเมื่อ</h3>
       <table class="report-table" style="margin-top:8px">
         <thead><tr><th>ส่วน</th><th>ดึงเมื่อ</th><th>สถานะ</th></tr></thead>

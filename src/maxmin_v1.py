@@ -30,7 +30,7 @@ PROJECT_ROOT = os.path.dirname(HERE)
 CONFIG_PATH = os.path.join(PROJECT_ROOT, "config", "config.yaml")
 DAYS_PER_MONTH = 30.44            # phase23_page_precompute.DAYS_PER_MONTH (METRICS.md Sec.5 and 16)
 ASSUMPTIONS_FIELDS = ["id", "topic", "unknown", "used_now", "affects", "value_source", "updated_date"]
-ASSUMPTIONS_SCHEMA_VERSION = 1
+ASSUMPTIONS_SCHEMA_VERSION = 2
 logger = logging.getLogger("maxmin_v1")
 
 
@@ -341,7 +341,7 @@ def assumption_values(cfg: dict = None) -> dict:
 
 def build_assumptions(cfg: dict = None, today: str = None) -> dict:
     """The payload of data/assumptions.json: {"schema_version", "assumptions": [{id, topic, unknown, used_now, affects, value_source,
-    updated_date}, ...]} in config order. updated_date is the build date (`today`, or the clock)."""
+    updated_date}, ...], "pending_criteria": [{topic, to_decide, now_used, who, when}, ...]} in config order. updated_date is the build date (`today`, or the clock)."""
     cfg = cfg or load_config()
     values = assumption_values(cfg)
     stamp = today or datetime.now().strftime("%Y-%m-%d")
@@ -350,7 +350,19 @@ def build_assumptions(cfg: dict = None, today: str = None) -> dict:
         rec = {k: a[k].format(**values) for k in ("id", "topic", "unknown", "used_now", "affects", "value_source")}
         rec["updated_date"] = stamp
         records.append(rec)
-    return {"schema_version": ASSUMPTIONS_SCHEMA_VERSION, "assumptions": records}
+    return {"schema_version": ASSUMPTIONS_SCHEMA_VERSION, "assumptions": records, "pending_criteria": pending_criteria_rows(cfg)}
+
+
+def pending_criteria_rows(cfg: dict = None) -> list:
+    """The rows of the table "เกณฑ์ที่รอกำหนด": [{topic, to_decide, now_used, who, when}, ...] in config order, the braces filled from config
+    `pending_criteria_values` (numbers as written in config, the decision date as 'd MMM yy' by the shared Thai date formatter). The values are drafts: nothing
+    in the project passes or fails against them."""
+    import reader_values as rv
+    cfg = cfg or load_config()
+    v = cfg["pending_criteria_values"]
+    values = {"mase_pass": f"{v['mase_pass']:g}", "mase_good": f"{v['mase_good']:g}", "tracking_signal_limit": f"{v['tracking_signal_limit']:g}",
+              "decision_date": rv.thai_date_short(v["decision_date"])}
+    return [{k: r[k].format(**values) for k in ("topic", "to_decide", "now_used", "who", "when")} for r in cfg["pending_criteria_rows"]]
 
 
 def write_assumptions(path: str = None, cfg: dict = None, today: str = None) -> str:

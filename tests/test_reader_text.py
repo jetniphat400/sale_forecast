@@ -238,7 +238,7 @@ def test_rendered_text_is_reader_text(view, rendered_texts):
 # rules below apply to that tab's text all the same. Product names and descriptions in table cells come from the price
 # list and are exempt from the English-only-line rule only; every other rule applies to them too.
 INDEX_VIEWS = {
-    "S&OP": ("origTab", "omniShowTab(1)"),
+    "S&OP": ("origTab", None),
     "Trend": ("omniTab", "omniShowTab(2)"),
     "Manual": ("manualTab", "omniShowTab(3)"),
     "Assumptions": ("assumptionsTab", "omniShowTab(4)"),

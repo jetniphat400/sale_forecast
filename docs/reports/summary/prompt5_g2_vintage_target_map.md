@@ -250,3 +250,41 @@ Existing test files extended (no new file): sales report lines, notes, forward t
 - `config/config.yaml` comment says the Medium Voltage Surge Arrester group has 58 items; the scope has 48 (Validator, inferred: 58 is the pricelist count): week 5, low, Claude Code.
 - PEM104's "no forecast" line states a reason that DATA_MAP.md marks as the symptom, not the cause: the approved replacement waits for the user's wording (made to order by business model): week 5, low, the user.
 - The monthly runner's dry run and the scheduled tasks regenerate the four pages with these builders on their next run; `index.html` has no generator, so a future change to the bar must be made there and in `reader_values.NAV_TABS` together (a test compares them): week 5, low.
+
+
+# Prompt 9
+
+Checked 2026-10-08 (clock 15:33 to about 17:00, this machine). No database connection; the test suite made none. Decisions of the user, 2026-10-08, are recorded in STATUS.md ("Week 4, prompt 9") with the October plan and the draft criteria.
+
+## Part 1. The original tabs and links, only แผนวัตถุดิบ added
+
+- **Bar (CONFIRMED):** `index.html` was restored from commit 5a735e2 and only the bar was changed: `S&OP Plan (เดิม) | Trend Pricelist Omni 2024–2026 | แผนการผลิต | แผนวัตถุดิบ | สมมติฐานที่ใช้อยู่ | คู่มือการใช้งาน`. S&OP is first and opens by default. แผนวัตถุดิบ links to `forecast/material_plan.html` and takes the style of the แผนการผลิต link (one CSS rule covers both). The bar wraps on a narrow screen (`flex-wrap`, and a rule below 600 px that makes it scroll away instead of sticking) so it fits at 390 px; the original bar was one non-wrapping row.
+- **สต็อกวันนี้ removed (CONFIRMED):** the panel is back inside the S&OP tab exactly as at 5a735e2, opened from the Inventory row's "ดูข้อมูลสต็อคจริง" control, with its "← กลับไปหน้า S&OP Plan (Tab 1)" button. The S&OP in-tab links are back: the "Sales — ยอดขาย" row title links to `forecast/sales_report.html`, "→ Min/Max Scenario" links to `forecast/inventory.html`.
+- **The four working pages (CONFIRMED):** no bar; "← กลับหน้าหลัก" (sales report) and "← กลับไปหน้าหลัก (Dashboard)" (the other three) as before; the Min-Max page's link to the operation plan (`plan-link`) and the operation plan page's link to the material plan (`material-plan-link`) restored in their original places. Every Prompt 8 change outside the bar stays.
+- **Removed (list):** `reader_values.NAV_TABS`, `NAV_CSS` and `nav_bar_html`, and their uses in the four builders (the `NAV_CSS` line of the sales report; the bar and its CSS line of the Min-Max page; the bar and the CSS addition of the operation plan page; the bar of the material plan page); in `index.html` (by restoring the file) the tab สต็อกวันนี้ and its button, the links `tbSales` and `tbInv`, the separator, the URL-fragment tab opening (`OMNI_TAB_FRAGMENTS`, the `hashchange` and load handlers, `history.replaceState`, `window.loadInventoryPanel`) and the removal of the panel's back button; tests: the bar-equality test, the "four pages carry the same bar" test, the fragment test, the stock-tab test and the bar layout test of `test_index_w3.py` (replaced by tests of the restored structure), the bar test of `test_inventory_page_browser.py` (replaced by a test that the page has none), and the assertions of `test_operation_plan_page_builder.py` that looked for bar links (back to the original link assertions; the new ones check that แผนวัตถุดิบ is styled like แผนการผลิต). Nothing else used the fragment code.
+- **VERIFY (CONFIRMED):** the daily job still feeds the panel: its offline tests (64: `test_daily_stock.py`, `test_daily_noon_skip.py`, `test_daily_stock_page.py`, `test_cfix_inventory_pull.py`) pass, and in my own headless Edge the panel opened from the Inventory row fills 445 item rows from `data/inventory.json` (the file the daily job builds and publishes), the back button returns to the S&OP tab.
+- **Layout (CONFIRMED, own headless Edge on a temp profile, screenshots under `output/shots_p9/`, untracked):** at 1440×900 and 390×844 the bar fits (it wraps to two rows at 390), S&OP opens first, no page scrolls sideways at 1440; at 390 the S&OP tab is 520 px wide as it was at 5a735e2 (legacy table, listed below), the other tabs and the four pages fit.
+
+## Part 2. Operation plan page
+
+- **a. (CONFIRMED)** The note under the item table reads `แถวที่ขึ้นว่า ไม่พบการผลิตในระบบ ไม่ได้รวมในยอดผลิตของฝ่าย` (the clause that said the monthly numbers are demand is gone, which also removes the point of Prompt 8, 5c).
+- **b. (CONFIRMED)** For a division with no forecast item whose recorded exclusion reason is made to order the line is `{ฝ่าย} ผลิตตามสั่งทั้งหมด จึงไม่ได้ทายยอดขาย`; it applies today to PEM104 (`PEM104 ผลิตตามสั่งทั้งหมด จึงไม่ได้ทายยอดขาย`, followed by `12 รหัสยังไม่มียอดทาย แผนนับเฉพาะออเดอร์ที่รับแล้ว ตอนนี้ไม่มีออเดอร์ค้างในกลุ่มนี้`). The reason is read from config, not typed in code: `operation_plan.exclusion_reasons: {PEM104: made_to_order}` (new, with a comment citing DATA_MAP.md Locked Decisions 2026-09-23). The older `divisions_excluded_from_forecasting` text in config still says "data volume" (the superseded reason); it feeds nothing on a page and is left as it is (listed below). A division with no forecast item and no recorded reason, or a division that has forecast items, keeps the general line (tested for PEM102, CI101, PEM103).
+
+## Part 3. The table "เกณฑ์ที่รอกำหนด"
+
+- **Rendered (CONFIRMED, 8 rows, under the first table of the tab, after its heading):** row 1 `ยอดทายดีกว่าวิธีง่ายไหม | MASE ต่ำแค่ไหนถึงผ่าน | ร่าง: ต่ำกว่า 1 ผ่าน, ต่ำกว่า 0.7 ดี | ผู้บริหาร | หลังรอบ 5 ธ.ค. 69`; row 2 `ยอดทายเอียงต่อเนื่อง | tracking signal เกินเท่าไหร่ถึงเตือน | ร่าง: ±4 | ผู้บริหาร | ทุกเดือน`; rows 3 to 8 as approved.
+- **Where:** rows in `data/assumptions.json` under the new key `pending_criteria` (schema_version 2); the draft values (`mase_pass` 1, `mase_good` 0.7, `tracking_signal_limit` 4, `decision_date` 2026-12-05) and the verbatim row templates in `config/config.yaml`, block `maxmin_v1` (`pending_criteria_values`, `pending_criteria_rows`), each draft value with its source in a comment (MASE 1 and 0.7: Morlidge's naive-ratio evidence, Gilliland / SAS, "The avoidability of forecast error, Part 4", and Hyndman 2006 for MASE on intermittent demand; ±4: the common tracking-signal control limit, APICS / CPIM practice; drafts pending the user). The builder is `maxmin_v1.pending_criteria_rows` (the date by the shared formatter `reader_values.thai_date_short`, new beside the others). The tab's script keeps the heading and column names, as it does for the first table, and shows the failure message when the file lacks the key. Rebuilding the file also moved the `updated_date` of the ten existing records from 2026-10-06 to 2026-10-08 (the file's build date); their texts are unchanged. A test checks that no source file other than the builder reads the draft values: nothing passes or fails against them.
+
+## Part 4. STATUS.md
+
+Decisions, the draft criteria with their research basis, the October plan (nine rows), and the risk are recorded; the plan of 2026-10-05 stays below, marked superseded.
+
+## Tests
+
+Existing files: `test_index_w3.py` (six labels in order and the two page links, S&OP default, in-tab links and back button, the stock panel opened from the row and closed by the back button, no bar on the four pages, layout), `test_inventory_page_browser.py`, `test_operation_plan_page_builder.py` (note text; made-to-order line and its limits; the reason read from config), `test_maxmin_v1.py` (file schema, eight rows, values from config), `test_maxmin_v1_page.py` (the table rendered, the failure message without the key); the first assumptions-tab row count now selects the first table. `test_reader_text.py`: S&OP is read without a click again.
+
+## Found, not done
+
+- The S&OP tab is 520 px wide at 390 px (unchanged legacy table): week 5, low, Claude Code (already in the plan, 2026-10-19 to 10-21).
+- `config.yaml` `divisions_excluded_from_forecasting` and the PEM104 entry of `method_selection` still give the data-volume reason that DATA_MAP.md marks as superseded: with the refactor, low, Claude Code.
+- The user manual still describes the Prompt 7 structure: with the manual update of 2026-10-19 to 10-21, medium, Claude Code.

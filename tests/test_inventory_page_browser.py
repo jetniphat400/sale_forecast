@@ -441,8 +441,7 @@ def test_the_pem101_section_says_its_min_and_max_come_from_sales_history(desktop
     assert "{" not in expected and "}" not in expected
 
 
-def test_the_bar_is_under_the_back_link_with_the_current_page_bold_and_not_a_link(desktop):
-    assert desktop.ev("document.querySelector('a.back-link').nextElementSibling.id") == "page-nav"
-    assert desktop.ev("[...document.querySelectorAll('#page-nav b')].map(e => e.textContent)") == ["แผนสต็อก ↗"]
-    assert desktop.ev("document.querySelector('#page-nav a[data-nav=inventory]')") is None
-    assert desktop.ev("document.getElementById('plan-link')") is None
+def test_the_page_has_no_bar_and_keeps_its_back_link_and_its_link_to_the_operation_plan(desktop):
+    assert desktop.ev("document.getElementById('page-nav')") is None
+    assert desktop.ev("document.querySelector('a.back-link').nextElementSibling.id") == "plan-link"
+    assert desktop.ev("(function(){const a=document.getElementById('plan-link'); return [a.innerText.trim(), a.getAttribute('href')]})()") == ["แผนการผลิต", "operation_plan.html"]

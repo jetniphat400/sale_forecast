@@ -144,6 +144,14 @@ Code: `src/investigations/task2b_part2_fulfilment_segmentation.py` (`run_from_pu
 - Reader text: see SENTENCES NEEDING THAI TEXT of this task (demand column header on the material page, a label for the list of divisions covered, a line for the six PEM101 codes never sold, the approved heading for six divisions) (the user's assistant).
 - Category-level view of the two product categories and the three items' settings (brief item "settings"), storms and the other external factors, utility budgets, sales insight and EGP bids: not done (brief table).
 
+### Week 4, prompt 9 -- the original index tabs and links restored with only แผนวัตถุดิบ added, two operation plan texts, the table "เกณฑ์ที่รอกำหนด", the October plan recorded -- DONE, 2026-10-08 (no database connection; the test suite made none; Validator: MATCH)
+
+**Report:** `docs/reports/summary/prompt5_g2_vintage_target_map.md`, heading "Prompt 9". Decisions, draft criteria and the October plan: see "The plan, October 2026" in section 2 above.
+
+**Part 1.** `index.html` restored from 5a735e2; the bar reads S&OP Plan (เดิม) | Trend Pricelist Omni 2024–2026 | แผนการผลิต | แผนวัตถุดิบ | สมมติฐานที่ใช้อยู่ | คู่มือการใช้งาน (S&OP first and open); the tab สต็อกวันนี้, the URL-fragment tab opening and the Prompt 8 bar on the four working pages are removed (`reader_values.NAV_TABS`, `NAV_CSS`, `nav_bar_html` deleted); the daily stock panel is back inside the S&OP tab with its back button and the S&OP in-tab links; the Prompt 8 content of the pages stays. **Part 2.** The note under the operation plan's item table now reads "แถวที่ขึ้นว่า ไม่พบการผลิตในระบบ ไม่ได้รวมในยอดผลิตของฝ่าย"; a division with no forecast item whose recorded reason is made to order (config `operation_plan.exclusion_reasons`, PEM104) reads "{ฝ่าย} ผลิตตามสั่งทั้งหมด จึงไม่ได้ทายยอดขาย". **Part 3.** Table "เกณฑ์ที่รอกำหนด" (8 rows) under the assumptions table, rows in `data/assumptions.json` key `pending_criteria` (schema_version 2), draft values and decision date (5 ธ.ค. 69) in config; nothing is scored against them.
+
+**Found, not done:** S&OP tab 520 px wide at 390 px (legacy, in the plan 2026-10-19); config's data-volume text for PEM104 (`divisions_excluded_from_forecasting`, `method_selection`) is the superseded reason (refactor); user manual out of date (plan 2026-10-19).
+
 ### Week 4, prompt 8 -- one bar in task order on index.html and the four working pages, the stock panel as its own tab, freshness lines, forward forecast and accuracy sections on the sales report, Max-Min notes and list fix, operation plan and material plan texts -- DONE with one item stopped (5b), 2026-10-08 (no database connection; the test suite made none; Validator: MATCH)
 
 **Report:** `docs/reports/summary/prompt5_g2_vintage_target_map.md`, heading "Prompt 8".
@@ -641,7 +649,35 @@ The task is Ready with StartWhenAvailable on.
   - PEM107 recalibration.
 - **Kept local for now:** the saved vintage series (`output/forward_test/vintage_series/`), until the user gives a backup path.
 
-**The plan** (replaces the work-plan table of 2026-10-02):
+**Decisions of the user, 2026-10-08 (prompt 9):**
+- The index keeps its original tabs and the in-tab links; only แผนวัตถุดิบ is added, and the bar reads S&OP Plan (เดิม) | Trend Pricelist Omni 2024–2026 | แผนการผลิต | แผนวัตถุดิบ | สมมติฐานที่ใช้อยู่ | คู่มือการใช้งาน. The Prompt 8 bar and the สต็อกวันนี้ tab are removed; the Prompt 8 page content stays.
+- The sales forecast in baht uses Price List prices (the conversion is the next task).
+- Everything is finished within October 2026, except moving to an app on the organisation's server.
+- **Draft acceptance criteria (pending the user, shown on the สมมติฐานที่ใช้อยู่ tab under "เกณฑ์ที่รอกำหนด"; nothing passes or fails against them yet).** MASE below 1 passes and below 0.7 is good; tracking signal beyond ±4 warns; decision after the 2026-12-05 run. Research basis, one line each:
+  - forecast value added against a naive benchmark (Gilliland / SAS: a forecast that does not beat the naive one adds nothing; Morlidge's naive-ratio evidence, "The avoidability of forecast error, Part 4");
+  - MASE for intermittent demand (Hyndman, 2006): scale-free and defined when demand is zero;
+  - tracking signal (cumulative error over mean absolute deviation) with the common control limit of 4 (APICS / CPIM practice);
+  - measure at the lead-time lag and at the level the decision is taken (a forecast is judged at the horizon of the order it drives, per item or Type);
+  - an inventory model is judged by the service level it achieves against the observed one (simulated not-late against actual not-late), not by its own cost figure.
+
+**The plan, October 2026** (decided 2026-10-08; replaces the plan of 2026-10-05 below, which is kept as history; dates are targets):
+
+| Dates | Deliverable | Owner |
+|---|---|---|
+| 2026-10-08 to 10-09 | Prompt 9 (this task) | Claude Code |
+| 2026-10-09 to 10-12 | Sales forecast in baht at Price List prices on the forecast page (unit/baht switch, division and all-division monthly totals, forecast-vs-actual in baht); items without a Price List price counted on the page | chat assistant drafts text, the user approves, Claude Code builds |
+| 2026-10-12 to 10-14 | Accuracy measures: naive (last month) comparator in the forward test, tracking signal, horizon-3 scoring; first criteria verdict on backtest results; forward results update monthly on the page | Claude Code |
+| 2026-10-14 to 10-16 | Executive summary tab (ภาพรวม): year-end projection vs target (Cube_TARGET_PMIS Revenue-Conting), labelled as unconfirmed where the actual measure is unproven; PEM104 and PEMC with remarks | chat assistant drafts, the user approves, Claude Code builds |
+| 2026-10-19 to 10-21 | User manual updated to the current pages; Trend tab on the 445-code basis; one stock source for the Max-Min page and the daily panel; small open items (S&OP tab overflow at 390 px, config comment 58 vs 48) | Claude Code |
+| 2026-10-21 to 10-23 | Material plan backtest against actual purchase orders; profile Cube_OI, Cube_OI_SaleForecast, Cube_Enq, Cube_OQ for external factors; S&OP tab on real data | Claude Code |
+| 2026-10-26 to 10-30 | Refactor (phase D) and the final end-to-end check | Claude Code |
+| Automatic | daily stock 08:00/12:00; monthly run on the 5th (2026-11-05: vintage 3, moving-average comparator starts) | scheduled tasks |
+| After October | criteria decisions on forward results (after the 2026-12-05 run); external factors that need data from outside the database (utility budgets, EGP bids, storms, holiday calendars); the app on the organisation's server | the user; people supply data |
+
+**Risk:** the refactor is in the last week (2026-10-26 to 10-30); if an earlier row slips, it has the least slack.
+
+**The plan of 2026-10-05 -- SUPERSEDED 2026-10-08 by the October plan above (kept as history):**
+(The table below replaced the work-plan table of 2026-10-02.)
 
 | Week | Dates | Deliverable | Goal | Owner |
 |---|---|---|---|---|

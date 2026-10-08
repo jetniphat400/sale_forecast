@@ -949,13 +949,11 @@ def render_page(config: dict) -> str:
   .fwd-type[aria-expanded="true"] td:first-child::before {{ content: "▾ "; }}
   .fwd-name {{ color: var(--muted); font-size: 12px; }}
   .table-scroll {{ overflow-x: auto; max-width: 100%; }}
-  {NAV_CSS}
 </style>
 </head>
 <body>
 <div class="wrap">
   <a class="back-link" href="../index.html">&larr; กลับหน้าหลัก</a>
-  {rv.nav_bar_html('sales')}
   <h1>รายงานการพยากรณ์ยอดขาย (Sales Forecast Report) — PEM Group</h1>
   <!-- สร้างโดย src/build_report.py — ทุกตัวเลขมีที่มาระบุไว้ในซอร์สโค้ด HTML (ดู source comments) -->
   {timestamps_html}
@@ -995,7 +993,6 @@ FORWARD_TABLE_JS = """
   if (sel) showDivision();
 })();
 """
-NAV_CSS = rv.NAV_CSS
 
 
 def fmt_cell(x: float) -> str:
