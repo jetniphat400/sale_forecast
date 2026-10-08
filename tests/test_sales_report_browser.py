@@ -129,3 +129,14 @@ def test_no_horizontal_page_scroll_at_phone_width_in_both_modes(edge, page_path)
             assert edge.ev("document.documentElement.scrollWidth") <= edge.ev("document.documentElement.clientWidth"), (unit, division)
     edge.ev("document.getElementById('scored-table').scrollIntoView(); 1")
     assert edge.ev("document.documentElement.scrollWidth") <= 390                                         # the forecast-versus-actual table scrolls inside its own box
+
+
+def test_the_flat_forecast_line_is_visible_under_the_tables_in_both_unit_modes(edge, page_path):
+    line = "ยอดทายทุกเดือนเท่ากัน เพราะวิธีทายตอนนี้ให้ค่าระดับเดียวกับทุกเดือนข้างหน้า ยังไม่คิดช่วงขายดีขายน้อยตามฤดูกาล"
+    edge.open(page_path, cdn="stub")
+    for unit in ("pieces", "baht"):
+        _click_unit(edge, unit)
+        assert _shown(edge, "#flat-forecast-line"), unit
+        assert _visible_block(edge, "#flat-forecast-line") == line
+        assert edge.ev("document.getElementById('flat-forecast-line').getBoundingClientRect().top") >= edge.ev(
+            "document.querySelector('#forward-forecast .fwd-table-wrap:not([hidden]), #forward-forecast .fwd-baht-wrap:not([hidden])').getBoundingClientRect().top")

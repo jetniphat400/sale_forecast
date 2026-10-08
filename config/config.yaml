@@ -1137,6 +1137,7 @@ report:
   baht_explanation: "▸ ยอดทายคิดเป็นเงินเท่าไหร่ต่อเดือน ▸ ตัวเลข = ยอดทาย (ชิ้น) × ราคาขายเฉลี่ยของรหัสนั้น หน่วยบาท ▸ ถ้าราคาขายข้างหน้าต่างจากช่วงที่ใช้เฉลี่ย ยอดเงินจะคลาดตาม ▸ ยังไม่ได้ตรวจว่านับแบบเดียวกับเป้ารายได้ อย่าเพิ่งเทียบกับเป้าตรงๆ"
   baht_no_price_line: "{n} รหัสไม่มีทั้งประวัติขายและราคาใน Price List ไม่ได้รวมในยอดบาท"
   baht_no_price_columns: ["รหัส", "ชื่อ", "ฝ่าย"]
+  flat_forecast_line: "ยอดทายทุกเดือนเท่ากัน เพราะวิธีทายตอนนี้ให้ค่าระดับเดียวกับทุกเดือนข้างหน้า ยังไม่คิดช่วงขายดีขายน้อยตามฤดูกาล"
   scored_baht_note: "ตัวเลขบาทคิดทั้งยอดทายและยอดจริงด้วยราคาขายเฉลี่ยเดียวกัน เพื่อดูว่าทายจำนวนพลาดคิดเป็นเงินเท่าไหร่ ต่างติดลบ = ทายต่ำกว่าจริง"
 
   # Unit price per item for the baht view (decisions of the user, 2026-10-08). Tried in this order; the first rule that gives a price is used.
@@ -1155,6 +1156,16 @@ report:
     qty_file: "output/data/processed_all_divisions_monthly_qty.csv"
     back_check_low: 0.5
     back_check_high: 1.5
+
+# Trend tab of index.html (src/build_trend_tab.py, decisions of the user 2026-10-08): scope and cut-offs. Table, statuses and start date are source_table, status_basis and
+# date_range above. The time axis is createDate (PO receipt date).
+trend_tab:
+  revenue_type: "Omni Channel"
+  sb_adi_cutoff: 1.32        # Syntetos-Boylan
+  sb_cv2_cutoff: 0.49
+  decimals: 3                # ADI and CV2 as shown in the SKU table
+  pull_dir: "output/data/trend_pull"
+  index_file: "index.html"
 
 # ============================================================
 # Three-tier parameter classification (documented 2026-09-19, Phase G intent -- NOT implemented

@@ -1288,3 +1288,26 @@ pipeline — no new section is needed for this; it is already covered by section
   not compared with the revenue target (page text says so).
 - Back-check: sum(actual qty x unit price) / sum(actual sale) per division and year; inside the price window it is 1 by construction for items priced from that window.
   A division outside `back_check_low`..`back_check_high` stops the baht view.
+
+## 47. trend_tab
+
+    The Trend tab of index.html ("Trend Pricelist Omni 2024-2026"), built by src/build_trend_tab.py; decisions of the user, 2026-10-08.
+
+    scope       = Price List items of the visible sheets x cube_Sale_APD rows with revenue_type 'Omni Channel', status Actual and MPS (config status_basis),
+                  createDate from config date_range.start; source_table and the cut-offs in config (trend_tab)
+    time axis   = createDate (PO receipt date), by calendar day; months are the sums of the daily rows
+    pull        = one aggregate query per item x day x status (qty, sale, row count), one for the most frequent productName per item (a tie goes to the name first in
+                  alphabetical order), one completeness query (rows, qty, sale) over the same scope; saved under output/data/trend_pull/
+    months      = the first month of the scope to the month of the pull date; the month of the pull date is incomplete (faded, left out of ADI and CV2);
+                  complete months = months - 1 (computed, never fixed)
+    ADI         = complete months / months with qty > 0                   (qty = Actual + MPS)
+    CV2         = population variance / mean^2 of qty over months with qty > 0
+    class       = Smooth (ADI < 1.32, CV2 < 0.49), Erratic (ADI < 1.32, CV2 >= 0.49), Intermittent (ADI >= 1.32, CV2 < 0.49), Lumpy (both at or above);
+                  no qty in the complete months: no sales at all = NoSale, sales only in the incomplete month = NoSale31M (shown "no sales n months")
+    spec remark = nodata (no row in the scope) / nospec (no spec on one side) / ok (equal, or one contained in the other) / conflict, from the numbers written in the
+                  Price List description(s) of the code and in the database name (kV and kA to V and A, comma numbers, Thai unit words); logic of August 2026, specs()
+    gate        = the tab's rows, qty and sale equal the completeness query exactly (to 4 decimals for qty, to the cent for sale); the daily rows of an item sum to its months
+
+- Names, category, Type and division on the tab are the Price List's (a blank Type shows "-"); the database name is shown in the tooltip.
+- The tab's counts are by createDate and do not equal the forecast page's, which counts by the forecast date (the month the goods are due).
+- Whether `sale` excludes VAT is a user-stated fact, not proven (DATA_MAP.md, Prompt 11).

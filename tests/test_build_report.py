@@ -613,3 +613,26 @@ def test_the_back_check_of_the_unit_prices_is_inside_its_limits_and_a_value_outs
     monkeypatch.setattr(rv, "price_back_check", lambda *a, **k: {"ratios": {}, "outside": [("PEM101", "2025", 1.7)]})
     with pytest.raises(ReportSourceError, match="not published"):
         run_build_report(output_path=str(tmp_path / "sales_report.html"))
+
+
+def test_the_flat_forecast_line_is_on_the_page_only_when_every_item_has_one_value_for_all_months(tmp_path, monkeypatch):
+    import reader_values as rv
+    line = "ยอดทายทุกเดือนเท่ากัน เพราะวิธีทายตอนนี้ให้ค่าระดับเดียวกับทุกเดือนข้างหน้า ยังไม่คิดช่วงขายดีขายน้อยตามฤดูกาล"
+    vf = rv.vintage_facts()
+    rows = vf["item_rows"]
+    assert (rows.groupby("itemcode")["forecast_qty"].nunique() == 1).all()                               # the VERIFY, from the log itself
+    h = _tracked_sales_html()
+    sec = re.search(r'<section id="forward-forecast">.*?</section>', h, re.S).group(0)
+    assert f'id="flat-forecast-line">' in sec and line in " ".join(_visible(sec).split())
+    assert sec.index("flat-forecast-line") > sec.rindex("fwd-baht-wrap")                                 # under the tables, outside both unit views
+    # a vintage with an item that differs between months: the line is not added
+    real = build_report.gather_forward_forecast
+
+    def not_flat(*a, **k):
+        out = real(*a, **k)
+        d = next(iter(out["divisions"]))
+        out["divisions"][d][0]["items"][0]["values"][1] += 1.0
+        return out
+    monkeypatch.setattr(build_report, "gather_forward_forecast", not_flat)
+    out = run_build_report(output_path=str(tmp_path / "sales_report.html"))
+    assert "flat-forecast-line" not in open(out, encoding="utf-8").read()

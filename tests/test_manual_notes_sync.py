@@ -72,7 +72,9 @@ def test_index_html_hand_copied_notes_match_manual_notes_yaml():
         text = f.read()
     for chart_id, lines in notes.items():
         for line in lines:
-            assert line in text, (
+            # a {braced} name stands for a value the page's script fills from its data (the Trend tab's first and last month): the fixed pieces around it must be in the file
+            pieces = [p for p in re.split(r"\{[a-z_]+\}", line) if p]
+            assert all(p in text for p in pieces), (
                 f"index.html's hand-maintained copy is missing (or drifted from) the note for "
                 f"{chart_id!r}: {line!r} -- config/manual_notes.yaml is the source of truth; "
                 f"update index.html to match it exactly."

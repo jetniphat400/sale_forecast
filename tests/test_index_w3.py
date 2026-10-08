@@ -29,10 +29,8 @@ SOP_NOTICE = ("ตัวเลขในแท็บนี้มาจากไ�
               "ห้ามใช้ตัดสินใจ · ม.ค.-ก.ค. = ช่วงที่ผ่านมา · ส.ค.-ธ.ค. = แผน")
 AVAILABLE_NOTE = "ของที่หยิบส่งได้จริง ≈ Sellable − Reserved (Available ยังนับคลัง QA ด้วย)"
 
-# SHA-256 of the two embedded data lines of the Trend tab (const MATCH = ..., const OMNI = ...) as they were before
-# phase W3, which changed text and labels only. A change to either line changes the hash.
-EMBEDDED_DATA_SHA256 = {"MATCH": "2d163e487a42c4909cd79fd14d3e00f41bb1a4c9709427f366e6b366c01018ad",
-                        "OMNI": "e4504ed7eebec5e872b804f1f9b2dd99ba9fde47453bb24c8b6384fd5f5a581a"}
+# The two embedded data lines of the Trend tab (const MATCH = ..., const OMNI = ...) are written by src/build_trend_tab.py between two markers (decision of the user,
+# 2026-10-08); the test below rebuilds them from the saved pull and compares.
 
 
 def _embedded_lines(text):
@@ -108,7 +106,8 @@ def page(edge, tmp_path_factory):
         assert _wait(edge, "document.getElementById('trendDataNote').style.display === 'block'"), "the Trend note did not appear"
         out["trend"] = edge.ev("document.getElementById('omniTab').innerText")
         out["trend_first"] = edge.ev("[...document.getElementById('omniTab').children].find(e => e.tagName !== 'STYLE').id")
-        out["trend_spans"] = edge.ev("['trendLastDate','trendCodeCount','currentCodeCount'].map(i=>document.getElementById(i).textContent)")
+        out["trend_pl_label"] = edge.ev("document.getElementById('trendPlLabel').textContent")
+        out["trend_yrs"] = edge.ev("[...document.querySelectorAll('.omni-yrs')].map(e => e.textContent)")
         out["trend_head"] = edge.ev("document.querySelector('#omniTab h2').innerText")
         out["trend_head_count"] = edge.ev("document.getElementById('trendHeadCount').textContent")
         out["n31_spans"] = edge.ev("[...document.querySelectorAll('.omni-n31')].map(e => e.textContent)")
@@ -166,39 +165,39 @@ def test_stock_panel_available_note_and_three_labels(page):
 def test_trend_note_is_first_in_the_tab_and_follows_the_data(page):
     text = open(INDEX, encoding="utf-8").read()
     omni = json.loads(_embedded_lines(text)["OMNI"][len("const OMNI = "):].rstrip(";"))
-    last = max(r[0] for it in omni["items"] for r in it["dd"])
-    with open(os.path.join(PROJECT_ROOT, "data", "inventory.json"), encoding="utf-8") as f:
-        current = json.load(f)["totals"]["codes"]
-    expected = (f"ข้อมูลถึง {_thai_date(last)} ไม่อัปเดต · ใช้ Price List ฐาน {len(omni['items'])} รหัส "
-                f"ต่างจากหน้าอื่นที่ใช้ {current} รหัส เทียบตัวเลขข้ามหน้าตรงๆ ไม่ได้")
+    expected = f"ยอดนับตามวันที่รับ PO จึงไม่เท่ากับยอดในหน้าพยากรณ์ ซึ่งนับตามเดือนที่ต้องส่งของ · ข้อมูลถึง {omni['meta']['pull']}"
     assert page["trend"].lstrip().startswith(expected), page["trend"][:200]
     assert page["trend_first"] == "trendDataNote"
-    assert page["trend_spans"] == [_thai_date(last), str(len(omni["items"])), str(current)]
-    for gone in ("data_pulled_at", "62b1e81", "git blame", "DATA_MAP", "cube_Sale_APD", "pricelist_reader"):
+    assert re.fullmatch(r"\d{1,2} \S+ \d{2}", omni["meta"]["pull"])                      # the shared Thai date format (d MMM yy)
+    assert "{" not in expected and "}" not in expected
+    for gone in ("data_pulled_at", "62b1e81", "git blame", "DATA_MAP", "cube_Sale_APD", "pricelist_reader", "ไม่อัปเดต"):
         assert gone not in page["trend"], gone
 
 
 def test_trend_values_change_when_their_sources_change(edge, tmp_path_factory):
     text = open(INDEX, encoding="utf-8", newline="").read()
-    changed = re.sub(r'"dd":\[\[\d{6},', '"dd":[[301231,', text, count=1)
+    omni = json.loads(_embedded_lines(text)["OMNI"][len("const OMNI = "):].rstrip(";"))
+    pull, label = omni["meta"]["pull"], omni["meta"]["pricelist"]
+    changed = text.replace(f'"pull":"{pull}"', '"pull":"1 ม.ค. 70"', 1).replace(f'"pricelist":"{label}"', "\"pricelist\":\"Q9-2099\"", 1)
     assert changed != text
-    inv = json.load(open(os.path.join(PROJECT_ROOT, "data", "inventory.json"), encoding="utf-8"))
-    inv["totals"]["codes"] = 777
-    site = _site(tmp_path_factory, "w3_perturbed", index_text=changed, inventory=inv)
+    site = _site(tmp_path_factory, "w3_perturbed", index_text=changed)
     server, url = _serve(site)
     try:
         edge.open(url)
         edge.ev("omniShowTab(2); 1")
         assert _wait(edge, "document.getElementById('trendDataNote').style.display === 'block'")
-        spans = edge.ev("['trendLastDate','trendCodeCount','currentCodeCount'].map(i=>document.getElementById(i).textContent)")
+        note = edge.ev("document.getElementById('trendDataNote').textContent")
+        pl = edge.ev("document.getElementById('trendPlLabel').textContent")
     finally:
         server.shutdown()
-    assert spans[0] == _thai_date(301231) and spans[2] == "777", spans
+    assert note.endswith("ข้อมูลถึง 1 ม.ค. 70") and pl == "Q9-2099", (note, pl)
 
 
-def test_trend_note_stays_hidden_when_the_current_count_cannot_be_read(edge, tmp_path_factory):
-    site = _site(tmp_path_factory, "w3_no_inventory")
-    os.remove(site / "data" / "inventory.json")
+def test_trend_note_stays_hidden_when_the_data_carry_no_pull_date(edge, tmp_path_factory):
+    text = open(INDEX, encoding="utf-8", newline="").read()
+    changed = re.sub(r'"pull":"[^"]*"', '"pull":""', text, count=1)
+    assert changed != text
+    site = _site(tmp_path_factory, "w3_no_pull", index_text=changed)
     server, url = _serve(site)
     try:
         edge.open(url)
@@ -222,17 +221,21 @@ def test_w3b_sop_texts_are_in_place(page):
 def test_w3b_trend_numbers_are_computed_from_the_tab_data(page):
     text = open(INDEX, encoding="utf-8").read()
     omni = json.loads(_embedded_lines(text)["OMNI"][len("const OMNI = "):].rstrip(";"))
+    assert page["trend_pl_label"] == omni["meta"]["pricelist"] and re.fullmatch(r"Q[1-4]'20\d\d", page["trend_pl_label"])
+    assert set(page["trend_yrs"]) == {f"{omni['meta']['first_year']}-{omni['meta']['last_year']}"}
+    assert omni["months"][0] == f"{omni['meta']['first_year']}-01" and omni["n31"] == len(omni["months"]) - 1
     assert page["trend_head_count"] == str(len(omni["items"]))
     assert "(" + str(len(omni["items"])) + " รหัส)" in page["trend_head"] and "01.06.69" not in page["trend_head"]
     assert page["n31_spans"] and set(page["n31_spans"]) == {str(omni["n31"])}
     assert "{n31}" not in page["adi_title"] and f"({omni['n31']} ÷" in page["adi_title"]
-    for typed in ("448 รหัส)", "ฐาน 31 เดือน"):
+    for typed in ("448 รหัส)", "ฐาน 31 เดือน", "ปี 2024-2026", "ส.ค.2026 ยังไม่จบเดือน", "ม.ค. 2567 - ส.ค. 2569"):
         assert typed not in text, f"{typed!r} is typed in index.html again"
 
 
 def test_w3b_trend_numbers_follow_a_changed_source(edge, tmp_path_factory):
     text = open(INDEX, encoding="utf-8", newline="").read()
-    changed = text.replace('"n31":31', '"n31":29', 1)
+    n31 = re.search(r'"n31":(\d+)', text).group(1)
+    changed = text.replace(f'"n31":{n31}', '"n31":29', 1)
     assert changed != text
     site = _site(tmp_path_factory, "w3b_perturbed", index_text=changed)
     server, url = _serve(site)
@@ -262,12 +265,17 @@ def test_manual_states_the_gap_without_a_typed_percentage(page):
 
 
 # ------------------------------------------------------------------ embedded data untouched
-def test_trend_embedded_data_is_untouched():
+def test_trend_embedded_data_is_what_the_builder_makes_from_the_saved_pull():
+    import build_trend_tab as bt
+    cfg = bt.load_config()
+    pull_dir = os.path.join(PROJECT_ROOT, *cfg["trend_tab"]["pull_dir"].split("/"))
+    if not os.path.exists(os.path.join(pull_dir, "completeness.json")):
+        pytest.skip("SKIPPED, not passed: the saved Trend pull (untracked output) is not on this machine")
+    daily, names, comp = bt.read_pull(PROJECT_ROOT, cfg)
+    omni, match, _ = bt.build_data(daily, names, comp, bt.pricelist_rows(PROJECT_ROOT, cfg), cfg, bt.pricelist_label(PROJECT_ROOT))
     lines = _embedded_lines(open(INDEX, encoding="utf-8").read())
-    got = {k: hashlib.sha256(v.encode("utf-8")).hexdigest() for k, v in lines.items()}
-    if None in EMBEDDED_DATA_SHA256.values():
-        pytest.skip("SKIPPED, not passed: the recorded hashes are not set")
-    assert got == EMBEDDED_DATA_SHA256
+    assert json.loads(lines["OMNI"][len("const OMNI = "):].rstrip(";")) == json.loads(bt._json(omni))
+    assert json.loads(lines["MATCH"][len("const MATCH = "):].rstrip(";")) == json.loads(bt._json(match))
 
 
 # ------------------------------------------------------------------ sales report: no stale significance claim
@@ -369,3 +377,115 @@ def test_the_bar_fits_or_wraps_without_a_sideways_scroll_and_the_s_and_op_tab_op
         assert facts["active"] == ["S&OP Plan (เดิม)"] and facts["origShown"], facts
     finally:
         server.shutdown()
+
+
+# ------------------------------------------------------------------ Prompt 11: the Trend tab data builder (src/build_trend_tab.py)
+def _fixture_pull():
+    import pandas as pd
+    pl = pd.DataFrame([
+        {"code": "A-1", "sheet": "S1", "division": "PEM101", "category": "Cat", "type": "Typ", "description": "Cap 22kV 630A"},
+        {"code": "B-2", "sheet": "S1", "division": "PEM101", "category": "Cat", "type": "Typ", "description": "Fuse 12,500A"},
+        {"code": "C-3", "sheet": "S2", "division": "PEM102", "category": "Cat", "type": "", "description": "Router"},
+        {"code": "D-4", "sheet": "S2", "division": "PEM102", "category": "Cat", "type": "Typ", "description": "Switch 22kV 630A"},
+        {"code": "E-5", "sheet": "S2", "division": "PEM102", "category": "Cat", "type": "Typ", "description": "Never sold item"},
+        {"code": "F-6", "sheet": "S2", "division": "PEM102", "category": "Cat", "type": "Typ", "description": "Only this month 5A"},
+    ])
+    daily = pd.DataFrame([
+        {"itemcode": "A-1", "d": "2024-01-10", "status": "Actual", "q": 4.0, "s": 400.0, "n": 1},
+        {"itemcode": "A-1", "d": "2024-01-10", "status": "MPS", "q": 1.0, "s": 100.0, "n": 1},
+        {"itemcode": "A-1", "d": "2024-02-20", "status": "Actual", "q": 5.0, "s": 500.0, "n": 2},
+        {"itemcode": "B-2", "d": "2024-01-05", "status": "Actual", "q": 8.0, "s": 80.0, "n": 1},
+        {"itemcode": "C-3", "d": "2024-02-01", "status": "Actual", "q": 2.0, "s": 20.0, "n": 1},
+        {"itemcode": "D-4", "d": "2024-02-02", "status": "Actual", "q": 3.0, "s": 30.0, "n": 1},
+        {"itemcode": "F-6", "d": "2024-03-02", "status": "MPS", "q": 7.0, "s": 70.0, "n": 1},
+    ])
+    names = pd.DataFrame([
+        {"itemcode": "A-1", "productName": "Capacitor 22,000 V 630 A", "n": 3},
+        {"itemcode": "B-2", "productName": "Fuse 12500 A", "n": 1},
+        {"itemcode": "C-3", "productName": "ROUTER WL-R210", "n": 1},
+        {"itemcode": "D-4", "productName": "Switch 22 kV 600 A", "n": 1},
+        {"itemcode": "F-6", "productName": "Other 5 A", "n": 1}, {"itemcode": "F-6", "productName": "Another 5 A", "n": 1},
+    ])
+    totals = {"pulled_at": "2024-03-15T10:00:00", "n_rows": 8, "qty": 30.0, "sale": 1200.0}
+    return daily, names, totals, pl
+
+
+def test_trend_builder_spec_remark_has_one_fixed_example_per_outcome():
+    import build_trend_tab as bt
+    assert bt.specs("Cap 22kV 630A") == {"22000v", "630a"}
+    assert bt.specs("ดิสคอนเนคติ้งสวิตช์ 22 เควี 600 แอมป์") == {"22000v", "600a"}
+    assert bt.specs("Fuse 12,500A") == {"12500a"}
+    assert bt.spec_status(["Cap 22kV 630A"], "Capacitor 22,000 V 630 A", True)[0] == "ok"            # kV against V: same spec
+    assert bt.spec_status(["Fuse 12,500A"], "Fuse 12500 A", True)[0] == "ok"                          # a comma number
+    assert bt.spec_status(["Cap 22kV 630A"], "Cap 22kV", True)[0] == "ok"                              # one side contained in the other
+    assert bt.spec_status(["Switch 22kV 630A"], "Switch 22 kV 600 A", True)[0] == "conflict"
+    assert bt.spec_status(["Router"], "ROUTER WL-R210", True)[0] == "nospec"
+    assert bt.spec_status(["Router 5A"], "ROUTER", True)[0] == "nospec"
+    assert bt.spec_status(["Switch 22kV 630A"], "Switch 22kV 630A", False)[0] == "nodata"             # no sales in the scope
+    assert bt.format_specs({"22000v", "630a"}) == "22kV, 630A" and bt.format_specs({"50hz", "12500a"}) == "12.5kA, 50HZ"
+
+
+def test_trend_builder_classes_months_and_totals_from_a_fixture():
+    import build_trend_tab as bt
+    daily, names, totals, pl = _fixture_pull()
+    cfg = bt.load_config()
+    omni, match, report = bt.build_data(daily, names, totals, pl, cfg, "Q1'2024")
+    assert omni["months"] == ["2024-01", "2024-02", "2024-03"] and omni["n31"] == 2                  # the month of the pull date is the incomplete one
+    it = {i["c"]: i for i in omni["items"]}
+    assert it["A-1"]["qa"][:2] == [4.0, 5.0] and it["A-1"]["qm"][:2] == [1.0, 0.0] and it["A-1"]["sa"][:2] == [400.0, 500.0]
+    assert it["A-1"]["adi"] == 1.0 and it["A-1"]["cls"] == "Smooth"                                    # qty 5 and 5 in two months: ADI 1, CV2 0
+    assert it["B-2"]["adi"] == 2.0 and it["B-2"]["cv2"] == 0.0 and it["B-2"]["cls"] == "Intermittent"
+    assert it["E-5"]["cls"] == "NoSale" and it["E-5"]["adi"] is None and match["E-5"] == {"s": "nodata"}
+    assert it["F-6"]["cls"] == "NoSale31M" and it["F-6"]["qm"][2] == 7.0                                 # sales only in the incomplete month: no ADI, no class
+    assert it["C-3"]["pt"] == "-" and it["F-6"]["dbn"] == "Another 5 A"                                  # blank type shown as -; a name tie goes to the first in alphabetical order
+    assert report["n_name_ties"] == 1 and report["spec"] == {"ok": 3, "conflict": 1, "nospec": 1, "nodata": 1}
+    # the daily rows sum to the months, and the totals are the completeness query's
+    for i in omni["items"]:
+        assert sum(r[1] + r[3] for r in i["dd"]) == pytest.approx(sum(i["qa"]) + sum(i["qm"]))
+        assert sum(r[2] + r[4] for r in i["dd"]) == pytest.approx(sum(i["sa"]) + sum(i["sm"]))
+    assert report["totals"] == {"rows": 8, "qty": 30.0, "sale": 1200.0}
+    assert [r for i in omni["items"] if i["c"] == "A-1" for r in i["dd"]] == [[240110, 4.0, 400.0, 1.0, 100.0], [240220, 5.0, 500.0, 0.0, 0.0]]
+
+
+def test_trend_builder_stops_when_the_totals_differ_from_the_completeness_query():
+    import build_trend_tab as bt
+    daily, names, totals, pl = _fixture_pull()
+    cfg = bt.load_config()
+    for key, bad in (("n_rows", 9), ("qty", 31.0), ("sale", 1200.5)):
+        with pytest.raises(bt.TrendTabError, match="completeness query"):
+            bt.build_data(daily, names, dict(totals, **{key: bad}), pl, cfg, "Q1'2024")
+    with pytest.raises(bt.TrendTabError, match="outside the months"):
+        bt.build_data(daily.assign(d=daily["d"].where(daily.index != 0, "2024-06-01")), names, totals, pl, cfg, "Q1'2024")
+
+
+def test_trend_builder_writes_only_between_the_markers_and_is_repeatable(tmp_path):
+    import build_trend_tab as bt
+    daily, names, totals, pl = _fixture_pull()
+    omni, match, _ = bt.build_data(daily, names, totals, pl, bt.load_config(), "Q1'2024")
+    path = tmp_path / "index.html"
+    path.write_text("<html>before\nconst MATCH = {\"x\":{}};\nconst OMNI = {\"months\":[]};\nafter</html>", encoding="utf-8")
+    bt.write_index(str(path), omni, match)
+    once = path.read_text(encoding="utf-8")
+    assert once.startswith("<html>before\n/* TREND-DATA-BEGIN */") and once.endswith("/* TREND-DATA-END */\nafter</html>")
+    bt.write_index(str(path), omni, match)
+    assert path.read_text(encoding="utf-8") == once                                                     # a second run changes nothing
+    with pytest.raises(bt.TrendTabError):
+        (tmp_path / "other.html").write_text("no data here", encoding="utf-8")
+        bt.write_index(str(tmp_path / "other.html"), omni, match)
+
+
+def test_trend_tab_in_index_html_is_the_saved_pull_and_its_totals_equal_the_completeness_query():
+    import json as _json
+    import build_trend_tab as bt
+    cfg = bt.load_config()
+    text = open(INDEX, encoding="utf-8").read()
+    assert text.count(bt.BEGIN_MARK) == 1 and text.count(bt.END_MARK) == 1
+    omni = _json.loads(_embedded_lines(text)["OMNI"][len("const OMNI = "):].rstrip(";"))
+    pull_dir = os.path.join(PROJECT_ROOT, *cfg["trend_tab"]["pull_dir"].split("/"))
+    if not os.path.exists(os.path.join(pull_dir, "completeness.json")):
+        pytest.skip("SKIPPED, not passed: the saved Trend pull (untracked output) is not on this machine")
+    comp = _json.load(open(os.path.join(pull_dir, "completeness.json"), encoding="utf-8"))
+    assert round(sum(sum(i["qa"]) + sum(i["qm"]) for i in omni["items"]), 3) == round(comp["qty"], 3)
+    assert round(sum(sum(i["sa"]) + sum(i["sm"]) for i in omni["items"]), 1) == round(comp["sale"], 1)
+    assert sum(len(i["dd"]) for i in omni["items"]) > 0 and omni["meta"]["pull_iso"] == comp["pulled_at"][:10]
+    assert omni["n31"] == len(omni["months"]) - 1 and omni["months"][-1] == comp["pulled_at"][:7]

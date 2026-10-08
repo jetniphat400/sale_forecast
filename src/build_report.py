@@ -453,6 +453,11 @@ def attach_scored_baht(scored: pd.DataFrame, prices: dict) -> pd.DataFrame:
     return pd.concat([scored.reset_index(drop=True), pd.DataFrame(rows)], axis=1)
 
 
+def items_not_flat(forward: dict) -> list:
+    """Items whose forecast differs between the forecast months of the vintage (exact comparison); empty when every item has one value for all months."""
+    return sorted(it["item"] for ts in forward["divisions"].values() for t in ts for it in t["items"] if len(set(it["values"])) > 1)
+
+
 def gather_pilot_groups(config: dict) -> list:
     """MAE and Bias of the two pilot groups, recomputed here from the saved series by the pilot-category view builder (src/focus_item_model_selection.py
     build_pilot_view_payload; groups defined by config pilot_categories, the Surge Arrester group being the Medium Voltage Type). The group is scored as the
@@ -818,6 +823,10 @@ def render_page(config: dict) -> str:
         np_head = "".join(f"<th>{html.escape(c)}</th>" for c in report["baht_no_price_columns"])
         no_price_html = (f'<details id="baht-no-price"><summary class="hint">{html.escape(report["baht_no_price_line"].format(n=len(baht["no_price"])))}</summary>'
                          f'<div class="table-scroll"><table class="report-table" id="baht-no-price-table"><thead><tr>{np_head}</tr></thead><tbody>{np_rows}</tbody></table></div></details>')
+    not_flat = items_not_flat(forward)
+    if not_flat:
+        logger.warning("The flat-forecast line is not added: %d items differ between the forecast months (first: %s).", len(not_flat), not_flat[:5])
+    flat_line_html = "" if not_flat else f'<p class="hint" id="flat-forecast-line"><!-- verified at build: every item has one forecast value for all months of the vintage -->{html.escape(report["flat_forecast_line"])}</p>'
     unit_switch = (f'<span class="unit-switch" id="unitSwitch" role="group" aria-label="{html.escape(report["unit_switch_label"])}">{html.escape(report["unit_switch_label"])} '
                    f'<button type="button" data-unit="pieces" aria-pressed="true">{html.escape(report["unit_switch_pieces"])}</button> {html.escape(report["unit_switch_separator"])} '
                    f'<button type="button" data-unit="baht" aria-pressed="false">{html.escape(report["unit_switch_baht"])}</button></span>'
@@ -839,6 +848,7 @@ def render_page(config: dict) -> str:
       <div class="baht-only">{no_price_html}{baht_summary}</div>
       <div class="pieces-only">{"".join(fwd_tables)}</div>
       <div class="baht-only">{"".join(baht_tables)}</div>
+      {flat_line_html}
     </section>"""
 
     # ---- Section 3: Scope ----

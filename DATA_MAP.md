@@ -2033,3 +2033,12 @@ Source: STATUS.md "Week 4, prompt 10"; docs/reports/summary/prompt5_g2_vintage_t
 - **Baht forecast, first month (2026-09), all divisions: 77,578,311;** PEM101 33,257,728, PEM103 23,068,947, PEM107 10,874,992, PEM102 5,448,423, CI101 4,928,221 (the forecast is flat over the six months). **V2.**
 - **Forward-test month 2026-08 in baht (forecast / actual / difference), division scope of the MAE:** CI101 2,728,378 / 9,916,552 / -7,188,174; PEM101 28,868,690 / 40,099,829 / -11,231,139; PEM102 5,221,306 / 6,277,815 / -1,056,509; PEM103 21,516,978 / 26,695,081 / -5,178,103; PEM107 10,312,689 / 10,958,273 / -645,584. **V2.**
 - **Whether cube_Sale_APD `sale` excludes VAT is not proven; whether the Price List Market Price includes VAT is not stated in the file.** Level: unproven (consistency checks only, same upstream source).
+
+## Prompt 11 (2026-10-08): Trend tab data and VAT evidence -- verified facts
+
+Source: STATUS.md "Week 4, prompt 11"; docs/reports/summary/prompt5_g2_vintage_target_map.md, heading "Prompt 11". **V2** = recomputed by the implementer and independently by a Validator.
+
+- **User-stated, not verified by data (2026-10-08): `cube_Sale_APD.sale` excludes VAT.** Evidence collected, no method changed: sale - cost = saleGM within 1 baht on 38,298 of 38,298 rows of the Trend tab's scope (consistency of the table's own columns only). The comparison with a VAT-inclusive amount (`Cube_Invoice_Report_PMIS.invoice_total_incl_vat`, 18,432 rows from 2025-10-08 to 2026-10-08, non-null 100 percent) was not completed: 3,256 of 37,861 scope contract-item pairs join the invoice table (3,218 with equal quantity); the ratio distribution is not obtained. Verdict: NOT PROVEN.
+- **Trend tab data (pull of 2026-10-08):** 445 Price List codes, 38,298 Omni Channel Actual + MPS rows by createDate from 2024-01-03, quantity 3,630,615, sale 2,145,775,776.55; 33 complete months; classes Smooth 49, Erratic 34, Intermittent 172, Lumpy 86, no sales 104; spec remarks ok 309, conflict 16, nospec 16, nodata 104. **V2.**
+- **No code of the visible Price List sheets is on more than one sheet;** one code has two rows (CI101). **V2.**
+- **POR sheet of the target workbook against the Trend data (Omni, Actual + MPS, Price List items):** the Trend data are higher in every month to 2026-04 (sale ratio 1.0004 to 1.121); the workbook's rows end 2026-05-08. Level: observed, cause not verified.

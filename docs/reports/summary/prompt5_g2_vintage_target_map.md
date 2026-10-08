@@ -369,3 +369,56 @@ New: in `test_build_report.py` (switch and texts verbatim and default, config ru
 - Prices follow the forecast-date key and the pull of 2026-10-05; a price drift against the recent months is not reflected in the forecast months (said on the page).
 - Proof of VAT treatment needs one read-only session (above): the user to approve, medium, Claude Code.
 - The Trend tab's time axis (createDate) is recorded for the next task: next task, medium, Claude Code.
+
+
+## Prompt 11
+
+The Trend tab of `index.html` rebuilt from current data by `src/build_trend_tab.py` (new file, approved), the VAT evidence for `cube_Sale_APD.sale`, one line on the forecast page, the decisions recorded. Run 2026-10-08. Database sessions: 1 of 1 (the Trend pull, the VAT queries and the Validator's own three statements, one connection, no retry). The test suite made no connection.
+
+### Part 1, the tab
+
+- **Builder.** `--pull` (one session: item x day x status aggregate, most frequent product name per item, completeness query) and `--build` (saved pull and Price List to the data of the tab, written into `index.html` between the markers `/* TREND-DATA-BEGIN */` and `/* TREND-DATA-END */`; a second run changes nothing). The monthly runner pulls it in step 1 (its own session, a failure keeps the earlier pull) and builds it in new step 7e, whose gate stops the run when the tab's totals differ from the completeness query; `index.html` is now one of the run's generated files. Scope, cut-offs and file names are in config `trend_tab`.
+- **Items.** 445 codes (446 rows; one CI101 code has two rows). No code is on more than one visible sheet; the prompt's "136 CT codes on both PEM103 and PEM107" does not hold for the visible sheets (PEM107's own sheet has 136 codes; PEM103's has 87). The hidden `PEM103-Version 2` sheet is excluded. The three codes of the August build that left the Price List are gone (one ok, two nodata).
+- **Pull.** 2026-10-08 17:25; createDate 2024-01-03 to 2026-10-08; 34 months, 33 complete (2024-01 to 2026-09).
+- **Totals = completeness query: YES, exactly.** 38,298 rows, Σqty 3,630,615, Σsale 2,145,775,776.55. Σ daily = monthly per item; Σ items = KPI "ยอดขายรวม" 2,145.8 million.
+- **Classes.** Smooth 49, Erratic 34, Intermittent 172, Lumpy 86, ไม่มียอดขาย 104 (August: 50, 39, 172, 79, 107 + 1 "no sales 31 months"). Of 29 class changes: the base grew from 31 to 33 months; late postings restated the earlier months of 69 items; two items had their first sales.
+- **Agreement with the forecast pipeline's class** (the same rule on its series, forecast-date key, 2024-02 to 2026-08, 335 items): 289 of 335 = 86.3 percent. Differences: Intermittent in the pipeline and Lumpy here 20, Erratic and Lumpy 10, Lumpy and Intermittent 7, six smaller. The recorded class file of an earlier phase (128 items, other window) agrees on 93 of 128.
+- **Spec badges** ok 309, conflict 16, nospec 16, nodata 104 over 445 codes; August 2026: 309 / 16 / 16 / 107 over 448. Explained item by item: the three removed codes; DS-F-99-0310 ok to conflict and DS-F-99-0311 conflict to ok (their database names changed); EEE-F-FL-5920-353-06600 nodata to ok (first sale). 26 database names differ from August's (most frequent name changed with new sales, or repeated spaces collapsed). One item has a tie in its most frequent name (alphabetical first taken).
+- **Text.** Rendered under the tab bar: "ยอดนับตามวันที่รับ PO จึงไม่เท่ากับยอดในหน้าพยากรณ์ ซึ่งนับตามเดือนที่ต้องส่งของ · ข้อมูลถึง 8 ต.ค. 69". The heading now shows "Price List Q3'2026 (445 รหัส)", the legend, the faded-month hint and the axis range hint are filled from the data. The yellow note about the S&OP tab was left as instructed; typed values left in it: "Pricelist Q4'2025 426 รหัส", "ม.ค.–ก.ค. 2026", "เดือน ส.ค. 2026 ยังไม่จบเดือน", "ม.ค. 2024 – ก.ค. 2026" (the last two now contradict the computed 33 months; the user to decide). The caption of chart 4 keeps its typed verification date 2026-09-24 ("no code counted twice"), which the build now also confirms (no code on more than one sheet).
+- **Rendering** (own headless Edge, temp profile, own PID closed): 1440x900 and 390x844; KPIs (445, 2,145.8, 49, 34, 172, 86, 104), charts 1, 2 and 4, the SKU table (400 rows shown), the drill-down from a month to days (September 2026: 60 bars) and the SKU modal, the badge tooltips (database names; spec details on Check spec), the faded last month (opacity .45); no console error; no horizontal page scroll at 390 px. Screenshots in `output/shots_p11/` (untracked).
+
+### Part 2, VAT (one session, aggregates only)
+
+- Scope rows: |sale - cost - saleGM| <= 1 for 38,298 of 38,298 (100 percent; within a cent too; no nulls).
+- Cube_Invoice_Report_PMIS: 18,432 rows, invoice dates 2025-10-08 to 2026-10-08, one revision value. Non-null: `invoice_total_incl_vat` 100 percent, `line_total_incl_vat` 99.97 percent, `vat_amount` 99.99 percent, `before_vat_amount` 99.97 percent. Lines with VAT = 7 percent of the before-VAT amount: 17,881 of 18,212 (98.2 percent); the sums are not consistent with that (vat 7.5 million, before VAT 2,075.9 million), cause not found.
+- Join on contract and item: scope pairs 37,861; invoice pairs 9,039; joined 3,256; joined with equal quantity 3,218.
+- **Sale / VAT-inclusive total: median, p10, p90 and the share within 0.93 to 0.94 were not obtained.** The four statements failed with "'PERCENTILE_CONT' is not a recognized built-in function name"; the session was spent. **Verdict: NOT PROVEN** (testable). Needed: one more read-only session with a bucketed histogram of sale / line_total_incl_vat for the 3,218 equal-quantity pairs.
+- Recorded in DATA_MAP.md with the user's statement; no method changed.
+
+### Part 3
+
+Every item's forecast is identical across the vintage's six months (335 of 335, from the log). The line "ยอดทายทุกเดือนเท่ากัน เพราะวิธีทายตอนนี้ให้ค่าระดับเดียวกับทุกเดือนข้างหน้า ยังไม่คิดช่วงขายดีขายน้อยตามฤดูกาล" is under the tables in section 2 in both unit modes; the build leaves it out when any item differs (tested).
+
+### Part 4, record
+
+STATUS.md: the two decisions, the Part 2 verdict, and the plan row "first model-tuning item after the 2026-12-05 criteria decision": no seasonality (May to October share 52.2 and 53.4 percent for Surge Arrester, 56.9 and 55.2 for Drop-out Fuse Cutout, DATA_MAP.md entry 45, audit Part D; August 2026 PEM101 forecast 28,868,690 against actual 40,099,829 baht = 28.0 percent below, the scored table of the sales report, Prompt 10). METRICS.md Sec.47; DATA_MAP.md.
+
+### POR cross-check
+
+Sheet POR of the target workbook (no row or customer value copied): rows 2024-01-01 to 2026-05-08. Omni Channel, Actual + MPS, Price List items, by month of createDate, 29 months compared. The tab is higher than POR in every month. Sale ratio (tab / POR) 1.0004 to 1.121 for 2024-01 to 2026-04, total ratio 1.041 (largest difference 8.24 million, 2024-03); quantity ratio 1.000 to 1.069. 2026-05 up to the 8th: sale 2.75, qty 10.5 (the workbook holds 1,803 pieces for those days, the database 18,858). Not explained here: the likely reading is back-dated lines posted after the workbook was made, not verified. 6,661 Omni Actual + MPS rows of POR are for codes not on the Price List.
+
+### Validator
+
+Phase 1 wrote its own SQL from the stated scope without seeing the builder (the three statements ran in the same session); phase 2 recomputed from those results and the Price List, in its own code: **MATCH** on 60,520 item-month cells (445 items x 34 months x four measures), division x month (6 x 34 x 4), month totals, grand totals (diff 0.0), daily to monthly sums (22,578 daily rows), ADI, CV2 and class of all 445 items, spec status of all 445 items (the database name read from the implementer's saved names file, so not independent for that one input), and the item and sheet lists. Independent of the tab code, not of the database.
+
+### Tests
+
+Existing files extended: `test_index_w3.py` (the approved line verbatim and first in the tab; typed values replaced by data and following a changed source; the line hidden without a pull date; one fixed example per badge outcome including kV against V and a comma number; classes, months and totals from a fixture; the stop when totals differ from the completeness query; markers and a second run unchanged; the embedded data equal what the builder makes from the saved pull), `test_monthly_refresh.py` (step 7e after the vintage gate, `index.html` a generated path, the staged copy, the stop), `test_build_report.py` and `test_sales_report_browser.py` (the flat line present only when the VERIFY holds, visible under the tables in both modes). `test_dynamic_values.py`: the perturbed build keeps the real price window and skips the back-check and the baht columns it cannot score. The old hash test of the embedded data became the rebuild-equality test.
+
+### Found, not done
+
+- VAT distribution (second aggregate session): the user to approve, medium, Claude Code.
+- Yellow note of the Trend tab: typed August 2026 month and range: the user to decide, low, Claude Code.
+- Chart 4 caption's typed date 2026-09-24: low, Claude Code.
+- POR difference in the days of May 2026 and the higher Trend values in earlier months: cause open, low, Claude Code with the target owners.
+- The user manual (`docs/user_manual.md`, the Trend chart note) still shows the typed months "ม.ค. 2567 - ส.ค. 2569"; `config/manual_notes.yaml` now holds the line with the first and last month as values the tab fills: with the manual update of 2026-10-19 to 10-21, low, Claude Code.

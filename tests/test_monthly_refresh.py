@@ -218,3 +218,36 @@ def test_the_gate_reads_the_recorded_files_of_the_four_stages_and_stops_on_a_pag
     monkeypatch.setattr(op, "read_page_data", lambda p: dict(real(p), forecast_vintage={"vintage_id": 99}))
     with pytest.raises(mr.MonthlyRefreshAbort, match="G2"):
         mr.step7d_vintage_gate(False, str(tmp_path))
+
+
+# ---- Prompt 11: the Trend tab of index.html is rebuilt by the runner, with a totals gate
+def test_the_trend_tab_step_runs_after_the_vintage_gate_and_before_the_tests_and_index_html_is_a_generated_path():
+    order = mr.STEP_ORDER
+    assert order.index("7d_vintage_gate") < order.index("7e_trend_tab") < order.index("8_run_tests")
+    assert "index.html" in mr.GENERATED_PATHS
+    gates = mr.gate_outcomes({"passed": True, "summary_line": "x"}, {"passed": True, "findings": []}, {"gates": {}}, {"vintage_id": 2}, {"totals": {"rows": 5}})
+    assert gates["gates"]["trend_tab_totals"]["status"] == "passed"
+    assert "trend_tab_totals" not in mr.gate_outcomes({"passed": True}, {"passed": True, "findings": []}, {"gates": {}})["gates"]
+    offline = mr.step1_pull_data(False, offline=True)
+    assert offline["trend_tab_pull"]["refreshed"] is False                                              # offline: no connection, the earlier pull is reused
+
+
+def test_the_trend_tab_step_writes_a_staged_copy_and_stops_when_the_totals_differ(tmp_path, monkeypatch):
+    import hashlib
+    import build_trend_tab as bt
+    cfg = bt.load_config(mr.PROJECT_ROOT)
+    if not os.path.exists(os.path.join(mr.PROJECT_ROOT, *cfg["trend_tab"]["pull_dir"].split("/"), "completeness.json")):
+        pytest.skip("SKIPPED, not passed: the saved Trend pull (untracked output) is not on this machine")
+    tracked = os.path.join(mr.PROJECT_ROOT, "index.html")
+    before = hashlib.sha256(open(tracked, "rb").read()).hexdigest()
+    result = mr.step7e_trend_tab(True, str(tmp_path))                                                    # a staged dry run: the copy under the staging folder
+    assert result["gate"] and (tmp_path / "index.html").exists() and result["n_items"] > 0
+    assert hashlib.sha256(open(tracked, "rb").read()).hexdigest() == before                              # the tracked file is untouched by a dry run
+    real = bt.read_pull
+
+    def read_with_a_row_less(root, config):
+        daily, names, comp = real(root, config)
+        return daily, names, dict(comp, n_rows=comp["n_rows"] - 1)
+    monkeypatch.setattr(bt, "read_pull", read_with_a_row_less)
+    with pytest.raises(mr.MonthlyRefreshAbort, match="completeness query"):
+        mr.step7e_trend_tab(True, str(tmp_path))
