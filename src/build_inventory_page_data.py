@@ -107,6 +107,43 @@ def latest_vintage_item_forecasts(horizon: int = FORECAST_HORIZON_MONTHS, root: 
     info = {"vintage_id": int(vid), "forecast_run_date": str(rows["forecast_run_date"].iloc[0]), "data_cutoff_date": str(rows["data_cutoff_date"].iloc[0]),
             "fit_last_month": str(rows["fit_last_month"].iloc[0]), "target_months": [str(m) for m in months], "source": "forward-test log, level " + cfg["forecast_level"]}
     return out, info
+def latest_vintage_item_history(root: str = PROJECT_ROOT) -> tuple:
+    """(item series, info): the monthly quantities behind the Max-Min percentile, from the SAME series and fit window as the latest vintage of the forward-test log
+    (decision D2 of the user, 2026-10-08), replacing the builder's own older series. The series is the one the vintage was fitted on: when the vintage's metadata
+    records `fit_series_file` (vintage 3 on) that saved file, hash-checked; otherwise (vintages 1 and 2 predate it) `output/data/processed_all_divisions_monthly_qty.csv`,
+    the file step 5 snapshots, cut to the vintage's `fit_first_month`..`fit_last_month`, and the info says it is not hash-verified. Stops when the window is not the
+    vintage's `fit_n_months` months for an item."""
+    import io
+    import operation_plan as op
+    import forward_test_common as ftc
+    import vintage_series
+    cfg = op.load_config(root)
+    meta = ftc.load_metadata(op.path_of(root, cfg["forecast_log_metadata_file"]))
+    log = ftc.read_forward_test_log(op.path_of(root, cfg["forecast_log_file"]))
+    vid = int(log["vintage_id"].max())
+    entry = meta[str(vid)] if str(vid) in meta else meta[vid]
+    first, last, n_months = str(entry["fit_first_month"]), str(entry["fit_last_month"]), int(entry["fit_n_months"])
+    verified = False
+    if entry.get("fit_series_sha256"):
+        data = vintage_series.read_series(vid)
+        if vintage_series.sha256_hex(data) != entry["fit_series_sha256"]:
+            raise ValueError(f"vintage {vid}: the saved fit series does not hash to the value its metadata records")
+        df, verified, source = pd.read_csv(io.BytesIO(data)), True, entry["fit_series_file"]
+    else:
+        source = vintage_series.SERIES_SOURCE
+        df = pd.read_csv(os.path.join(root, *source.split("/")))
+    df = df[(df["year_month"] >= first) & (df["year_month"] <= last)]
+    months = sorted(df["year_month"].unique())
+    series = {}
+    for code, g in df.groupby("itemcode"):
+        g = g.sort_values("year_month")
+        if len(g) != n_months or g["year_month"].tolist() != months:
+            raise ValueError(f"{code}: {len(g)} months in the fit window {first}..{last}, expected {n_months}")
+        series[str(code).strip()] = g["qty"].to_numpy(dtype=float)
+    pull = str(df["snapshot_pull_date"].iloc[0]) if "snapshot_pull_date" in df.columns and len(df) else ""
+    return series, {"vintage_id": vid, "months": months, "fit_first_month": first, "fit_last_month": last, "source": source, "hash_verified": verified, "series_pull_date": pull}
+
+
 CONFIG_PATH = os.path.join(PROJECT_ROOT, "config", "config.yaml")
 PILOT_DIVISIONS = ["PEM101", "PEM103", "PEM107"]
 # Short option label per disabled division. Reasons are built by disabled_division_reasons() so the
@@ -250,8 +287,9 @@ def _build_pem101_division(config: dict, inventory_source=None) -> dict:
     e1 = config["phase_e1_assumptions"]
     sp = config["segment_policy"]
     scope = load_scope(config)
-    series_bundle = load_monthly_series(scope)
-    series = series_bundle["series"]
+    hist, hist_info = latest_vintage_item_history()
+    series = {c: (v, hist_info["months"]) for c, v in hist.items()}                 # D2: the log vintage's own series and fit window
+    series_bundle = {"series": series, "pull_date": hist_info["series_pull_date"]}
 
     policy_df = pd.read_csv(os.path.join(SUMMARY_DIR, "phaseE1fix_1_item_policy.csv"))
     unit_cost_df = pd.read_csv(os.path.join(SUMMARY_DIR, "phaseE1fix_2_unit_cost.csv"))
@@ -344,8 +382,8 @@ def _build_pilot_division(config: dict, division: str, raw: pd.DataFrame, invent
     scope = load_division_scope(config, division)
     codes = sorted(scope["code"].unique())
     raw_div = raw[raw["itemcode"].isin(codes)]
-    series_bundle = build_monthly_series(raw_div, codes)
-    series = series_bundle["series"]
+    hist, hist_info = latest_vintage_item_history()
+    series = {c: (hist[c], hist_info["months"]) for c in codes if c in hist}        # D2: the log vintage's own series and fit window
 
     fc_all, _vintage = latest_vintage_item_forecasts(FORECAST_HORIZON_MONTHS)
 

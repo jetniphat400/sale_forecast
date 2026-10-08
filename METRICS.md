@@ -109,6 +109,10 @@ and whether any part is a configurable assumption.
 
 PEM101's Min and Max on `forecast/inventory.html` use the lead time the calibration supports: the section 22 ensemble fitted with lead time free (section 20) on the 92 stock_policy items (36 distinct members, replenishment lead 1 to 30 days on 2026-10-06). The item lead time version 1 above is shown beside each item and kept for the material plan; it is not an input to Min or Max. Every figure the page shows from the ensemble is read from the control run's recorded files after a SHA-256 check.
 
+### Max-Min v1 demand input (decision D3 of the user, 2026-10-08)
+
+PEM101's Min and Max keep the history-based demand input in v1: Min = r x 30.44 x the item's mean daily demand, Max = the median over the members of (r + gap) x 30.44 x the same demand, the mean taken over the daily series of `output/data/raw_all_divisions_sales.csv` from 2024-01-01 to the end of the last complete month (`src/maxmin_v1.py` `build_page_inputs`; 92 stock_policy items). The forecast is not used for the PEM101 Min/Max in v1. Evidence (week 4, prompt 5, Part 3, STATUS.md): replacing that level by the latest vintage's monthly forecast, with every other input unchanged, gives Min 93,904 against 81,385 units (+15.4 percent; THB 13.2M against 10.0M, +31.8 percent) and, in the calibration's own simulation over 2026-01 to 2026-09 at the page's default setting, 98.54 percent not late at THB 19.27M against 97.87 percent at THB 13.85M (observed 98.34 percent, THB 15.49M). That run is a level substitution, not a backtest: the vintage is a forward level applied to a past window and the history level is in-sample for it, so it does not show which input predicts better. A backtest of a forecast-based input will be run when enough forecast vintages exist; until then the history-based input stays. (The Min and Max of the other divisions' stock items, section 4 and the page's standard-assumption table, use the vintage's forecast for the lead-time demand and the vintage's series for the percentile, section 28.)
+
 ## 6. stock_value  ← the metric that was ambiguous in E1
 
     stock_value = Σ over items with policy = finished_goods_stock of
@@ -723,8 +727,9 @@ Every dashboard page and panel displays, near its title:
   commented.
 - Calibration is not re-run automatically; pages keep showing
   model_calibrated_at from the last calibration.
+- Saved pulls: the page builders pick "the latest saved pull" only among files dated today or earlier (`inventory_page_sources.not_after_today`); a file dated later, which only a moved clock can produce, is ignored and quarantined (2026-10-08).
 - G2 (the Max-Min page's data) takes each item's forecast from the latest vintage of the forward-test log (decision D2 of the user, 2026-10-08):
-  the vintage's monthly forecasts in target-month order, extended to the page's 10 months by repeating the last month; Min and Max are computed from it exactly as
+  the vintage's monthly forecasts in target-month order, extended to the page's 10 months by repeating the last month, and the demand history behind its percentile is the series and fit window of that vintage (the saved fit series when its metadata records one, else `processed_all_divisions_monthly_qty.csv` cut to `fit_first_month`..`fit_last_month`; decision D2, 2026-10-08); Min and Max are computed from them exactly as
   before (Sec.4, Sec.20-23). Step 7 rebuilds it after step 5 (the new vintage) and before steps 7b and 7c.
 - Every run writes a run log stating each step's outcome, the figures
   checked at step 10, and whether it pushed. A held or failed run is

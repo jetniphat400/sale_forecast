@@ -20,6 +20,7 @@ import html
 import os
 import sys
 
+import pytest
 import yaml
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -86,7 +87,17 @@ def test_sales_report_rebuild_still_has_every_note_and_axis_title(tmp_path):
 
 
 def test_inventory_page_rebuild_still_has_every_note_axis_title_and_disabled_control(tmp_path):
-    page_html = build_inventory_page.build_page()
+    # No database: the page is rendered from the tracked page's own embedded data (week 4, prompt 6: this test used to call build_page() with no sources, which
+    # pulls live from the database and wrote four pull files into output/snapshots on every full run).
+    sys.path.insert(0, os.path.join(PROJECT_ROOT, "tests"))
+    from page_helpers import fresh_inventory_data
+    data = fresh_inventory_data()
+    mp = pytest.MonkeyPatch()
+    mp.setattr(build_inventory_page, "build_data", lambda **kw: data)
+    try:
+        page_html = build_inventory_page.build_page()
+    finally:
+        mp.undo()
     out_path = os.path.join(str(tmp_path), "inventory.html")
     with open(out_path, "w", encoding="utf-8") as f:
         f.write(page_html)

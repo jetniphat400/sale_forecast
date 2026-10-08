@@ -30,10 +30,26 @@ class SourceError(Exception):
     """A saved source needed to rebuild the page is missing."""
 
 
-def _latest(name: str) -> str:
-    files = sorted(glob.glob(os.path.join(SNAPSHOT_DIR, f"inventory_page_pull_{name}_*.csv")))
+def not_after_today(files: list, today=None) -> list:
+    """The saved pulls whose date (the YYYY-MM-DD before `.csv` in the file name) is not later than `today` (default: this machine's date), sorted by name. A pull
+    dated in the future can only come from a moved clock (2026-10-02: a clock-shifted test run wrote four of them, dated 2026-11-05), and a name that sorts last must
+    never make it "the latest pull". A file whose name carries no date is kept."""
+    import re
+    from datetime import date, datetime
+    limit = (today if isinstance(today, date) else datetime.fromisoformat(str(today)).date()) if today is not None else datetime.now().date()
+    keep = []
+    for f in sorted(files):
+        m = re.search(r"(\d{4}-\d{2}-\d{2})\.csv$", os.path.basename(f))
+        if m and date.fromisoformat(m.group(1)) > limit:
+            continue
+        keep.append(f)
+    return keep
+
+
+def _latest(name: str, today=None) -> str:
+    files = not_after_today(glob.glob(os.path.join(SNAPSHOT_DIR, f"inventory_page_pull_{name}_*.csv")), today)
     if not files:
-        raise SourceError(f"No saved pull inventory_page_pull_{name}_*.csv under output/snapshots/")
+        raise SourceError(f"No saved pull inventory_page_pull_{name}_*.csv dated today or earlier under output/snapshots/")
     return files[-1]
 
 
@@ -68,8 +84,8 @@ def saved_pull_sources(pull_labels: dict = None) -> dict:
 DAILY_SNAPSHOT_PATTERN = "inventory_daily_*.csv"
 
 
-def latest_daily_snapshot(snapshot_dir: str = None) -> str:
-    files = sorted(glob.glob(os.path.join(snapshot_dir or SNAPSHOT_DIR, DAILY_SNAPSHOT_PATTERN)))
+def latest_daily_snapshot(snapshot_dir: str = None, today=None) -> str:
+    files = not_after_today(glob.glob(os.path.join(snapshot_dir or SNAPSHOT_DIR, DAILY_SNAPSHOT_PATTERN)), today)
     if not files:
         raise SourceError(f"No daily stock snapshot ({DAILY_SNAPSHOT_PATTERN}) under {snapshot_dir or SNAPSHOT_DIR}; "
                           f"src/snapshot_daily.py writes one each day")

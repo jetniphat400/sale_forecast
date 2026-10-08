@@ -108,3 +108,91 @@ def test_the_tracked_page_carries_the_latest_log_vintage_and_every_log_item_has_
     assert n > 0
     empty = [it["code"] for div in data["divisions"].values() for it in div["items"] if not it["forecast"] and it["code"] in wide.index]
     assert empty == []                     # no item that the log forecasts is shown on the page without a forecast
+
+
+# ------------------------------------------------------------------ a saved pull dated in the future is never "the latest pull" (week 4, prompt 6)
+def test_a_pull_dated_after_today_is_never_selected_as_the_latest(tmp_path, monkeypatch):
+    for day in ("2026-10-05", "2026-10-07", "2026-11-05"):
+        (tmp_path / f"inventory_page_pull_PEM101_inventory_{day}.csv").write_text("itemcode\nA\n", encoding="utf-8")
+        _write_snapshot(tmp_path, day, f"{day} 21:00:00")
+    monkeypatch.setattr(ips, "SNAPSHOT_DIR", str(tmp_path))
+    assert os.path.basename(ips._latest("PEM101_inventory", today="2026-10-07")) == "inventory_page_pull_PEM101_inventory_2026-10-07.csv"
+    assert os.path.basename(ips.latest_daily_snapshot(str(tmp_path), today="2026-10-07")) == "inventory_daily_2026-10-07.csv"
+    assert os.path.basename(ips._latest("PEM101_inventory", today="2026-11-05")).endswith("2026-11-05.csv")      # the day itself counts: only later dates are dropped
+    assert not any("2026-11-05" in f for f in ips.not_after_today([str(p) for p in tmp_path.iterdir()], today="2026-10-31"))
+    only_future = tmp_path / "only"
+    only_future.mkdir()
+    (only_future / "inventory_daily_2027-01-01.csv").write_text("x\n", encoding="utf-8")
+    with pytest.raises(ips.SourceError):
+        ips.latest_daily_snapshot(str(only_future), today="2026-10-07")
+
+
+def test_the_real_snapshot_folder_holds_no_pull_dated_after_today():
+    import glob
+    folder = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "output", "snapshots")
+    files = glob.glob(os.path.join(folder, "inventory_page_pull_*.csv")) + glob.glob(os.path.join(folder, "inventory_daily_*.csv"))
+    if not files:
+        pytest.skip("SKIPPED, not passed: no saved pull on this machine")
+    assert sorted(files) == ips.not_after_today(files)
+
+
+# ------------------------------------------------------------------ the Max-Min page's history is the log vintage's series and fit window (decision D2, 2026-10-08)
+def _history_fixture(tmp_path, monkeypatch, months, fit_first, fit_last, n):
+    import forward_test_common as ftc
+    import operation_plan as op
+    series = tmp_path / "output" / "data"
+    series.mkdir(parents=True)
+    rows = [{"itemcode": c, "year_month": m, "qty": float(i + k), "snapshot_pull_date": "2026-10-05 07:41:06"}
+            for i, c in enumerate(["A-1", "B-2"]) for k, m in enumerate(months)]
+    pd.DataFrame(rows).to_csv(series / "processed_all_divisions_monthly_qty.csv", index=False)
+    monkeypatch.setattr(op, "load_config", lambda root=None: {"forecast_log_metadata_file": "m.json", "forecast_log_file": "l.csv"})
+    monkeypatch.setattr(ftc, "load_metadata", lambda path: {"2": {"fit_first_month": fit_first, "fit_last_month": fit_last, "fit_n_months": n}})
+    monkeypatch.setattr(ftc, "read_forward_test_log", lambda path: pd.DataFrame({"vintage_id": [1, 2, 2]}))
+
+
+def test_the_page_history_is_the_latest_vintages_series_cut_to_its_fit_window(tmp_path, monkeypatch):
+    import build_inventory_page_data as bd
+    months = [f"2026-{m:02d}" for m in range(1, 9)]
+    _history_fixture(tmp_path, monkeypatch, months, "2026-03", "2026-07", 5)
+    series, info = bd.latest_vintage_item_history(str(tmp_path))
+    assert info["months"] == months[2:7] and info["vintage_id"] == 2 and info["hash_verified"] is False         # vintages 1 and 2 predate saved fit series
+    assert list(series["A-1"]) == [2.0, 3.0, 4.0, 5.0, 6.0] and list(series["B-2"]) == [3.0, 4.0, 5.0, 6.0, 7.0]
+
+
+def test_a_history_that_is_not_the_vintages_fit_window_stops_the_build(tmp_path, monkeypatch):
+    import build_inventory_page_data as bd
+    months = [f"2026-{m:02d}" for m in range(1, 9)]
+    _history_fixture(tmp_path, monkeypatch, months, "2026-03", "2026-07", 6)            # the vintage says 6 months, the series holds 5 in that window
+    with pytest.raises(ValueError, match="expected 6"):
+        bd.latest_vintage_item_history(str(tmp_path))
+
+
+def test_the_tracked_pages_history_equals_the_log_vintages_series_for_every_item():
+    import operation_plan as op
+    import forward_test_common as ftc
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    cfg = op.load_config(root)
+    series_file = os.path.join(root, "output", "data", "processed_all_divisions_monthly_qty.csv")
+    try:
+        meta = ftc.load_metadata(op.path_of(root, cfg["forecast_log_metadata_file"]))
+        log = ftc.read_forward_test_log(op.path_of(root, cfg["forecast_log_file"]))
+    except Exception:       # noqa: BLE001
+        pytest.skip("SKIPPED, not passed: the forward-test log is not on this machine")
+    if not os.path.exists(series_file):
+        pytest.skip("SKIPPED, not passed: the monthly series is not on this machine")
+    vid = int(log["vintage_id"].max())
+    entry = meta[str(vid)] if str(vid) in meta else meta[vid]
+    if entry.get("fit_series_sha256"):
+        pytest.skip("SKIPPED, not passed: this vintage has a saved fit series; compare through vintage_series")
+    df = pd.read_csv(series_file)
+    df = df[(df["year_month"] >= entry["fit_first_month"]) & (df["year_month"] <= entry["fit_last_month"])]
+    expect = {c: g.sort_values("year_month")["qty"].round(3).tolist() for c, g in df.groupby("itemcode")}
+    data = op.read_page_data(os.path.join(root, "forecast", "inventory.html"))
+    n = 0
+    for div in data["divisions"].values():
+        for it in div["items"]:
+            if it["code"] in expect:
+                n += 1
+                assert it["actual_history"] == pytest.approx(expect[it["code"]], abs=1e-3), it["code"]
+                assert len(it["actual_history"]) == int(entry["fit_n_months"])
+    assert n > 0
