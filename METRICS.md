@@ -695,6 +695,9 @@ Every dashboard page and panel displays, near its title:
       6 fill actual_qty and score any months that became eligible
       7 rebuild every page with section 26 timestamps
       7b recompute operation plan v1 (section 42) from the page just built and the saved pulls
+      7c recompute material plan v1 (section 43) from the operation plan
+      7d vintage gate: G1 (the latest vintage of the forward-test log), G2 (`forecast_vintage` in forecast/inventory.html's data), G3 (the operation
+         plan's meta) and the material plan (its meta) must carry the same forecast vintage id, else the run stops before step 8
       8 run the full test suite
       9 scan staged files for sensitive content
       10 check change magnitude against the previous run
@@ -720,6 +723,9 @@ Every dashboard page and panel displays, near its title:
   commented.
 - Calibration is not re-run automatically; pages keep showing
   model_calibrated_at from the last calibration.
+- G2 (the Max-Min page's data) takes each item's forecast from the latest vintage of the forward-test log (decision D2 of the user, 2026-10-08):
+  the vintage's monthly forecasts in target-month order, extended to the page's 10 months by repeating the last month; Min and Max are computed from it exactly as
+  before (Sec.4, Sec.20-23). Step 7 rebuilds it after step 5 (the new vintage) and before steps 7b and 7c.
 - Every run writes a run log stating each step's outcome, the figures
   checked at step 10, and whether it pushed. A held or failed run is
   reported in the log, never silently skipped.

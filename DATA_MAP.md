@@ -1984,3 +1984,14 @@ Source: STATUS.md "Week 4, prompt 3". **V2** = recomputed by the implementer and
 - **The page's 36 distinct members** (control run, 92 items), not 80, give the calibrated section its Min and Max; the PEM101 mixed item (share 0.231) has Min 0.31 and Max 0.70 on its stock share. **V2.**
 - **Cube_CES 2023:** the saved pulls held 274 of the 335 scope items; the 61 others have 8,716 rows (pulled 2026-10-07, no date filter; 5,545 Omni Channel). cube_Sale_APD is cut off on the left in 2024-01 (51,973 against 63,043 from Cube_CES with no CtrDate floor). 2024-02 to 2026-08: 10,342 of 10,385 item-months equal between Cube_CES (PlanQty, Actual or Backlog, Omni Channel, ForecastDelDate, CtrDate floor 2024-01-01) and the processed monthly file. **V1.**
 - **Calibration window:** the as-configured control run gives 36 members, lead 1 to 30 days; from 2024-07 the longest lead is 15 days (35 members); from 2025-01 33 members. **V1** (the Validator re-ran the windows).
+
+## Prompt 5 (2026-10-08): G2 on the latest vintage, G3-only items, the target workbook -- verified facts
+
+Source: STATUS.md "Week 4, prompt 5"; docs/reports/summary/prompt5_g2_vintage_target_map.md. **V2** = recomputed by the implementer and by an independent Validator; **V1** = by one agent from saved data.
+
+- **G2 (the Max-Min page's data) is built on the latest vintage of the forward-test log since 2026-10-08.** Before, its forecast was the builder's own refit (equal to vintage 1); after, 306 items carry vintage 2 and the G2-versus-G3 forecast check gives 0 mismatches of 1,530 item-months (1,330 before). PEM101 standard-table Max total 576,665 to 578,656; PEM107 Max of its four stock items +6 units; PEM101's calibrated section unchanged. **V2.**
+- **The 32 PEM101 items that had no G2 forecast now have one; none gets a Min in the standard table** (no history in the page's series). **V2.**
+- **The daily stock job pulls before it checks "tracked files clean"** (`publish_stage`), and the scheduled task pulls first as well. **V2** (code read; the 2026-10-08 08:00 run published).
+- **104 items are in G3 and not in G1** (PEM101 21, PEM102 10, PEM103 37, PEM104 12, PEM107 24); their G3 demand is 0 in every month: the plan's rule labels it "backlog" and no Cube_CES row with Status 'Backlog' exists for them in the saved pulls. Whether 0 is true demand or a coverage gap is undetermined. **V1.**
+- **PEM101 Min/Max today use the mean daily history demand 2024-01-01 to 2026-09-30 (92 items), not the forecast;** substituting the latest vintage's monthly forecast raises Min by 15.4 percent in units and 31.8 percent in value (level substitution, not a backtest). **V1.**
+- **User-stated, not verified:** `target_data.xlsx`, sheet "TargetC1005 12-06-2029", is the latest target version (user, 2026-10-08). The file was not at the stated path (`D:\sale_forecast_private	arget_data.xlsx`) when checked 2026-10-08, so nothing about it is verified.
