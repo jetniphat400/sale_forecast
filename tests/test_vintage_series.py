@@ -83,6 +83,7 @@ def _score_step_with(monkeypatch, tmp_path, meta):
     monkeypatch.setattr(mr, "read_forward_test_log", lambda p: pd.DataFrame())
     monkeypatch.setattr(mr, "load_metadata", lambda p: meta)
     monkeypatch.setattr(mr, "verify_comparator_log", lambda: {"exists": False})
+    monkeypatch.setattr(mr, "verify_shadow_log", lambda: {"exists": False})
     monkeypatch.setattr(mr.fts, "record_scores", lambda *a, **k: {"recorded": 0})
     return mr.step6_fill_and_score(dry_run=True)
 

@@ -144,6 +144,16 @@ Code: `src/investigations/task2b_part2_fulfilment_segmentation.py` (`run_from_pu
 - Reader text: see SENTENCES NEEDING THAI TEXT of this task (demand column header on the material page, a label for the list of divisions covered, a line for the six PEM101 codes never sold, the approved heading for six divisions) (the user's assistant).
 - Category-level view of the two product categories and the three items' settings (brief item "settings"), storms and the other external factors, utility budgets, sales insight and EGP bids: not done (brief table).
 
+### Week 4, prompt 16 -- shadow forecast system, Surge Arrester on Holt -- DONE, 2026-10-09 (no database; the test suite made none)
+
+**Report:** `docs/reports/summary/prompt5_g2_vintage_target_map.md`, heading "Prompt 16". Rule: METRICS.md Sec.51 and config `shadow`, **pre-registered in commit 717f2cb (2026-10-09 11:08:59) before any shadow forecast was computed or scored**.
+
+**Built.** The Surge Arrester group (48 items) is forecast with Holt as a shadow next to the production forecast (same Type level and top-down split as the experiment's Holt; one `holt_clipped` in `src/models.py`). Own append-only log `output/summary/forward_test_shadow_log.csv` (+ metadata), never inside the production log, so no plan reads it. Vintage 2 back-filled from the series up to 2026-08, stored unscored (288 rows). From the 2026-11-05 run the job makes the shadow forecast of each new vintage, copies actuals from the production log, scores every shadow month through the leakage guard and prints the rule status. One line on the forecast page under the pilot table.
+
+**Rule status: pending.** Vintage 2, Holt against current, months 2026-09/10/11, MAE of the group total; scoreable on the runs of 2026-11-05, 2026-12-05 and 2027-01-05; the evaluation run is 2027-01-05 (derived from the guard and run day 5). The outcome is a recommendation only. Note: the criteria `decision_date` 2026-12-05 is earlier than the evaluation run; the rule does not use it.
+
+**Checks.** Production forecast, score record and the other pages byte-identical (15 files); suite 730 passed, 0 failed; Validator MATCH on the back-fill, the leakage test, the derived run dates and the gate.
+
 ### Week 4, prompt 15 -- forecast model experiment (report only): five candidates against the production method on the existing backtest, with a pre-registered selection rule -- DONE, 2026-10-09 (no database; the test suite made none)
 
 **Report:** `docs/reports/summary/prompt5_g2_vintage_target_map.md`, heading "Prompt 15". Rule and definitions: METRICS.md Sec.50, config `experiment_2026_10`, **pre-registered in commit 8f8ef46 (2026-10-09 10:15:12) before any candidate was computed**.

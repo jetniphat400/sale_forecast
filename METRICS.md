@@ -1432,3 +1432,13 @@ pipeline — no new section is needed for this; it is already covered by section
     outcome         = a recommendation only; never adopted automatically; the switch needs the user's approval. The `decision_date` of the criteria (2026-12-05) is not used by this rule.
 
 - Disclosure: The rule was proposed in chat at 2026-10-09 11:01, before September's raw units for this group were printed during a completeness check at 11:02. The rule text did not change after that. No Holt or current forecast had been computed or scored at that point.
+
+Implementation (added with the code, after the rule above; the rule text is unchanged since 2026-10-09 11:09):
+
+    storage         = output/summary/forward_test_shadow_log.csv and forward_test_shadow_metadata.json: the shadow log, next to the production log, its own append-only file with its own row hash
+                      (the comparator's method); never rows inside the production log, so no plan input can read a shadow row. Shadow actuals are copied only from the production log's
+                      guard-filtered actual_qty; scoring checks the leakage guard again. Scores are in forward_test_scores.csv under scope `shadow_group`, keys `<group>|Holt`, `<group>|current`,
+                      `<group>|Naive` (MAE = absolute error of the group's monthly total).
+    back-fill       = vintage 2's Holt, from the saved series cut to its fit window (2024-02 to 2026-08), stored unscored; its series was not saved at the run, so the entry says it was back-filled.
+    shown           = Relative MAE against Naive (sum of the shadow MAE over the sum of Naive's, all scored shadow points) and Tracking Signal (sum of signed errors over the mean absolute error), the latter
+                      only from `shadow.min_points_tracking_signal` points (3; added after the rule, not part of it: the rule uses MAE only).

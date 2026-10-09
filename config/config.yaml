@@ -1120,6 +1120,15 @@ report:
   pilot_group_line: "▸ {group} ทายต่ำกว่าจริงเฉลี่ยเดือนละ {x} ชิ้น"
   pilot_warn_line: "▸ ถ้าใช้ยอดทายของสองกลุ่มนี้วางแผน ให้ระวังว่ามักทายต่ำ"
   pilot_scope_note: "Surge Arrester ในตารางนี้นับเฉพาะ Medium Voltage"
+  # Shadow forecast line under the pilot table (METRICS.md Sec.51); {braced} names are filled at build time from the score record and the leakage guard.
+  shadow_head: "▸ {group} shadow forecast (ยอดทายทดลองที่คำนวณคู่กับยอดทายจริง) ใช้วิธี {method} (ทายตามแนวโน้มยอดขายที่ขึ้นหรือลง)"
+  shadow_status_pending: "สถานะ: ยังไม่มีเดือนที่เทียบได้ ผลเดือนแรกออกในรอบวันที่ {first_run}"
+  shadow_status_partial: "สถานะ: เทียบแล้ว {n} จาก {total} เดือน"
+  shadow_status_recommend_switch: "สถานะ: เทียบครบ ผลแนะนำให้เปลี่ยนเป็น {method} รอการอนุมัติ"
+  shadow_status_keep_current: "สถานะ: เทียบครบ ผลแนะนำให้คงวิธีเดิม"
+  shadow_month: "{month} MAE {method} {h} เทียบกับวิธีปัจจุบัน {c}"
+  shadow_next: "เดือน{month}ผลออกในรอบวันที่ {run}"
+  shadow_not_in_plan: "ยังไม่ได้ใช้ในแผน"
   scored_heading: "ยอดทายเทียบยอดขายจริง"
   scored_columns: ["ฝ่าย", "เดือน", "MAE", "MAE (Naive)", "Relative MAE", "Bias", "MAE ในการทดสอบย้อนหลัง", "ยอดทาย (บาท)", "ยอดจริง (บาท)", "ต่าง (บาท)"]
   # Block "เทียบกับร่างเกณฑ์" of the Results section (approved text of 2026-10-09, verbatim; the lines under the table are in config/manual_notes.yaml, criteria-comparison).
@@ -1245,6 +1254,7 @@ shadow:
   pairs:
     surge_arrester: holt
   monthly_run_day_of_month: 5          # the monthly job runs on this day (STATUS.md plan); the date of the first evaluation is derived from it and the leakage guard, never typed
+  min_points_tracking_signal: 3        # Tracking Signal of a shadow method is shown only from this many scored points (not part of the rule; the rule uses MAE only)
   rule:
     vintage_compared: 2                # vintage 2 only; vintage 3 and later shadow forecasts are recorded but do not count toward this rule
     target_months: ["2026-09", "2026-10", "2026-11"]     # horizons 1 to 3 of vintage 2

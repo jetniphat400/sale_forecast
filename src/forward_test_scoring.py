@@ -27,7 +27,7 @@ import hashlib
 import json
 import os
 import sys
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import numpy as np
 import pandas as pd
@@ -128,6 +128,113 @@ def compute_score_rows(log: pd.DataFrame, metadata: dict, raw: pd.DataFrame, run
     return df[SCORE_COLUMNS]
 
 
+# ---------------------------------------------------------------- shadow forecasts (METRICS.md Sec.51)
+SHADOW_SCOPE = "shadow_group"
+SHADOW_DEFINITION = "shadow_group_series_v1"
+
+
+def scoreable_run_date(target_month: str, margin_days: int, run_day: int):
+    """The first monthly run (the run_day of a month) whose date is at least `margin_days` after the end of `target_month`: the run at which the leakage guard lets the month be scored.
+    Derived, never typed; check_window_closed agrees with it (tested)."""
+    d = pd.Period(target_month, freq="M").end_time.date() + timedelta(days=int(margin_days))
+    while d.day != int(run_day):
+        d += timedelta(days=1)
+    return d
+
+
+def decide_rule(holt_mae: list, current_mae: list, rule: dict) -> dict:
+    """The pre-registered decision (config shadow.rule, METRICS.md Sec.51) on the MAE of each target month, in the same month order: 'recommend_switch' only if Holt's MAE is lower than current's in at
+    least rule.min_months_holt_lower months (a tie is not lower) AND, when rule.sum_must_be_lower, Holt's summed MAE is lower than current's; otherwise 'keep_current'."""
+    n_lower = sum(1 for h, c in zip(holt_mae, current_mae) if h < c)
+    sum_lower = sum(holt_mae) < sum(current_mae)
+    ok = n_lower >= int(rule["min_months_holt_lower"]) and (sum_lower or not rule["sum_must_be_lower"])
+    return {"months_holt_lower": n_lower, "holt_sum": float(sum(holt_mae)), "current_sum": float(sum(current_mae)), "sum_lower": bool(sum_lower),
+            "outcome": rule["outcome_if_true"] if ok else rule["outcome_otherwise"]}
+
+
+def shadow_score_rows(shadow_log: pd.DataFrame, production_log: pd.DataFrame, shadow_metadata: dict, config: dict, run_id: str, now, min_margin_days: int) -> pd.DataFrame:
+    """Score rows of the shadow forecasts, recorded in the score record under scope 'shadow_group': for each (vintage, target month, horizon) of each shadow group, the absolute error of the group's
+    monthly total (the pilot-group MAE of the forecast page: the group series as one series) for the shadow method ('<group label>|<method>'), for the production forecast of the same items
+    ('<group label>|current') and for Naive ('<group label>|Naive', the group's units in the last fit month). A month is scored ONLY if it has passed the leakage guard (check_window_closed against
+    `now`): a month still inside the margin is skipped here whatever the log holds, no exception, no override. MAE = absolute error; Bias = forecast minus actual; RMSE and RMSE_pooled = the absolute error;
+    MASE is not defined for a group total."""
+    from leakage_guard import check_window_closed, LeakageGuardError
+    from forward_test_all_divisions import SHADOW_METHODS
+    labels = config["report"]["pilot_labels"]
+    items = shadow_log[shadow_log["level"] == "Item"].copy()
+    items["actual_num"] = pd.to_numeric(items["actual_qty"], errors="coerce")
+    prod = production_log[production_log["level"] == "Item"]
+    records = []
+    for (vid, group, tm, h), g in items.groupby(["vintage_id", "shadow_group", "target_month", "horizon"]):
+        try:
+            check_window_closed(tm, now, min_margin_days)
+        except LeakageGuardError:
+            continue
+        if g["actual_num"].isna().any():
+            continue
+        vmeta = shadow_metadata[str(int(vid))]
+        method_label = SHADOW_METHODS[g["method"].iloc[0]][0]
+        p = prod[(prod["vintage_id"] == vid) & (prod["target_month"] == tm) & (prod["horizon"] == h) & prod["itemcode"].isin(g["itemcode"])]
+        if len(p) != len(g):
+            raise ScoreRecordError(f"shadow vintage {vid} {tm}: the production log holds {len(p)} rows for the {len(g)} shadow items")
+        actual = float(g["actual_num"].sum())
+        fcs = {method_label: float(g["forecast_qty"].sum()), "current": float(p["forecast_qty"].sum()), "Naive": float(vmeta["naive_last_fit_month_units"][group])}
+        for name, fc in fcs.items():
+            err = fc - actual
+            records.append({"score_run_id": run_id, "vintage_id": int(vid), "scope": SHADOW_SCOPE, "key": f"{labels[group]}|{name}", "target_month": tm, "horizon": int(h),
+                            "n_items": int(len(g)), "n_mase_defined": 0, "MAE": abs(err), "RMSE": abs(err), "RMSE_pooled": abs(err), "Bias": err, "MASE": float("nan"),
+                            "definition": SHADOW_DEFINITION, "fit_first_month": vmeta["fit_first_month"], "fit_last_month": vmeta["fit_last_month"]})
+    df = pd.DataFrame(records)
+    if df.empty:
+        return pd.DataFrame(columns=SCORE_COLUMNS)
+    df["recorded_at"] = datetime.now().isoformat(timespec="seconds")
+    return df[SCORE_COLUMNS]
+
+
+def shadow_rule_status(config: dict, scores_path: str = SCORES_PATH) -> dict:
+    """The status of the pre-registered rule for each shadow pair, from the score record only: per target month the MAE of the shadow method and of current (vintage `rule.vintage_compared` only),
+    the run date on which the month becomes scoreable (derived from the guard and the monthly run day), the evaluation run (the latest of those) and the outcome once all months are scored, else
+    'pending'. Also, over every scored shadow point of every vintage (vintage 3 and later are recorded but do not count toward the rule): Relative MAE against Naive and the Tracking Signal
+    (None until shadow.min_points_tracking_signal points exist). Nothing is adopted: the outcome is a recommendation."""
+    from forward_test_all_divisions import SHADOW_METHODS
+    sh, rule = config["shadow"], config["shadow"]["rule"]
+    margin, day = int(config["leakage_guard"]["min_margin_days"]), int(sh["monthly_run_day_of_month"])
+    rows = _read_text(scores_path)
+    rows = rows[rows["scope"] == SHADOW_SCOPE] if len(rows) else rows
+    months = list(rule["target_months"])
+    runs = {m: scoreable_run_date(m, margin, day) for m in months}
+    out = {}
+    for group, method in sh["pairs"].items():
+        label, mname = config["report"]["pilot_labels"][group], SHADOW_METHODS[method][0]
+        g = rows[rows["key"].str.startswith(label + "|")] if len(rows) else rows
+
+        def val(vintage, month, name):
+            m = g[(g["vintage_id"] == str(vintage)) & (g["target_month"] == month) & (g["key"] == f"{label}|{name}")] if len(g) else g
+            return float(m["MAE"].iloc[0]) if len(m) else None
+        per_month = []
+        for m in months:
+            h, c = val(rule["vintage_compared"], m, mname), val(rule["vintage_compared"], m, "current")
+            per_month.append({"month": m, "holt_mae": h, "current_mae": c, "scored": h is not None and c is not None, "scoreable_run": str(runs[m])})
+        scored = [p for p in per_month if p["scored"]]
+        res = {"group": group, "label": label, "method": mname, "months": per_month, "n_scored": len(scored), "n_months": len(months),
+               "evaluation_run": str(max(runs.values())), "state": "pending", "outcome": None}
+        if len(scored) == len(months):
+            d = decide_rule([p["holt_mae"] for p in per_month], [p["current_mae"] for p in per_month], rule)
+            res.update({"state": "evaluated", "outcome": d["outcome"], "decision": d})
+        pts = g[g["key"] == f"{label}|{mname}"] if len(g) else g
+        keyed = {(r.vintage_id, r.target_month, r.horizon): r for r in pts.itertuples()}
+        naive = {(r.vintage_id, r.target_month, r.horizon): float(r.MAE) for r in g[g["key"] == f"{label}|Naive"].itertuples()} if len(g) else {}
+        both = [k for k in keyed if k in naive]
+        nsum = sum(naive[k] for k in both)
+        res["relative_mae_vs_naive"] = (sum(float(keyed[k].MAE) for k in both) / nsum) if both and nsum > 0 else None
+        errs = [float(keyed[k].Bias) for k in sorted(keyed, key=lambda k: (k[1], k[2]))]
+        mean_abs = sum(abs(e) for e in errs) / len(errs) if errs else 0.0
+        res["n_points"] = len(errs)
+        res["tracking_signal"] = (sum(errs) / mean_abs) if len(errs) >= int(sh["min_points_tracking_signal"]) and mean_abs > 0 else None
+        out[group] = res
+    return out
+
+
 # ---------------------------------------------------------------- Naive on the scored forward months (METRICS.md Sec.48)
 def forward_naive_items(log: pd.DataFrame, metadata: dict, raw: pd.DataFrame) -> pd.DataFrame:
     """One row per scored item (horizon 1, every vintage and target month whose Item rows all have an actual_qty), for the items the score itself uses (score_items: the fit series is not all zero):
@@ -222,9 +329,10 @@ def append_scores(new_rows: pd.DataFrame, scores_path: str = SCORES_PATH, integr
 
 def record_scores(log: pd.DataFrame, metadata: dict, run_id: str, raw_path: str = RAW_HISTORY_PATH,
                   scores_path: str = SCORES_PATH, integrity_path: str = INTEGRITY_PATH,
-                  comparator_log: pd.DataFrame = None, comparator_metadata: dict = None) -> dict:
+                  comparator_log: pd.DataFrame = None, comparator_metadata: dict = None, shadow: dict = None) -> dict:
     """Computes the scores of every fully-actualised (vintage, target month, horizon) and appends the unrecorded ones. When a
-    moving-average comparator log is given its months are scored the same way and appended in the same batch."""
+    moving-average comparator log is given its months are scored the same way and appended in the same batch; `shadow` ({log, metadata, config, now, min_margin_days}) adds the
+    shadow forecasts' group scores (shadow_score_rows), guard-checked against `now`."""
     if not os.path.exists(raw_path):
         raise ScoreRecordError(f"{raw_path} is missing: it is the history the fit series are rebuilt from")
     raw = pd.read_csv(raw_path)
@@ -232,4 +340,7 @@ def record_scores(log: pd.DataFrame, metadata: dict, run_id: str, raw_path: str 
     if comparator_log is not None and len(comparator_log):
         cmp_rows = compute_score_rows(comparator_log, comparator_metadata, raw, run_id, comparator=True)
         rows = pd.concat([rows, cmp_rows], ignore_index=True) if len(rows) else cmp_rows
+    if shadow is not None and len(shadow["log"]):
+        sh_rows = shadow_score_rows(shadow["log"], log, shadow["metadata"], shadow["config"], run_id, shadow["now"], shadow["min_margin_days"])
+        rows = pd.concat([rows, sh_rows], ignore_index=True) if len(rows) else sh_rows
     return append_scores(rows, scores_path, integrity_path) if len(rows) else {"appended": 0, "skipped_already_recorded": 0}

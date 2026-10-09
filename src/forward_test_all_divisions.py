@@ -32,7 +32,7 @@ from forward_test import config_version
 from forward_test_common import compute_scope_hash, save_metadata
 from item_level_reconciliation import forecast_all_approaches
 from leakage_guard import check_window_closed, load_min_margin_days
-from models import combination_forecast
+from models import combination_forecast, holt_clipped
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 logger = logging.getLogger("forward_test_all_divisions")
@@ -43,6 +43,11 @@ DATA_DIR = os.path.join(PROJECT_ROOT, "output", "data")
 SUMMARY_DIR = os.path.join(PROJECT_ROOT, "output", "summary")
 LOG_PATH = os.path.join(SUMMARY_DIR, "forward_test_log_all_divisions.csv")
 METADATA_PATH = os.path.join(SUMMARY_DIR, "forward_test_log_all_divisions_metadata.json")
+
+# Shadow forecasts (METRICS.md Sec.51): their own append-only log next to the production log, keyed as shadow; no plan reads it
+SHADOW_LOG_PATH = os.path.join(SUMMARY_DIR, "forward_test_shadow_log.csv")
+SHADOW_METADATA_PATH = os.path.join(SUMMARY_DIR, "forward_test_shadow_metadata.json")
+SHADOW_METHODS = {"holt": ("Holt", holt_clipped)}      # method name in config shadow.pairs -> (label, Type-level forecast function)
 
 COLUMNS = ["itemcode", "division", "level", "category", "type", "forecast_run_date", "data_cutoff_date",
            "fit_last_month", "model", "config_version", "date_key", "scope_hash", "scope_n_items",
@@ -84,6 +89,57 @@ def build_category_series_div(monthly: pd.DataFrame, n_months: int) -> dict:
         if len(qty) == n_months:
             out[f"{div}::{cat}"] = qty
     return out
+
+
+def shadow_rows(monthly: pd.DataFrame, scope: pd.DataFrame, config: dict, target_months: list, base_row) -> pd.DataFrame:
+    """Shadow forecast Item rows of one vintage (METRICS.md Sec.51), for every pair of config `shadow.pairs`: the method's Type-level forecast (the group's Type series, up to the last month
+    of `monthly` only, clipped at 0) times each item's share of the Type in that window (the item's units over the Type series' units), exactly the Holt candidate of
+    model_experiment_2026_10. `base_row(code, division, level, category, type)` supplies the identifying columns. Nothing here reads a month after the last month of `monthly`."""
+    n_months = monthly["year_month"].nunique()
+    horizon = len(target_months)
+    item_series = build_item_series_div(monthly, scope, n_months)
+    type_series = build_type_series_div(monthly, n_months)
+    records = []
+    for group, method in config["shadow"]["pairs"].items():
+        if method not in SHADOW_METHODS:
+            raise ValueError(f"shadow method {method!r} is not one of {sorted(SHADOW_METHODS)}")
+        label, fn = SHADOW_METHODS[method]
+        type_name = config["pilot_categories"][group]
+        for code in sorted(scope.loc[scope["type"] == type_name, "code"]):
+            if code not in item_series:
+                continue                    # no full history: the production log gives it zeros; the shadow log holds the same
+            qty, type_key, cat = item_series[code]
+            tq = type_series[type_key]
+            share = qty.sum() / tq.sum() if tq.sum() > 0 else 0.0
+            fc = fn(tq, horizon) * share
+            div = type_key.split("::", 1)[0]
+            row = base_row(code, div, "Item", cat, type_name)
+            row.update({"model": f"Shadow_{label}_Top-down", "shadow_group": group, "method": method})
+            for h, (tm, val) in enumerate(zip(target_months, fc), start=1):
+                records.append({**row, "horizon": h, "target_month": tm, "forecast_qty": round(float(val), 4), "actual_qty": ""})
+    return pd.DataFrame(records)
+
+
+def shadow_group_naive(monthly: pd.DataFrame, scope: pd.DataFrame, config: dict) -> dict:
+    """{group: the group's units in the last month of `monthly`} for the shadow groups: the Naive forecast of the group series, kept in the shadow metadata so Relative MAE vs Naive
+    can be read later without the vintage's series (production does not save vintage 2's)."""
+    last = sorted(monthly["year_month"].unique())[-1]
+    out = {}
+    for group in config["shadow"]["pairs"]:
+        codes = scope.loc[scope["type"] == config["pilot_categories"][group], "code"]
+        out[group] = float(monthly[(monthly["year_month"] == last) & monthly["itemcode"].isin(codes)]["qty"].sum())
+    return out
+
+
+def shadow_metadata_entry(prod_entry: dict, rows_df: pd.DataFrame, naive_last: dict, provenance: str) -> dict:
+    """The shadow log's metadata entry of a vintage: the production entry's identifying fields (so the log verifies like the comparator's) plus what is shadow."""
+    entry = {**prod_entry, "log_file": os.path.relpath(SHADOW_LOG_PATH, PROJECT_ROOT).replace("\\", "/"),
+             "generated_by_script": "src/forward_test_all_divisions.py (shadow_rows)", "model_family": "shadow",
+             "n_total_rows": len(rows_df), "n_item_rows": len(rows_df), "naive_last_fit_month_units": naive_last, "provenance": provenance}
+    for k in ("row_integrity_hash", "row_hash_scheme", "n_type_rows", "n_category_rows", "n_items_with_history", "n_items_no_history_zero_forecast",
+              "fit_series_file", "fit_series_sha256", "fit_series_n_bytes"):
+        entry.pop(k, None)
+    return entry
 
 
 if __name__ == "__main__":

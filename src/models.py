@@ -47,6 +47,15 @@ def holt_forecast(train: np.ndarray, horizon: int) -> np.ndarray:
     return result["mean"]
 
 
+def holt_clipped(train: np.ndarray, horizon: int) -> np.ndarray:
+    """Holt's linear trend (statsforecast) clipped at 0, for the shadow forecasts and the model experiment of 2026-10 (METRICS.md Sec.50 and 51); a failure or a non-finite value
+    raises, never skipped."""
+    fc = np.clip(np.asarray(holt_forecast(train, horizon), dtype=float), 0, None)
+    if not np.all(np.isfinite(fc)):
+        raise ValueError("Holt returned a non-finite forecast")
+    return fc
+
+
 _TSB_ALPHA_GRID = [0.05, 0.1, 0.2, 0.3, 0.4]  # STATED assumption: statsforecast has no
 # "TSBOptimized" class (unlike Croston/SES), so alpha_d/alpha_p must be chosen here. Grid
 # search, not a single fixed value, mirroring this project's existing "Optimized" variants

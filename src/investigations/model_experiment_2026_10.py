@@ -21,7 +21,7 @@ import yaml
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from backtest_rekeyed import HOLDOUT, MA_WINDOWS, TOTAL_MONTHS, get_origins        # noqa: E402
 from leakage_guard import check_window_closed, load_min_margin_days                # noqa: E402
-from models import combination_forecast, holt_forecast, naive_forecast             # noqa: E402
+from models import combination_forecast, holt_clipped, naive_forecast               # noqa: E402  (holt_clipped lives in models.py: the one Holt, shared with the shadow forecast)
 import transferability_all_divisions as ta                                         # noqa: E402
 
 logger = logging.getLogger("model_experiment_2026_10")
@@ -38,14 +38,6 @@ def load_config() -> dict:
 # ---------------------------------------------------------------------------------------------------------------------------------------------
 # Candidate forecasts (each receives training data only)
 # ---------------------------------------------------------------------------------------------------------------------------------------------
-
-def holt_clipped(train: np.ndarray, horizon: int) -> np.ndarray:
-    """Holt's linear trend (statsforecast), clipped at 0; a failure or a non-finite value raises (never skipped)."""
-    fc = np.clip(np.asarray(holt_forecast(train, horizon), dtype=float), 0, None)
-    if not np.all(np.isfinite(fc)):
-        raise ValueError("Holt returned a non-finite forecast")
-    return fc
-
 
 def bias_factor(type_train: np.ndarray, window: int, f_min: float, f_max: float) -> float:
     """f = sum of actual / sum of one-step-ahead in-sample Combination forecasts over the `window` months before the origin; the forecast of month m uses months before m only;

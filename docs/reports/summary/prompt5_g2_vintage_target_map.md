@@ -859,3 +859,61 @@ An independent recomputation (the models library only; not the experiment script
 
 - Whether and how a Type-level method can differ per group in production (Surge Arrester is a Type inside PEM101; the production model is one method for all) is not part of this task: Claude Code, if the user approves.
 - A forward-test month would test the Surge Arrester switch on data the experiment has not seen; the first scored months are 2026-08 and later: low, Claude Code.
+
+
+## Prompt 16
+
+Shadow forecast system, starting with Surge Arrester on Holt. Run 2026-10-09 (Get-Date 11:08 at the start; report written 11:50). `git pull origin main` first: already up to date. Database sessions: 0.
+
+### Step 0 (cited, not repeated)
+
+The earlier Step 0 finding stands: the 2026-09 actual was not used in Prompt 15's selection or confirmation (the series ends at 2026-08), and September cannot be scored yet under `leakage_guard.min_margin_days` (30). No actual of a month that has not passed the guard was printed or read in this task.
+
+### Step 1, pre-registration
+
+Config `shadow` and METRICS.md Sec.51 (rule in words, the disclosure line verbatim) were committed and pushed alone as **717f2cb** (committed 2026-10-09 11:08:59, pushed 11:09), before any shadow forecast was computed or scored. The rule text did not change afterwards. Added after it, outside the rule: config `shadow.min_points_tracking_signal: 3` (when the Tracking Signal is shown) and an "Implementation" paragraph in Sec.51.
+
+### What was built
+
+- `holt_clipped` moved into `src/models.py` once; the experiment imports it. The experiment re-run gives `model_experiment_2026_10.json` identical to before the move (compared as data).
+- `src/forward_test_all_divisions.py`: `shadow_rows` (same level and split as the experiment's Holt: the Type series, Holt clipped at 0, times the item's share of the Type in the window), `shadow_group_naive`, `shadow_metadata_entry`, log paths.
+- `src/monthly_refresh.py`: step 5 computes (and in a dry run rehearses) the shadow rows of each new vintage; step 6 verifies the shadow log, copies actuals, scores, and prints the rule status; `backfill_shadow_vintage`.
+- `src/forward_test_scoring.py`: `shadow_score_rows` (guard checked again, no override), `scoreable_run_date`, `decide_rule`, `shadow_rule_status`.
+- `src/build_report.py` and config `report.shadow_*`: one line under the pilot table on forecast/sales_report.html.
+
+### Result
+
+- **MAE definition used:** the forecast page's pilot-group MAE: the group's series (the sum of its 48 items, the Type series) scored as one series; for one target month, the absolute error of the group's monthly total.
+- **Rule evaluation run (derived from the guard and the monthly run day 5):** 2027-01-05.
+- **Scoreable run per month:** 2026-09 on 2026-11-05; 2026-10 on 2026-12-05; 2026-11 on 2027-01-05. (The existing criteria `decision_date` 2026-12-05 is earlier than the evaluation run; the rule does not use it.)
+- **Holt vintage 2 back-fill stored: YES** (288 rows = 48 items x 6 months, `actual_qty` empty). Group total 7,724.8 units in 2026-09 rising to 8,619.3 in 2027-02. **Leakage test: PASS** (changing every value after 2026-08 changes no forecast; changing one inside the window does).
+- **Unscored months stayed unscored (no actuals read): YES.** The shadow log has no actuals; a test shows a month inside the margin is never scored even when the log holds an actual (boundary 2026-10-29 refused, 2026-10-30 scored).
+- **Gate: YES.** The production log, its metadata, the score record and its integrity file, the three other pages and the inventory, operation and material data are byte-identical before and after (15 files by sha256). Only forecast/sales_report.html changed (the new line and the build time).
+- **Experiment Holt cells unchanged after the refactor: YES.**
+- **Forward-test log path:** `output/summary/forward_test_shadow_log.csv` with `forward_test_shadow_metadata.json` (next to the production log; generated output, not tracked). Scores: `output/summary/forward_test_scores.csv`, scope `shadow_group` (none yet).
+- **Page check (4 pages):** headless Edge on a temporary profile (own PID only, closed, profile deleted): sales_report, inventory, operation_plan and material_plan all load with 0 script errors; the sales page shows the line (visible, pilot table still 2 rows), the other three pages' files are unchanged.
+
+The line on the page reads: Surge Arrester shadow forecast, method Holt, status "ยังไม่มีเดือนที่เทียบได้ ผลเดือนแรกออกในรอบวันที่ 5 พ.ย. 69", "ยังไม่ได้ใช้ในแผน".
+
+### Validator (independent, evaluate only)
+
+**MATCH** on all five checks: its own Holt call on the saved series reproduces all 288 back-filled values (maximum difference 5e-5, the log's rounding); the leakage test; the derived runs (36, 35 and 36 days after the month ends: 2026-11-05, 2026-12-05, 2027-01-05, evaluation run 2027-01-05, the guard passes on each date and refuses one month earlier); the 15-file gate; the page line and its first result run date.
+
+### Tests
+
+730 passed, 0 failed, 0 skipped; database connection attempts 0 (4 blocked deliberate attempts made by the block's own test). New tests: shadow rows equal Holt x share and ignore later months; the stored back-fill equals the experiment's Holt; a month not past the guard is never scored; the scoreable run is derived and agrees with the guard (incl. the exact boundary); the rule on fixed examples (recommend switch, keep current, 2-of-3 with the sum condition failing, 2-of-3 with it holding, ties, 1-of-3); pending, partial and evaluated status counting vintage 2 only; shadow output never reaches a plan input; actuals copied from the production log only and a vintage written once. Existing runner tests were given the shadow stubs and temporary shadow paths.
+
+### Deviations from the prompt
+
+- Shadow rows are in their own log beside the production log, not rows inside it: the production vintage hash covers all rows of a vintage and every plan reader pivots all Item rows of the latest vintage, so rows inside it could change plan inputs. This follows the moving-average comparator's precedent. Scores are in the existing score record under new scopes (columns unchanged).
+- Relative MAE against Naive and the Tracking Signal are computed when read (from the stored scores) rather than stored.
+- `shadow.min_points_tracking_signal` added to config after the rule (3).
+
+### Need decision
+
+None.
+
+### Found, not done
+
+- The criteria `decision_date` 2026-12-05 is before the first date on which all three months can be scored (2027-01-05): small, user.
+- A shadow forecast for the Fuse Cutout group, if wanted, is one more line in `shadow.pairs`: small, user decision.

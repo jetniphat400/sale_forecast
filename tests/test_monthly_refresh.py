@@ -112,6 +112,8 @@ def _fake_computed_vintage(vintage_id: int) -> dict:
         "six_month_item_forecast_total_by_division": {"PEM101": 100.0},
         "comparator_rows_df": make_rows(vintage_id),
         "comparator_metadata_entry": {**base_entry(vintage_id), "ma_window_by_division": {"PEM101": 3}},
+        "shadow_rows_df": make_rows(vintage_id),
+        "shadow_metadata_entry": {**base_entry(vintage_id), "model_family": "shadow"},
     }
 
 
@@ -126,6 +128,8 @@ def _full_log(tmp_path, monkeypatch, vintage_1_date):
     # the moving-average comparator log lives beside the synthetic log, never at the real path
     monkeypatch.setattr(mr, "COMPARATOR_LOG_PATH", os.path.join(str(tmp_path), "comparator_log.csv"))
     monkeypatch.setattr(mr, "COMPARATOR_METADATA_PATH", os.path.join(str(tmp_path), "comparator_metadata.json"))
+    monkeypatch.setattr(mr, "SHADOW_LOG_PATH", os.path.join(str(tmp_path), "shadow_log.csv"))                        # the shadow log too, never the real one
+    monkeypatch.setattr(mr, "SHADOW_METADATA_PATH", os.path.join(str(tmp_path), "shadow_metadata.json"))
     monkeypatch.setattr(vintage_series, "SERIES_DIR", os.path.join(str(tmp_path), "vintage_series"))   # never the real folder
     return log_path, metadata_path
 

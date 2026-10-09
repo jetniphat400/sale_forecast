@@ -67,7 +67,7 @@
   
     <details class="note-box" style="margin:10px 0" id="page-data-line">
       <summary style="cursor:pointer"><!-- round = run month of vintage 2 of the forward-test log; fit_last = that vintage's last fit month; built_at = page_built_at; oldest data_pulled_at of the page: 2026-10-05 07:41 ICT (UTC+7), per section below
-        --><span id="freshness-line">ยอดทายรอบ ต.ค. 69 · ใช้ยอดขายถึง ส.ค. 69 · หน้าสร้างเมื่อ 9 ต.ค. 69 08:17</span><!-- source: src/build_report.py rv.vintage_facts()/datetime.now(), this build run --></summary>
+        --><span id="freshness-line">ยอดทายรอบ ต.ค. 69 · ใช้ยอดขายถึง ส.ค. 69 · หน้าสร้างเมื่อ 9 ต.ค. 69 11:18</span><!-- source: src/build_report.py rv.vintage_facts()/datetime.now(), this build run --></summary>
       <h3 style="margin-top:10px">ข้อมูลแต่ละส่วนดึงเมื่อ</h3>
       <table class="report-table" style="margin-top:8px">
         <thead><tr><th>ส่วน</th><th>ดึงเมื่อ</th><th>สถานะ</th></tr></thead>
@@ -208,6 +208,8 @@
       <p class="hint" id="pilot-notes">▸ สองกลุ่มนำร่องทายแม่นแค่ไหน<br>▸ MAE = พลาดเฉลี่ยกี่ชิ้นต่อเดือน · Bias ติดลบ = ทายต่ำกว่าจริง<br>▸ Fuse Cutout ทายต่ำกว่าจริงเฉลี่ยเดือนละ 608.4 ชิ้น<br>▸ Surge Arrester ทายต่ำกว่าจริงเฉลี่ยเดือนละ 650.5 ชิ้น<br>▸ ถ้าใช้ยอดทายของสองกลุ่มนี้วางแผน ให้ระวังว่ามักทายต่ำ</p>
       <table class="report-table" id="pilot-table"><thead><tr><th>กลุ่ม</th><th>MAE (ชิ้นต่อเดือน)</th><th>Bias</th></tr></thead><tbody><tr><td>Fuse Cutout</td><td>826.4</td><td>-608.4</td></tr><tr><td>Surge Arrester</td><td>704.7</td><td>-650.5</td></tr></tbody></table>
       <p class="hint" id="pilot-scope-note">Surge Arrester ในตารางนี้นับเฉพาะ Medium Voltage</p>
+      <!-- source: output/summary/forward_test_scores.csv (scope shadow_group) and config shadow, via shadow_rule_status(); METRICS.md Sec.51 -->
+      <p class="hint" id="pilot-shadow">▸ Surge Arrester shadow forecast (ยอดทายทดลองที่คำนวณคู่กับยอดทายจริง) ใช้วิธี Holt (ทายตามแนวโน้มยอดขายที่ขึ้นหรือลง) · สถานะ: ยังไม่มีเดือนที่เทียบได้ ผลเดือนแรกออกในรอบวันที่ 5 พ.ย. 69 · ยังไม่ได้ใช้ในแผน</p>
       <h3 id="criteria-vs-draft">เทียบกับร่างเกณฑ์</h3>
       <!-- source: Relative MAE, Horizon 3 and Tracking Signal recomputed at build from the saved monthly series with the functions of the main table (src/transferability_all_divisions.py), Naive = the last month before each origin; the forward months from the forward-test log (src/forward_test_scoring.py forward_naive_items); thresholds: config maxmin_v1.pending_criteria_values (draft). METRICS.md Sec.48. Tracking Signal points used per row: PEM101 8, PEM103 8, PEM107 8, PEM102 8, CI101 8, Fuse Cutout 8, Surge Arrester 8. -->
       <p class="hint">▸ วิธีทายของเราดีกว่าวิธี Naive (ใช้ยอดเดือนที่แล้วเป็นค่าทาย) ไหม<br>▸ Relative MAE = MAE ของเรา ÷ MAE ของ Naive ในเดือนทดสอบเดียวกัน ต่ำกว่า 1 = ดีกว่า Naive · ต่ำกว่า 0.7 = ดี<br>▸ Horizon 3 = ทายล่วงหน้า 3 เดือน ใช้ดูความแม่นในช่วงที่ต้องสั่งวัตถุดิบล่วงหน้า<br>▸ Tracking Signal = ความคลาดสะสม ÷ ความคลาดเฉลี่ย บอกว่าทายเอียงไปทางเดียวต่อเนื่องไหม เกิน ±4 = เตือน<br>▸ ผลมาจากการทดสอบย้อนหลัง และเกณฑ์ยังเป็นร่าง ยังไม่ใช่การตัดสินสุดท้าย</p>

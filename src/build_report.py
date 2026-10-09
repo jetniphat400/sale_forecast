@@ -545,6 +545,31 @@ def items_not_flat(forward: dict) -> list:
     return sorted(it["item"] for ts in forward["divisions"].values() for t in ts for it in t["items"] if len(set(it["values"])) > 1)
 
 
+def shadow_line_text(config: dict, scores_path: str = None) -> str:
+    """The one line of the pilot-group block about the Surge Arrester shadow forecast (METRICS.md Sec.51): method, status, and per scored month the MAE of the shadow method against the current
+    method's; while nothing is scored, the date of the first run that can give a result. Every number and date comes from the score record and the guard at build time (forward_test_scoring.shadow_rule_status)."""
+    import forward_test_scoring as fts
+    report = config["report"]
+    status = fts.shadow_rule_status(config, scores_path) if scores_path else fts.shadow_rule_status(config)
+    parts = []
+    for g in status.values():
+        scored = [m for m in g["months"] if m["scored"]]
+        unscored = [m for m in g["months"] if not m["scored"]]
+        if g["state"] == "evaluated":
+            state = report["shadow_status_" + g["outcome"]].format(method=g["method"])
+        elif scored:
+            state = report["shadow_status_partial"].format(n=len(scored), total=g["n_months"])
+        else:
+            state = report["shadow_status_pending"].format(first_run=rv.thai_date_short(min(m["scoreable_run"] for m in unscored)))
+        pieces = [report["shadow_head"].format(group=g["label"], method=g["method"]), state]
+        pieces += [report["shadow_month"].format(month=rv.thai_month_short(m["month"]), method=g["method"], h=f"{m['holt_mae']:.1f}", c=f"{m['current_mae']:.1f}") for m in scored]
+        if scored and unscored:
+            pieces.append(report["shadow_next"].format(month=rv.thai_month_short(unscored[0]["month"]), run=rv.thai_date_short(unscored[0]["scoreable_run"])))
+        pieces.append(report["shadow_not_in_plan"])
+        parts.append(" · ".join(pieces))
+    return " ".join(parts)
+
+
 def gather_pilot_groups(config: dict) -> list:
     """MAE and Bias of the two pilot groups, recomputed here from the saved series by the pilot-category view builder (src/focus_item_model_selection.py
     build_pilot_view_payload; groups defined by config pilot_categories, the Surge Arrester group being the Medium Voltage Type). The group is scored as the
@@ -1043,7 +1068,9 @@ def render_page(config: dict) -> str:
       <!-- source: build_pilot_view_payload() (src/focus_item_model_selection.py), units[..].series_own, groups from config pilot_categories; Bias = forecast minus actual -->
       <p class="hint" id="pilot-notes">{"<br>".join(html.escape(l) for l in pilot_lines)}</p>
       <table class="report-table" id="pilot-table"><thead><tr>{pilot_head}</tr></thead><tbody>{pilot_rows}</tbody></table>
-      <p class="hint" id="pilot-scope-note">{html.escape(report['pilot_scope_note'])}</p>"""
+      <p class="hint" id="pilot-scope-note">{html.escape(report['pilot_scope_note'])}</p>
+      <!-- source: output/summary/forward_test_scores.csv (scope shadow_group) and config shadow, via shadow_rule_status(); METRICS.md Sec.51 -->
+      <p class="hint" id="pilot-shadow">{html.escape(shadow_line_text(config))}</p>"""
 
     # Against the draft criteria: Relative MAE (all horizons and Horizon 3) and Tracking Signal per division and pilot group (METRICS.md Sec.48).
     th = accuracy["thresholds"]

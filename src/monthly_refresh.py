@@ -83,8 +83,8 @@ import yaml
 sys.path.insert(0, os.path.dirname(__file__))
 from backtest_rekeyed import TOTAL_MONTHS
 from forward_test import config_version
-from forward_test_all_divisions import (build_category_series_div, build_item_series_div,
-                                         build_type_series_div)
+from forward_test_all_divisions import (SHADOW_LOG_PATH, SHADOW_METADATA_PATH, build_category_series_div, build_item_series_div,
+                                         build_type_series_div, shadow_group_naive, shadow_metadata_entry, shadow_rows)
 import forward_test_scoring as fts
 from forward_test_common import (append_vintage_and_hash, compute_scope_hash, load_metadata,
                                  read_forward_test_log, save_metadata)
@@ -663,6 +663,9 @@ def compute_new_vintage() -> dict:
         "n_total_rows": len(rows_df), "divisions": sorted(scope["division"].unique().tolist()),
         **vintage_series.metadata_fields(fit_series_bytes, next_vintage_id),
     }
+    # Shadow forecasts (METRICS.md Sec.51): config shadow.pairs, same level and top-down split as the experiment's Holt; kept in their own log, never in the production rows
+    shadow_df = shadow_rows(monthly, scope, config, target_months, lambda code, division, level, category, type_: base_row(code, division, level, category, type_, next_vintage_id))
+    shadow_entry = shadow_metadata_entry(metadata_entry, shadow_df, shadow_group_naive(monthly, scope, config), "computed at the vintage's run")
     six_month_totals_by_division = rows_df[rows_df["level"] == "Item"].groupby("division")["forecast_qty"].sum().to_dict()
     comparator_entry = {**metadata_entry, "log_file": os.path.relpath(COMPARATOR_LOG_PATH, PROJECT_ROOT).replace("\\", "/"),
                         "generated_by_script": "src/monthly_refresh.py (compute_new_vintage, moving-average comparator)",
@@ -678,6 +681,7 @@ def compute_new_vintage() -> dict:
     return {"vintage_id": next_vintage_id, "rows_df": rows_df, "metadata_entry": metadata_entry,
             "fit_series_bytes": fit_series_bytes,
             "comparator_rows_df": comparator_df, "comparator_metadata_entry": comparator_entry,
+            "shadow_rows_df": shadow_df, "shadow_metadata_entry": shadow_entry,
             "ma_window_choice": window_choice,
             "n_rows": len(rows_df), "six_month_item_forecast_total_by_division": six_month_totals_by_division}
 
@@ -702,6 +706,13 @@ def rehearse_vintage_write_and_reread(computed: dict) -> dict:
         cmp_meta = {**(load_metadata(COMPARATOR_METADATA_PATH) if os.path.exists(COMPARATOR_METADATA_PATH) else {}),
                     str(computed["vintage_id"]): cmp_entry}
         verify_consistency(read_forward_test_log(tmp_cmp), cmp_meta)
+        # the shadow log the same way
+        tmp_sh = os.path.join(tmp, "forward_test_shadow_log.csv")
+        if os.path.exists(SHADOW_LOG_PATH):
+            shutil.copy2(SHADOW_LOG_PATH, tmp_sh)
+        sh_entry = append_vintage_and_hash(tmp_sh, computed["shadow_rows_df"], computed["shadow_metadata_entry"])
+        sh_meta = {**(load_metadata(SHADOW_METADATA_PATH) if os.path.exists(SHADOW_METADATA_PATH) else {}), str(computed["vintage_id"]): sh_entry}
+        verify_consistency(read_forward_test_log(tmp_sh), sh_meta)
         # the fit series the same way: saved to the temporary folder, then checked against the hash in the metadata entry
         series_dir = os.path.join(tmp, "vintage_series")
         vintage_series.save_series(computed["fit_series_bytes"], computed["vintage_id"], series_dir)
@@ -709,8 +720,8 @@ def rehearse_vintage_write_and_reread(computed: dict) -> dict:
         if series_check["verified"] != [computed["vintage_id"]]:
             raise MonthlyRefreshAbort("Step 5 rehearsal: the vintage's saved fit series did not verify against its metadata")
     return {"verified": True, "fit_series_verified": True, "vintage_id": computed["vintage_id"], "row_hash_scheme": entry["row_hash_scheme"],
-            "comparator_verified": True, "comparator_row_hash_scheme": cmp_entry["row_hash_scheme"],
-            "note": "the new vintage and its moving-average comparator rows were appended to temporary copies of the logs, "
+            "comparator_verified": True, "comparator_row_hash_scheme": cmp_entry["row_hash_scheme"], "shadow_verified": True,
+            "note": "the new vintage and its moving-average comparator and shadow rows were appended to temporary copies of the logs, "
                     "read back and verified; the real logs were not touched."}
 
 
@@ -785,10 +796,97 @@ def step5_new_vintage(dry_run: bool, force_new_vintage: bool = False) -> dict:
     cmp_meta = load_metadata(COMPARATOR_METADATA_PATH) if os.path.exists(COMPARATOR_METADATA_PATH) else {}
     cmp_meta[str(computed["vintage_id"])] = cmp_entry
     save_metadata(COMPARATOR_METADATA_PATH, cmp_meta)
+    result["shadow"] = write_shadow_vintage(computed["shadow_rows_df"], computed["shadow_metadata_entry"])
     result["comparator"] = {"written": True, "n_rows": int(len(computed["comparator_rows_df"])),
                             "ma_window_by_division": computed["comparator_metadata_entry"]["ma_window_by_division"],
                             "row_hash_scheme": cmp_entry["row_hash_scheme"]}
     return result
+
+
+def write_shadow_vintage(rows_df: pd.DataFrame, entry: dict) -> dict:
+    """Appends one vintage's shadow rows to the shadow log (own append-only log and metadata, hash as the production log's) and records its metadata. Refuses a vintage already in the log
+    (a vintage is written once). The production log, its metadata and the plan inputs are not touched."""
+    vid = int(entry["vintage_id"])
+    meta = load_metadata(SHADOW_METADATA_PATH) if os.path.exists(SHADOW_METADATA_PATH) else {}
+    if str(vid) in meta:
+        raise MonthlyRefreshAbort(f"the shadow log already holds vintage {vid}; a vintage is written once")
+    done = append_vintage_and_hash(SHADOW_LOG_PATH, rows_df, entry)
+    meta[str(vid)] = done
+    save_metadata(SHADOW_METADATA_PATH, meta)
+    return {"written": True, "vintage_id": vid, "n_rows": int(len(rows_df)), "row_hash_scheme": done["row_hash_scheme"]}
+
+
+def backfill_shadow_vintage(vintage_id: int, now: pd.Timestamp = None) -> dict:
+    """Computes the shadow forecast of an existing production vintage that predates the shadow log (vintage 2, back-filled 2026-10-09), from the saved monthly series cut to that
+    vintage's own fit window (first and last month and count asserted against the production metadata): nothing after the vintage's last fit month is read. Stored UNSCORED (empty actual_qty),
+    with the production vintage's run date and cutoff; idempotent (a vintage already in the shadow log is left as it is)."""
+    config = load_config()
+    prod_meta = load_metadata(FORWARD_TEST_METADATA_PATH)[str(vintage_id)]
+    existing = load_metadata(SHADOW_METADATA_PATH) if os.path.exists(SHADOW_METADATA_PATH) else {}
+    if str(vintage_id) in existing:
+        return {"written": False, "reason": f"vintage {vintage_id} is already in the shadow log"}
+    scope = pd.read_csv(SCOPE_FILE)
+    monthly = pd.read_csv(os.path.join(DATA_DIR, "processed_all_divisions_monthly_qty.csv"))
+    fit = monthly[(monthly["year_month"] >= prod_meta["fit_first_month"]) & (monthly["year_month"] <= prod_meta["fit_last_month"])]
+    months = sorted(fit["year_month"].unique())
+    if months[0] != prod_meta["fit_first_month"] or months[-1] != prod_meta["fit_last_month"] or len(months) != int(prod_meta["fit_n_months"]):
+        raise MonthlyRefreshAbort(f"shadow back-fill of vintage {vintage_id}: the saved series does not cover the vintage's fit window {prod_meta['fit_first_month']}..{prod_meta['fit_last_month']}")
+    log = read_forward_test_log(FORWARD_TEST_LOG_PATH)
+    v = log[log["vintage_id"] == vintage_id]
+    base = v.iloc[0]
+
+    def base_row(code, division, level, category, type_):
+        return {"vintage_id": vintage_id, "itemcode": code, "division": division, "level": level, "category": category, "type": type_,
+                "forecast_run_date": base["forecast_run_date"], "data_cutoff_date": base["data_cutoff_date"], "fit_last_month": base["fit_last_month"],
+                "config_version": base["config_version"], "date_key": "forecastDate", "scope_hash": base["scope_hash"], "scope_n_items": int(base["scope_n_items"])}
+    rows = shadow_rows(fit, scope, config, list(prod_meta["target_months"]), base_row)
+    rows["provenance"] = f"back-filled {(now or pd.Timestamp.now()).date().isoformat()} from the series up to {prod_meta['fit_last_month']} only; unscored"
+    entry = shadow_metadata_entry(prod_meta, rows, shadow_group_naive(fit, scope, config), rows["provenance"].iloc[0])
+    entry["backfilled_at"] = (now or pd.Timestamp.now()).isoformat(timespec="seconds")
+    entry["backfill_note"] = "the monthly series of this vintage was not saved at its run; it is the saved series cut to the vintage's fit window (first month, last month and count asserted)"
+    return write_shadow_vintage(rows, entry)
+
+
+def verify_shadow_log() -> dict:
+    """The shadow log against its own metadata (hash of its rows, internal consistency); every vintage in it must also exist in the production metadata. No shadow log yet is a normal state."""
+    if not os.path.exists(SHADOW_LOG_PATH):
+        return {"exists": False}
+    log = read_forward_test_log(SHADOW_LOG_PATH)
+    verify_consistency(log, load_metadata(SHADOW_METADATA_PATH))
+    main_meta = load_metadata(FORWARD_TEST_METADATA_PATH)
+    orphans = [int(v) for v in log["vintage_id"].unique() if str(int(v)) not in main_meta]
+    if orphans:
+        raise MonthlyRefreshAbort(f"the shadow log holds vintage(s) {orphans} that the forward-test log's metadata does not know")
+    return {"exists": True, "vintages": sorted(int(v) for v in log["vintage_id"].unique()), "verified": True}
+
+
+def fill_shadow_actuals(main_log: pd.DataFrame) -> dict:
+    """Copies each month's actual quantity from the production log (where the leakage guard let the production job fill it) into the shadow log's empty actual_qty cells, the one column allowed to
+    change; a month the production log has not filled stays empty. Scoring checks the guard again."""
+    if not os.path.exists(SHADOW_LOG_PATH):
+        return {"filled": 0, "note": "no shadow log yet"}
+    items = main_log[(main_log["level"] == "Item") & main_log["actual_qty"].notna() & (main_log["actual_qty"].astype(str) != "")]
+    actual = {(r.itemcode, r.target_month): r.actual_qty for r in items.drop_duplicates(["itemcode", "target_month"]).itertuples()}
+    sh = pd.read_csv(SHADOW_LOG_PATH)
+    empty = sh["actual_qty"].isna() | (sh["actual_qty"].astype(str) == "")
+    new = [actual.get((c, m)) for c, m in zip(sh.loc[empty, "itemcode"], sh.loc[empty, "target_month"])]
+    sh["actual_qty"] = sh["actual_qty"].astype(object)
+    sh.loc[empty, "actual_qty"] = new
+    sh.to_csv(SHADOW_LOG_PATH, index=False)
+    return {"filled": int(sum(v is not None for v in new)), "written": True}
+
+
+def shadow_status_lines(status: dict) -> list:
+    """The rule status as printed lines: pending (months scored so far; for each unscored month the run date it becomes scoreable) or the outcome."""
+    lines = []
+    for g in status.values():
+        head = f"shadow {g['label']} ({g['method']}): rule {g['state']}, {g['n_scored']} of {g['n_months']} months scored; evaluation run {g['evaluation_run']}"
+        if g["state"] == "evaluated":
+            head += f"; outcome {g['outcome']} (recommendation only, not adopted)"
+        lines.append(head)
+        for m in g["months"]:
+            lines.append(f"  {m['month']}: " + (f"Holt MAE {m['holt_mae']:.1f}, current MAE {m['current_mae']:.1f}" if m["scored"] else f"not scored; scoreable on the run of {m['scoreable_run']}"))
+    return lines
 
 
 # ---------------------------------------------------------------------------------------------
@@ -805,6 +903,13 @@ def step6_fill_and_score(dry_run: bool, computed_vintage: dict = None, offline: 
         result["fit_series"] = vintage_series.verify_series(load_metadata(FORWARD_TEST_METADATA_PATH))
     except vintage_series.VintageSeriesError as e:
         raise MonthlyRefreshAbort(f"Step 6 ABORTED: a vintage's saved fit series failed its hash check: {e}")
+    result["shadow_log"] = verify_shadow_log()
+    shadow = None
+    if result["shadow_log"]["exists"] and not dry_run:
+        result["shadow_actuals"] = fill_shadow_actuals(log)
+        config = load_config()
+        shadow = {"log": pd.read_csv(SHADOW_LOG_PATH), "metadata": load_metadata(SHADOW_METADATA_PATH), "config": config,
+                  "now": pd.Timestamp.now(), "min_margin_days": load_min_margin_days(config)}
     comparator_log = comparator_meta = None
     if result["comparator"]["exists"]:
         comparator_log, comparator_meta = read_forward_test_log(COMPARATOR_LOG_PATH), load_metadata(COMPARATOR_METADATA_PATH)
@@ -812,7 +917,12 @@ def step6_fill_and_score(dry_run: bool, computed_vintage: dict = None, offline: 
                                                run_id or datetime.now().strftime("%Y%m%dT%H%M%S"),
                                                raw_path=RAW_HISTORY_PATH, scores_path=SCORE_RECORD_PATH,
                                                integrity_path=SCORE_INTEGRITY_PATH,
-                                               comparator_log=comparator_log, comparator_metadata=comparator_meta)
+                                               comparator_log=comparator_log, comparator_metadata=comparator_meta, shadow=shadow)
+    status = fts.shadow_rule_status(load_config(), SCORE_RECORD_PATH)
+    result["shadow_rule_status"] = status
+    result["shadow_rule_status_lines"] = shadow_status_lines(status)
+    for line in result["shadow_rule_status_lines"]:
+        print(line)
     return result
 
 

@@ -245,3 +245,205 @@ def test_the_current_candidate_equals_the_main_table_and_the_forecast_pages_rela
     for label, g in result["groups"].items():
         assert f"{g['table']['current']['rel_all']:.2f}" == f"{page[label]:.2f}", label
         assert g["table"]["naive"]["rel_all"] == pytest.approx(1.0)
+
+
+# ---------------------------------------------------------------------------------------------------------------------------------------------
+# Shadow forecasts (METRICS.md Sec.51, config shadow)
+# ---------------------------------------------------------------------------------------------------------------------------------------------
+import pandas as pd  # noqa: E402
+
+import forward_test_all_divisions as ftd  # noqa: E402
+import forward_test_scoring as fts  # noqa: E402
+from leakage_guard import LeakageGuardError, check_window_closed  # noqa: E402
+
+
+def _full_cfg():
+    with open(os.path.join(_PROJECT_ROOT, "config", "config.yaml"), encoding="utf-8") as f:
+        return yaml.safe_load(f)
+
+
+def _monthly(n_months=31, later=None):
+    """Three scope items of one Type and one of another, n_months of history (later months replaced when `later` is given)."""
+    months = [str(pd.Period("2024-02", freq="M") + i) for i in range(n_months)]
+    rows = []
+    for code, typ, mult in (("A1", "T1", 1), ("A2", "T1", 2), ("A3", "T1", 3), ("B1", "T2", 5)):
+        for i, m in enumerate(months):
+            q = float(_SERIES[i % len(_SERIES)] * mult + 1)
+            if later is not None and i >= 31:
+                q = later
+            rows.append({"itemcode": code, "division": "D1", "type": typ, "category": "C", "year_month": m, "qty": q})
+    scope = pd.DataFrame([{"code": c, "division": "D1", "category": "C", "type": t} for c, t in (("A1", "T1"), ("A2", "T1"), ("A3", "T1"), ("B1", "T2"))])
+    return pd.DataFrame(rows), scope
+
+
+def _shadow_cfg():
+    cfg = _full_cfg()
+    cfg["pilot_categories"] = {**cfg["pilot_categories"], "surge_arrester": "T1"}
+    return cfg
+
+
+def _base(code, division, level, category, type_):
+    return {"vintage_id": 2, "itemcode": code, "division": division, "level": level, "category": category, "type": type_}
+
+
+def test_shadow_forecast_is_the_holt_type_forecast_times_the_item_share_and_ignores_later_months():
+    cfg = _shadow_cfg()
+    monthly, scope = _monthly()
+    months = [str(pd.Period("2026-09", freq="M") + i) for i in range(6)]
+    rows = ftd.shadow_rows(monthly, scope, cfg, months, _base)
+    assert set(rows["itemcode"]) == {"A1", "A2", "A3"} and len(rows) == 18
+    typ = monthly[monthly["type"] == "T1"].groupby("year_month")["qty"].sum().to_numpy()
+    from models import holt_clipped
+    expect = holt_clipped(typ, 6)
+    for code in ("A1", "A2", "A3"):
+        share = monthly[monthly["itemcode"] == code]["qty"].sum() / typ.sum()
+        got = rows[rows["itemcode"] == code].sort_values("horizon")["forecast_qty"].to_numpy()
+        assert np.allclose(got, np.round(expect * share, 4))
+    # months after the fit window never enter: the same fit window with later months replaced gives the same rows once cut to the window
+    later, _ = _monthly(n_months=34, later=9999.0)
+    cut = later[later["year_month"] <= monthly["year_month"].max()]
+    again = ftd.shadow_rows(cut, scope, cfg, months, _base)
+    assert rows["forecast_qty"].tolist() == again["forecast_qty"].tolist()
+    # a change inside the window does move them (the test can fail)
+    moved = monthly.copy()
+    moved.loc[(moved["itemcode"] == "A1") & (moved["year_month"] == monthly["year_month"].max()), "qty"] += 500
+    assert ftd.shadow_rows(moved, scope, cfg, months, _base)["forecast_qty"].tolist() != rows["forecast_qty"].tolist()
+    assert (rows["forecast_qty"] >= 0).all()
+
+
+def test_the_back_filled_vintage_2_shadow_rows_equal_the_experiments_holt_and_hold_no_actuals():
+    log_path, meta_path = ftd.SHADOW_LOG_PATH, ftd.SHADOW_METADATA_PATH
+    if not (os.path.exists(log_path) and os.path.exists(meta_path)):
+        pytest.skip("no shadow log in this checkout (generated output)")
+    sh = pd.read_csv(log_path)
+    v2 = sh[sh["vintage_id"] == 2]
+    assert len(v2) == 48 * 6 and v2["actual_qty"].isna().all()
+    meta = fts.json.load(open(meta_path, encoding="utf-8"))["2"]
+    assert meta["fit_last_month"] == "2026-08" and "backfilled_at" in meta
+    cfg = _exp_cfg()
+    monthly = pd.read_csv(os.path.join(_PROJECT_ROOT, "output", "data", "processed_all_divisions_monthly_qty.csv"))
+    monthly = monthly[monthly["year_month"] <= "2026-08"]
+    scope = pd.read_csv(os.path.join(_PROJECT_ROOT, "output", "summary", "phaseC_step2_scope_335items.csv"))
+    full = _full_cfg()
+    type_name = full["pilot_categories"]["surge_arrester"]
+    codes = sorted(scope.loc[scope["type"] == type_name, "code"])
+    tq = monthly[monthly["type"] == type_name].groupby("year_month")["qty"].sum().to_numpy()
+    for code in codes[:5]:
+        q = monthly[monthly["itemcode"] == code].sort_values("year_month")["qty"].to_numpy()
+        want = mx.forecasts_at_origin(q, tq, len(q), 6, cfg)["holt"]
+        got = v2[v2["itemcode"] == code].sort_values("horizon")["forecast_qty"].to_numpy()
+        assert np.allclose(got, want, atol=6e-5)
+
+
+def test_a_month_not_past_the_leakage_guard_is_never_scored_even_when_the_log_holds_an_actual():
+    cfg = _shadow_cfg()
+    cfg["report"]["pilot_labels"] = {**cfg["report"]["pilot_labels"], "surge_arrester": "Grp"}
+    shadow = pd.DataFrame([{"vintage_id": 2, "itemcode": c, "level": "Item", "shadow_group": "surge_arrester", "method": "holt", "target_month": "2026-09",
+                            "horizon": 1, "forecast_qty": 10.0, "actual_qty": 12.0} for c in ("A1", "A2")])
+    prod = pd.DataFrame([{"vintage_id": 2, "itemcode": c, "level": "Item", "target_month": "2026-09", "horizon": 1, "forecast_qty": 8.0} for c in ("A1", "A2")])
+    meta = {"2": {"fit_first_month": "2024-02", "fit_last_month": "2026-08", "naive_last_fit_month_units": {"surge_arrester": 9.0}}}
+    margin = 30
+    for now, n in (("2026-10-20", 0), ("2026-10-29", 0), ("2026-10-30", 3), ("2026-11-05", 3)):
+        rows = fts.shadow_score_rows(shadow, prod, meta, cfg, "run", pd.Timestamp(now), margin)
+        assert len(rows) == n, now
+    rows = fts.shadow_score_rows(shadow, prod, meta, cfg, "run", pd.Timestamp("2026-11-05"), margin)
+    by = {r.key: r for r in rows.itertuples()}
+    assert by["Grp|Holt"].MAE == 4.0 and by["Grp|current"].MAE == 8.0 and by["Grp|Naive"].MAE == 15.0           # group totals 20, 16, 9 against an actual of 24
+    assert by["Grp|Holt"].Bias == -4.0 and by["Grp|current"].Bias == -8.0
+
+
+def test_the_scoreable_run_of_each_month_is_derived_from_the_guard_and_agrees_with_it():
+    cfg = _full_cfg()
+    margin, day = cfg["leakage_guard"]["min_margin_days"], cfg["shadow"]["monthly_run_day_of_month"]
+    runs = {m: fts.scoreable_run_date(m, margin, day) for m in cfg["shadow"]["rule"]["target_months"]}
+    assert [str(runs[m]) for m in ("2026-09", "2026-10", "2026-11")] == ["2026-11-05", "2026-12-05", "2027-01-05"]
+    for m, d in runs.items():
+        check_window_closed(m, pd.Timestamp(d), margin)                                   # the guard lets the run on that date score the month
+        assert d.day == day
+        prev = pd.Timestamp(d) - pd.DateOffset(months=1)                                  # the run a month earlier is refused
+        with pytest.raises(LeakageGuardError):
+            check_window_closed(m, prev, margin)
+    # the boundary: a margin that ends exactly on a run day scores that day, one day more waits for the next month's run (2026-09-30 plus 36 days is 2026-11-05)
+    assert str(fts.scoreable_run_date("2026-09", 36, 5)) == "2026-11-05"
+    assert str(fts.scoreable_run_date("2026-09", 37, 5)) == "2026-12-05"
+    assert str(max(runs.values())) == "2027-01-05"
+
+
+def test_the_decision_rule_on_fixed_examples():
+    rule = _full_cfg()["shadow"]["rule"]
+    assert fts.decide_rule([1, 1, 9], [2, 2, 2], rule)["outcome"] == "keep_current"          # lower in 2 of 3 but the sum is higher (11 against 6)
+    assert fts.decide_rule([1, 1, 3], [2, 2, 5], rule)["outcome"] == "recommend_switch"      # lower in 3 of 3, sum 5 against 9
+    assert fts.decide_rule([1, 3, 1], [2, 2, 2], rule)["outcome"] == "recommend_switch"      # lower in 2 of 3, sum 5 against 6
+    assert fts.decide_rule([1, 9, 9], [2, 2, 2], rule)["outcome"] == "keep_current"          # lower in 1 of 3
+    assert fts.decide_rule([2, 2, 2], [2, 2, 2], rule)["outcome"] == "keep_current"          # ties are not lower
+    assert fts.decide_rule([1, 1, 2], [2, 2, 2], rule)["outcome"] == "recommend_switch"      # lower in 2, tie in 1, sum 4 against 6
+    assert fts.decide_rule([1, 1, 4], [2, 2, 2], rule)["months_holt_lower"] == 2 and fts.decide_rule([1, 1, 4], [2, 2, 2], rule)["sum_lower"] is False
+
+
+def _score_rows(label, vintage, month, holt, cur, naive=10.0):
+    out = []
+    for name, v in (("Holt", holt), ("current", cur), ("Naive", naive)):
+        out.append({"score_run_id": f"r-{vintage}-{month}", "vintage_id": vintage, "scope": "shadow_group", "key": f"{label}|{name}", "target_month": month, "horizon": 1,
+                    "n_items": 48, "n_mase_defined": 0, "MAE": v, "RMSE": v, "RMSE_pooled": v, "Bias": -v, "MASE": "", "definition": "shadow_group_series_v1",
+                    "fit_first_month": "2024-02", "fit_last_month": "2026-08", "recorded_at": "x"})
+    return out
+
+
+def test_rule_status_is_pending_partial_then_evaluated_and_counts_vintage_2_only(tmp_path):
+    cfg = _full_cfg()
+    label = cfg["report"]["pilot_labels"]["surge_arrester"]
+    path = str(tmp_path / "scores.csv")
+
+    def status(rows):
+        pd.DataFrame(rows, columns=fts.SCORE_COLUMNS).to_csv(path, index=False)
+        return fts.shadow_rule_status(cfg, path)["surge_arrester"]
+    s0 = status([])
+    assert s0["state"] == "pending" and s0["n_scored"] == 0 and s0["outcome"] is None and s0["evaluation_run"] == "2027-01-05"
+    assert [m["scoreable_run"] for m in s0["months"]] == ["2026-11-05", "2026-12-05", "2027-01-05"] and s0["tracking_signal"] is None
+    r1 = _score_rows(label, 2, "2026-09", 1.0, 2.0)
+    s1 = status(r1)
+    assert s1["state"] == "pending" and s1["n_scored"] == 1 and s1["months"][0]["scored"] and not s1["months"][1]["scored"]
+    r2 = r1 + _score_rows(label, 2, "2026-10", 1.0, 2.0) + _score_rows(label, 3, "2026-11", 99.0, 1.0)       # a vintage 3 month does not count for the rule
+    s2 = status(r2)
+    assert s2["state"] == "pending" and s2["n_scored"] == 2
+    r3 = r2 + _score_rows(label, 2, "2026-11", 1.0, 2.0)
+    s3 = status(r3)
+    assert s3["state"] == "evaluated" and s3["outcome"] == "recommend_switch"
+    assert s3["tracking_signal"] is not None and s3["relative_mae_vs_naive"] is not None            # four points recorded (three of vintage 2, one of vintage 3)
+    r4 = r1 + _score_rows(label, 2, "2026-10", 9.0, 2.0) + _score_rows(label, 2, "2026-11", 9.0, 2.0)
+    assert status(r4)["outcome"] == "keep_current"
+
+
+def test_shadow_output_never_reaches_a_plan_input():
+    import operation_plan as op
+    import build_inventory_page_data as bi
+    cfg = _full_cfg()
+    for mod in (op, bi):
+        assert "shadow" not in open(mod.__file__, encoding="utf-8").read().lower().replace("shadow price", "")
+    for name in os.listdir(os.path.join(_PROJECT_ROOT, "src")):
+        if name.startswith(("material_plan", "operation_plan", "build_operation", "build_material", "build_inventory")):
+            assert "forward_test_shadow" not in open(os.path.join(_PROJECT_ROOT, "src", name), encoding="utf-8").read(), name
+    plan_log = op.path_of(_PROJECT_ROOT, op.load_config(_PROJECT_ROOT)["forecast_log_file"])
+    assert os.path.abspath(plan_log) != os.path.abspath(ftd.SHADOW_LOG_PATH)
+    prod = os.path.join(_PROJECT_ROOT, "output", "summary", "forward_test_log_all_divisions.csv")
+    if os.path.exists(prod):
+        log = pd.read_csv(prod, usecols=["model"])
+        assert not log["model"].astype(str).str.startswith("Shadow").any()
+    assert "shadow_group" not in ftd.COLUMNS and cfg["shadow"]["rule"]["automatic_adoption"] is False
+
+
+def test_shadow_actuals_are_copied_only_from_the_production_log_and_a_vintage_is_written_once(tmp_path, monkeypatch):
+    import monthly_refresh as mr
+    path = str(tmp_path / "shadow.csv")
+    pd.DataFrame([{"vintage_id": 2, "itemcode": "A1", "target_month": m, "actual_qty": ""} for m in ("2026-09", "2026-10")]).to_csv(path, index=False)
+    monkeypatch.setattr(mr, "SHADOW_LOG_PATH", path)
+    main = pd.DataFrame([{"level": "Item", "itemcode": "A1", "target_month": "2026-09", "actual_qty": 7.0},
+                         {"level": "Item", "itemcode": "A1", "target_month": "2026-10", "actual_qty": ""}])     # October is not filled in the production log
+    assert mr.fill_shadow_actuals(main)["filled"] == 1
+    back = pd.read_csv(path)
+    assert back.loc[back["target_month"] == "2026-09", "actual_qty"].iloc[0] == 7.0 and back.loc[back["target_month"] == "2026-10", "actual_qty"].isna().all()
+    monkeypatch.setattr(mr, "SHADOW_METADATA_PATH", str(tmp_path / "meta.json"))
+    pd.DataFrame().to_csv(path, index=False)
+    (tmp_path / "meta.json").write_text('{"2": {}}', encoding="utf-8")
+    with pytest.raises(mr.MonthlyRefreshAbort):
+        mr.write_shadow_vintage(pd.DataFrame(), {"vintage_id": 2})
