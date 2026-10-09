@@ -1170,6 +1170,47 @@ trend_tab:
   pull_dir: "output/data/trend_pull"
   index_file: "index.html"
 
+# Executive summary tab of index.html (src/build_trend_tab.py, decisions of the user 2026-10-09, METRICS.md Sec.49). The revenue targets are an aggregate pull of Cube_Target_PMIS
+# (year, division, revenue type, product type, sum of TargetRevenueAmount; no person or customer column), saved untracked and read by the monthly run.
+exec_summary:
+  target_table: "[salewarehouse].[dbo].[Cube_Target_PMIS]"
+  target_revenue_type: "Omni Channel"
+  target_pull_dir: "output/data/exec_pull"
+  # Cube_Target_PMIS division labels that stand for one Price List division by name; the database's PEM103 rows hold PEM107's Types as well and are split by Product Type
+  # (the Price List's Type of each sheet), see METRICS.md Sec.49.
+  target_division_same_name: [PEM101, PEM102, PEM104, CI101]
+  target_division_split: {from: PEM103, to_by_type: [PEM103, PEM107]}
+  # Approved Thai text of 2026-10-09 (verbatim); {braces} are filled at build time. Money in millions of baht with one decimal.
+  text:
+    tab_label: "สรุปผู้บริหาร"
+    card1_label: "ยอดขาย ม.ค.–{data_month}"
+    card1_sub: "เทียบช่วงเดียวกันปีก่อน {change}"
+    card2_label: "คาดการณ์ทั้งปี {year}"
+    card2_sub: "ถึงเป้า {pct} · ยังไม่ยืนยันฐานเทียบเป้า"
+    card3_label: "ความแม่นของยอดทาย"
+    card3_value: "{n} จาก {N} ฝ่าย"
+    card3_sub: "ดีกว่า Naive"
+    card4_label: "เรื่องที่ต้องระวัง"
+    card4_value: "{n} เรื่อง"
+    card4_sub: "ดูรายการด้านล่าง"
+    million_value: "{value} ล้านบาท"
+    unit_note: "หน่วยตัวเลขในตาราง: ล้านบาท"
+    columns: ["ฝ่าย", "ยอดขาย YTD", "ปีก่อน YTD", "เปลี่ยน", "คาดการณ์ทั้งปี", "เป้า (Revenue)", "ถึงเป้า", "Relative MAE", "หมายเหตุ"]
+    total_label: "รวม"
+    dash: "–"
+    remark_PEM104: "PEM104 ผลิตตามสั่งทั้งหมด จึงไม่ได้ทายยอดขาย"
+    remark_PEMC: "PEMC อยู่นอกขอบเขตสินค้าของ Omni Channel ในโปรเจกต์นี้"
+    remark_no_target: "ไม่พบเป้าของฝ่ายนี้ในระบบเป้า"
+    watch_heading: "เรื่องที่ต้องระวัง"
+    watch_low: "{group} ทายต่ำกว่าจริงต่อเนื่อง (Tracking Signal {value}) คาดการณ์ทั้งปีของกลุ่มนี้อาจต่ำกว่าที่จะเกิดจริง"
+    watch_high: "{group} ทายสูงกว่าจริงต่อเนื่อง (Tracking Signal {value}) คาดการณ์ทั้งปีของกลุ่มนี้อาจสูงกว่าที่จะเกิดจริง"
+    watch_plan: "แผนผลิต {division} เดือน {month} สูงกว่ายอดผลิตสูงสุดที่เคยทำ ({pct})"
+    watch_material: "วัตถุดิบ {n} รายการขาดแล้ว สั่งตอนนี้ไม่ทันแผน"
+    watch_pem107: "PEM107 ส่งของช่องทาง Omni ทันน้อยลงตั้งแต่ {since} ({pct} ไม่สาย)"
+    decide_heading: "เรื่องที่รอผู้บริหารตัดสิน"
+    decide_link: "สมมติฐานที่ใช้อยู่"
+    footer: "ยอดขายนับตามเดือนที่ต้องส่งของ รวม PO ที่รับแล้วแต่ยังไม่ส่ง (MPS) · ไม่รวม VAT · คาดการณ์ = ยอดจริงถึง {data_month} + ยอดทายเดือนที่เหลือ × ราคาขายเฉลี่ยจริง · เป้ามาจากระบบเป้าของบริษัท (Revenue) · ยังไม่ได้ยืนยันว่าเป้านับจากวันส่งของหรือวันออก invoice"
+
 # ============================================================
 # Three-tier parameter classification (documented 2026-09-19, Phase G intent -- NOT implemented
 # by anything in this task; no code reads this block, it exists only so the classification is

@@ -562,3 +562,96 @@ The full list:
 - The user manual (`docs/user_manual.md`) still shows the typed months in the Trend chart note; `config/manual_notes.yaml` holds the line with values the tab fills: with the manual update of 2026-10-19 to 10-21, low, Claude Code.
 - Tracking Signal of a pilot group's forward point: the group's scored items are used; the Type series' own error is the other reading (no outcome changes today): low, Claude Code.
 - Forward-test Relative MAE rests on one scored month; the verdicts of the block use the backtest: the first monthly runs add months automatically.
+
+
+## Prompt 13
+
+The executive summary tab "สรุปผู้บริหาร" of `index.html`, the bar link renamed, one pointer line on the S&OP tab. Run 2026-10-09. Database sessions: 1 of 1 (the revenue targets, aggregates only). The test suite made no connection. New files: none (`src/build_trend_tab.py` now builds both tabs of `index.html`; see the deviations).
+
+### Part 1, bar
+
+As rendered at 1440x900 and 390x844: "S&OP Plan (เดิม) | สรุปผู้บริหาร | Trend Pricelist Omni 2024–2026 | แผนการผลิต (จากยอดทาย) | แผนวัตถุดิบ | สมมติฐานที่ใช้อยู่ | คู่มือการใช้งาน". S&OP opens by default (active, the only visible tab). The new tab is a tab inside `index.html` (button `tb5`, panel `execTab`).
+
+### Part 2, the tab
+
+- Data month 2026-08 (the last month of the pull the forecast uses, equal to the fit window's last month of vintage 2); YTD Jan to Aug 2026; remaining months Sep to Dec, all inside the vintage (2026-09 to 2027-02).
+- Cards as rendered: "ยอดขาย ม.ค.–ส.ค. 69 | 542.1 ล้านบาท | เทียบช่วงเดียวกันปีก่อน +54.1%"; "คาดการณ์ทั้งปี 2569 | 852.4 ล้านบาท | ถึงเป้า 92.2% · ยังไม่ยืนยันฐานเทียบเป้า"; "ความแม่นของยอดทาย | 4 จาก 5 ฝ่าย | ดีกว่า Naive"; "เรื่องที่ต้องระวัง | 8 เรื่อง | ดูรายการด้านล่าง".
+- Table as rendered (millions of baht, one decimal):
+
+| ฝ่าย | ยอดขาย YTD | ปีก่อน YTD | เปลี่ยน | คาดการณ์ทั้งปี | เป้า (Revenue) | ถึงเป้า | Relative MAE | หมายเหตุ |
+|---|---|---|---|---|---|---|---|---|
+| PEM101 | 219.0 | 176.7 | +24.0% | 352.1 | 407.8 | 86.3% | 0.80 | |
+| PEM103 | 178.5 | 32.2 | +454.1% | 270.8 | 211.0 | 128.3% | 1.04 | |
+| PEM107 | 73.8 | 85.7 | -13.9% | 117.3 | 172.9 | 67.8% | 0.86 | |
+| PEM102 | 46.5 | 32.8 | +41.7% | 68.3 | 106.5 | 64.1% | 0.92 | |
+| CI101 | 24.3 | 24.4 | -0.3% | 44.0 | 26.2 | 168.0% | 0.83 | |
+| รวม | 542.1 | 351.7 | +54.1% | 852.4 | 924.4 | 92.2% | – | |
+| PEM104 | – | – | – | – | – | – | – | PEM104 ผลิตตามสั่งทั้งหมด จึงไม่ได้ทายยอดขาย |
+| PEMC | – | – | – | – | – | – | – | PEMC อยู่นอกขอบเขตสินค้าของ Omni Channel ในโปรเจกต์นี้ |
+
+- Divisions without a target: none (all five have one). The PEMC VERIFY holds: no Price List item (visible sheets) is on a PEMC sheet or has business PEMC, and PEMC is not in the sheet-to-division map.
+- Watch-out lines shown (8): PEM103 ทายต่ำกว่าจริงต่อเนื่อง (Tracking Signal -7.8); CI101 ทายสูงกว่าจริงต่อเนื่อง (Tracking Signal 6.7); Fuse Cutout ทายต่ำกว่าจริงต่อเนื่อง (Tracking Signal -4.7); Surge Arrester ทายต่ำกว่าจริงต่อเนื่อง (Tracking Signal -6.8), each with its approved second sentence; แผนผลิต PEM103 เดือน ต.ค. 69 สูงกว่ายอดผลิตสูงสุดที่เคยทำ (119.9%); แผนผลิต PEM102 เดือน ต.ค. 69 สูงกว่ายอดผลิตสูงสุดที่เคยทำ (243.7%); วัตถุดิบ 584 รายการขาดแล้ว สั่งตอนนี้ไม่ทันแผน; PEM107 ส่งของช่องทาง Omni ทันน้อยลงตั้งแต่ พ.ค. 2569 (57.7% ไม่สาย).
+- Pending-decision rows shown (4, those whose ใครกำหนด is ผู้บริหาร): ยอดทายดีกว่าวิธีง่ายไหม · Relative MAE ต่ำแค่ไหนถึงผ่าน (MAE ของเรา ÷ MAE ของ Naive); ยอดทายเอียงต่อเนื่อง · tracking signal เกินเท่าไหร่ถึงเตือน; ฝ่ายที่ยอดทายไม่ชนะวิธีง่าย · ใช้วิธีง่ายแทนไหม; เป้าการส่งไม่สาย · บริษัทต้องการกี่ %; the link "สมมติฐานที่ใช้อยู่" opens that tab.
+- Footer as rendered: "ยอดขายนับตามเดือนที่ต้องส่งของ รวม PO ที่รับแล้วแต่ยังไม่ส่ง (MPS) · ไม่รวม VAT · คาดการณ์ = ยอดจริงถึง ส.ค. 69 + ยอดทายเดือนที่เหลือ × ราคาขายเฉลี่ยจริง · เป้ามาจากระบบเป้าของบริษัท (Revenue) · ยังไม่ได้ยืนยันว่าเป้านับจากวันส่งของหรือวันออก invoice".
+- Targets: one aggregate query (year, division, revenue type, category, product type, sum of TargetRevenueAmount, row count); 270 rows in 93 groups, THB 2,769.8 million in all, Omni 1,385.3 million. The database's PEM103 rows hold PEM107's products: split by the Price List category of each row (Distribution Transformer to PEM103; the two Instrument Transformer categories to PEM107), nothing unallocated. PEM104 (280.7 million) and the group companies (180.2 million: three labels) are not in the five rows; PEM104 shows dashes as specified.
+- Unit: the table's headers carry no unit; one line "หน่วยตัวเลขในตาราง: ล้านบาท" under the cards says it (an addition to the approved text, see the deviations).
+
+### Part 2f, runner
+
+Step 1 pulls the targets in a session of its own (`build_trend_tab.py --pull-targets`), new step 7f rebuilds the tab after the forecast page, operation plan and material plan (and the Trend step) with two gates: the total row equals the sum of the division rows, and each division's projection equals YTD plus the baht for the remaining months read from the rendered forecast page (its baht summary table; the page's months must be the remaining months). A gate failure stops the run before anything is written. `index.html` is a generated file of the run (already, from Prompt 11).
+
+### Part 3, checks (report only)
+
+Received orders (MPS) with forecast_date in the remaining months against the forecast page's baht per month (THB million; the raw pull of 2026-10-05; "delivered" = Actual rows of that month already in the pull):
+
+| division | month | forecast baht | MPS received | already delivered (Actual) |
+|---|---|---|---|---|
+| PEM101 | 2026-09 | 33.3 | 0.1 | 46.5 |
+| PEM101 | 2026-10 | 33.3 | 18.8 | 2.8 |
+| PEM101 | 2026-11 | 33.3 | 3.0 | 0.0 |
+| PEM101 | 2026-12 | 33.3 | 1.1 | 0.0 |
+| PEM103 | 2026-09 | 23.1 | 0.8 | 32.8 |
+| PEM103 | 2026-10 | 23.1 | **42.8** | 1.9 |
+| PEM103 | 2026-11 | 23.1 | 0.7 | 0.0 |
+| PEM103 | 2026-12 | 23.1 | 0.0 | 0.0 |
+| PEM107 | 2026-09 | 10.9 | 0.04 | 9.3 |
+| PEM107 | 2026-10 | 10.9 | **13.9** | 0.1 |
+| PEM107 | 2026-11 | 10.9 | 3.9 | 0.0 |
+| PEM107 | 2026-12 | 10.9 | 0.8 | 0.3 |
+| PEM102 | 2026-09 | 5.4 | 0.0 | 4.8 |
+| PEM102 | 2026-10 | 5.4 | **15.6** | 0.0 |
+| PEM102 | 2026-11 | 5.4 | 1.7 | 0.0 |
+| PEM102 | 2026-12 | 5.4 | 0.6 | 0.0 |
+| CI101 | 2026-09 | 4.9 | 0.0 | 4.1 |
+| CI101 | 2026-10 | 4.9 | **14.8** | 0.9 |
+| CI101 | 2026-11 | 4.9 | 2.4 | 0.0 |
+| CI101 | 2026-12 | 4.9 | 2.0 | 0.0 |
+
+Received orders alone already exceed the forecast in 4 division-months (bold, all October: PEM103, PEM107, PEM102, CI101); counting what was already delivered, 6 (also PEM101 and PEM103 in September, which has ended: September actual 46.5 and 32.8 against a forecast of 33.3 and 23.1). The forecast is flat, so September to December are understated where orders are known; the projection is therefore a floor for those divisions in the near months (not a conclusion for the year).
+
+Forecast_date basis against the Trend tab's createDate basis, Jan to Aug 2026, the 335 forecast-scope items (THB million): PEM101 219.0 against 241.3 (-9.2 percent); PEM103 178.5 against 202.0 (-11.6); PEM107 73.8 against 84.8 (-12.9); PEM102 46.5 against 55.7 (-16.6); CI101 24.3 against 43.0 (-43.6); total 542.1 against 626.8 (-13.5). The createDate figure is higher in every division, as expected: a PO is received before the month it is due. The 110 items outside the forecast scope are 0.11 percent of the createDate YTD (THB 0.7 million, all PEM104).
+
+2025 per division (forecast_date basis, the 335 items, THB million), full year / Jan to Aug: PEM101 287.9 / 176.7; PEM103 64.5 / 32.2; PEM107 148.3 / 85.7; PEM102 53.7 / 32.8; CI101 41.4 / 24.4; total 595.8 / 351.7.
+
+### Part 4, S&OP pointer
+
+Rendered directly under the KPI cards (the next element after the kpi-row), as "ตัวเลขจริงดูที่แท็บสรุปผู้บริหาร" with "สรุปผู้บริหาร" as a link that opens the new tab (clicked in the browser: the new tab opens and is active). Nothing else of the S&OP tab changed (a diff of the file against HEAD shows only the bar, the pointer line, the new tab's CSS and block and the tab switch).
+
+### Validator
+
+Independent recomputation from the raw pull (not the project's monthly series), the Price List, the saved target aggregate and the rendered pages, results written before the tab was read: MATCH on YTD, last-year YTD, change, projection, target, percent to target for each division and the total, the four cards, the eight watch-out lines (and card 4's count), the four pending rows, the PEM104 and PEMC remarks, the bar, the S&OP default and the pointer line, and the diff of the S&OP tab against HEAD. Inputs read from the pages (not recomputed): the baht forecast, Relative MAE and Tracking Signal, the plan flags, the late-material count, the PEM107 alert, the pending rows, the targets file.
+
+### Rendering (own headless Edge, temp profile, own PID closed)
+
+1440x900 and 390x844: the bar, S&OP default, the pointer link opening the new tab, the four cards, the table, the lists, the footer, the link to the assumptions tab, a return to S&OP; no console error; no horizontal page scroll at 390 px in the new tab (the table scrolls inside its own box). Screenshots in `output/shots_p13/` (untracked).
+
+### Tests
+
+Existing files extended: `test_index_w3.py` (seven labels in order and ids; the tab wired into the tab switch; the pointer line verbatim and under the KPI cards; the cards, table, remarks, footer and unit line verbatim from fixed data, a division without a target, no brace; each watch-out line only when its condition holds, with a fixed example for every kind and the limit boundary; the identities and the gate on fixed pages and mismatches; the target split on a fixed aggregate and a division with no row; the PEMC VERIFY and no customer or person identifier; the real tab equal to what the builder makes from the saved pulls), `test_monthly_refresh.py` (step order, gate counted, the staged stop on a projection that differs from the forecast page), `test_monthly_refresh_failure_log.py` and `test_cfix_runner_and_scores.py` (the new stage and step stubs), `test_operation_plan_page_builder.py` (the renamed link on the index bar).
+
+### Found, not done
+
+- **Scope of "ถึงเป้า".** The tab covers the Price List items of the forecast scope (about 64 percent of the database's 2026 Omni value by createDate); the target is for all Omni. Decision for the user (see the summary).
+- PEM103's YTD is 5.5 times last year's and its to-target moves with single tender orders; PEM107's target (172.9 million) is derived from the database's PEM103 rows by category: low, the user to confirm the split with the target owners.
+- The workbook `target_data.xlsx` (user-stated latest version) is not the target source of this tab (the database table is, as instructed); the two agree at Business totals (Prompt 7) but not by revenue stream: low, Claude Code with the target owners.
+- The user manual does not describe the new tab or the renamed link: with the manual update of 2026-10-19 to 10-21, medium, Claude Code.

@@ -552,7 +552,7 @@ def test_the_index_has_the_link_and_the_assumptions_tab_shows_ten_rows(edge, sit
     edge.open(site + "/index.html")
     time.sleep(1.5)
     link = edge.ev("(function(){const a=document.querySelector('#tabBar a'); return [a.innerText.trim(), a.getAttribute('href')]})()")
-    assert link == ["แผนการผลิต", "forecast/operation_plan.html"]
+    assert link == ["แผนการผลิต (จากยอดทาย)", "forecast/operation_plan.html"]
     link = edge.ev("(function(){const a=document.getElementById('tbMat'); return [a.innerText.trim(), a.getAttribute('href'), getComputedStyle(a).backgroundColor === getComputedStyle(document.getElementById('tbPlan')).backgroundColor]})()")
     assert link == ["แผนวัตถุดิบ", "forecast/material_plan.html", True]
     edge.ev("omniShowTab(4); 1")

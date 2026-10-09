@@ -295,17 +295,17 @@ def test_limitations_hold_no_significance_claim_the_block_replaced():
 
 
 # ====================================================================================================== 2026-10-09: the original tabs and links restored, only แผนวัตถุดิบ added
-LABELS = ["S&OP Plan (เดิม)", "Trend Pricelist Omni 2024–2026", "แผนการผลิต", "แผนวัตถุดิบ", "สมมติฐานที่ใช้อยู่", "คู่มือการใช้งาน"]
+LABELS = ["S&OP Plan (เดิม)", "สรุปผู้บริหาร", "Trend Pricelist Omni 2024–2026", "แผนการผลิต (จากยอดทาย)", "แผนวัตถุดิบ", "สมมติฐานที่ใช้อยู่", "คู่มือการใช้งาน"]
 PAGE_FILES = {"sales": "sales_report.html", "inventory": "inventory.html", "operation": "operation_plan.html", "material": "material_plan.html"}
 
 
-def test_the_bar_has_exactly_the_six_labels_in_order_with_the_two_page_links():
+def test_the_bar_has_exactly_the_seven_labels_in_order_with_the_two_page_links():
     import html as _html
     text = open(INDEX, encoding="utf-8").read()
     bar = re.search(r'<div id="tabBar">(.*?)</div>', text, re.S).group(1)
     items = re.findall(r'<(?:button|a)\b[^>]*>(.*?)</(?:button|a)>', bar, re.S)
     assert [_html.unescape(x).strip() for x in items] == LABELS
-    assert re.findall(r'<(button|a) id="(\w+)"', bar) == [("button", "tb1"), ("button", "tb2"), ("a", "tbPlan"), ("a", "tbMat"), ("button", "tb4"), ("button", "tb3")]
+    assert re.findall(r'<(button|a) id="(\w+)"', bar) == [("button", "tb1"), ("button", "tb5"), ("button", "tb2"), ("a", "tbPlan"), ("a", "tbMat"), ("button", "tb4"), ("button", "tb3")]
     assert re.findall(r'<a id="(\w+)" href="([^"]+)"', bar) == [("tbPlan", "forecast/operation_plan.html"), ("tbMat", "forecast/material_plan.html")]
     assert 'id="tb1" class="actv"' in bar and "สต็อกวันนี้" not in text.split('<div id="origTab"')[0]
     for removed in ("tbStock", "tbSales", "tbInv", "OMNI_TAB_FRAGMENTS", "hashchange", "navsep"):
@@ -514,3 +514,158 @@ def test_trend_yellow_note_and_chart_caption_show_the_months_and_date_of_the_dat
     finally:
         server.shutdown()
     assert "เดือน ม.ค. 99 ยังไม่จบเดือน" in note and f"{m['base_first']} – ธ.ค. 98)" in note
+
+
+# ------------------------------------------------------------------ Prompt 13: the executive summary tab (src/build_trend_tab.py, METRICS.md Sec.49)
+def _exec_block(text: str) -> str:
+    import build_trend_tab as bt
+    assert text.count(bt.EXEC_BEGIN) == 1 and text.count(bt.EXEC_END) == 1
+    return text[text.index(bt.EXEC_BEGIN) + len(bt.EXEC_BEGIN):text.index(bt.EXEC_END)]
+
+
+def _exec_visible(block: str) -> list:
+    import html as _html
+    t = re.sub(r"</(?:div|tr|li|p|h3|ul|table|thead|tbody)>", "\n", block)
+    t = re.sub(r"</t[dh]>", " | ", t)
+    return [" ".join(x.split()) for x in _html.unescape(re.sub(r"<[^>]+>", "", t)).split("\n") if x.strip()]
+
+
+def _fixed_exec_data():
+    """A small fixed data set: two forecast divisions, one without a target, and every watch-out condition off."""
+    rows = [{"division": "AAA", "ytd": 100e6, "last_ytd": 80e6, "change": 0.25, "forecast_remaining": 50e6, "projection": 150e6, "target": 200e6, "to_target": 0.75, "relative_mae": 0.6},
+            {"division": "BBB", "ytd": 30e6, "last_ytd": 40e6, "change": -0.25, "forecast_remaining": 10e6, "projection": 40e6, "target": None, "to_target": None, "relative_mae": 1.2}]
+    tot = {"ytd": 130e6, "last_ytd": 120e6, "forecast_remaining": 60e6, "projection": 190e6, "target": None, "change": 130 / 120 - 1, "to_target": None}
+    return {"data_month": "2026-08", "data_month_label": "ส.ค. 69", "year": 2026, "year_be": 2569, "remaining_months": ["2026-09"], "rows": rows, "total": tot, "n_forecast_divisions": 2,
+            "n_beat_naive": 1, "thresholds": {"good": 0.7, "pass": 1.0, "limit": 4.0}, "watch": [], "pending": [{"topic": "หัวข้อ", "to_decide": "ต้องตัดสินอะไร"}]}
+
+
+def test_the_executive_tab_is_wired_into_the_tab_switch_and_is_a_tab_of_this_page():
+    text = open(INDEX, encoding="utf-8").read()
+    assert 'id="tb5" onclick="omniShowTab(5)"' in text and '<div id="execTab">' in text
+    assert "document.getElementById('execTab').style.display = n==5?'block':'none';" in text
+    assert "document.getElementById('tb5').className = n==5?'actv':'';" in text
+
+
+def test_the_s_and_op_pointer_line_is_under_the_kpi_cards_and_links_to_the_new_tab():
+    text = open(INDEX, encoding="utf-8").read()
+    sop = text[text.index('<div id="origTab">'):text.index('<div id="execTab">') if '<div id="execTab">' in text else len(text)]
+    m = re.search(r'</div>\s*(<p class="desc" id="sopExecPointer">.*?</p>)\s*<section>', sop, re.S)
+    assert m and sop.index('<div class="kpi-row">') < sop.index(m.group(1))
+    assert m.group(1) == '<p class="desc" id="sopExecPointer">ตัวเลขจริงดูที่แท็บ<a href="#" onclick="omniShowTab(5);return false">สรุปผู้บริหาร</a></p>'
+
+
+def test_the_exec_tab_texts_cards_table_and_remarks_are_verbatim_from_fixed_data():
+    import build_trend_tab as bt
+    cfg = bt.load_config()
+    d = _fixed_exec_data()
+    d["watch"] = []
+    lines = _exec_visible(bt.exec_render(d, cfg))
+    assert lines[0].startswith("ยอดขาย ม.ค.–ส.ค. 69 | ") or "ยอดขาย ม.ค.–ส.ค. 69" in lines
+    joined = "\n".join(lines)
+    for text in ["ยอดขาย ม.ค.–ส.ค. 69", "130.0 ล้านบาท", "เทียบช่วงเดียวกันปีก่อน +8.3%", "คาดการณ์ทั้งปี 2569", "190.0 ล้านบาท", "ถึงเป้า – · ยังไม่ยืนยันฐานเทียบเป้า",
+                 "ความแม่นของยอดทาย", "1 จาก 2 ฝ่าย", "ดีกว่า Naive", "เรื่องที่ต้องระวัง", "0 เรื่อง", "ดูรายการด้านล่าง", "เรื่องที่รอผู้บริหารตัดสิน", "หัวข้อ · ต้องตัดสินอะไร",
+                 "ฝ่าย | ยอดขาย YTD | ปีก่อน YTD | เปลี่ยน | คาดการณ์ทั้งปี | เป้า (Revenue) | ถึงเป้า | Relative MAE | หมายเหตุ",
+                 "AAA | 100.0 | 80.0 | +25.0% | 150.0 | 200.0 | 75.0% | 0.60 |",
+                 "BBB | 30.0 | 40.0 | -25.0% | 40.0 | – | – | 1.20 | ไม่พบเป้าของฝ่ายนี้ในระบบเป้า",
+                 "รวม | 130.0 | 120.0 | +8.3% | 190.0 | – | – | – |",
+                 "PEM104 | – | – | – | – | – | – | – | PEM104 ผลิตตามสั่งทั้งหมด จึงไม่ได้ทายยอดขาย",
+                 "PEMC | – | – | – | – | – | – | – | PEMC อยู่นอกขอบเขตสินค้าของ Omni Channel ในโปรเจกต์นี้",
+                 "ยอดขายนับตามเดือนที่ต้องส่งของ รวม PO ที่รับแล้วแต่ยังไม่ส่ง (MPS) · ไม่รวม VAT · คาดการณ์ = ยอดจริงถึง ส.ค. 69 + ยอดทายเดือนที่เหลือ × ราคาขายเฉลี่ยจริง · "
+                 "เป้ามาจากระบบเป้าของบริษัท (Revenue) · ยังไม่ได้ยืนยันว่าเป้านับจากวันส่งของหรือวันออก invoice"]:
+        assert text in joined, text
+    assert "{" not in joined and "}" not in joined
+    # a division with a target and the total with every target: a percent to target in the total row and in card 2
+    d["rows"][1].update(target=50e6, to_target=0.8)
+    d["total"].update(target=250e6, to_target=190 / 250)
+    again = "\n".join(_exec_visible(bt.exec_render(d, cfg)))
+    assert "ถึงเป้า 76.0% · ยังไม่ยืนยันฐานเทียบเป้า" in again and "ไม่พบเป้าของฝ่ายนี้ในระบบเป้า" not in again.split("PEM104")[0]
+
+
+def test_each_watch_out_line_appears_only_when_its_condition_holds():
+    import build_trend_tab as bt
+    cfg = bt.load_config()
+    none = bt.exec_watch([{"group": "G", "value": 3.9}, {"group": "H", "value": -4.0}, {"group": "I", "value": None}], 4.0, [], 0, None)
+    assert none == []                                                                                    # at the limit or inside it: no line; no plan line, no late material, no alert
+    low = bt.exec_watch([{"group": "G", "value": -4.1}], 4.0, [], 0, None)
+    high = bt.exec_watch([{"group": "H", "value": 6.7}], 4.0, [], 0, None)
+    plan = bt.exec_watch([], 4.0, [{"division": "D1", "month": "ต.ค. 69", "pct": "119.9%"}], 0, None)
+    mat = bt.exec_watch([], 4.0, [], 584, None)
+    alert = bt.exec_watch([], 4.0, [], 0, {"since": "พ.ค. 2569", "pct": "57.7%"})
+    assert [w["kind"] for w in low + high + plan + mat + alert] == ["low", "high", "plan", "material", "pem107"]
+    d = _fixed_exec_data()
+    d["watch"] = low + high + plan + mat + alert
+    lines = _exec_visible(bt.exec_render(d, cfg))
+    assert "G ทายต่ำกว่าจริงต่อเนื่อง (Tracking Signal -4.1) คาดการณ์ทั้งปีของกลุ่มนี้อาจต่ำกว่าที่จะเกิดจริง" in lines
+    assert "H ทายสูงกว่าจริงต่อเนื่อง (Tracking Signal 6.7) คาดการณ์ทั้งปีของกลุ่มนี้อาจสูงกว่าที่จะเกิดจริง" in lines
+    assert "แผนผลิต D1 เดือน ต.ค. 69 สูงกว่ายอดผลิตสูงสุดที่เคยทำ (119.9%)" in lines
+    assert "วัตถุดิบ 584 รายการขาดแล้ว สั่งตอนนี้ไม่ทันแผน" in lines
+    assert "PEM107 ส่งของช่องทาง Omni ทันน้อยลงตั้งแต่ พ.ค. 2569 (57.7% ไม่สาย)" in lines
+    assert "5 เรื่อง" in "\n".join(lines)                                                                 # card 4 counts the lines shown
+    assert not any("ทายต่ำกว่าจริง" in x for x in _exec_visible(bt.exec_render(dict(d, watch=high), cfg)))
+
+
+def test_the_total_row_and_the_year_end_projection_identities_are_gated(tmp_path):
+    import build_trend_tab as bt
+    d = _fixed_exec_data()
+    page = tmp_path / "sales_report.html"
+    page.write_text('<table id="baht-summary-table"><thead><tr><th>ฝ่าย</th><th>ก.ย. 69</th><th>ต.ค. 69</th></tr></thead><tbody>'
+                    '<tr><td>AAA</td><td>50,000,000</td><td>1</td></tr><tr><td>BBB</td><td>10,000,000</td><td>1</td></tr><tr class="total-row"><td>รวมทุกฝ่าย</td><td>60,000,000</td><td>2</td></tr></tbody></table>', encoding="utf-8")
+    assert bt.exec_gate(d, str(page))["passed"]
+    bad = _fixed_exec_data()
+    bad["rows"][0]["projection"] += 1.0                                                                  # a projection that is not YTD plus the page's baht
+    with pytest.raises(bt.ExecSummaryError, match="projection"):
+        bt.exec_gate(bad, str(page))
+    bad = _fixed_exec_data()
+    bad["total"]["ytd"] += 5.0                                                                           # a total row that is not the sum of the division rows
+    with pytest.raises(bt.ExecSummaryError, match="total row"):
+        bt.exec_gate(bad, str(page))
+    wrong_months = _fixed_exec_data()
+    wrong_months["remaining_months"] = ["2026-10"]
+    with pytest.raises(bt.ExecSummaryError, match="remaining months"):
+        bt.exec_gate(wrong_months, str(page))
+
+
+def test_the_targets_are_split_by_category_and_a_division_without_a_row_has_no_target(tmp_path):
+    import json as _json
+    import build_trend_tab as bt
+    cfg = bt.load_config()
+    pl = pd.DataFrame([{"code": "A", "division": "PEM103", "category": "Cat Transformer"}, {"code": "B", "division": "PEM107", "category": "Cat Instrument"}])
+    d = tmp_path / "output" / "data" / "exec_pull"
+    d.mkdir(parents=True)
+    pd.DataFrame([
+        {"yr": 2026, "division": "PEM101", "revenue_type": "Omni Channel", "category": "x", "product_type": "t", "amount": 100.0, "n_rows": 1, "n_null": 0},
+        {"yr": 2026, "division": "PEM103", "revenue_type": "Omni Channel", "category": "Cat Transformer", "product_type": "t", "amount": 30.0, "n_rows": 1, "n_null": 0},
+        {"yr": 2026, "division": "PEM103", "revenue_type": "Omni Channel", "category": "Cat Instrument", "product_type": "t", "amount": 20.0, "n_rows": 1, "n_null": 0},
+        {"yr": 2026, "division": "PEM103", "revenue_type": "Omni Channel", "category": "Cat Unknown", "product_type": "t", "amount": 5.0, "n_rows": 1, "n_null": 0},
+        {"yr": 2026, "division": "PEM103", "revenue_type": "Tendering", "category": "Cat Instrument", "product_type": "t", "amount": 999.0, "n_rows": 1, "n_null": 0},
+        {"yr": 2026, "division": "PXX", "revenue_type": "Omni Channel", "category": "x", "product_type": "t", "amount": 7.0, "n_rows": 1, "n_null": 0}]).to_csv(d / "targets.csv", index=False)
+    (d / "targets_meta.json").write_text(_json.dumps({"pulled_at": "2026-10-09T09:00:00", "year": 2026}), encoding="utf-8")
+    by, rep = bt.exec_targets(str(tmp_path), cfg, pl, 2026)
+    assert by["PEM101"] == 100.0 and by["PEM103"] == 30.0 and by["PEM107"] == 20.0                          # Omni only; PEM103's rows split by category
+    assert by["PEM102"] is None and by["CI101"] is None and by["PEM104"] is None                           # no row at all: no target, not a target of 0
+    assert rep["unallocated"] == 5.0 and rep["other_divisions"] == {"PXX": 7.0} and rep["omni_total"] == 162.0
+    with pytest.raises(bt.ExecSummaryError, match="another year|is for"):
+        bt.exec_targets(str(tmp_path), cfg, pl, 2027)
+
+
+def test_pemc_has_no_price_list_item_and_the_tab_holds_no_customer_or_person_identifier():
+    import build_trend_tab as bt
+    cfg = bt.load_config()
+    pl = bt.pricelist_rows(PROJECT_ROOT, cfg)
+    assert "PEMC" not in set(pl["division"]) and "PEMC" not in set(pl["sheet"]) and "PEMC" not in set(cfg["sheet_to_division"].values())     # the VERIFY of the PEMC remark
+    block = _exec_block(open(INDEX, encoding="utf-8").read())
+    assert not re.search(r"CS\d{4,}|CTR-\d{4}|Co\.,|Ltd|บริษัท .* จำกัด|@", block)
+    assert "{" not in block and "}" not in block
+
+
+def test_the_executive_tab_in_index_html_is_what_the_builder_makes_from_the_saved_pulls():
+    import build_trend_tab as bt
+    cfg = bt.load_config()
+    if not os.path.exists(os.path.join(PROJECT_ROOT, *cfg["exec_summary"]["target_pull_dir"].split("/"), "targets.csv")):
+        pytest.skip("SKIPPED, not passed: the saved revenue-target pull (untracked output) is not on this machine")
+    data = bt.exec_data(PROJECT_ROOT)
+    assert "\n" + bt.exec_render(data, cfg) + "\n" == _exec_block(open(INDEX, encoding="utf-8").read())
+    # the identities on the real figures: the total row is the sum of its rows, each projection is YTD plus the remaining months' baht of the forecast page
+    assert bt.exec_gate(data, os.path.join(PROJECT_ROOT, "forecast", "sales_report.html"))["passed"]
+    assert data["rows"][0]["division"] == "PEM101" and [r["division"] for r in data["rows"]] == ["PEM101", "PEM103", "PEM107", "PEM102", "CI101"]
+    assert data["n_forecast_divisions"] == 5

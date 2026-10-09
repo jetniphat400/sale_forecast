@@ -251,3 +251,31 @@ def test_the_trend_tab_step_writes_a_staged_copy_and_stops_when_the_totals_diffe
     monkeypatch.setattr(bt, "read_pull", read_with_a_row_less)
     with pytest.raises(mr.MonthlyRefreshAbort, match="completeness query"):
         mr.step7e_trend_tab(True, str(tmp_path))
+
+
+# ---- Prompt 13: the executive summary tab is rebuilt by the runner after the plans, with a gate
+def test_the_executive_summary_step_runs_after_the_trend_step_and_before_the_tests_and_its_gate_is_counted():
+    order = mr.STEP_ORDER
+    assert order.index("7b_operation_plan") < order.index("7c_material_plan") < order.index("7e_trend_tab") < order.index("7f_exec_summary") < order.index("8_run_tests")
+    gates = mr.gate_outcomes({"passed": True, "summary_line": "x"}, {"passed": True, "findings": []}, {"gates": {}}, None, None, {"gate": {"divisions": ["PEM101"]}})
+    assert gates["gates"]["exec_summary_gate"]["status"] == "passed"
+    assert "exec_summary_gate" not in mr.gate_outcomes({"passed": True}, {"passed": True, "findings": []}, {"gates": {}})["gates"]
+    offline = mr.step1_pull_data(False, offline=True)
+    assert offline["exec_targets_pull"]["refreshed"] is False
+
+
+def test_the_executive_summary_step_stops_the_run_when_a_projection_differs_from_the_forecast_page(tmp_path, monkeypatch):
+    import build_trend_tab as bt
+    real = bt.exec_data
+
+    def wrong(root=mr.PROJECT_ROOT, plan_dir=None):
+        d = real(root, None)                                                                         # the recorded plan outputs (a staged dry run's folder holds none in this test)
+        d["rows"][0]["projection"] += 1.0
+        d["total"]["projection"] += 1.0
+        return d
+    monkeypatch.setattr(bt, "exec_data", wrong)
+    cfg = bt.load_config(mr.PROJECT_ROOT)
+    if not os.path.exists(os.path.join(mr.PROJECT_ROOT, *cfg["exec_summary"]["target_pull_dir"].split("/"), "targets.csv")):
+        pytest.skip("SKIPPED, not passed: the saved revenue-target pull (untracked output) is not on this machine")
+    with pytest.raises(mr.MonthlyRefreshAbort, match="projection"):
+        mr.step7f_exec_summary(True, str(tmp_path), {"rendered_path": os.path.join(mr.PROJECT_ROOT, "forecast", "sales_report.html")})

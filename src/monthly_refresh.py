@@ -17,6 +17,8 @@ ORDER, exactly as specified there:
     7c recompute material plan v1 (METRICS.md Sec.43) from the operation plan just recorded and the saved week 3 pulls, then build
       forecast/material_plan.html from it
     7e rebuild the data of the Trend tab of index.html from the saved pull of step 1 (src/build_trend_tab.py), gate: its totals equal the completeness query
+    7f rebuild the executive summary tab of index.html (src/build_trend_tab.py) from the saved pulls, the forecast page and the recorded plans, gate: the total row equals
+      the sum of the division rows and each projection equals YTD plus the forecast page's baht for the remaining months
     8 run the full test suite
     9 scan staged files for sensitive content
     10 check change magnitude against the previous run
@@ -131,7 +133,7 @@ SENSITIVE_PATTERNS = [
 
 
 STEP_ORDER = ["1_pull_data", "2_validate", "3_frozen_snapshot", "4_backtest", "5_new_forward_test_vintage",
-              "6_fill_and_score", "7_rebuild_pages", "7b_operation_plan", "7c_material_plan", "7d_vintage_gate", "7e_trend_tab", "8_run_tests", "9_scan_sensitive_content",
+              "6_fill_and_score", "7_rebuild_pages", "7b_operation_plan", "7c_material_plan", "7d_vintage_gate", "7e_trend_tab", "7f_exec_summary", "8_run_tests", "9_scan_sensitive_content",
               "10_change_magnitude", "11_commit_and_push"]
 
 
@@ -195,6 +197,7 @@ def step1_pull_data(dry_run: bool, offline: bool = False) -> dict:
                 "inventory_pull": {"refreshed": False, "not_refreshed_reason": "offline mode: no database connection"},
                 "material_plan_pull": {"refreshed": False, "not_refreshed_reason": "offline mode: no database connection"},
                 "trend_tab_pull": {"refreshed": False, "not_refreshed_reason": "offline mode: no database connection"},
+                "exec_targets_pull": {"refreshed": False, "not_refreshed_reason": "offline mode: no database connection"},
                 "snapshot_pull_date": str(monthly["snapshot_pull_date"].iloc[0]),
                 "n_items": monthly["itemcode"].nunique(), "n_divisions": monthly["division"].nunique()}
     from dotenv import load_dotenv
@@ -251,6 +254,9 @@ def step1_pull_data(dry_run: bool, offline: bool = False) -> dict:
     # the Trend tab of index.html: its own session (src/build_trend_tab.py --pull); a failure leaves the earlier pull in place and the log says so
     result["trend_tab_pull"] = _pull_stage("Trend tab pull", "build_trend_tab.py", os.path.join(PROJECT_ROOT, *load_config()["trend_tab"]["pull_dir"].split("/"), "completeness.json"),
                                            args=["--pull"])
+    # the revenue targets of the executive summary tab: aggregates of Cube_Target_PMIS, its own session (src/build_trend_tab.py --pull-targets)
+    result["exec_targets_pull"] = _pull_stage("Executive summary targets pull", "build_trend_tab.py",
+                                              os.path.join(PROJECT_ROOT, *load_config()["exec_summary"]["target_pull_dir"].split("/"), "targets_meta.json"), args=["--pull-targets"])
     return result
 
 
@@ -1074,6 +1080,29 @@ def step7e_trend_tab(dry_run: bool, staged_dir: str) -> dict:
 
 
 # ---------------------------------------------------------------------------------------------
+# Step 7f: the executive summary tab of index.html (src/build_trend_tab.py, METRICS.md Sec.49)
+# ---------------------------------------------------------------------------------------------
+
+def step7f_exec_summary(dry_run: bool, staged_dir: str, step7_result: dict = None) -> dict:
+    """Rebuilds the executive summary tab from the saved pulls, the forecast page step 7 just built and the recorded operation and material plans. The gate: the total row equals the
+    sum of the division rows and each division's projection equals its YTD plus the forecast page's baht for the remaining months, otherwise the run stops (nothing is written). A dry
+    run reads the staged pages and plans; inside a temporary copy of the project it writes the copy's index.html, a staged dry run writes under its staging folder. Makes no database
+    connection."""
+    import build_trend_tab
+    index_path = os.path.join(staged_dir, "index.html") if (dry_run and not IN_SANDBOX) else None
+    if index_path and not os.path.exists(index_path):
+        shutil.copyfile(os.path.join(PROJECT_ROOT, "index.html"), index_path)
+    plan_dir = os.path.join(staged_dir, "operation_plan") if dry_run else None
+    sales_path = (step7_result or {}).get("rendered_path")
+    try:
+        report = build_trend_tab.run_exec_build(PROJECT_ROOT, index_path=index_path, sales_report_path=sales_path, plan_dir=plan_dir)
+    except build_trend_tab.TrendTabError as e:
+        raise MonthlyRefreshAbort(f"Step 7f (executive summary) STOPPED: {e}") from e
+    report["written_to_tracked_path"] = False if index_path else not dry_run
+    return report
+
+
+# ---------------------------------------------------------------------------------------------
 # Step 8: run the full test suite
 # ---------------------------------------------------------------------------------------------
 
@@ -1268,7 +1297,7 @@ def step10_change_magnitude(config: dict, step4_result: dict, step5_result: dict
     }
 
 
-def gate_outcomes(step8: dict, step9: dict, step10: dict, step7d: dict = None, step7e: dict = None) -> dict:
+def gate_outcomes(step8: dict, step9: dict, step10: dict, step7d: dict = None, step7e: dict = None, step7f: dict = None) -> dict:
     """Every gate of the run (tests, sensitive-content scan, the three change-magnitude gates) as passed, failed or not tested, with
     the counts. A skipped test run is not tested, not passed."""
     gates = {"tests": (_gate(GATE_NOT_TESTED, step8.get("summary_line", "tests skipped")) if step8.get("skipped") else
@@ -1279,6 +1308,8 @@ def gate_outcomes(step8: dict, step9: dict, step10: dict, step7d: dict = None, s
         gates["vintage_consistency"] = _gate(GATE_PASSED, f"G1, G2, G3 and the material plan all carry vintage {step7d['vintage_id']}")
     if step7e is not None:
         gates["trend_tab_totals"] = _gate(GATE_PASSED, f"the Trend tab's totals equal the completeness query ({step7e.get('totals', {}).get('rows')} rows)")
+    if step7f is not None:
+        gates["exec_summary_gate"] = _gate(GATE_PASSED, f"the total row equals the division rows and each projection equals YTD plus the forecast page's baht ({', '.join(step7f.get('gate', {}).get('divisions', []))})")
     for name, g in step10.get("gates", {}).items():
         gates["step10_" + name] = g
     return {"gates": gates, "counts": count_gates(gates), "not_tested": sorted(n for n, g in gates.items() if g["status"] == GATE_NOT_TESTED)}
@@ -1484,12 +1515,13 @@ def main(dry_run: bool, force_new_vintage: bool = False, sandbox: bool = False, 
     record("7c_material_plan", step7c_material_plan, steps_dry, staged_dir)
     step7d = record("7d_vintage_gate", step7d_vintage_gate, steps_dry, staged_dir)
     step7e = record("7e_trend_tab", step7e_trend_tab, steps_dry, staged_dir)
+    step7f = record("7f_exec_summary", step7f_exec_summary, steps_dry, staged_dir, step7)
     step8 = record("8_run_tests", step8_run_tests, skip_tests)
     step9 = record("9_scan_sensitive_content", step9_scan_sensitive_content, started_mtime if sandbox else None)
     step10 = record("10_change_magnitude", step10_change_magnitude, config, step4, step5)
     step11 = record("11_commit_and_push", step11_commit_and_push, dry_run, step8, step9, step10)
 
-    run_log["gate_outcomes"] = gate_outcomes(step8, step9, step10, step7d, step7e)
+    run_log["gate_outcomes"] = gate_outcomes(step8, step9, step10, step7d, step7e, step7f)
     run_log["finished_at"] = datetime.now().isoformat(timespec="seconds")
     _write_run_log(run_log, run_id, run_log_dir)
     return run_log

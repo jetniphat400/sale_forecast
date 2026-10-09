@@ -1338,3 +1338,32 @@ pipeline — no new section is needed for this; it is already covered by section
 - The measure is the ratio of mean absolute errors, not MASE (MASE scales by the in-sample naive step; the main table's MASE is unchanged).
 - Backtest figures are recomputed at page build from the saved monthly series with the same functions as the main table (src/transferability_all_divisions.py); the model MAE
   recomputed this way must equal the main table's MAE, otherwise the build stops.
+
+## 49. executive_summary
+
+    The tab "สรุปผู้บริหาร" of index.html (src/build_trend_tab.py, rebuilt by the monthly run after the forecast, operation plan and material plan steps); decisions of the user,
+    2026-10-09 (Prompt 13). Defined here before the tab is built. Every figure is computed at build time; none is typed.
+
+    scope          = cube_Sale_APD, revenue_type 'Omni Channel', status Actual + MPS, Price List items of the forecast scope (the 335 items of the forecast pipeline's saved pull; the
+                     110 placeholder and excluded Price List items are not in that pull), sale (excludes VAT: user-stated, not proven), month = the forecast_date month (the forecast
+                     series' key; the monthly sale series output/data/processed_all_divisions_monthly_sale.csv), division = the Price List's division
+    data month     = the last month of that series (the last complete month of the pull the forecast uses; it must equal the fit window's last month of the vintage the page uses)
+    YTD            = January to the data month of the data month's year; last-year YTD = the same months one year earlier; change = YTD / last-year YTD - 1
+    projection     = YTD + for each remaining month of the year the baht forecast of the forecast page (the same vintage, the same unit prices: METRICS.md Sec.46); stops when the
+                     vintage does not cover a remaining month
+    target         = TargetRevenueAmount of Cube_Target_PMIS (the revenue target "Revenue (MB)-Conting" at Business totals, DATA_MAP.md Prompt 7), year of the data month, RevenueType
+                     'Omni Channel', summed per division; the database's PEM103 rows hold PEM107's Types too and are split by the Price List category of each row (a row whose
+                     category is on no sheet of the two divisions stays unallocated and is reported); other database divisions (group companies) are not shown. A forecast division with no
+                     target row shows a dash and a remark. The pull is aggregate only (year, division, revenue type, category, type, sum, row count).
+    to target      = projection / target
+    Relative MAE   = the division's value in the forecast page's "เทียบกับร่างเกณฑ์" table (Sec.48)
+    total row      = sums of the division rows (YTD, last-year YTD, projection, target); change and to target recomputed from the sums; Relative MAE not shown
+    card 3         = number of forecast divisions whose Relative MAE is below relative_mae_pass (config maxmin_v1.pending_criteria_values) / number of forecast divisions
+    watch-outs     = lines shown only while their condition holds: a division or pilot group with |Tracking Signal| above the limit (below minus the limit: forecast below the actual; above
+                     plus the limit: above); a division-month of the operation plan above 100 percent of the historical peak (the plan page's own flag and percent); the material plan
+                     page's count of materials "ขาดแล้ว สั่งตอนนี้ไม่ทัน" when above 0; the PEM107 Omni not-late share since the split date, while the Min-Max page has its PEM107 alert
+    pending rows   = the rows of the table "เกณฑ์ที่รอกำหนด" whose ใครกำหนด is ผู้บริหาร
+    gates          = the total row equals the sum of the division rows; each division's projection equals its YTD plus the baht of the remaining months read from the rendered forecast page
+
+- Sources are the saved pulls and the recorded outputs only; the revenue targets are one aggregate database pull of their own (output/data/exec_pull/, untracked), made in step 1 of the monthly run in its own session.
+- The footer states that the target's basis (delivery date or invoice date) is unconfirmed; the projection is a flat-forecast extrapolation without seasonality (STATUS.md plan).

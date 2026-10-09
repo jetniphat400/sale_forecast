@@ -1,4 +1,5 @@
-"""Builds the data of the Trend tab of index.html ("Trend Pricelist Omni 2024-2026") from a saved pull of cube_Sale_APD.
+"""Builds two tabs of index.html: the data of the Trend tab ("Trend Pricelist Omni 2024-2026") from a saved pull of cube_Sale_APD, and the executive summary tab
+("สรุปผู้บริหาร", METRICS.md Sec.49: --pull-targets, --build-exec; see the section at the end of this file).
 
 Two stages, both run by the monthly runner (src/monthly_refresh.py):
   --pull   one read-only database session: three aggregate queries over the tab's scope (rows grouped by item, day and status; the most frequent
@@ -15,6 +16,7 @@ The spec remark of every item (ok / conflict / nospec / nodata) follows the Augu
 most frequent product name in the scope.
 """
 import argparse
+import html
 import json
 import logging
 import math
@@ -213,6 +215,30 @@ def pull(root: str = PROJECT_ROOT, queries_extra=None) -> dict:
     return {"daily": daily, "names": names, "completeness": completeness, "extra": extra}
 
 
+def pull_targets(root: str = PROJECT_ROOT, year: int = None) -> pd.DataFrame:
+    """The revenue targets of one year from Cube_Target_PMIS, ONE read-only session (no retry: a login failure raises), AGGREGATE ONLY: year, division, revenue type, product type
+    (and its category), the sum of TargetRevenueAmount, the number of rows and of null amounts. No person, customer or product code column is selected. Saved as targets.csv under
+    config exec_summary.target_pull_dir (the year of the data month unless given) with the pull time in targets_meta.json (written last)."""
+    import db
+    config = load_config(root)
+    ex = config["exec_summary"]
+    if year is None:                                           # the year of the data month: the last month of the series the forecast uses
+        monthly = pd.read_csv(os.path.join(root, "output", "data", "processed_all_divisions_monthly_qty.csv"), usecols=["year_month"])
+        year = int(str(monthly["year_month"].max())[:4])
+    out_dir = os.path.join(root, *ex["target_pull_dir"].split("/"))
+    os.makedirs(out_dir, exist_ok=True)
+    with db.session():
+        pulled_at = datetime.now().isoformat(timespec="seconds")
+        df = db.run_query(f"SELECT [Year] AS yr, [Division] AS division, [RevenueType] AS revenue_type, [ProoductCateName] AS category, [ProductTypeName] AS product_type, "
+                          f"SUM([TargetRevenueAmount]) AS amount, COUNT(*) AS n_rows, SUM(CASE WHEN [TargetRevenueAmount] IS NULL THEN 1 ELSE 0 END) AS n_null "
+                          f"FROM {ex['target_table']} WHERE [Year] = {year} GROUP BY [Year], [Division], [RevenueType], [ProoductCateName], [ProductTypeName]")
+    df.to_csv(os.path.join(out_dir, "targets.csv"), index=False, encoding="utf-8")
+    with open(os.path.join(out_dir, "targets_meta.json"), "w", encoding="utf-8") as f:
+        json.dump({"pulled_at": pulled_at, "year": year, "n_rows_aggregated": int(df["n_rows"].sum()), "amount_all": float(df["amount"].fillna(0).sum())}, f, indent=1)
+    logger.info("Executive summary targets saved: %d aggregate rows for %d", len(df), year)
+    return df
+
+
 def read_pull(root: str, config: dict) -> tuple:
     d = os.path.join(root, *config["trend_tab"]["pull_dir"].split("/"))
     paths = [os.path.join(d, n) for n in ("daily.csv", "names.csv", "completeness.json")]
@@ -374,19 +400,273 @@ def run_build(root: str = PROJECT_ROOT, index_path: str = None) -> dict:
     return report
 
 
+# ---------------------------------------------------------------------------------------------------------------------------------------------
+# Executive summary tab ("สรุปผู้บริหาร", METRICS.md Sec.49): figures computed at build time from the saved pulls, the forecast page's data and the recorded plan outputs.
+# The tab's HTML is written into index.html between EXEC_BEGIN and EXEC_END. Makes no database connection (the targets come from pull_targets()).
+# ---------------------------------------------------------------------------------------------------------------------------------------------
+
+EXEC_BEGIN = "<!-- EXEC-TAB-BEGIN -->"
+EXEC_END = "<!-- EXEC-TAB-END -->"
+
+
+class ExecSummaryError(TrendTabError):
+    """The executive summary could not be built or failed its gate; nothing is written."""
+
+
+def exec_targets(root: str, config: dict, pl: pd.DataFrame, year: int) -> tuple:
+    """({price list division: target in baht}, report) from the saved aggregate pull of Cube_Target_PMIS (config exec_summary): the Omni Channel revenue target of `year`, summed per
+    division. Divisions whose database label is the Price List's own take their rows; the database's PEM103 rows are split between PEM103 and PEM107 by the Price List category of
+    each row (a row whose category is on no sheet of the two, or on both, stays unallocated and is reported); other database divisions are listed in the report and not shown."""
+    ex = config["exec_summary"]
+    d = os.path.join(root, *ex["target_pull_dir"].split("/"))
+    paths = [os.path.join(d, n) for n in ("targets.csv", "targets_meta.json")]
+    if not all(os.path.exists(p) for p in paths):
+        raise ExecSummaryError("the saved revenue-target pull is missing (run build_trend_tab.py --pull-targets)")
+    with open(paths[1], encoding="utf-8") as f:
+        meta = json.load(f)
+    if int(meta["year"]) != int(year):
+        raise ExecSummaryError(f"the saved revenue-target pull is for {meta['year']}, the data month is in {year}")
+    df = pd.read_csv(paths[0])
+    o = df[(df["revenue_type"] == ex["target_revenue_type"]) & (df["yr"] == year)]
+    split = ex["target_division_split"]
+    cat_div = {}
+    for r in pl.itertuples():
+        cat_div.setdefault(r.category, set()).add(r.division)
+    by = {dv: 0.0 for dv in ex["target_division_same_name"] + list(split["to_by_type"])}
+    unallocated, other = 0.0, {}
+    for r in o.itertuples():
+        amount = 0.0 if pd.isna(r.amount) else float(r.amount)
+        div = str(r.division)
+        if div in ex["target_division_same_name"]:
+            by[div] += amount
+        elif div == split["from"]:
+            cands = cat_div.get(" ".join(str(r.category).split()), set()) & set(split["to_by_type"])
+            if len(cands) == 1:
+                by[next(iter(cands))] += amount
+            else:
+                unallocated += amount
+        else:
+            other[div] = other.get(div, 0.0) + amount
+    has_row = set(o["division"].astype(str))
+    for dv in list(by):                       # a division with no target row at all has no target (not a target of 0)
+        if dv in ex["target_division_same_name"] and dv not in has_row:
+            by[dv] = None
+        elif dv in split["to_by_type"] and split["from"] not in has_row:
+            by[dv] = None
+    return by, {"pulled_at": meta["pulled_at"], "year": int(year), "omni_total": float(o["amount"].fillna(0).sum()), "unallocated": unallocated, "other_divisions": other}
+
+
+def exec_watch(ts_rows: list, limit: float, plan_above: list, n_late: int, pem107_alert) -> list:
+    """The lines of "เรื่องที่ต้องระวัง", each only while its condition holds: a group whose Tracking Signal is beyond plus or minus `limit` (below: forecast below the actual), each
+    division-month of the plan above the historical peak, materials already late (n_late above 0), the PEM107 not-late alert (a dict with `since` and `pct`, or None)."""
+    watch = []
+    for r in ts_rows:
+        ts = r["value"]
+        if ts is not None and abs(ts) > limit:
+            watch.append({"kind": "low" if ts < 0 else "high", "group": r["group"], "value": ts})
+    for r in plan_above:
+        watch.append({"kind": "plan", **r})
+    if n_late > 0:
+        watch.append({"kind": "material", "n": n_late})
+    if pem107_alert:
+        watch.append({"kind": "pem107", **pem107_alert})
+    return watch
+
+
+def exec_data(root: str = PROJECT_ROOT, plan_dir: str = None) -> dict:
+    """Every figure of the tab (see METRICS.md Sec.49). Stops (ExecSummaryError) when the data month is not the last month of the vintage's fit window or the vintage does not cover a
+    remaining month of the year."""
+    sys.path.insert(0, os.path.join(root, "src"))
+    import build_material_plan_page as bmp
+    import build_operation_plan_page as bopp
+    import build_report as br
+    import maxmin_v1
+    import operation_plan as op
+    import reader_values as rv
+    config = br.load_config()
+    basis = config["report"]["price_basis"]
+    vf = rv.vintage_facts(root)
+    forward = br.gather_forward_forecast(vf, br.gather_scope_table())
+    codes = sorted({it["item"] for ts in forward["divisions"].values() for t in ts for it in t["items"]})
+    price_info = rv.unit_prices(codes, basis, vf["fit_first"], vf["fit_last"], os.path.join(root, "reference", "pricelist.xlsx"), root)
+    baht = br.gather_baht(forward, price_info)
+    sale = pd.read_csv(os.path.join(root, *basis["sale_file"].split("/")), usecols=["itemcode", "year_month", "sale", "division"])
+    data_month = str(sale["year_month"].max())
+    if data_month != vf["fit_last"]:
+        raise ExecSummaryError(f"the last month of the saved series ({data_month}) is not the last month of the vintage's fit window ({vf['fit_last']})")
+    year, mnum = int(data_month[:4]), int(data_month[5:7])
+    remaining = [f"{year}-{m:02d}" for m in range(mnum + 1, 13)]
+    missing = [m for m in remaining if m not in forward["months"]]
+    if missing:
+        raise ExecSummaryError(f"the vintage covers {forward['months'][0]} to {forward['months'][-1]}, not the remaining months {missing}")
+    last_first = f"{year - 1}-01"
+    if str(sale["year_month"].min()) > last_first:
+        raise ExecSummaryError(f"the saved series starts {sale['year_month'].min()}, after {last_first} needed for last year's YTD")
+    cur = sale[(sale["year_month"] >= f"{year}-01") & (sale["year_month"] <= data_month)].groupby("division")["sale"].sum()
+    prev = sale[(sale["year_month"] >= last_first) & (sale["year_month"] <= f"{year - 1}-{mnum:02d}")].groupby("division")["sale"].sum()
+    pl = pricelist_rows(root, load_config(root))
+    targets, target_report = exec_targets(root, config, pl, year)
+    primary = br.gather_primary_results()
+    acc = br.gather_accuracy_vs_naive(config, primary)
+    rel = {r["label"]: r["relative_mae"] for r in acc["rows"] if r["kind"] == "division"}
+    th = acc["thresholds"]
+    rows = []
+    for d in baht["divisions"]:
+        fc_rem = float(sum(baht["divisions"][d]["total"][forward["months"].index(m)] for m in remaining))
+        ytd, ly = float(cur.get(d, 0.0)), float(prev.get(d, 0.0))
+        proj = ytd + fc_rem
+        tgt = targets.get(d)
+        rows.append({"division": d, "ytd": ytd, "last_ytd": ly, "change": (ytd / ly - 1) if ly else None, "forecast_remaining": fc_rem, "projection": proj, "target": tgt,
+                     "to_target": (proj / tgt) if tgt else None, "relative_mae": rel.get(d)})
+    tot = {k: sum(r[k] for r in rows) for k in ("ytd", "last_ytd", "forecast_remaining", "projection")}
+    have = [r for r in rows if r["target"]]
+    tot["target"] = sum(r["target"] for r in rows) if len(have) == len(rows) else None
+    tot["change"] = (tot["ytd"] / tot["last_ytd"] - 1) if tot["last_ytd"] else None
+    tot["to_target"] = (tot["projection"] / tot["target"]) if tot["target"] else None
+    cfg_op = op.load_config(root)
+    _im, dm, _meta = op.read_outputs(root, cfg_op, plan_dir)
+    plan_above = [{"division": r.division, "month": rv.thai_month_short(r.month), "pct": bopp.fmt_pct(r.share_of_capacity)} for r in dm[dm["above_capacity"].astype(bool)].itertuples()]
+    n_late = int(bmp.build_values(root, plan_dir)["n_late"])
+    with open(os.path.join(root, "output", "summary", "task2b_part4_pem107_alert.json"), encoding="utf-8") as f:
+        alert = json.load(f)
+    watch = exec_watch([{"group": r["label"], "value": r["tracking_signal"]} for r in acc["rows"]], th["limit"], plan_above, n_late,
+                       None if alert.get("not_late_from_may_2026_pct") is None else {"since": rv.thai_month_year(alert["split_date"]), "pct": f"{float(alert['not_late_from_may_2026_pct']):.1f}%"})
+    pending = [r for r in maxmin_v1.pending_criteria_rows() if r["who"] == "ผู้บริหาร"]
+    return {"data_month": data_month, "data_month_label": rv.thai_month_short(data_month), "year": year, "year_be": year + 543, "remaining_months": remaining, "rows": rows, "total": tot,
+            "n_forecast_divisions": len(rows), "n_beat_naive": sum(1 for r in rows if r["relative_mae"] is not None and r["relative_mae"] < th["pass"]), "thresholds": th,
+            "watch": watch, "pending": pending, "target_report": target_report, "vintage_id": vf["vintage_id"]}
+
+
+def _money(x) -> str:
+    return f"{x / 1e6:,.1f}"
+
+
+def _signed_pct(x) -> str:
+    return f"{100 * x:+.1f}%"
+
+
+def exec_render(data: dict, config: dict) -> str:
+    """The tab's HTML (cards, table, the lists and the footer) from `data`; every text is the approved text of config exec_summary.text with its braces filled."""
+    T = config["exec_summary"]["text"]
+    esc = html.escape
+    d, tot = data, data["total"]
+    dash = T["dash"]
+    month = d["data_month_label"]
+    n_watch = len(d["watch"])
+    cards = [
+        (T["card1_label"].format(data_month=month), T["million_value"].format(value=_money(tot["ytd"])), T["card1_sub"].format(change=dash if tot["change"] is None else _signed_pct(tot["change"]))),
+        (T["card2_label"].format(year=d["year_be"]), T["million_value"].format(value=_money(tot["projection"])),
+         T["card2_sub"].format(pct=dash if tot["to_target"] is None else f"{100 * tot['to_target']:.1f}%")),
+        (T["card3_label"], T["card3_value"].format(n=d["n_beat_naive"], N=d["n_forecast_divisions"]), T["card3_sub"]),
+        (T["card4_label"], T["card4_value"].format(n=n_watch), T["card4_sub"]),
+    ]
+    cards_html = "".join(f'<div class="kpi" id="execCard{i}"><div class="k">{esc(a)}</div><div class="v">{esc(b)}</div><div class="s">{esc(c)}</div></div>' for i, (a, b, c) in enumerate(cards, 1))
+
+    def cells(r, remark):
+        change = dash if r["change"] is None else _signed_pct(r["change"])
+        target = dash if r["target"] is None else _money(r["target"])
+        to_target = dash if r["to_target"] is None else f"{100 * r['to_target']:.1f}%"
+        rel = dash if r.get("relative_mae") is None else f"{r['relative_mae']:.2f}"
+        return (f"<td>{_money(r['ytd'])}</td><td>{_money(r['last_ytd'])}</td><td>{change}</td><td>{_money(r['projection'])}</td><td>{target}</td><td>{to_target}</td>"
+                f"<td>{rel}</td><td>{esc(remark)}</td>")
+
+    body = []
+    for r in d["rows"]:
+        body.append(f'<tr data-division="{esc(r["division"])}"><td>{esc(r["division"])}</td>{cells(r, T["remark_no_target"] if r["target"] is None else "")}</tr>')
+    body.append(f'<tr class="total-row" id="execTotalRow"><td>{esc(T["total_label"])}</td>{cells(dict(tot, relative_mae=None), "")}</tr>')
+    for code in ("PEM104", "PEMC"):
+        body.append(f'<tr data-division="{code}"><td>{code}</td>' + f"<td>{dash}</td>" * 7 + f"<td>{esc(T['remark_' + code])}</td></tr>")
+    head = "".join(f"<th>{esc(c)}</th>" for c in T["columns"])
+    watch_lines = []
+    for w in d["watch"]:
+        if w["kind"] in ("low", "high"):
+            watch_lines.append(T["watch_" + w["kind"]].format(group=w["group"], value=f"{w['value']:.1f}"))
+        elif w["kind"] == "plan":
+            watch_lines.append(T["watch_plan"].format(division=w["division"], month=w["month"], pct=w["pct"]))
+        elif w["kind"] == "material":
+            watch_lines.append(T["watch_material"].format(n=w["n"]))
+        else:
+            watch_lines.append(T["watch_pem107"].format(since=w["since"], pct=w["pct"]))
+    watch_html = "".join(f"<li>{esc(x)}</li>" for x in watch_lines)
+    decide_html = "".join(f"<li>{esc(r['topic'])} · {esc(r['to_decide'])}</li>" for r in d["pending"])
+    return (f'<div class="kpis" id="execCards">{cards_html}</div>'
+            f'<p class="hint" id="execUnit">{esc(T["unit_note"])}</p>'
+            f'<div class="table-scroll"><table id="execTable"><thead><tr>{head}</tr></thead><tbody>{"".join(body)}</tbody></table></div>'
+            f'<h3 id="execWatchTitle">{esc(T["watch_heading"])}</h3><ul id="execWatch">{watch_html}</ul>'
+            f'<h3 id="execDecideTitle">{esc(T["decide_heading"])}</h3><ul id="execDecide">{decide_html}</ul>'
+            f'<p><a id="execToAssump" href="#" onclick="omniShowTab(4);return false">{esc(T["decide_link"])}</a></p>'
+            f'<p class="hint" id="execFooter">{esc(T["footer"].format(data_month=month))}</p>')
+
+
+def exec_gate(data: dict, sales_report_path: str) -> dict:
+    """The tab's checks: (1) the total row equals the sum of the division rows (YTD, last-year YTD, projection, target); (2) each division's projection equals its YTD plus the baht of the
+    remaining months read from the rendered forecast page (its baht summary table). Raises ExecSummaryError on any difference."""
+    import reader_values as rv
+    rows, tot = data["rows"], data["total"]
+    for k in ("ytd", "last_ytd", "projection", "forecast_remaining"):
+        if abs(tot[k] - sum(r[k] for r in rows)) > 1e-6:
+            raise ExecSummaryError(f"the total row's {k} differs from the sum of the division rows")
+    if tot["target"] is not None and abs(tot["target"] - sum(r["target"] for r in rows)) > 1e-6:
+        raise ExecSummaryError("the total row's target differs from the sum of the division targets")
+    with open(sales_report_path, encoding="utf-8") as f:
+        text = f.read()
+    m = re.search(r'id="baht-summary-table">.*?<thead><tr>(.*?)</tr></thead><tbody>(.*?)</tbody>', text, re.S)
+    if not m:
+        raise ExecSummaryError("the forecast page has no baht summary table")
+    heads = re.findall(r"<th>(.*?)</th>", m.group(1))[1:]
+    page = {}
+    for label, cells in re.findall(r"<tr[^>]*><td>([^<]+)</td>((?:<td>[^<]*</td>)+)</tr>", m.group(2)):
+        page[label] = [int(c.replace(",", "")) for c in re.findall(r"<td>(.*?)</td>", cells)]
+    labels = [rv.thai_month_short(x) for x in data["remaining_months"]]
+    if heads[:len(labels)] != labels:
+        raise ExecSummaryError(f"the forecast page's first months {heads[:len(labels)]} are not the remaining months {labels}")
+    for r in rows:
+        from_page = sum(page[r["division"]][:len(labels)])
+        if abs(r["projection"] - (r["ytd"] + from_page)) > 1e-6:
+            raise ExecSummaryError(f"{r['division']}: the year-end projection {r['projection']} differs from YTD plus the forecast page's baht {r['ytd'] + from_page}")
+    return {"passed": True, "divisions": [r["division"] for r in rows], "months": labels}
+
+
+def write_between(path: str, begin: str, end: str, block: str) -> None:
+    """Replaces the text between two markers of `path` by `block` (the markers stay); the markers must each be present exactly once."""
+    with open(path, encoding="utf-8", newline="") as f:
+        text = f.read()
+    if text.count(begin) != 1 or text.count(end) != 1:
+        raise TrendTabError(f"{os.path.basename(path)} does not hold the markers {begin} and {end} exactly once")
+    a, b = text.index(begin) + len(begin), text.index(end)
+    with open(path, "w", encoding="utf-8", newline="") as f:
+        f.write(text[:a] + block + text[b:])
+
+
+def run_exec_build(root: str = PROJECT_ROOT, index_path: str = None, sales_report_path: str = None, plan_dir: str = None) -> dict:
+    """Builds the executive summary tab: data, gate, HTML written into index.html (or `index_path`) between the markers. Returns the build report (figures and gate)."""
+    config = load_config(root)
+    data = exec_data(root, plan_dir)
+    gate = exec_gate(data, sales_report_path or os.path.join(root, "forecast", "sales_report.html"))
+    write_between(index_path or os.path.join(root, config["trend_tab"]["index_file"]), EXEC_BEGIN, EXEC_END, "\n" + exec_render(data, config) + "\n")
+    return {"data_month": data["data_month"], "year": data["year"], "total": data["total"], "n_watch": len(data["watch"]), "n_beat_naive": data["n_beat_naive"], "gate": gate,
+            "target_report": data["target_report"], "vintage_id": data["vintage_id"]}
+
+
 def main(argv=None) -> int:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--pull", action="store_true", help="one read-only database session; saves the pull")
     ap.add_argument("--build", action="store_true", help="builds the data from the saved pull into index.html")
+    ap.add_argument("--pull-targets", action="store_true", help="one read-only session: the revenue targets of the year from Cube_Target_PMIS (aggregates only)")
+    ap.add_argument("--build-exec", action="store_true", help="builds the executive summary tab of index.html from the saved pulls and the recorded outputs")
     a = ap.parse_args(argv)
-    if not (a.pull or a.build):
-        ap.error("give --pull and/or --build")
+    if not (a.pull or a.build or a.pull_targets or a.build_exec):
+        ap.error("give --pull, --pull-targets, --build and/or --build-exec")
     try:
+        if a.pull_targets:
+            pull_targets()
         if a.pull:
             pull()
         if a.build:
             run_build()
+        if a.build_exec:
+            run_exec_build()
     except TrendTabError as e:
         logger.error("TREND TAB: %s", e)
         return 1
