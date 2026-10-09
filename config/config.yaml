@@ -1237,6 +1237,25 @@ experiment_2026_10:
     Fuse Cutout: keep_current
     Surge Arrester: holt
 
+# Shadow forecasts (METRICS.md Sec.51). PRE-REGISTERED 2026-10-09 before any shadow forecast was computed or scored. A shadow forecast is computed and scored next to the production
+# forecast in the forward-test log, never replaces it and never feeds any plan (inventory, operation, material). Decision of the user, 2026-10-09: Surge Arrester runs Holt as a shadow.
+shadow:
+  # group (a key of pilot_categories) -> method; the shadow forecast is made at the same level (the Type series) and with the same top-down split as the Holt candidate of
+  # model_experiment_2026_10: statsforecast Holt on the Type series up to the origin, clipped at 0, times the item's share of the Type in the training window
+  pairs:
+    surge_arrester: holt
+  monthly_run_day_of_month: 5          # the monthly job runs on this day (STATUS.md plan); the date of the first evaluation is derived from it and the leakage guard, never typed
+  rule:
+    vintage_compared: 2                # vintage 2 only; vintage 3 and later shadow forecasts are recorded but do not count toward this rule
+    target_months: ["2026-09", "2026-10", "2026-11"]     # horizons 1 to 3 of vintage 2
+    mae: group_series_absolute_error   # the forecast page's pilot-group MAE: the group's series (the sum of its items, the Type series) scored as one series; one target month = the absolute error of the group total
+    min_months_holt_lower: 2           # (a) Holt's MAE lower than current's in at least this many of the target months (a tie is not lower)
+    sum_must_be_lower: true            # (b) and Holt's MAE summed over the target months lower than current's
+    outcome_if_true: recommend_switch
+    outcome_otherwise: keep_current
+    evaluated_when: first_monthly_run_with_all_target_months_past_the_leakage_guard
+    automatic_adoption: false          # the outcome is a recommendation; the switch needs the user's approval
+
 # ============================================================
 # Three-tier parameter classification (documented 2026-09-19, Phase G intent -- NOT implemented
 # by anything in this task; no code reads this block, it exists only so the classification is

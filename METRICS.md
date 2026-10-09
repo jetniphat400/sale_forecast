@@ -1408,4 +1408,27 @@ pipeline — no new section is needed for this; it is already covered by section
 
 - Known limitation, disclosed before the run: the test windows of origins 1-5 and 6-7 overlap in four target months (6-month windows, step 2), so the confirmation subset is not
   independent of the selection months. The rule is the user's; it is not changed.
-- The current candidate's Relative MAE on all 7 origins must equal the forecast page's "เทียบกับร่างเกณฑ์" value (METRICS.md Sec.48) for every division and group.
+- The current candidate's Relative MAE on all 7 origins must equal the forecast page's "เทียบกับร่างเกณฑ์" value (METRICS.md Sec.48) for every division and group.
+
+## 51. shadow_forecast
+
+    A shadow forecast is computed and scored next to the production forecast and never replaces it and never feeds a plan (inventory, operation or material). PRE-REGISTERED
+    2026-10-09 (config `shadow`), before any shadow forecast was computed or scored. Decision of the user, 2026-10-09: the Surge Arrester pilot group runs Holt as a shadow
+    (the experiment of METRICS.md Sec.50 picked Holt for it; the user did not adopt it).
+
+    shadow forecast = at the same level and with the same top-down split as the Holt candidate of Sec.50: statsforecast Holt (season_length 1) fitted on the group's Type series up to the
+                      origin, clipped at 0, times each item's share of the Type in the training window; stored in the forward-test log next to production, keyed as shadow
+    scoring         = with the production metrics (MAE, Relative MAE against Naive, Tracking Signal when there are enough points) and only through the leakage guard
+                      (leakage_guard.min_margin_days): a target month is scored on the first monthly run whose pull date is at least that many days after the month's end; no exception
+    MAE of the rule = the forecast page's pilot-group MAE: the group's series (the sum of its items, i.e. the Type series) scored as one series; for one target month, the absolute
+                      error of the group's monthly total (forecast minus actual, Actual + MPS by forecast_date, as the model's series)
+    rule            = compare vintage 2 only, Holt against current (the production forecast), for the same items and the target months 2026-09, 2026-10 and 2026-11 (horizons 1 to 3).
+                      Outcome "recommend switch" only if BOTH hold: (a) Holt's MAE is lower than current's in at least 2 of the 3 months (a tie is not lower); (b) Holt's MAE summed over
+                      the 3 months is lower than current's. Otherwise "keep current".
+    evaluation run  = the first monthly run at which all 3 target months have passed the leakage guard; derived from the guard and the monthly run day (config
+                      shadow.monthly_run_day_of_month), never typed; the job prints it. Until then the status is "pending" with the months scored so far and, for each unscored month,
+                      the run date on which it becomes scoreable.
+    counted         = vintage 2 only; shadow forecasts of vintage 3 and later are recorded and scored but do not count toward this rule.
+    outcome         = a recommendation only; never adopted automatically; the switch needs the user's approval. The `decision_date` of the criteria (2026-12-05) is not used by this rule.
+
+- Disclosure: The rule was proposed in chat at 2026-10-09 11:01, before September's raw units for this group were printed during a completeness check at 11:02. The rule text did not change after that. No Holt or current forecast had been computed or scored at that point.
