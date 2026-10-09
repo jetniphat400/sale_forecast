@@ -1268,6 +1268,13 @@ shadow:
     evaluated_when: first_monthly_run_with_all_target_months_past_the_leakage_guard
     automatic_adoption: false          # the outcome is a recommendation; the switch needs the user's approval
 
+# Backup of the forward-test evidence (Prompt 18): the monthly run copies the logs, the score record and the vintage series snapshots to
+# <root>\<subfolder>\<run date>\ and checks every file by sha256. The root is read at run time from the environment variable named here
+# (the path itself is never written anywhere); if the variable is missing the backup fails with a clear error and no other location is used.
+backup:
+  env_var: OneDriveCommercial
+  subfolder: sale_forecast_backup
+
 # ============================================================
 # Three-tier parameter classification (documented 2026-09-19, Phase G intent -- NOT implemented
 # by anything in this task; no code reads this block, it exists only so the classification is

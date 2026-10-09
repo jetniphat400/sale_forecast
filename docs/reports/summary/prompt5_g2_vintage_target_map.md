@@ -970,3 +970,46 @@ Changed: the ten ranked items of Part 7 (1, 2, 3, 5, 7, 8, 9, 10, 12, plus 11 an
 
 - Full suite: 729 passed, 1 failed in the first full run (an executive-summary text test still held the old card wording); that test was updated and re-run: 37 passed in its file. Final: 730 passed, 0 failed, 0 skipped; database connection attempts 0 (4 blocked deliberate attempts made by the block's own test).
 - Page check (headless Edge on a temporary profile, a local web server for the manual's runtime fetch; only the two PIDs I started were closed, the profile deleted): index.html with the five tabs (S&OP Plan (เดิม), สรุปผู้บริหาร, Trend, สมมติฐานที่ใช้อยู่, คู่มือการใช้งาน) all present and switching, 0 script errors (one 404 for /favicon.ico, which the page never had; the same at HEAD); card 3, the assumptions row and the seven new manual headings render; sales_report (9 sections, new verdict words in all 7 rows, freshness line, shadow line visible), inventory, operation_plan and material_plan load with 0 script errors and show the changed text.
+
+
+## Prompt 18
+
+Test-suite re-verification, then durable forward-test evidence: vintage series snapshots and an automatic backup. Run 2026-10-09 (`git pull` first: up to date at 7d748a6; Get-Date 13:05 at the start). Database sessions: 0. New repo files: none. Generated (git-ignored): `output/forward_test/vintage_series/vintage_002_fit_series.csv.gz` and the first backup folder.
+
+### Step 0
+
+Full suite before any change, on 7d748a6: **730 passed, 0 failed, 0 skipped**; database connection attempts 0 (4 deliberate blocked attempts made by the block's own test).
+
+### Step 1, backup location (checked before any code)
+
+- **a.** The user-level environment variable `OneDriveCommercial` exists (a registry value in the user's environment, expandable string) and the folder it names exists and is writable (a temporary file was created and removed). Shown as `%OneDriveCommercial%\sale_forecast_backup`.
+- **b.** The scheduled task `SaleForecastMonthlyRefresh` (read only, not modified) runs as the same user account as this session, logon type Interactive, run level Limited, next run 2026-11-05 07:00.
+- **c.** A process started the way the task starts (`cmd.exe /c <python> <script>`) reads the variable, sees the folder and can write to it. Limit of this evidence: I started it from this user's session, not from Task Scheduler itself; an Interactive task runs in the user's logon session and gets the same user environment, and it runs only while that user is logged on (as before this task).
+
+### Step 2, snapshots
+
+- **Vintage 2: exact YES.** Fitting on the saved snapshot reproduces the vintage's production forecast (2,340 rows: 2,010 Item, 240 Type, 90 Category; 390 series compared) with a largest difference of **0.0** and its stored Holt shadow back-fill (288 rows) with **0.0** (tolerance 6e-5, the log's 4-decimal rounding). Snapshot: 31 months, 2024-02 to 2026-08, 1,103,600 bytes uncompressed, sha256 `c1a9b1a828c799fe8017e03aca83f1f97cde10fbb2445e151486db456a54e236`. The check runs on the bytes that are saved, read back; nothing is saved when it fails (tested).
+- **Vintage 1: not reproducible.** Its window is 2024-01 to 2026-07; the first month is no longer in the saved series. Rebuilding it from the sales history pulled 2026-10-05 gives forecasts that differ from vintage 1's stored forecast by up to **0.1411** units over 390 series (the history has been revised since 2026-09-07). Recorded in its metadata as not reproducible with that reason; no file saved.
+- **Metadata fields added (exact names).** Production metadata: vintage 2: `fit_series_file`, `fit_series_source`, `fit_series_sha256`, `fit_series_n_bytes`, `fit_series_hash_basis`, `fit_series_provenance`; vintage 1: `fit_series_snapshot` ("not_reproducible"), `fit_series_snapshot_reason`. Shadow metadata, vintage 2: the same six `fit_series_*` fields. No existing field changed and every `row_integrity_hash` is unchanged. For new vintages the shadow metadata now keeps the `fit_series_*` fields it copies from the production entry (vintage 3 on, step 5 already saved the series).
+
+### Step 3, backup
+
+At the end of every real monthly run, after the pages are built and committed, the job copies the production log and metadata, the shadow log and metadata, the score record (and its integrity file, which the record needs to be read) and all snapshots to `%OneDriveCommercial%\sale_forecast_backup\<run date>\`, checks every copy by sha256 against its source and writes `SHA256SUMS.txt` there. Same-day second run: `<run date>_<time>`. Nothing is deleted or overwritten. Only the folder name and the variable name are in config (`backup`).
+
+**First backup, today:** `%OneDriveCommercial%\sale_forecast_backup\2026-10-09`, 8 files (7 evidence files and `SHA256SUMS.txt`), 1,034,337 bytes of evidence (1,035,045 with the sums file); sha256 of all 7 match their sources and the sums file: **YES** (also recomputed by the Validator).
+
+**Failure behaviour (all tested with a temporary folder, no real OneDrive):** a copy that does not match its source fails the backup: YES. A failed backup leaves every step ok, the commit and push done and the pages built, writes `backup.status = FAILED` and the reason (path masked) to the run log, and the command exits non-zero: YES. A missing environment variable (or a folder that does not exist) is a clear error naming the variable, creates nothing anywhere and falls back to no other location: YES. A dry-run, sandbox or offline run makes no backup and says so.
+
+### Checks
+
+- **Gate unchanged: YES.** Production log, shadow log, score record and its integrity file are byte-identical (sha256) to before; the two metadata files differ only by the fields listed above; the operation and material plan outputs are identical; `data/` files and all pages are unmodified (git status).
+- **Tests added** (`tests/test_vintage_series.py`): vintage 2 rebuilt from its saved snapshot equals the production forecast and the shadow log; a series that does not reproduce is never saved; backup then restore gives identical sha256 for every file and a second backup does not touch the first; a corrupt copy fails; a missing variable or folder is a clear error with no fallback; a failed backup exits non-zero with the pages built and the reason in the run log; a real run with the variable missing records a failure, not a skip. One outdated test (vintages 1 and 2 have no snapshot) was replaced.
+- **Full suite after the change: 736 passed, 0 failed, 1 skipped** (737 collected); database connection attempts 0 (4 deliberate blocked attempts made by the block's own test). The one skip is `tests/test_inventory_page_sources.py:186`, which skips by its own design when the vintage it compares has a saved fit series; vintage 2 now has one, so it no longer runs the file-based comparison. It is listed as skipped, not passed.
+- **Page check:** sales_report, inventory, operation_plan and material_plan opened in headless Edge on a temporary profile (own PID closed, profile deleted): 0 script errors, text lengths identical to the pre-task pages (13,937; 25,237; 44,667; 302,185 characters), the shadow line still visible, no visible change.
+- **Validator (independent code):** **MATCH** on the snapshot (its own refit gives a largest difference of 0 over the 2,340 production and 288 shadow rows), the metadata, the backup (7 of 7 sha256) and the gate; no path or login name in the diff. Its notes: an aborted run (a step that fails) makes no backup and the run log then has no `backup` key (the exit is non-zero, so not silent); the mask replaces the exact variable value only (an error text with a differently written form of the path would not be masked); a failed run leaves a partial dated folder (no `SHA256SUMS.txt`, so recognisable).
+
+### Deviations, need decision, found not done
+
+- **Deviations.** The backup also copies the score record's integrity file (the record cannot be verified without it); the backup runs after the commit and push, so a failure is reported but does not undo the published pages (as asked).
+- **Need decision.** (1) Should an aborted run (a step before the end fails) still try the backup of what exists? Today it does not; the previous backups stay. (2) Task Scheduler's task is Interactive only: if the user is not logged on at 07:00 on 2026-11-05 the run (and the backup) does not happen, as before; changing the task was out of scope.
+- **Found, not done.** The moving-average comparator log (`forward_test_comparator_log.csv` and metadata, first rows with vintage 3) is the same kind of git-ignored single copy and is not in the backup list: small, user decision. The backup keeps every dated folder forever (about 1 MB each): none now. Old reports under `docs/reports/summary` contain the login name (five files, predate this task): small, user.

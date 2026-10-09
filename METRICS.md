@@ -1443,3 +1443,17 @@ Implementation (added with the code, after the rule above; the rule text is unch
     back-fill       = vintage 2's Holt, from the saved series cut to its fit window (2024-02 to 2026-08), stored unscored; its series was not saved at the run, so the entry says it was back-filled.
     shown           = Relative MAE against Naive (sum of the shadow MAE over the sum of Naive's, all scored shadow points) and Tracking Signal (sum of signed errors over the mean absolute error), the latter
                       only from `shadow.min_points_tracking_signal` points (3; added after the rule, not part of it: the rule uses MAE only).
+
+## 52. forward_test_backup
+
+    What the forward test stands on is git-ignored (output/), so the monthly run keeps a second copy. Prompt 18, 2026-10-09.
+
+    snapshots    = each vintage's fit series, gzip, under output/forward_test/vintage_series/ with its sha256 in the production and the shadow metadata (fit_series_sha256). Vintage 2 was reconstructed from the
+                   saved series cut to its fit window and saved only because fitting on the saved bytes reproduces its 2,340 production forecast rows and its 288 shadow rows to a largest difference of 0
+                   (tolerance 6e-5, the log's rounding); its entry says so (fit_series_provenance). Vintage 1 does not reproduce (rebuilt from today's history the largest difference is 0.1411 units): its entry
+                   says fit_series_snapshot = not_reproducible with the reason; no approximate series is ever saved.
+    backup       = the last thing the monthly run does (after the pages are built and committed): the production log and metadata, the shadow log and metadata, the score record and its integrity file and
+                   every snapshot are copied to <root>\sale_forecast_backup\<run date>\ (a second run the same day: <run date>_<time>), every copy is checked by sha256 against its source and listed in
+                   SHA256SUMS.txt. Nothing is deleted or overwritten. The root is the environment variable config backup.env_var (OneDriveCommercial) read at run time; a missing variable or folder is an error
+                   and there is no fallback location. A failed backup does not stop page building: it is written to the run log (backup.status FAILED, the resolved path masked) and the job exits non-zero.
+                   A dry-run, sandbox or offline run makes no backup.

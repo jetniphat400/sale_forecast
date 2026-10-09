@@ -1,6 +1,8 @@
 """The exact monthly series each forward-test vintage is fitted on, saved and hash-checked (METRICS.md Sec.27).
 
-Vintages 1 and 2 cannot be reproduced because `output/data/processed_all_divisions_monthly_qty.csv` is overwritten each month.
+`output/data/processed_all_divisions_monthly_qty.csv` is overwritten each month, so vintages 1 and 2 were not saved when they ran. Vintage 2's series was reconstructed on 2026-10-09
+from the saved series cut to its fit window and saved only because fitting on it reproduces the vintage's production and shadow forecasts exactly (src/monthly_refresh.py snapshot_vintage_series);
+vintage 1 does not reproduce (its history has been revised) and is recorded as not reproducible, never saved as an approximation.
 From vintage 3 on, step 5 saves the bytes of that file as the vintage read them, gzip-compressed (mtime 0, so the same bytes give
 the same file), under `output/forward_test/vintage_series/`, and records the SHA-256 of the uncompressed bytes in the vintage's
 metadata (`fit_series_sha256`). Step 6 verifies every recorded hash before it scores. A file is never overwritten, and a vintage

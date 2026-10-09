@@ -136,8 +136,7 @@ def shadow_metadata_entry(prod_entry: dict, rows_df: pd.DataFrame, naive_last: d
     entry = {**prod_entry, "log_file": os.path.relpath(SHADOW_LOG_PATH, PROJECT_ROOT).replace("\\", "/"),
              "generated_by_script": "src/forward_test_all_divisions.py (shadow_rows)", "model_family": "shadow",
              "n_total_rows": len(rows_df), "n_item_rows": len(rows_df), "naive_last_fit_month_units": naive_last, "provenance": provenance}
-    for k in ("row_integrity_hash", "row_hash_scheme", "n_type_rows", "n_category_rows", "n_items_with_history", "n_items_no_history_zero_forecast",
-              "fit_series_file", "fit_series_sha256", "fit_series_n_bytes"):
+    for k in ("row_integrity_hash", "row_hash_scheme", "n_type_rows", "n_category_rows", "n_items_with_history", "n_items_no_history_zero_forecast"):
         entry.pop(k, None)
     return entry
 

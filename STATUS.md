@@ -144,6 +144,16 @@ Code: `src/investigations/task2b_part2_fulfilment_segmentation.py` (`run_from_pu
 - Reader text: see SENTENCES NEEDING THAI TEXT of this task (demand column header on the material page, a label for the list of divisions covered, a line for the six PEM101 codes never sold, the approved heading for six divisions) (the user's assistant).
 - Category-level view of the two product categories and the three items' settings (brief item "settings"), storms and the other external factors, utility budgets, sales insight and EGP bids: not done (brief table).
 
+### Week 4, prompt 18 -- vintage fit-series snapshots and the automatic backup of the forward-test evidence -- DONE, 2026-10-09 (no database; the test suite made none)
+
+**Report:** `docs/reports/summary/prompt5_g2_vintage_target_map.md`, heading "Prompt 18". Method: METRICS.md Sec.52, config `backup`.
+
+**Snapshots.** Vintage 2's fit series was reconstructed from the saved series cut to its window and saved (`output/forward_test/vintage_series/`, sha256 in the production and shadow metadata) only because fitting on it reproduces its 2,340 production rows and 288 shadow rows with a largest difference of 0. Vintage 1 does not reproduce (0.1411 units, history revised) and is recorded as not reproducible; no approximate series is saved.
+
+**Backup.** The last step of every real monthly run copies the logs, metadata, score record and snapshots to `%OneDriveCommercial%\sale_forecast_backup\<run date>\`, verifies every file by sha256 and keeps every dated folder. A missing variable or a failed copy is a clear error in the run log and a non-zero exit; the pages are built first. First backup made 2026-10-09 (7 files plus the sums file, all sha256 match). Checked before coding: the variable exists for the task's account and a `cmd.exe /c python` process reads it.
+
+**Pending the user:** whether an aborted run should still back up what exists; the comparator log is not in the backup list. The task is Interactive only (runs only while the user is logged on).
+
 ### Week 4, prompt 17 -- shadow-log persistence check and the text and manual pass -- DONE, 2026-10-09 (no database; the test suite made none)
 
 **Report:** `docs/reports/summary/prompt5_g2_vintage_target_map.md`, heading "Prompt 17".

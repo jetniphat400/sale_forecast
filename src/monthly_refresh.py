@@ -62,6 +62,7 @@ METRICS.md Sec.28's own requirement.
 """
 import argparse
 import contextlib
+import hashlib
 import io
 import json
 import logging
@@ -845,6 +846,175 @@ def backfill_shadow_vintage(vintage_id: int, now: pd.Timestamp = None) -> dict:
     entry["backfilled_at"] = (now or pd.Timestamp.now()).isoformat(timespec="seconds")
     entry["backfill_note"] = "the monthly series of this vintage was not saved at its run; it is the saved series cut to the vintage's fit window (first month, last month and count asserted)"
     return write_shadow_vintage(rows, entry)
+
+
+# ---------------------------------------------------------------------------------------------
+# Vintage fit-series snapshots and the backup of the forward-test evidence (Prompt 18)
+# ---------------------------------------------------------------------------------------------
+
+SNAPSHOT_TOLERANCE = 6e-5      # the log rounds forecasts to 4 decimals
+
+
+class BackupError(Exception):
+    """The backup could not be made or did not verify. Never swallowed: the run log records it and the job exits non-zero."""
+
+
+def reproduce_vintage(vintage_id: int, monthly: pd.DataFrame) -> dict:
+    """Fits the production method (Top-down Combination at Item level, Combination at Type and Category level) and the shadow method on `monthly` (the series cut to the vintage's fit window) and
+    compares every forecast with what the logs hold for that vintage. Returns the largest absolute differences; nothing is written."""
+    config = load_config()
+    meta = load_metadata(FORWARD_TEST_METADATA_PATH)[str(vintage_id)]
+    horizon, ma_windows = int(meta["horizon_months"]), config["moving_average_windows"]
+    scope = pd.read_csv(SCOPE_FILE)
+    n = monthly["year_month"].nunique()
+    if sorted(monthly["year_month"].unique())[0] != meta["fit_first_month"] or sorted(monthly["year_month"].unique())[-1] != meta["fit_last_month"] or n != int(meta["fit_n_months"]):
+        raise MonthlyRefreshAbort(f"vintage {vintage_id}: the series does not cover the fit window {meta['fit_first_month']}..{meta['fit_last_month']}")
+    items = build_item_series_div(monthly, scope, n)
+    types = build_type_series_div(monthly, n)
+    cats = build_category_series_div(monthly, n)
+    no_history = sorted(set(scope["code"]) - set(items))
+    topdown = {**forecast_all_approaches(items, types, n, horizon)["Top-down"], **{c: np.zeros(horizon) for c in no_history}}
+    type_fc = {k: np.clip(combination_forecast(v[:n], horizon, ma_windows), 0, None) for k, v in types.items()}
+    cat_fc = {k: np.clip(combination_forecast(v[:n], horizon, ma_windows), 0, None) for k, v in cats.items()}
+    log = read_forward_test_log(FORWARD_TEST_LOG_PATH)
+    v = log[log["vintage_id"] == vintage_id]
+    worst, n_series = 0.0, 0
+    for level, store in (("Item", topdown), ("Type", type_fc), ("Category", cat_fc)):
+        for key, g in v[v["level"] == level].groupby("itemcode" if level == "Item" else ["division", "itemcode"]):
+            fc = store[key] if level == "Item" else store[f"{key[0]}::{key[1]}"]
+            got = g.sort_values("horizon")["forecast_qty"].to_numpy(dtype=float)
+            worst = max(worst, float(np.max(np.abs(np.round(fc, 4) - got))))
+            n_series += 1
+    result = {"production_max_abs_diff": worst, "production_series_compared": n_series}
+    if os.path.exists(SHADOW_LOG_PATH):
+        sh = read_forward_test_log(SHADOW_LOG_PATH)
+        sh = sh[sh["vintage_id"] == vintage_id]
+        if len(sh):
+            def base_row(code, division, level, category, type_):
+                return {"vintage_id": vintage_id, "itemcode": code, "division": division, "level": level, "category": category, "type": type_}
+            again = shadow_rows(monthly, scope, config, list(meta["target_months"]), base_row)
+            a = again.sort_values(["itemcode", "horizon"])["forecast_qty"].to_numpy(dtype=float)
+            b = sh.sort_values(["itemcode", "horizon"])["forecast_qty"].to_numpy(dtype=float)
+            result["shadow_max_abs_diff"] = float(np.max(np.abs(a - b))) if len(a) == len(b) else float("inf")
+            result["shadow_rows_compared"] = int(len(b))
+    return result
+
+
+def cut_series_bytes(monthly: pd.DataFrame, first_month: str, last_month: str) -> bytes:
+    """The saved monthly series cut to a vintage's fit window, as csv bytes (the same columns, utf-8, LF line ends)."""
+    cut = monthly[(monthly["year_month"] >= first_month) & (monthly["year_month"] <= last_month)]
+    return cut.to_csv(index=False, lineterminator="\n").encode("utf-8")
+
+
+def _add_metadata_fields(path: str, vintage_id: int, fields: dict) -> None:
+    meta = load_metadata(path)
+    meta[str(vintage_id)] = {**meta[str(vintage_id)], **fields}
+    save_metadata(path, meta)
+
+
+def snapshot_vintage_series(vintage_id: int, monthly: pd.DataFrame, source_note: str, directory: str = None) -> dict:
+    """Saves the fit series of an existing vintage (one written before snapshots existed) ONLY IF fitting on the snapshot itself reproduces the vintage's production forecast
+    (and its stored shadow forecast) within the log's rounding. The check runs on the bytes that are saved, read back. A series that does not reproduce is never saved: nothing is written
+    and the result says why. On success the hash fields are added to the production metadata and the shadow metadata (no forecast row or row hash is touched)."""
+    meta = load_metadata(FORWARD_TEST_METADATA_PATH)[str(vintage_id)]
+    if meta.get("fit_series_sha256"):
+        return {"saved": False, "reason": "already has a snapshot"}
+    series_bytes = cut_series_bytes(monthly, meta["fit_first_month"], meta["fit_last_month"])
+    check = reproduce_vintage(vintage_id, pd.read_csv(io.BytesIO(series_bytes)))
+    worst = max(check["production_max_abs_diff"], check.get("shadow_max_abs_diff", 0.0))
+    if worst > SNAPSHOT_TOLERANCE:
+        return {"saved": False, "reason": f"fitting on the series does not reproduce vintage {vintage_id}: largest difference {worst:g} units (tolerance {SNAPSHOT_TOLERANCE:g})", **check}
+    vintage_series.save_series(series_bytes, vintage_id, directory)
+    fields = {**vintage_series.metadata_fields(series_bytes, vintage_id), "fit_series_source": source_note,
+              "fit_series_provenance": f"reconstructed {datetime.now().date().isoformat()} from the saved monthly series cut to the vintage's fit window; fitting on it reproduces the vintage's production forecast "
+                                       f"(largest difference {check['production_max_abs_diff']:g} units over {check['production_series_compared']} series)"
+                                       + (f" and its shadow forecast (largest difference {check['shadow_max_abs_diff']:g})" if "shadow_max_abs_diff" in check else "")}
+    _add_metadata_fields(FORWARD_TEST_METADATA_PATH, vintage_id, fields)
+    if os.path.exists(SHADOW_METADATA_PATH) and str(vintage_id) in load_metadata(SHADOW_METADATA_PATH):
+        _add_metadata_fields(SHADOW_METADATA_PATH, vintage_id, fields)
+    return {"saved": True, "sha256": fields["fit_series_sha256"], "n_bytes": fields["fit_series_n_bytes"], **check}
+
+
+def record_snapshot_not_reproducible(vintage_id: int, reason: str) -> None:
+    """Records in the vintage's metadata that its fit series cannot be saved exactly, and why; never an approximate series."""
+    _add_metadata_fields(FORWARD_TEST_METADATA_PATH, vintage_id, {"fit_series_snapshot": "not_reproducible", "fit_series_snapshot_reason": reason})
+
+
+def _mask(message: str, root: str = None) -> str:
+    """No resolved backup path in any message: it contains the account name."""
+    root = root or os.environ.get(load_config()["backup"]["env_var"]) or ""
+    return message.replace(root, "%" + load_config()["backup"]["env_var"] + "%") if root else message
+
+
+def backup_root(config: dict = None) -> str:
+    """<environment variable>\\<subfolder>. A missing variable or folder is an error naming the variable; there is no fallback location."""
+    config = config or load_config()
+    env = config["backup"]["env_var"]
+    value = os.environ.get(env)
+    if not value:
+        raise BackupError(f"the environment variable {env} is not set for this process: no backup was made and no other location is used")
+    if not os.path.isdir(value):
+        raise BackupError(f"the folder that {env} names does not exist: no backup was made and no other location is used")
+    return os.path.join(value, config["backup"]["subfolder"])
+
+
+def evidence_files() -> list:
+    """(source path, name inside the backup) of everything the forward test stands on: the production log and its metadata, the shadow log and its metadata, the score record
+    (and its integrity file) and every vintage series snapshot. A missing log is an error, not a skip."""
+    required = [(FORWARD_TEST_LOG_PATH, None), (FORWARD_TEST_METADATA_PATH, None), (SHADOW_LOG_PATH, None), (SHADOW_METADATA_PATH, None),
+                (SCORE_RECORD_PATH, None), (SCORE_INTEGRITY_PATH, None)]
+    files = []
+    for path, _ in required:
+        if not os.path.exists(path):
+            raise BackupError(f"{os.path.basename(path)} does not exist: nothing to back up for it")
+        files.append((path, os.path.basename(path)))
+    series_dir = vintage_series.SERIES_DIR
+    if os.path.isdir(series_dir):
+        for name in sorted(os.listdir(series_dir)):
+            if name.endswith(".csv.gz"):
+                files.append((os.path.join(series_dir, name), "vintage_series/" + name))
+    return files
+
+
+def _sha256_file(path: str) -> str:
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(1 << 20), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def run_backup(config: dict = None, now: datetime = None) -> dict:
+    """Copies the evidence files to <root>\\<subfolder>\\<run date>\\ (a second backup the same day goes to <run date>_<time>; nothing is overwritten or deleted), then verifies every
+    copy by sha256 against its source and writes SHA256SUMS.txt beside them. Raises BackupError on any failure. The result names the folder with the variable, never the resolved path."""
+    config = config or load_config()
+    now = now or datetime.now()
+    base = backup_root(config)
+    root = os.environ[config["backup"]["env_var"]]
+    try:
+        files = evidence_files()
+        dest = os.path.join(base, now.strftime("%Y-%m-%d"))
+        if os.path.exists(dest):
+            dest = dest + "_" + now.strftime("%H%M%S")
+        os.makedirs(dest)
+        sums, total = {}, 0
+        for src, name in files:
+            target = os.path.join(dest, *name.split("/"))
+            os.makedirs(os.path.dirname(target), exist_ok=True)
+            shutil.copy2(src, target)
+            expected, got = _sha256_file(src), _sha256_file(target)
+            if expected != got:
+                raise BackupError(f"{name}: the copy hashes to {got[:16]}, the source to {expected[:16]}")
+            sums[name] = expected
+            total += os.path.getsize(target)
+        with open(os.path.join(dest, "SHA256SUMS.txt"), "w", encoding="utf-8", newline="\n") as f:
+            f.write("".join(f"{h}  {name}\n" for name, h in sums.items()))
+    except BackupError:
+        raise
+    except OSError as e:
+        raise BackupError(_mask(f"{type(e).__name__}: {e}", root)) from None
+    return {"folder": "%" + config["backup"]["env_var"] + "%\\" + config["backup"]["subfolder"] + "\\" + os.path.basename(dest), "files": len(sums), "total_bytes": total,
+            "all_sha256_match": True, "sha256": sums}
 
 
 def verify_shadow_log() -> dict:
@@ -1631,6 +1801,16 @@ def main(dry_run: bool, force_new_vintage: bool = False, sandbox: bool = False, 
     step10 = record("10_change_magnitude", step10_change_magnitude, config, step4, step5)
     step11 = record("11_commit_and_push", step11_commit_and_push, dry_run, step8, step9, step10)
 
+    # The backup of the forward-test evidence comes last, after the pages are built, so a failure here never stops page building; it is written to the run log and makes the job exit non-zero.
+    if dry_run or sandbox or offline:
+        run_log["backup"] = {"status": "skipped", "reason": "dry run, sandbox or offline run: nothing is written outside the project"}
+    else:
+        try:
+            run_log["backup"] = {"status": "ok", **run_backup(config)}
+        except Exception as e:      # noqa: BLE001 -- every failure must reach the run log and the exit code
+            run_log["backup"] = {"status": "FAILED", "error": _mask(f"{type(e).__name__}: {e}")[:2000]}
+            logger.error("BACKUP FAILED: %s", run_log["backup"]["error"])
+
     run_log["gate_outcomes"] = gate_outcomes(step8, step9, step10, step7d, step7e, step7f)
     run_log["finished_at"] = datetime.now().isoformat(timespec="seconds")
     _write_run_log(run_log, run_id, run_log_dir)
@@ -1701,7 +1881,7 @@ def cli(argv=None) -> int:
         logger.error("MONTHLY REFRESH FAILED: %s: %s", type(e).__name__, e)
         return 1
     print(json.dumps(log, indent=2, default=str))
-    return 1 if "aborted_at_step" in log else 0
+    return 1 if ("aborted_at_step" in log or log.get("backup", {}).get("status") == "FAILED") else 0
 
 
 if __name__ == "__main__":
