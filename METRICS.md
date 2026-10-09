@@ -1311,3 +1311,30 @@ pipeline — no new section is needed for this; it is already covered by section
 - Names, category, Type and division on the tab are the Price List's (a blank Type shows "-"); the database name is shown in the tooltip.
 - The tab's counts are by createDate and do not equal the forecast page's, which counts by the forecast date (the month the goods are due).
 - Whether `sale` excludes VAT is a user-stated fact, not proven (DATA_MAP.md, Prompt 11).
+
+## 48. relative_mae_naive
+
+    Accuracy against the Naive method, Horizon 3 and Tracking Signal on the forecast page (section 7, "เทียบกับร่างเกณฑ์", and the forecast-versus-actual table);
+    decisions of the user, 2026-10-09 (Prompt 12). Defined here before it is computed. Draft thresholds: config pending_criteria_values.
+
+    Naive (backtest)  = at each rolling origin, every horizon's forecast of an item (or of a group's series) = its last observed month before the origin (models.naive_forecast,
+                        clipped at 0 as the main table does). Same items, origins, horizons and months as the model's scored cells.
+    cell              = one item x origin of the main table (the items with a Top-down forecast: full-length series, quantity above 0, a defined Type share); six horizons
+    window MAE        = mean over the six horizons of |forecast - actual| of one cell (what the main table averages)
+    Relative MAE      = sum over the cells of the model's window MAE / sum over the same cells of Naive's window MAE
+                        (the model's sum / number of cells is the main table's MAE of the division, exactly; the ratio is below 1 when the model beats Naive)
+    Relative MAE (Horizon 3) = the same ratio over the third month ahead only: sum |model e| / sum |Naive e| over the cells' third horizon
+    pilot group       = the group's series is the sum of its items (the Type series), the model is the Type's Combination forecast (the pilot-group block's series_own), Naive is the
+                        last month of that series; one cell per origin, same ratios
+    forward month     = per scored month and division (horizon 1): Relative MAE = sum |model e| / sum |Naive e| over the items of the score row, Naive = the quantity of the last month
+                        of the vintage's fit window; MAE (Naive) = mean |Naive e| of those items (so Relative MAE = MAE / MAE (Naive))
+    Tracking Signal   = sum e / mean |e|, e = forecast - actual of the division's (or group's) total at horizon 1: one point per backtest origin in time order (the origin's first
+                        test month), then one per scored forward month; the number of points is reported; undefined when every e is 0
+    items beyond the limit (report only) = share of the division's items whose own horizon-1 Tracking Signal (same points) is beyond the limit, items with a point error of 0 throughout left out
+    verdict           = Relative MAE: ดี below relative_mae_good, ผ่าน below relative_mae_pass, ไม่ผ่าน otherwise; Tracking Signal: เตือน when |TS| is above tracking_signal_limit, ปกติ otherwise
+
+- Thresholds (draft, pending the user's decision after 2026-12-05): config pending_criteria_values (relative_mae_pass, relative_mae_good, tracking_signal_limit); the same values the
+  assumptions tab shows in "เกณฑ์ที่รอกำหนด". Source of the ratio: Morlidge's ratio of forecast MAE to naive MAE (Gilliland / SAS, "The avoidability of forecast error, Part 4").
+- The measure is the ratio of mean absolute errors, not MASE (MASE scales by the in-sample naive step; the main table's MASE is unchanged).
+- Backtest figures are recomputed at page build from the saved monthly series with the same functions as the main table (src/transferability_all_divisions.py); the model MAE
+  recomputed this way must equal the main table's MAE, otherwise the build stops.

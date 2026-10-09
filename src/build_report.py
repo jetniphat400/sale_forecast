@@ -453,6 +453,93 @@ def attach_scored_baht(scored: pd.DataFrame, prices: dict) -> pd.DataFrame:
     return pd.concat([scored.reset_index(drop=True), pd.DataFrame(rows)], axis=1)
 
 
+def fmt_ratio(x, digits: int) -> str:
+    """A ratio or signal for a table cell with `digits` decimals; '-' when it is undefined (None or NaN)."""
+    return "-" if x is None or pd.isna(x) else f"{x:.{digits}f}"
+
+
+def verdict_relative(value, good: float, passing: float) -> str:
+    """ดี below the good threshold, ผ่าน below the pass threshold, otherwise ไม่ผ่าน (draft criteria, METRICS.md Sec.48); '-' when the ratio is undefined."""
+    if value is None:
+        return "-"
+    return "ดี" if value < good else ("ผ่าน" if value < passing else "ไม่ผ่าน")
+
+
+def verdict_tracking(value, limit: float) -> str:
+    """เตือน when |Tracking Signal| is above the limit, otherwise ปกติ; '-' when undefined."""
+    if value is None:
+        return "-"
+    return "เตือน" if abs(value) > limit else "ปกติ"
+
+
+def gather_accuracy_vs_naive(config: dict, primary_results: pd.DataFrame) -> dict:
+    """Relative MAE against Naive (all horizons and Horizon 3), Tracking Signal and the draft verdicts, per forecast division and per pilot group (METRICS.md Sec.48), and Naive on
+    the scored forward months. Backtest cells are recomputed from the saved monthly series with the functions of the main table (src/transferability_all_divisions.py); the model
+    MAE of a division recomputed from its cells must equal the main table's MAE (and the cell count its n_scored), otherwise the build stops.
+    Returns {"rows": [...], "forward_by_division": DataFrame, "items_beyond_limit": {division: share}, "thresholds": {...}}."""
+    import forward_test_common as ftc
+    import forward_test_scoring as fts
+    import operation_plan as op
+    import transferability_all_divisions as ta
+    from leakage_guard import load_min_margin_days
+    crit = config["maxmin_v1"]["pending_criteria_values"]
+    good, passing, limit = float(crit["relative_mae_good"]), float(crit["relative_mae_pass"]), float(crit["tracking_signal_limit"])
+    scope = pd.read_csv(os.path.join(SUMMARY_DIR, "phaseC_step2_scope_335items.csv"))
+    monthly = pd.read_csv(os.path.join(DATA_DIR, "processed_all_divisions_monthly_qty.csv"))
+    pull_date = monthly["snapshot_pull_date"].iloc[0]
+    margin = load_min_margin_days(config)
+    item_series, type_series = ta.build_item_and_type_series(monthly, scope)
+    cells = ta.topdown_naive_cells(item_series, type_series, pull_date, margin)
+    # forward months: Naive on the scored Item rows
+    ocfg = op.load_config(PROJECT_ROOT)
+    log = ftc.read_forward_test_log(op.path_of(PROJECT_ROOT, ocfg["forecast_log_file"]))
+    meta = ftc.load_metadata(op.path_of(PROJECT_ROOT, ocfg["forecast_log_metadata_file"]))
+    raw = pd.read_csv(fts.RAW_HISTORY_PATH, usecols=["itemcode", "createDate", "forecast_date", "qty"])
+    fitems = fts.forward_naive_items(log, meta, raw)
+    fdiv = fts.forward_naive_by_division(fitems)
+    order = [d for d in op.load_config(PROJECT_ROOT)["divisions"] if d in set(primary_results["division"])]
+    main = primary_results.set_index("division")
+    rows, beyond = [], {}
+    for d in order:
+        cs = [c for c in cells if c["division"] == d]
+        r_all, r_h3 = ta.relative_mae(cs), ta.relative_mae(cs, 3)
+        if len(cs) != int(main.loc[d, "n_scored"]) or abs(r_all["mae"] - float(main.loc[d, "MAE"])) > 1e-9:
+            raise ReportSourceError(f"{d}: the model MAE of the {len(cs)} recomputed cells ({r_all['mae']}) differs from the main table's MAE ({main.loc[d, 'MAE']}, n_scored {main.loc[d, 'n_scored']}).")
+        e = list(ta.horizon1_errors_by_origin(cs).values()) + [float(x) for x in fdiv[fdiv["division"] == d].sort_values(["target_month", "vintage_id"])["e_total"]]
+        ts = ta.tracking_signal(e)
+        rows.append({"label": d, "kind": "division", "relative_mae": r_all["relative_mae"], "relative_mae_h3": r_h3["relative_mae"], "tracking_signal": ts["tracking_signal"],
+                     "n_points": ts["n_points"], "mae": r_all["mae"], "mae_naive": r_all["mae_naive"], "n_cells": r_all["n_cells"]})
+        # report only: the share of the division's items whose own horizon-1 Tracking Signal is beyond the limit
+        item_e = {}
+        for c in sorted(cs, key=lambda c: c["origin"]):
+            item_e.setdefault(c["itemcode"], []).append(float(c["fc"][0] - c["act"][0]))
+        for r in fitems[fitems["division"] == d].sort_values(["target_month", "vintage_id"]).itertuples():
+            item_e.setdefault(r.itemcode, []).append(r.e_model)
+        sigs = [ta.tracking_signal(v)["tracking_signal"] for v in item_e.values()]
+        sigs = [x for x in sigs if x is not None]
+        beyond[d] = {"n_items": len(sigs), "n_beyond": sum(1 for x in sigs if abs(x) > limit), "share": (sum(1 for x in sigs if abs(x) > limit) / len(sigs)) if sigs else None}
+    # pilot groups: the Type series (sum of the group's items), the Type's Combination forecast, as the pilot-group block
+    for key, label in config["report"]["pilot_labels"].items():
+        type_name = config["pilot_categories"][key]
+        sub = scope[scope["type"] == type_name]
+        if sub["division"].nunique() != 1:
+            raise ReportSourceError(f"pilot group {key}: its Type {type_name!r} is on {sub['division'].nunique()} divisions in the scope, expected 1")
+        div = sub["division"].iloc[0]
+        qty, months = type_series[f"{div}::{type_name}"]
+        gc = ta.group_cells(qty, months, pull_date, margin)
+        r_all, r_h3 = ta.relative_mae(gc), ta.relative_mae(gc, 3)
+        fg = fitems[(fitems["division"] == div) & (fitems["type"].str.strip() == type_name)]
+        e = list(ta.horizon1_errors_by_origin(gc).values()) + [float(x) for x in fg.groupby(["target_month", "vintage_id"])["e_model"].sum().sort_index()]
+        ts = ta.tracking_signal(e)
+        rows.append({"label": label, "kind": "group", "relative_mae": r_all["relative_mae"], "relative_mae_h3": r_h3["relative_mae"], "tracking_signal": ts["tracking_signal"],
+                     "n_points": ts["n_points"], "mae": r_all["mae"], "mae_naive": r_all["mae_naive"], "n_cells": r_all["n_cells"]})
+    for r in rows:
+        r["verdict_relative"] = verdict_relative(r["relative_mae"], good, passing)
+        r["verdict_relative_h3"] = verdict_relative(r["relative_mae_h3"], good, passing)
+        r["verdict_tracking"] = verdict_tracking(r["tracking_signal"], limit)
+    return {"rows": rows, "forward_by_division": fdiv, "forward_items": fitems, "items_beyond_limit": beyond, "thresholds": {"good": good, "pass": passing, "limit": limit}}
+
+
 def items_not_flat(forward: dict) -> list:
     """Items whose forecast differs between the forecast months of the vintage (exact comparison); empty when every item has one value for all months."""
     return sorted(it["item"] for ts in forward["divisions"].values() for t in ts for it in t["items"] if len(set(it["values"])) > 1)
@@ -736,6 +823,8 @@ def render_page(config: dict) -> str:
     forward = gather_forward_forecast(vf, scope_table)
     pilot_groups = gather_pilot_groups(config)
     scored = gather_scored_months(primary_results)
+    accuracy = gather_accuracy_vs_naive(config, primary_results)
+    scored = scored.merge(accuracy["forward_by_division"][["vintage_id", "target_month", "division", "MAE_naive", "relative_mae"]], on=["vintage_id", "target_month", "division"], how="left")
     price_basis = require_config_path(config, "report.price_basis")
     price_info = rv.unit_prices(sorted({it["item"] for ts in forward["divisions"].values() for t in ts for it in t["items"]}), price_basis,
                                 vf["fit_first"], vf["fit_last"], os.path.join(PROJECT_ROOT, "reference", "pricelist.xlsx"), PROJECT_ROOT)
@@ -956,8 +1045,21 @@ def render_page(config: dict) -> str:
       <table class="report-table" id="pilot-table"><thead><tr>{pilot_head}</tr></thead><tbody>{pilot_rows}</tbody></table>
       <p class="hint" id="pilot-scope-note">{html.escape(report['pilot_scope_note'])}</p>"""
 
+    # Against the draft criteria: Relative MAE (all horizons and Horizon 3) and Tracking Signal per division and pilot group (METRICS.md Sec.48).
+    th = accuracy["thresholds"]
+    crit_rows = "".join(
+        f"<tr><td>{html.escape(r['label'])}</td><td>{fmt_ratio(r['relative_mae'], 2)}</td><td>{r['verdict_relative']}</td>"
+        f"<td>{fmt_ratio(r['relative_mae_h3'], 2)}</td><td>{r['verdict_relative_h3']}</td>"
+        f"<td>{fmt_ratio(r['tracking_signal'], 1)}</td><td>{r['verdict_tracking']}</td></tr>" for r in accuracy["rows"])
+    crit_head = "".join(f"<th>{html.escape(c)}</th>" for c in report["criteria_columns"])
+    crit_values = {"pass_value": f"{th['pass']:g}", "good_value": f"{th['good']:g}", "warn_value": f"{th['limit']:g}"}
+    criteria_html = f"""<h3 id="criteria-vs-draft">{html.escape(report['criteria_heading'])}</h3>
+      <!-- source: Relative MAE, Horizon 3 and Tracking Signal recomputed at build from the saved monthly series with the functions of the main table (src/transferability_all_divisions.py), Naive = the last month before each origin; the forward months from the forward-test log (src/forward_test_scoring.py forward_naive_items); thresholds: config maxmin_v1.pending_criteria_values (draft). METRICS.md Sec.48. Tracking Signal points used per row: {", ".join(f"{r['label']} {r['n_points']}" for r in accuracy["rows"])}. -->
+      {render_notes_html('sales_report.html', 'criteria-comparison', values=crit_values)}
+      <div class="table-scroll"><table class="report-table" id="criteria-table"><thead><tr>{crit_head}</tr></thead><tbody>{crit_rows}</tbody></table></div>"""
+
     # Forecast against actual, month by month, from the recorded forward-test scores.
-    scored_rows = "".join(f"<tr><td>{html.escape(r.division)}</td><td>{html.escape(rv.thai_month_short(r.target_month))}</td><td>{r.MAE:.1f}</td><td>{r.Bias:.1f}</td>"
+    scored_rows = "".join(f"<tr><td>{html.escape(r.division)}</td><td>{html.escape(rv.thai_month_short(r.target_month))}</td><td>{r.MAE:.1f}</td><td>{r.MAE_naive:.1f}</td><td>{fmt_ratio(r.relative_mae, 2)}</td><td>{r.Bias:.1f}</td>"
                           f"<td>{r.MAE_backtest:.1f}</td>"
                           f"<td>{r.baht_forecast:,}</td><td>{r.baht_actual:,}</td><td>{r.baht_diff:,}</td></tr>" for r in scored.itertuples())
     scored_head = "".join(f"<th>{html.escape(c)}</th>" for c in report["scored_columns"])
@@ -997,6 +1099,7 @@ def render_page(config: dict) -> str:
         <tbody></tbody>
       </table>
       {pilot_html}
+      {criteria_html}
       <h3>Rolling-origin MAE (Type level) — คลิก legend เพื่อซ่อน/แสดงแต่ละโมเดล</h3>
       {cite('phaseC_step2_rolling_origin_qty.csv', 'origin / model / MAE')}
       <div id="chart-rolling" class="plotly-chart"></div>

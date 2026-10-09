@@ -128,6 +128,37 @@ def compute_score_rows(log: pd.DataFrame, metadata: dict, raw: pd.DataFrame, run
     return df[SCORE_COLUMNS]
 
 
+# ---------------------------------------------------------------- Naive on the scored forward months (METRICS.md Sec.48)
+def forward_naive_items(log: pd.DataFrame, metadata: dict, raw: pd.DataFrame) -> pd.DataFrame:
+    """One row per scored item (horizon 1, every vintage and target month whose Item rows all have an actual_qty), for the items the score itself uses (score_items: the fit series is not all zero):
+    columns vintage_id, target_month, division, type, itemcode, forecast, actual, naive (the quantity of the last month of the vintage's fit window), e_model (forecast - actual),
+    e_naive (naive - actual). Nothing is written; the score record is not touched."""
+    item_rows = log[(log["level"] == "Item") & (log["horizon"] == 1)].copy()
+    item_rows["actual_num"] = pd.to_numeric(item_rows["actual_qty"], errors="coerce")
+    out = []
+    for (vid, tm), g in item_rows.groupby(["vintage_id", "target_month"]):
+        if g["actual_num"].isna().any():
+            continue
+        vmeta = metadata[str(int(vid))]
+        series = fit_series_from_raw(raw, g["itemcode"].unique(), vmeta["fit_first_month"], vmeta["fit_last_month"])
+        used = set(score_items(g.assign(actual_qty=g["actual_num"]), series)["itemcode"])
+        for r in g[g["itemcode"].isin(used)].itertuples():
+            naive = float(series[r.itemcode][-1])
+            out.append({"vintage_id": int(vid), "target_month": tm, "division": r.division, "type": r.type, "itemcode": r.itemcode, "forecast": float(r.forecast_qty),
+                        "actual": float(r.actual_num), "naive": naive, "e_model": float(r.forecast_qty) - float(r.actual_num), "e_naive": naive - float(r.actual_num)})
+    return pd.DataFrame(out, columns=["vintage_id", "target_month", "division", "type", "itemcode", "forecast", "actual", "naive", "e_model", "e_naive"])
+
+
+def forward_naive_by_division(items: pd.DataFrame) -> pd.DataFrame:
+    """Per vintage, target month and division: n_items, MAE (model), MAE_naive, relative_mae (sum |model e| / sum |Naive e|, None when Naive's errors are all 0) and e_total (sum of forecast - actual)."""
+    rows = []
+    for (vid, tm, div), g in items.groupby(["vintage_id", "target_month", "division"]):
+        sm, sn = float(g["e_model"].abs().sum()), float(g["e_naive"].abs().sum())
+        rows.append({"vintage_id": vid, "target_month": tm, "division": div, "n_items": len(g), "MAE": sm / len(g), "MAE_naive": sn / len(g),
+                     "relative_mae": (sm / sn) if sn > 0 else None, "e_total": float(g["e_model"].sum())})
+    return pd.DataFrame(rows, columns=["vintage_id", "target_month", "division", "n_items", "MAE", "MAE_naive", "relative_mae", "e_total"])
+
+
 # ---------------------------------------------------------------- the append-only record
 
 def _batch_hash(rows_text: pd.DataFrame) -> str:

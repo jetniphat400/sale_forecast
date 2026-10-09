@@ -107,6 +107,8 @@ def page(edge, tmp_path_factory):
         out["trend"] = edge.ev("document.getElementById('omniTab').innerText")
         out["trend_first"] = edge.ev("[...document.getElementById('omniTab').children].find(e => e.tagName !== 'STYLE').id")
         out["trend_pl_label"] = edge.ev("document.getElementById('trendPlLabel').textContent")
+        out["trend_yellow"] = edge.ev("document.querySelectorAll('#omniTab > div.note')[1].innerText")
+        out["trend_c4"] = edge.ev("document.getElementById('c4').innerText")
         out["trend_yrs"] = edge.ev("[...document.querySelectorAll('.omni-yrs')].map(e => e.textContent)")
         out["trend_head"] = edge.ev("document.querySelector('#omniTab h2').innerText")
         out["trend_head_count"] = edge.ev("document.getElementById('trendHeadCount').textContent")
@@ -489,3 +491,26 @@ def test_trend_tab_in_index_html_is_the_saved_pull_and_its_totals_equal_the_comp
     assert round(sum(sum(i["sa"]) + sum(i["sm"]) for i in omni["items"]), 1) == round(comp["sale"], 1)
     assert sum(len(i["dd"]) for i in omni["items"]) > 0 and omni["meta"]["pull_iso"] == comp["pulled_at"][:10]
     assert omni["n31"] == len(omni["months"]) - 1 and omni["months"][-1] == comp["pulled_at"][:7]
+
+
+def test_trend_yellow_note_and_chart_caption_show_the_months_and_date_of_the_data(page, edge, tmp_path_factory):
+    text = open(INDEX, encoding="utf-8").read()
+    omni = json.loads(_embedded_lines(text)["OMNI"][len("const OMNI = "):].rstrip(";"))
+    m = omni["meta"]
+    yellow = " ".join(page["trend_yellow"].split())
+    assert f"เดือน {m['month_incomplete']} ยังไม่จบเดือน แสดงเป็นแท่งสีจาง และไม่รวมในการคำนวณ ADI/CV² (ฐาน {omni['n31']} เดือน: {m['base_first']} – {m['base_last']})" in yellow, yellow
+    assert "คนละชุด" in yellow and "แท็บ S&OP Plan เดิม" in yellow                                           # the sentence about the S&OP tab is as it was
+    assert f"ตรวจสอบแล้ว ({m['pull']}): ไม่มีรหัสสินค้าใดถูกนับซ้ำข้ามหน่วยธุรกิจ" in " ".join(page["trend_c4"].split())
+    assert re.fullmatch(r"\S+ \d{2}", m["month_incomplete"])    # the shared month format (MMM yy, Buddhist year)
+    changed = text.replace(f'"month_incomplete":"{m["month_incomplete"]}"', '"month_incomplete":"ม.ค. 99"', 1).replace(f'"base_last":"{m["base_last"]}"', '"base_last":"ธ.ค. 98"', 1)
+    assert changed != text
+    site = _site(tmp_path_factory, "p12_perturbed", index_text=changed)
+    server, url = _serve(site)
+    try:
+        edge.open(url)
+        edge.ev("omniShowTab(2); 1")
+        assert _wait(edge, "document.getElementById('trendHeadCount').textContent !== ''")
+        note = " ".join(edge.ev("document.querySelectorAll('#omniTab > div.note')[1].innerText").split())
+    finally:
+        server.shutdown()
+    assert "เดือน ม.ค. 99 ยังไม่จบเดือน" in note and f"{m['base_first']} – ธ.ค. 98)" in note

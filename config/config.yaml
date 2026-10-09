@@ -1121,7 +1121,10 @@ report:
   pilot_warn_line: "▸ ถ้าใช้ยอดทายของสองกลุ่มนี้วางแผน ให้ระวังว่ามักทายต่ำ"
   pilot_scope_note: "Surge Arrester ในตารางนี้นับเฉพาะ Medium Voltage"
   scored_heading: "ยอดทายเทียบยอดขายจริง"
-  scored_columns: ["ฝ่าย", "เดือน", "MAE", "Bias", "MAE ในการทดสอบย้อนหลัง", "ยอดทาย (บาท)", "ยอดจริง (บาท)", "ต่าง (บาท)"]
+  scored_columns: ["ฝ่าย", "เดือน", "MAE", "MAE (Naive)", "Relative MAE", "Bias", "MAE ในการทดสอบย้อนหลัง", "ยอดทาย (บาท)", "ยอดจริง (บาท)", "ต่าง (บาท)"]
+  # Block "เทียบกับร่างเกณฑ์" of the Results section (approved text of 2026-10-09, verbatim; the lines under the table are in config/manual_notes.yaml, criteria-comparison).
+  criteria_heading: "เทียบกับร่างเกณฑ์"
+  criteria_columns: ["ฝ่าย / กลุ่ม", "Relative MAE", "ผล", "Relative MAE (Horizon 3)", "ผล", "Tracking Signal", "ผล"]
 
   # Baht view of the forecast (decisions of the user, 2026-10-08, Prompt 10). Approved Thai text, verbatim; {braced} names are filled at build time.
   unit_switch_label: "หน่วย:"
@@ -1634,14 +1637,14 @@ maxmin_v1:
   # recorded outputs and config; value_source says where each comes from (never shown on a page).
   # The table "เกณฑ์ที่รอกำหนด" of the assumptions tab (data/assumptions.json, key pending_criteria): criteria nobody has set yet, with the draft the project shows.
   # DRAFT values, pending the user (decision of 2026-10-08); nothing passes or fails against them yet. Sources:
-  #   mase_pass 1 and mase_good 0.7: Morlidge's naive-ratio evidence (Gilliland / SAS, "The avoidability of forecast error, Part 4"): a forecast no better than
-  #   the naive one (ratio 1) adds nothing; MASE for intermittent demand: Hyndman (2006).
+  #   relative_mae_pass 1 and relative_mae_good 0.7: Morlidge's ratio of forecast MAE to naive MAE (Gilliland / SAS, "The avoidability of forecast error, Part 4"): a forecast
+  #   no better than the naive one (ratio 1) adds nothing. The measure is Relative MAE = MAE of our forecast / MAE of Naive on the same items, months and horizons (METRICS.md Sec.48).
   #   tracking_signal_limit 4: the common tracking-signal control limit (APICS / CPIM practice).
   #   decision_date: the criteria are decided after the 2026-12-05 run (the run after the first forward results).
-  pending_criteria_values: {mase_pass: 1, mase_good: 0.7, tracking_signal_limit: 4, decision_date: "2026-12-05"}
+  pending_criteria_values: {relative_mae_pass: 1, relative_mae_good: 0.7, tracking_signal_limit: 4, decision_date: "2026-12-05"}
   # Approved text of 2026-10-08 (verbatim); {braces} are filled from pending_criteria_values (the date with the shared Thai date formatter).
   pending_criteria_rows:
-    - {topic: "ยอดทายดีกว่าวิธีง่ายไหม", to_decide: "MASE ต่ำแค่ไหนถึงผ่าน", now_used: "ร่าง: ต่ำกว่า {mase_pass} ผ่าน, ต่ำกว่า {mase_good} ดี", who: "ผู้บริหาร", when: "หลังรอบ {decision_date}"}
+    - {topic: "ยอดทายดีกว่าวิธีง่ายไหม", to_decide: "Relative MAE ต่ำแค่ไหนถึงผ่าน (MAE ของเรา ÷ MAE ของ Naive)", now_used: "ร่าง: ต่ำกว่า {relative_mae_pass} ผ่าน, ต่ำกว่า {relative_mae_good} ดี", who: "ผู้บริหาร", when: "หลังรอบ {decision_date}"}
     - {topic: "ยอดทายเอียงต่อเนื่อง", to_decide: "tracking signal เกินเท่าไหร่ถึงเตือน", now_used: "ร่าง: ±{tracking_signal_limit}", who: "ผู้บริหาร", when: "ทุกเดือน"}
     - {topic: "ฝ่ายที่ยอดทายไม่ชนะวิธีง่าย", to_decide: "ใช้วิธีง่ายแทนไหม", now_used: "ยังใช้วิธีเดิม และแสดงผลเทียบ", who: "ผู้บริหาร", when: "หลังรอบ {decision_date}"}
     - {topic: "เป้าการส่งไม่สาย", to_decide: "บริษัทต้องการกี่ %", now_used: "ให้เลือกเองบนหน้าแผนสต็อก", who: "ผู้บริหาร", when: "ยังไม่กำหนด"}

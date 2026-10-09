@@ -79,7 +79,8 @@ def violations(lines, config_keys, english_exempt=frozenset()) -> list:
     other rule still applies."""
     key_re = re.compile(r"(?<![A-Za-z0-9_])(?:" + "|".join(map(re.escape, sorted(config_keys, key=len, reverse=True))) + r")(?![A-Za-z0-9_])")
     found = []
-    for raw in lines:
+    cleaned = [" ".join(raw.split()) for raw in lines]
+    for i, raw in enumerate(lines):
         line = " ".join(raw.split())
         for pat in PENDING_REWRITE:
             line = pat.sub("", line)
@@ -92,7 +93,9 @@ def violations(lines, config_keys, english_exempt=frozenset()) -> list:
             m = pat.search(line)
             if m:
                 found.append(f"{name} {m.group(0)!r} in: {line[:120]}")
-        if len(line) > MAX_NON_THAI_LINE and not THAI.search(line) and line not in english_exempt:
+        # an English term or sentence is allowed where Thai would confuse, with a short Thai explanation next to it (decision of 2026-10-09): the line before or after has Thai
+        has_thai_neighbour = any(0 <= j < len(cleaned) and THAI.search(cleaned[j]) for j in (i - 1, i + 1))
+        if len(line) > MAX_NON_THAI_LINE and not THAI.search(line) and line not in english_exempt and not has_thai_neighbour:
             found.append(f"line over {MAX_NON_THAI_LINE} chars with no Thai: {line[:120]}")
     return found
 
@@ -191,6 +194,10 @@ def test_guard_catches_each_rule():
     assert violations(["ข้อมูลจาก cube_Sale_APD"], keys)
     assert violations(["ข้อมูลจาก Cube_CES"], keys)
     assert violations(["เพิ่มเมื่อ task 2a"], keys)
+    english = "Relative MAE is our MAE divided by the MAE of the Naive forecast on the same items"
+    assert violations([english], keys)                                                                  # an English sentence alone still fails
+    assert not violations([english, "ต่ำกว่า 1 = ดีกว่า Naive"], keys) and not violations(["Tracking Signal", english, "คือความคลาดสะสม"], keys)   # with a Thai explanation next to it it passes
+    assert violations([english, "x" * 30 + " " + "y" * 40], keys)                                      # a neighbour with no Thai is no explanation
     long_cell = "3 Phase 1000kVA 22kV 400/230V Dyn11 Low Loss (Total Loss 1.2%) 008 PEA"
     assert violations([long_cell], keys) and not violations([long_cell], keys, english_exempt={long_cell})
     assert not violations(["ตัวควบคุมด้านล่างเปลี่ยนแค่ตัวเลขบนหน้านี้ ไม่ได้เปลี่ยนการทายยอดขาย"], keys)

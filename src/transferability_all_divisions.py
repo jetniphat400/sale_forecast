@@ -94,6 +94,85 @@ def run_transferability_rolling_origin(item_series: dict, type_series: dict, pul
     return pd.DataFrame(results)
 
 
+# ---------------------------------------------------------------------------------------------------------------------------------------------
+# Accuracy against Naive (METRICS.md Sec.48): the cells behind the main table, with Naive on the same cells, per horizon.
+# ---------------------------------------------------------------------------------------------------------------------------------------------
+
+def topdown_naive_cells(item_series: dict, type_series: dict, pull_date, min_margin_days: int) -> list:
+    """The cells of the main table (an item x an origin with a Top-down forecast), each with the six horizons of the Top-down forecast, of Naive (last month before the origin) and of the
+    actual. Same loop, same clipping and same skips as run_transferability_rolling_origin, so the mean window MAE of a division's cells is the main table's Top-down MAE exactly.
+    Returns [{division, itemcode, type_key, origin, train_size, first_test_month, fc, nv, act}] (arrays of length HOLDOUT)."""
+    cells = []
+    origins = get_origins(TOTAL_MONTHS, HOLDOUT)
+    for code, (qty, months, type_key, div, cat) in item_series.items():
+        if len(qty) != TOTAL_MONTHS or qty.sum() == 0:
+            continue
+        type_qty, _ = type_series[type_key]
+        for origin_idx, train_size in enumerate(origins, start=1):
+            train = qty[:train_size]
+            test = qty[train_size:train_size + HOLDOUT]
+            if len(test) < HOLDOUT:
+                continue
+            check_window_closed(months[train_size + HOLDOUT - 1], pull_date, min_margin_days)
+            type_train = type_qty[:train_size]
+            share = train.sum() / type_train.sum() if type_train.sum() > 0 else np.nan
+            if pd.isna(share):
+                continue
+            fc = np.clip(combination_forecast(type_train, HOLDOUT, MA_WINDOWS), 0, None) * share
+            if np.any(np.isnan(fc)):
+                continue
+            nv = np.clip(naive_forecast(train, HOLDOUT), 0, None)
+            cells.append({"division": div, "itemcode": code, "type_key": type_key, "origin": origin_idx, "train_size": train_size,
+                          "first_test_month": months[train_size], "fc": fc, "nv": nv, "act": test.astype(float)})
+    return cells
+
+
+def group_cells(type_qty: np.ndarray, months: list, pull_date, min_margin_days: int) -> list:
+    """One cell per origin for a group's series (the Type series, the pilot-group block's series_own): the Type's Combination forecast (clipped), Naive and the actual, six horizons."""
+    cells = []
+    for origin_idx, train_size in enumerate(get_origins(TOTAL_MONTHS, HOLDOUT), start=1):
+        train = type_qty[:train_size]
+        test = type_qty[train_size:train_size + HOLDOUT]
+        if len(test) < HOLDOUT:
+            continue
+        check_window_closed(months[train_size + HOLDOUT - 1], pull_date, min_margin_days)
+        cells.append({"origin": origin_idx, "train_size": train_size, "first_test_month": months[train_size],
+                      "fc": np.clip(combination_forecast(train, HOLDOUT, MA_WINDOWS), 0, None), "nv": np.clip(naive_forecast(train, HOLDOUT), 0, None),
+                      "act": test.astype(float)})
+    return cells
+
+
+def relative_mae(cells: list, horizon: int = None) -> dict:
+    """Relative MAE of a set of cells: the model's summed window MAE over Naive's, or (horizon = 1..6) the summed absolute errors of that horizon only. Returns
+    {n_cells, mae, mae_naive, relative_mae}; relative_mae is None when Naive's errors are all 0."""
+    if not cells:
+        return {"n_cells": 0, "mae": None, "mae_naive": None, "relative_mae": None}
+    if horizon is None:
+        m = [float(np.abs(c["fc"] - c["act"]).mean()) for c in cells]
+        n = [float(np.abs(c["nv"] - c["act"]).mean()) for c in cells]
+    else:
+        h = horizon - 1
+        m = [float(abs(c["fc"][h] - c["act"][h])) for c in cells]
+        n = [float(abs(c["nv"][h] - c["act"][h])) for c in cells]
+    sm, sn = sum(m), sum(n)
+    return {"n_cells": len(cells), "mae": sm / len(cells), "mae_naive": sn / len(cells), "relative_mae": (sm / sn) if sn > 0 else None}
+
+
+def tracking_signal(errors: list) -> dict:
+    """Tracking Signal = sum e / mean |e| over the points in the order given; None when every e is 0. Returns {n_points, tracking_signal}."""
+    e = [float(x) for x in errors]
+    mean_abs = sum(abs(x) for x in e) / len(e) if e else 0.0
+    return {"n_points": len(e), "tracking_signal": (sum(e) / mean_abs) if mean_abs > 0 else None}
+
+
+def horizon1_errors_by_origin(cells: list) -> dict:
+    """{origin: sum of (forecast - actual) at horizon 1 over the cells} in origin order, for a division's cells or a group's single cell per origin."""
+    out = {}
+    for c in sorted(cells, key=lambda c: c["origin"]):
+        out[c["origin"]] = out.get(c["origin"], 0.0) + float(c["fc"][0] - c["act"][0])
+    return out
+
+
 if __name__ == "__main__":
     with open(CONFIG_PATH, "r", encoding="utf-8") as f:
         config = yaml.safe_load(f)

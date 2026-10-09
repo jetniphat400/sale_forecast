@@ -132,7 +132,7 @@
 
 ## Reader-facing text (added 2026-09-29)
 
-Reader-facing text. Any text a dashboard reader can see is written for PEM's sales, planning and management staff, in Thai, following .claude/skills/reader-text/SKILL.md. File names, code paths, line numbers, METRICS or DATA_MAP section numbers, and config keys never appear on screen; keep them in HTML comments. When a prompt supplies finished Thai text, use it verbatim.
+Reader-facing text. Any text a dashboard reader can see is written for PEM's sales, planning and management staff, in Thai, following .claude/skills/reader-text/SKILL.md (where a Thai word or sentence would confuse the reader, the English term or sentence is used with a short Thai explanation next to it; decided 2026-10-09). File names, code paths, line numbers, METRICS or DATA_MAP section numbers, and config keys never appear on screen; keep them in HTML comments. When a prompt supplies finished Thai text, use it verbatim.
 
 ## Page layout (added 2026-09-29)
 

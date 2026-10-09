@@ -286,6 +286,10 @@ class Build:
             mp.setattr(build_report, "gather_scored_months", lambda pr: _perturbed_scored(real_scored(pr)))
             # the perturbed scores no longer match the log the baht columns are computed from (checked against Bias in the build): the baht columns are tested in test_build_report.py
             mp.setattr(build_report, "attach_scored_baht", lambda sc, prices: sc.assign(baht_forecast=0, baht_actual=0, baht_diff=0, n_no_price=0))
+            # the perturbed series no longer reproduces the main table's MAE, which the Relative MAE block checks (and stops on): that block is tested in test_build_report.py
+            mp.setattr(build_report, "gather_accuracy_vs_naive", lambda cfg, pr: {
+                "rows": [], "forward_items": None, "items_beyond_limit": {}, "thresholds": {"good": 0.7, "pass": 1.0, "limit": 4.0},
+                "forward_by_division": pd.DataFrame(columns=["vintage_id", "target_month", "division", "MAE_naive", "relative_mae"])})
             mp.setattr(build_report, "FOCUS_ITEMS", list(build_report.FOCUS_ITEMS[:2]))
             real_notlate = build_report.gather_notlate
             mp.setattr(build_report, "gather_notlate", lambda: real_notlate().iloc[0:0])

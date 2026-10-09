@@ -4,7 +4,7 @@ description: Write or revise any text a dashboard reader sees, so PEM staff unde
 ---
 Reader. Sales, planning and management staff at PEM. They know the products and the business. They do not know the code, the files or the project's rule numbers.
 
-Language. Thai. Keep terms the team already uses in English as single words: MAE, RMSE, Bias, MASE, PO, Min, Max, MTS, MTO, forecast, not-late. Never write a whole sentence in English.
+Language. Thai. Where a Thai word or sentence would confuse the reader, use the English term or sentence instead and always add a short Thai explanation next to it (for example Relative MAE, Tracking Signal, Naive). Keep terms the team already uses in English as single words: MAE, RMSE, Bias, MASE, PO, Min, Max, MTS, MTO, forecast, not-late.
 
 Keep off screen, move into an HTML comment: file names, code paths, line numbers, METRICS, DATA_MAP or STATUS references, config keys, internal status names such as stock_policy or confirmed_to_order, and explanations of why the data was built the way it was.
 
