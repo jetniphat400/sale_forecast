@@ -714,3 +714,148 @@ Existing files extended (`test_index_w3.py`): the three texts verbatim; the max 
 - With the booked orders the total projection is above the target; the target covers all Omni products and the sales only Price List items (labelled by D1). The all-Omni comparison is the later task (2026-10-21 to 10-23): Claude Code.
 - The projection is flat for months with no orders on the books (no seasonality) and the item-wise maximum can only raise the old figure; the user's decision to keep it: low, the user.
 - CI101: five orders are 34 to 40 percent of its YTD, so its "ถึงเป้า" (224 percent against a 26.2 million target) rests on a few orders: low, the user.
+
+
+## Prompt 15
+
+Forecast model experiment on the existing backtest (report only). Run 2026-10-09. Database sessions: 0. No page, recorded output or forward-test log changed; the production model is unchanged; vintage 2 is not recomputed. New file: `src/investigations/model_experiment_2026_10.py` (approved).
+
+### Step 0, pre-registration
+
+The candidates, parameters and the selection rule were written into config (`experiment_2026_10`) and METRICS.md Sec.50 and committed and pushed alone as **8f8ef46** (2026-10-09 10:15:12), before any candidate was computed. Nothing in the rule was changed afterwards; only `proposed` (not active) was added after the run.
+
+### Setup
+
+The main table's setup, unchanged: the saved monthly series (pulled 2026-10-05), the 335 forecast-scope items, 7 rolling origins (train sizes 13 to 25 of 31 months), 6 horizons, the main table's cells (2,328 item x origin cells: CI101 91, PEM101 1,000, PEM102 112, PEM103 343, PEM107 782) and, for the two pilot groups, the Type series with one cell per origin (7 cells each). The current candidate recomputed here equals the main table's cell forecasts exactly (maximum difference 0.0); the current Relative MAE on all 7 origins equals the forecast page's "เทียบกับร่างเกณฑ์" value for every division and group (PEM101 0.80, PEM103 1.04, PEM107 0.86, PEM102 0.92, CI101 0.83, Fuse Cutout 0.93, Surge Arrester 1.07: tested). Origins 1–5 select, 6–7 confirm, all 7 for reference; Tracking Signal on the backtest origins only (5 points on 1–5, 7 on all). Tracking Signal limit 4 (config). Candidates: current; naive; holt (Type level, statsforecast Holt, clipped at 0, top-down allocation); combination_plus_holt (the six models and Holt at equal weight); bias_adjusted (the Combination times the clipped ratio of actual to one-step-ahead in-sample Combination over the last 6 months, clipped to 0.5 to 2.0); seasonal_naive (the value 12 months earlier).
+
+**seasonal_naive cells not available:** none. Every origin has at least 13 months of training, so every target month has a month 12 earlier inside the training window (origin 1 uses months 2 to 7 of the series); 0 target months needed the Naive fallback (the fallback exists and is counted, and a fixed example in the tests shows it).
+
+**Leakage:** every candidate receives the first `train_size` months only (asserted in the code); a test changes every value after the origin, at three origins, for every candidate and shows no forecast changes (and that a change before the origin does move them): PASS.
+
+### Results per group
+
+**PEM101** (1000 cells)
+
+| candidate | Relative MAE (1–5) | Relative MAE (6–7) | Relative MAE (all 7) | Relative MAE Horizon 3 (all 7) | Tracking Signal (1–5) | Tracking Signal (all 7) | passes TS filter |
+|---|---|---|---|---|---|---|---|
+| current | 0.849 | 0.675 | 0.800 | 0.830 | -3.73 | -2.74 | yes |
+| naive | 1.000 | 1.000 | 1.000 | 1.000 | -0.84 | -1.62 | yes |
+| holt | 0.933 | 0.689 | 0.864 | 0.894 | -2.17 | 0.90 | yes |
+| combination_plus_holt | 0.855 | 0.665 | 0.801 | 0.832 | -3.58 | -2.26 | yes |
+| bias_adjusted | 0.929 | 0.712 | 0.868 | 0.870 | -2.53 | -0.57 | yes |
+| seasonal_naive | 0.900 | 0.789 | 0.869 | 1.031 | -4.17 | -5.60 | no |
+
+Rule outcome: **keep current**. current has the lowest Relative MAE on origins 1-5 among the candidates that pass the Tracking Signal filter.
+
+**PEM103** (343 cells)
+
+| candidate | Relative MAE (1–5) | Relative MAE (6–7) | Relative MAE (all 7) | Relative MAE Horizon 3 (all 7) | Tracking Signal (1–5) | Tracking Signal (all 7) | passes TS filter |
+|---|---|---|---|---|---|---|---|
+| current | 1.140 | 0.974 | 1.041 | 1.064 | -4.81 | -6.85 | no |
+| naive | 1.000 | 1.000 | 1.000 | 1.000 | -5.00 | -7.00 | no |
+| holt | 0.967 | 1.055 | 1.020 | 0.972 | -5.00 | -7.00 | no |
+| combination_plus_holt | 1.099 | 0.985 | 1.030 | 1.048 | -4.96 | -6.97 | no |
+| bias_adjusted | 1.017 | 1.134 | 1.087 | 1.057 | -4.68 | -5.90 | no |
+| seasonal_naive | 1.707 | 0.945 | 1.249 | 1.341 | 0.61 | -2.34 | yes |
+
+Rule outcome: **keep current**. seasonal_naive wins origins 1-5 but is not at least 5 percent below current on origins 1-5.
+
+**PEM107** (782 cells)
+
+| candidate | Relative MAE (1–5) | Relative MAE (6–7) | Relative MAE (all 7) | Relative MAE Horizon 3 (all 7) | Tracking Signal (1–5) | Tracking Signal (all 7) | passes TS filter |
+|---|---|---|---|---|---|---|---|
+| current | 0.870 | 0.848 | 0.864 | 1.050 | -0.71 | 0.80 | yes |
+| naive | 1.000 | 1.000 | 1.000 | 1.000 | -1.26 | 0.10 | yes |
+| holt | 0.906 | 0.796 | 0.877 | 1.062 | -1.08 | 0.01 | yes |
+| combination_plus_holt | 0.873 | 0.839 | 0.864 | 1.052 | -0.76 | 0.69 | yes |
+| bias_adjusted | 0.883 | 0.833 | 0.870 | 1.015 | -0.74 | 0.70 | yes |
+| seasonal_naive | 1.235 | 0.984 | 1.169 | 1.494 | 1.67 | 4.65 | yes |
+
+Rule outcome: **keep current**. current has the lowest Relative MAE on origins 1-5 among the candidates that pass the Tracking Signal filter.
+
+**PEM102** (112 cells)
+
+| candidate | Relative MAE (1–5) | Relative MAE (6–7) | Relative MAE (all 7) | Relative MAE Horizon 3 (all 7) | Tracking Signal (1–5) | Tracking Signal (all 7) | passes TS filter |
+|---|---|---|---|---|---|---|---|
+| current | 0.921 | 0.928 | 0.923 | 0.884 | -1.55 | -0.56 | yes |
+| naive | 1.000 | 1.000 | 1.000 | 1.000 | -2.78 | 0.32 | yes |
+| holt | 1.098 | 1.067 | 1.089 | 1.109 | 2.18 | 4.36 | yes |
+| combination_plus_holt | 0.940 | 0.946 | 0.942 | 0.916 | -0.93 | 0.36 | yes |
+| bias_adjusted | 0.989 | 1.052 | 1.008 | 0.983 | 0.88 | 3.35 | yes |
+| seasonal_naive | 1.089 | 1.178 | 1.115 | 1.133 | -3.10 | -0.93 | yes |
+
+Rule outcome: **keep current**. current has the lowest Relative MAE on origins 1-5 among the candidates that pass the Tracking Signal filter.
+
+**CI101** (91 cells)
+
+| candidate | Relative MAE (1–5) | Relative MAE (6–7) | Relative MAE (all 7) | Relative MAE Horizon 3 (all 7) | Tracking Signal (1–5) | Tracking Signal (all 7) | passes TS filter |
+|---|---|---|---|---|---|---|---|
+| current | 1.028 | 0.538 | 0.828 | 0.769 | 5.00 | 7.00 | no |
+| naive | 1.000 | 1.000 | 1.000 | 1.000 | -0.38 | 3.24 | yes |
+| holt | 1.035 | 0.448 | 0.795 | 0.646 | -2.51 | 0.48 | yes |
+| combination_plus_holt | 0.976 | 0.515 | 0.787 | 0.696 | 5.00 | 7.00 | no |
+| bias_adjusted | 0.928 | 0.602 | 0.795 | 0.670 | 0.90 | 4.72 | yes |
+| seasonal_naive | 1.481 | 0.501 | 1.080 | 0.981 | 4.08 | 5.96 | no |
+
+Rule outcome: **keep current**. bias_adjusted wins origins 1-5 but is not lower than current on origins 6-7.
+
+**Fuse Cutout** (7 cells)
+
+| candidate | Relative MAE (1–5) | Relative MAE (6–7) | Relative MAE (all 7) | Relative MAE Horizon 3 (all 7) | Tracking Signal (1–5) | Tracking Signal (all 7) | passes TS filter |
+|---|---|---|---|---|---|---|---|
+| current | 0.809 | 1.053 | 0.930 | 0.826 | -0.12 | 0.82 | yes |
+| naive | 1.000 | 1.000 | 1.000 | 1.000 | -2.76 | -0.43 | yes |
+| holt | 1.609 | 1.103 | 1.357 | 1.394 | -4.00 | -2.35 | yes |
+| combination_plus_holt | 0.795 | 1.059 | 0.926 | 0.792 | -0.69 | 0.45 | yes |
+| bias_adjusted | 1.222 | 0.941 | 1.082 | 1.108 | -5.00 | -2.38 | no |
+| seasonal_naive | 2.640 | 1.531 | 2.089 | 2.187 | 2.69 | 2.23 | yes |
+
+Rule outcome: **keep current**. combination_plus_holt wins origins 1-5 but is not at least 5 percent below current on origins 1-5 and not lower than current on origins 6-7.
+
+**Surge Arrester** (7 cells)
+
+| candidate | Relative MAE (1–5) | Relative MAE (6–7) | Relative MAE (all 7) | Relative MAE Horizon 3 (all 7) | Tracking Signal (1–5) | Tracking Signal (all 7) | passes TS filter |
+|---|---|---|---|---|---|---|---|
+| current | 1.085 | 1.066 | 1.075 | 0.986 | -3.48 | -4.85 | yes |
+| naive | 1.000 | 1.000 | 1.000 | 1.000 | -3.00 | -4.75 | yes |
+| holt | 0.980 | 0.878 | 0.925 | 0.900 | -2.49 | -3.06 | yes |
+| combination_plus_holt | 1.064 | 1.039 | 1.051 | 0.973 | -3.34 | -4.59 | yes |
+| bias_adjusted | 1.051 | 0.881 | 0.961 | 0.944 | -3.11 | -2.99 | yes |
+| seasonal_naive | 1.113 | 1.325 | 1.226 | 1.062 | -3.32 | -5.73 | yes |
+
+Rule outcome: **switch** (holt). holt is at least 5 percent below current on origins 1-5 and lower on origins 6-7.
+
+
+### Rule outcome per group (pre-registered rule)
+
+| group | winner on origins 1–5 among the candidates that pass the Tracking Signal filter | outcome | reason |
+|---|---|---|---|
+| PEM101 | current | keep current | lowest Relative MAE on 1–5 among those that pass |
+| PEM103 | seasonal_naive | keep current | current and four candidates fail the filter (every error has the same sign, Tracking Signal about -5); the only one that passes, seasonal_naive, is 50 percent worse than current on 1–5 |
+| PEM107 | current | keep current | lowest on 1–5 |
+| PEM102 | current | keep current | lowest on 1–5 |
+| CI101 | bias_adjusted | keep current | 9.8 percent below current on 1–5, but not lower on 6–7 (0.602 against current's 0.538); current itself fails the filter (Tracking Signal +5.00 on 1–5) |
+| Fuse Cutout | combination_plus_holt | keep current | only 1.7 percent below current on 1–5 and not lower on 6–7 |
+| Surge Arrester | holt | **switch to holt** | 9.7 percent below current on 1–5 (0.980 against 1.085) and lower on 6–7 (0.878 against 1.066) |
+
+The proposal is in config `experiment_2026_10.proposed` (not active): every division and Fuse Cutout keep the current method, Surge Arrester holt.
+
+### Effect of the recommended switch on the executive summary (report only; nothing on a page changes)
+
+If Holt had produced vintage 2 for the Surge Arrester group (48 items in PEM101; a refit on all 31 months, the same unit prices and booked-order rule as the tab): the group's remaining-month baht (Sep to Dec) would be 69.0 million instead of 45.6 (+23.3 million: Sep +4.8, Oct +5.6, Nov +6.2, Dec +6.8). PEM101's projection would be 404.2 million instead of 380.9 (99.1 percent of its 407.8 target instead of 93.4), and the total 1,005.7 million instead of 982.4 (108.8 percent of 924.4 instead of 106.3). Holt forecasts a rising trend (4,752 units a month flat for the Type under current against 7,725 rising to 8,262 under Holt), so the forecast would no longer be flat. The current method recomputed here equals the vintage 2 forecast units (maximum difference 5e-5, the log's rounding).
+
+### Validator
+
+An independent recomputation (the models library only; not the experiment script, its output or this report) of all seven groups and all six candidates: **MATCH**. Every Relative MAE (1–5, 6–7, all, Horizon 3), every Tracking Signal and the filter equal the above to four decimals, the rule's outcome is the same for all seven groups (one switch: Surge Arrester to holt), the cells per division (1,000, 343, 782, 112, 91) and the reproduction of the production Top-down MAE for the five divisions to eight digits agree, and the effect on the projection (+THB 23,309,933, by month +4,765,564, +5,593,316, +6,189,038, +6,762,015) is identical.
+
+### Observations the user should have when deciding
+
+- The Tracking Signal filter on origins 1–5 has 5 points, so |TS| cannot exceed 5; a method whose errors all have the same sign scores -5.00 or +5.00. In PEM103 (all errors negative) it removes current and four of five candidates; in CI101 it removes current (+5.00, always above the actual). It is the user's rule and was applied as written.
+- The confirmation origins 6–7 share four target months with origins 1–5 (disclosed in METRICS.md Sec.50), so the confirmation is weaker than a fresh test.
+- The one switch rests on a single series (the Surge Arrester Type, 7 cells, one per origin) and Holt extrapolates a trend: on the other pilot group Holt is the worst candidate (Fuse Cutout 1.61 on 1–5). Current's Tracking Signal on all 7 origins for Surge Arrester is -4.85, beyond the limit; the filter uses origins 1–5 only (-3.48).
+- Not selected by the rule but noted: in CI101 holt has the lowest Relative MAE on 6–7 (0.448) and on all 7 (0.795 against current's 0.828); in PEM101, PEM107 and PEM102 no candidate beats the current method by 5 percent on any subset the rule uses. No result was used to change the rule.
+
+### Found, not done
+
+- Whether and how a Type-level method can differ per group in production (Surge Arrester is a Type inside PEM101; the production model is one method for all) is not part of this task: Claude Code, if the user approves.
+- A forward-test month would test the Surge Arrester switch on data the experiment has not seen; the first scored months are 2026-08 and later: low, Claude Code.

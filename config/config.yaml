@@ -1226,7 +1226,16 @@ experiment_2026_10:
     min_relative_improvement: 0.05                      # the winner's Relative MAE on origins 1-5 at least 5 percent below current's
     confirmation_must_be_lower: true                    # and its Relative MAE on origins 6-7 below current's on origins 6-7
     undefined_tracking_signal: not_eligible
-  proposed: {}                                          # per group, filled after the report; not active
+  # Proposal after the run of 2026-10-09 (pending the user; NOT active: the production model is unchanged and would change from vintage 3 only if approved). Per group: the method the
+  # pre-registered rule recommends. Divisions keep the current method; the one recommended switch is the Surge Arrester pilot group (Holt). Vintage 2 is never recomputed.
+  proposed:
+    PEM101: keep_current
+    PEM103: keep_current
+    PEM107: keep_current
+    PEM102: keep_current
+    CI101: keep_current
+    Fuse Cutout: keep_current
+    Surge Arrester: holt
 
 # ============================================================
 # Three-tier parameter classification (documented 2026-09-19, Phase G intent -- NOT implemented

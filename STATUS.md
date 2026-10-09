@@ -144,6 +144,16 @@ Code: `src/investigations/task2b_part2_fulfilment_segmentation.py` (`run_from_pu
 - Reader text: see SENTENCES NEEDING THAI TEXT of this task (demand column header on the material page, a label for the list of divisions covered, a line for the six PEM101 codes never sold, the approved heading for six divisions) (the user's assistant).
 - Category-level view of the two product categories and the three items' settings (brief item "settings"), storms and the other external factors, utility budgets, sales insight and EGP bids: not done (brief table).
 
+### Week 4, prompt 15 -- forecast model experiment (report only): five candidates against the production method on the existing backtest, with a pre-registered selection rule -- DONE, 2026-10-09 (no database; the test suite made none)
+
+**Report:** `docs/reports/summary/prompt5_g2_vintage_target_map.md`, heading "Prompt 15". Rule and definitions: METRICS.md Sec.50, config `experiment_2026_10`, **pre-registered in commit 8f8ef46 (2026-10-09 10:15:12) before any candidate was computed**.
+
+**Decisions of the user, 2026-10-09.** The candidates, the selection rule and the 5 percent threshold are approved; no change to the production model in this task; an approved result takes effect from vintage 3 (the 2026-11-05 run); vintage 2 is never recomputed; one new file `src/investigations/model_experiment_2026_10.py`.
+
+**Result (confirmed by an independent Validator).** Same cells as the main table (2,328 item x origin cells plus 7 per pilot group); the current candidate equals the main table exactly and the forecast page's Relative MAE for every division and group; no seasonal_naive cell was missing; the leakage test passes. By the rule: **keep current for PEM101, PEM103, PEM107, PEM102, CI101 and Fuse Cutout; switch Surge Arrester to holt** (Relative MAE 0.980 against 1.085 on origins 1-5, 0.878 against 1.066 on 6-7). Near misses: CI101 (bias_adjusted wins origins 1-5 but not 6-7) and Fuse Cutout (combination_plus_holt 1.7 percent better on 1-5). Effect if Holt had produced vintage 2 for the Surge Arrester group: +THB 23.3 million in Sep to Dec, PEM101 projection 404.2 million (99.1 percent of target), total 1,005.7 million (108.8 percent). **Proposal pending the user** (config `experiment_2026_10.proposed`, not active): Surge Arrester holt, everything else the current method. **Caveats:** the Tracking Signal filter has only 5 points on origins 1-5 (|TS| cannot exceed 5; PEM103 loses current and four candidates to it); origins 6-7 overlap origins 1-5 in four target months; the switch rests on one series and a trend extrapolation (Holt is the worst candidate on the other pilot group).
+
+**Found, not done:** per-group methods in production, if the proposal is approved (the production model is one method for all) and a forward-test check of the switch on 2026-08 and later months.
+
 ### Week 4, prompt 14 -- executive summary tab: scope labels (D1), remaining months from the larger of forecast and orders on the books (D2), order concentration (D3, report only) -- DONE, 2026-10-09 (one database session for D3 and the outside-scope check; the test suite made none)
 
 **Report:** `docs/reports/summary/prompt5_g2_vintage_target_map.md`, heading "Prompt 14". Definitions: METRICS.md Sec.49 (updated).
