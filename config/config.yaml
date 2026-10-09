@@ -1211,6 +1211,23 @@ exec_summary:
     decide_link: "สมมติฐานที่ใช้อยู่"
     footer: "ยอดขายนับตามเดือนที่ต้องส่งของ รวม PO ที่รับแล้วแต่ยังไม่ส่ง (MPS) · ไม่รวม VAT · คาดการณ์ = ยอดจริงถึง {data_month} + เดือนที่เหลือใช้ค่าที่มากกว่าระหว่างยอดทายกับออเดอร์ที่รับแล้ว × ราคาขายเฉลี่ยจริง · เป้ามาจากระบบเป้าของบริษัท (Revenue) · ยังไม่ได้ยืนยันว่าเป้านับจากวันส่งของหรือวันออก invoice · ยอดขายและคาดการณ์นับเฉพาะสินค้าใน Price List แต่เป้ารวมสินค้า Omni ทุกตัว"
 
+# Forecast model experiment of 2026-10 (src/investigations/model_experiment_2026_10.py, METRICS.md Sec.50). PRE-REGISTERED 2026-10-09 BEFORE any candidate was computed: the
+# candidates, the parameters and the selection rule below were fixed by the user's decisions of that day and are not changed after a result is seen. Report only: the production
+# model is unchanged; an approved result would take effect from vintage 3 (the 2026-11-05 run); vintage 2 is never recomputed. `proposed` stays empty until the run has been reported.
+experiment_2026_10:
+  registered_on: "2026-10-09"
+  candidates: [current, naive, holt, combination_plus_holt, bias_adjusted, seasonal_naive]     # the order is the tie-break order
+  bias_adjusted: {window_months: 6, factor_min: 0.5, factor_max: 2.0}
+  seasonal_naive: {lag_months: 12}
+  combination_plus_holt: {models: 7}                    # the six current models and Holt, equal weight
+  origins: {selection: [1, 2, 3, 4, 5], confirmation: [6, 7], reference: [1, 2, 3, 4, 5, 6, 7]}
+  selection_rule:
+    tracking_signal_limit_from: "maxmin_v1.pending_criteria_values.tracking_signal_limit"    # 4
+    min_relative_improvement: 0.05                      # the winner's Relative MAE on origins 1-5 at least 5 percent below current's
+    confirmation_must_be_lower: true                    # and its Relative MAE on origins 6-7 below current's on origins 6-7
+    undefined_tracking_signal: not_eligible
+  proposed: {}                                          # per group, filled after the report; not active
+
 # ============================================================
 # Three-tier parameter classification (documented 2026-09-19, Phase G intent -- NOT implemented
 # by anything in this task; no code reads this block, it exists only so the classification is

@@ -1372,4 +1372,40 @@ pipeline — no new section is needed for this; it is already covered by section
   (items) are summed over the lines in the window; no contract or customer identifier is written to any file.
 - Scope labels (decision D1, 2026-10-09): card 2 and the footer say that sales and forecast count only Price List items while the target covers every Omni product, so the percent to
   target is probably below the true figure; the all-Omni comparison (every Omni item, a Naive run-rate for items outside the Price List) is a later task (2026-10-21 to 10-23).
-- The footer states that the target's basis (delivery date or invoice date) is unconfirmed; the projection is a flat-forecast extrapolation without seasonality (STATUS.md plan).
+- The footer states that the target's basis (delivery date or invoice date) is unconfirmed; the projection is a flat-forecast extrapolation without seasonality (STATUS.md plan).
+
+## 50. model_experiment_2026_10
+
+    A report-only comparison of the production forecast with five candidates on the existing backtest (src/investigations/model_experiment_2026_10.py; config
+    experiment_2026_10). PRE-REGISTERED 2026-10-09, before any candidate was computed; decisions of the user of that day. The production model, every page, every recorded
+    output and the forward-test log are unchanged; an approved result would take effect from vintage 3 (the 2026-11-05 run); vintage 2 is never recomputed.
+
+    setup          = the main table's setup unchanged: the saved monthly series (output/data/processed_all_divisions_monthly_qty.csv), the same items, the same 7 rolling origins
+                     (train sizes 13, 15, ..., 25 of 31 months; origin k = the k-th), 6 horizons, the same cells (an item x origin with a Top-down forecast); groups = the five
+                     forecast divisions and the two pilot groups (Fuse Cutout, Surge Arrester: the group's series is the Type series, as METRICS.md Sec.48)
+    candidates     = 1 current   the production Top-down Combination, unchanged (the Type-level equal-weight average of Naive, MA3, MA6, MA12, Croston and SBA, each clipped at 0,
+                                 times the item's share of the Type in the training window)
+                     2 naive     item level: the last observed month before the origin, every horizon (METRICS.md Sec.48); for a pilot group the last month of the group series
+                     3 holt      Type level: Holt's linear trend (statsforecast Holt, season_length 1) fitted on the Type series up to the origin and clipped at 0, replacing the
+                                 six-model average; top-down allocation as current
+                     4 combination_plus_holt   Type level: (6 x the six-model Combination + Holt clipped at 0) / 7, i.e. the seven models at equal weight; top-down allocation
+                     5 bias_adjusted   Type level: the current Combination x f, f = sum of actual / sum of one-step-ahead in-sample Combination forecasts over the 6 months before the
+                                 origin (the forecast of month s uses only months before s; both sums over those 6 months of the Type series), f = 1 when the forecast sum is 0,
+                                 f clipped to [0.5, 2.0]; top-down allocation as current
+                     6 seasonal_naive   item level: for target month t the value of month t - 12 of the item (for a group: of the group series); it needs 12 months before the origin
+                                 (every origin has at least 13); a target month without such a value would be reported and filled with the Naive forecast, never dropped
+    leakage        = every candidate's forecast at an origin is computed from the series up to that origin only (asserted in code: each function receives the first train_size
+                     months; tested by changing every later value)
+    metrics        = as Sec.48. Relative MAE = sum over the cells of the candidate's window MAE / sum over the same cells of Naive's; Relative MAE (Horizon 3) = the third horizon
+                     only; Tracking Signal = sum e / mean |e| of the group's monthly total at horizon 1, one point per origin of the subset (5 points on origins 1-5, 7 on all)
+                     (no forward-test month: no candidate has one). Each on origins 1-5 (selection), 6-7 (confirmation) and 1-7 (reference); Relative MAE (Horizon 3) on 1-7.
+    selection rule = on origins 1-5: among the candidates with |Tracking Signal| at most the limit (maxmin_v1.pending_criteria_values.tracking_signal_limit, 4; an undefined
+                     signal is not eligible), the lowest Relative MAE (ties: the candidate order of the config) is the winner. Recommend a switch from current only if the winner is
+                     not current, its Relative MAE on origins 1-5 is at least 5 percent below current's (config min_relative_improvement), and its Relative MAE on origins 6-7 is
+                     lower than current's on origins 6-7. If no candidate passes the Tracking Signal filter, keep current. naive can win (the forecast-value-added principle).
+    effect         = for each recommended switch, the year-end projection of the executive summary (METRICS.md Sec.49) as if the candidate had produced vintage 2 (a refit on the whole
+                     fit window, the same unit prices and booked-order rule); computed in the report only; nothing on a page changes.
+
+- Known limitation, disclosed before the run: the test windows of origins 1-5 and 6-7 overlap in four target months (6-month windows, step 2), so the confirmation subset is not
+  independent of the selection months. The rule is the user's; it is not changed.
+- The current candidate's Relative MAE on all 7 origins must equal the forecast page's "เทียบกับร่างเกณฑ์" value (METRICS.md Sec.48) for every division and group.
