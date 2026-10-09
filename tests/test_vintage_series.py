@@ -346,3 +346,71 @@ def test_masking_covers_every_form_of_the_path_and_the_user_name(monkeypatch):
         assert "alice" not in out.lower(), (text, out)
     assert mr._mask(forms[0]).startswith("%" + env + "%")
     assert mr._mask("nothing to hide here: 2026-11-05") == "nothing to hide here: 2026-11-05"
+
+
+# ---------------------------------------------------------------------------------------------------------------------------------------------
+# Stale _incomplete_ backup folders and the 8.3 short-name form in the masking (Prompt 20). Temporary folders only.
+# ---------------------------------------------------------------------------------------------------------------------------------------------
+def test_a_stale_incomplete_backup_folder_is_removed_at_job_start_and_recorded_and_nothing_else_is_touched(tmp_path, monkeypatch):
+    from datetime import datetime
+    cfg = _config()
+    drive = tmp_path / "drive"
+    base = drive / cfg["backup"]["subfolder"]
+    for name in ("2026-10-09", "_incomplete_2026-11-05_4001", "_incomplete_2026-11-05_4002", "_incomplete_2026-11-05_4003"):
+        (base / name).mkdir(parents=True)
+        (base / name / "x.txt").write_text("x", encoding="utf-8")
+    now = datetime(2026, 11, 5, 7, 0, 0)
+    old = now.timestamp() - 3 * 3600
+    for name in ("_incomplete_2026-11-05_4001", "_incomplete_2026-11-05_4002"):          # older than the limit
+        os.utime(base / name, (old, old))
+    os.utime(base / "_incomplete_2026-11-05_4003", (now.timestamp() - 60, now.timestamp() - 60))      # a minute old: a backup that may still be running
+    monkeypatch.setenv(cfg["backup"]["env_var"], str(drive))
+    monkeypatch.setattr(mr, "_pid_running", lambda pid: pid == 4002)                      # process 4002 is still alive
+    out = mr.check_stale_backup_folders(cfg, now)
+    assert out["checked"] is True and out["found"] == ["_incomplete_2026-11-05_4001", "_incomplete_2026-11-05_4002", "_incomplete_2026-11-05_4003"]
+    assert out["removed"] == ["_incomplete_2026-11-05_4001"]
+    assert {k["name"]: k["reason"] for k in out["kept"]} == {"_incomplete_2026-11-05_4002": "the process that made it is still running",
+                                                              "_incomplete_2026-11-05_4003": f"younger than {cfg['backup']['stale_after_minutes']} minutes"}
+    assert sorted(os.listdir(base)) == ["2026-10-09", "_incomplete_2026-11-05_4002", "_incomplete_2026-11-05_4003"]        # the dated folder is untouched
+    assert str(drive) not in json.dumps(out)
+    # without the variable nothing is checked and the result says why (the backup step itself reports the missing variable)
+    monkeypatch.delenv(cfg["backup"]["env_var"], raising=False)
+    assert mr.check_stale_backup_folders(cfg, now)["checked"] is False
+
+
+def test_the_run_log_records_the_stale_backup_check_at_job_start(tmp_path, monkeypatch):
+    cfg = _config()
+    drive = tmp_path / "drive"
+    leftover = drive / cfg["backup"]["subfolder"] / "_incomplete_2026-11-05_4001"
+    leftover.mkdir(parents=True)
+    old = leftover.stat().st_mtime - 5 * 3600
+    os.utime(leftover, (old, old))
+    monkeypatch.setenv(cfg["backup"]["env_var"], str(drive))
+    monkeypatch.setattr(mr, "_pid_running", lambda pid: False)
+    _stub_all_steps(monkeypatch)
+    monkeypatch.setattr(mr, "RUNS_DIR", str(tmp_path / "runs"))
+    monkeypatch.setattr(mr, "run_backup", lambda *a, **k: {"folder": "x", "files": 0, "total_bytes": 0, "all_sha256_match": True, "sha256": {}})
+    log = mr.main(dry_run=False, sandbox=False, run_id="t6", run_log_dir=str(tmp_path / "logs"), offline=False, skip_tests=True)
+    assert log["stale_backup_folders"]["removed"] == ["_incomplete_2026-11-05_4001"] and not leftover.exists()
+    saved = json.loads((tmp_path / "logs" / "monthly_refresh_t6.json").read_text(encoding="utf-8"))
+    assert saved["stale_backup_folders"]["found"] == ["_incomplete_2026-11-05_4001"]
+    dry = mr.main(dry_run=True, sandbox=True, run_id="t7", run_log_dir=str(tmp_path / "logs"), offline=True, skip_tests=True)
+    assert dry["stale_backup_folders"]["checked"] is False
+
+
+def test_masking_also_covers_the_8_3_short_name_of_the_user_folder_and_the_root(monkeypatch):
+    cfg = _config()
+    env = cfg["backup"]["env_var"]
+    root = "C:\\Users\\Alice.Example\\OneDrive - Some Org"
+    profile = "C:\\Users\\Alice.Example"
+    monkeypatch.setenv(env, root)
+    monkeypatch.setenv("USERNAME", "alice.example")
+    monkeypatch.setenv("USERPROFILE", profile)
+    shorts = {root: "C:\\Users\\ALICEE~1.EXA\\ONEDRI~1", profile: "C:\\Users\\ALICEE~1.EXA"}
+    monkeypatch.setattr(mr, "_short_path", lambda p: shorts.get(p, ""))
+    texts = ["[WinError 5] Access is denied: 'C:\\\\Users\\\\ALICEE~1.EXA\\\\ONEDRI~1\\\\sale_forecast_backup'",
+             "c:/users/alicee~1.exa/onedri~1/sale_forecast_backup/x", "C:\\Users\\ALICEE~1.EXA\\AppData\\Local\\Temp\\x", "user folder ALICEE~1.EXA was locked", "alicee~1.exa"]
+    for text in texts:
+        out = mr._mask(text)
+        assert "alicee" not in out.lower() and "~1" not in out, (text, out)
+    assert mr._mask(texts[1]).startswith("%" + env + "%")

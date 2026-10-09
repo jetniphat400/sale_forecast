@@ -1274,6 +1274,7 @@ shadow:
 backup:
   env_var: OneDriveCommercial
   subfolder: sale_forecast_backup
+  stale_after_minutes: 30        # an _incomplete_ folder older than this whose process is gone is a leftover of a crash and is removed at the next job start
 
 # ============================================================
 # Three-tier parameter classification (documented 2026-09-19, Phase G intent -- NOT implemented

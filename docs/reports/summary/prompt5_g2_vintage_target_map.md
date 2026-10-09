@@ -1077,3 +1077,78 @@ Only these two tasks of this project matched a search of all scheduled tasks for
   - Both leave the account's rights as they are (run level Limited). Neither wakes a sleeping or shut-down machine: that is WakeToRun (currently False, needs wake timers allowed) and the machine being on. The OneDrive variable lives in the user's environment, which a stored-password session loads (not verified; a trial run would show it). This task did not change any setting.
 - **Deviations.** None beyond the comparator files not existing yet (stated above).
 - **Found, not done.** The GitHub account name in the public Pages address at `check_v1_v2_v3.md:24` (small, user: it is the repository's address, left as it is). The old `forecast/Chase S&OP Plan 2026 - PEM Group.html` and other generated pages were not scanned beyond the tracked-file scan above (they are included in it: 0 hits).
+
+
+## Prompt 20
+
+Secret history check, database-login retry safety and three small hardening fixes. Run 2026-10-09 (`git pull` first: up to date at bc62e6d; Get-Date 14:59 at the start). Database sessions: 0 (no connection and no network connection of any kind, not even the preflight against the real host; the preflight was tested with a fake network). New repo files: none. No password, login or host value is written here.
+
+### Step 1, secret history check (read only; no history operation)
+
+Refs scanned: 3 (the local branch and two remote-tracking refs; no tags), 269 commits.
+
+- **(a) Credential-like files ever committed:** one name matches, `.env.example` (1 commit). It is the template: its one version holds no password, no login and no host; the two non-empty values in it are the database name and the ODBC driver name. `.env` itself was never committed (no path of that name in any of 541 distinct paths ever committed).
+- **(b) The DB password value of the current `.env`:** 0 commits whose diff adds or removes it, 0 commits whose message contains it.
+- **(c) Other secret-like content in every added line of every commit:** two pattern hits, both false positives (`src/db.py`, 1 commit: the code that reads the password from the environment variable; `STATUS.md`, 1 commit: a documentation example of a connection URL with placeholders; neither contains the real password). No private key block, GitHub token, cloud access key or bearer token.
+- **Informational (not a secret by the rule, reported for the user):** the DB host value is in `STATUS.md` (current file, 1 commit); the database name is in many documents (37 commits); the DB login is the Windows login value already reported in Prompt 19.
+
+No exposure was found, so Step 2 proceeds.
+
+### Step 2, DB-login retry safety
+
+**DB-connect paths and the logins each can make in one run** (every `run_query` outside a `session()` opens its own connection; a `session()` opens one):
+
+| job | file:function | logins in one successful run | retry found |
+|---|---|---|---|
+| monthly | `monthly_refresh.py:step1_pull_data` then `load_data_all_divisions.py` (1 query) | 1 | none |
+| monthly | `_pull_stage`: `load_data_full.py` (2 queries) | 2 | none |
+| monthly | `_pull_stage`: `build_inventory_dataset.py --save-pulls` (5 queries) | 5 | none |
+| monthly | `_pull_stage`: `material_plan.py --pull` (3 in a session) | 1 | none |
+| monthly | `_pull_stage`: `build_trend_tab.py --pull` and `--pull-targets` (sessions) | 1 each | none |
+| monthly | step 4 `_run_regeneration_step`: `investigations/order_leadtime.py`, `delivery_performance.py` | 1 each | none |
+| monthly | step 6 `_fill_actuals` then `score_forward_test_all_divisions.pull_actuals_forecastDate` (only when a month passed the guard) | 1 | none |
+| daily | `snapshot_daily.py:main` then `db.session()` (posting-delay query, stock snapshot and the stock job's pull, one connection) | 1 | none |
+| both | `db.py:get_connection / run_query / session` | one `engine.connect()` per call | none (no retry loop, no pool pre-ping, no connect-retry option in the connection string) |
+
+No retry loop, reconnect-on-failure or sleep-and-retry exists anywhere in the code. **Library level:** nothing configures a retry. The Microsoft ODBC driver has its own connection-resiliency default (a reconnect of a connection that broke after it was established); from the vendor's documentation it does not apply to a refused first login, but that is not verified here (no connection allowed), and a connection-string option to switch it off was not added because an older driver could reject an unknown keyword and break the pull.
+
+**Task-level restarts (read only):** monthly task RestartOnFailure count 0 (interval none). Daily task count 0 (interval none). The daily task does have a second daily trigger at 12:00 (the decided noon start), which in effect is a second login attempt the same day.
+
+**What did violate "one login attempt per run on failure", and the fixes:**
+1. After a failed **step 1 auxiliary pull** or a failed **step 4 database analysis script** the runner went on to the next database stage (each its own login). Now the first failed database stage stops every later database stage of the run (they are recorded as skipped with the reason) and the step ends the run with a non-zero exit. (The main pull already aborted at once.) This changes one earlier behaviour: a failing auxiliary pull used to leave the older file in place and let the run finish; it now stops the run. Reason: the stage's failure cannot be told from a login refusal without more machinery, and the account's safety comes first.
+2. A script that caught the first connection error and tried again in the same process would have logged in again. `db.py` now remembers the first failed login of a process and refuses every later one at once (`DatabaseLoginAlreadyFailedError`), without connecting.
+3. The daily job's **noon start** logged in again after a refused login of the morning. It now reads today's failure logs and, when the server refused the login earlier today, ends non-zero without connecting and records why. After an **unreachable host** (no login was attempted) it may still try again.
+
+**Preflight:** existed in the monthly job (a TCP connect to the host and port with a 5 second timeout before the first login, in step 1). Added in `db.py` (`preflight`, `require_reachable`) and used by the **daily job** before its login, which had none. Timeout 5 seconds, no authentication; unreachable gives exit 1 with "DB host unreachable (off org network?)", a log with kind `unreachable` and no login attempt. The port is 1433 unless `DB_SERVER` names `host,port` (the monthly job ignored an explicit port before; now it uses it). The 1433 assumption is as before and worked on 2026-10-02 and 10-05; if the named instance ever listened elsewhere the preflight would refuse a legitimate run (it would say so and make no login).
+
+**Attempt counts in tests (fake connector and fake network; the real database and network are never touched):**
+
+| test | login attempts |
+|---|---|
+| monthly, main pull refused | 1 script started, then the run stops (0 further) |
+| monthly, a later database stage fails | main pull, pilot file, inventory pull started; the 3 later pulls never started |
+| monthly, unreachable host | 0 (no script started), non-zero exit, reason in the run log |
+| monthly, success | every stage started once, no abort |
+| db helper, failed login then 2 more calls | 1 attempt; the 2 later calls refused without connecting |
+| db helper, session with 2 queries | 1 attempt |
+| daily, failed login | 1 attempt, non-zero; the second start of the same day: 0 more attempts, non-zero |
+| daily, unreachable host | 0 attempts, non-zero; after the network is back the next start makes its 1 attempt |
+
+### Step 3, three small fixes
+
+- **Stale `_incomplete_` backup folders:** at the start of every real monthly run, `check_stale_backup_folders` lists `_incomplete_*` folders in the backup root. A folder is removed when it is older than `backup.stale_after_minutes` (30, config) and the process id in its name is gone; otherwise it is kept and reported with the reason (younger, process still running, or could not be removed). Names only go to the run log (`stale_backup_folders`). A dated folder is never touched. On the real root today: 0 found.
+- **Masking of the 8.3 short name:** the mask now also covers the short forms of the user folder and of the OneDrive root (read from Windows at run time), in any slash form and case. Checked on this machine's real short name as well as with a fake one in the test.
+- **Inventory test:** the broad `except` is gone. A log that is not on the machine is a skip (it says so); a log that is there but corrupt or unreadable now raises and fails the test (a test proves it for a corrupt metadata file and for a log without the needed columns).
+
+### Checks
+
+- **Gate unchanged: YES.** The production log, shadow log, score record, their metadata and the vintage 2 snapshot are identical (sha256) to the Prompt 18 backup; the pages, `data/` and the plan outputs are untouched.
+- **Full suite: 756 passed, 0 failed, 0 skipped** (exit 0); database connection attempts 0 (blocked attempts only the block's own test); no network call was made by any test (the preflight is tested with a fake network).
+- **Page check:** index.html with its five tabs, sales_report, inventory, operation_plan and material_plan in headless Edge on a temporary profile (own PIDs closed, profile deleted): 0 script errors on the four pages, text lengths identical to before (13,937; 25,237; 44,667; 302,185), the five tabs present, the manual headings render; the only console message on index.html is the `/favicon.ico` 404 the page never had.
+- **Validator:** **MATCH.** Its own scan of all 3 refs (269 commits) reproduces step 1: `.env` never committed, the only credential-named file is the template, the DB password value is in 0 commits (diff, messages and a full tree search of every commit), no key, token or cloud-key pattern; the two pattern hits are code and documentation text. The gate files equal the Prompt 18 backup (7 of 7), only the 9 expected files are modified, 0 hits of either login in tracked files. It confirmed that every database login goes through one function, that no path retries, and that guarantees A to D hold (no further login in a process after a failure; no later database stage after a failed one; unreachable host: zero logins and a non-zero exit in both jobs; the noon start does not log in again after a refusal but may after an unreachable host). Gaps it names, not fixed: the failure memory is per process (a refusal in one task does not stop the other task or a manual re-run); a child script that swallowed a login error and exited 0 would not stop later stages (none does today); the refusal is recognised by text, so a differently worded refusal counts as 'other' and the noon start would try again; 11 hand-run investigation scripts bypass the single login function (not launched by either task); step 4 runs its non-database scripts before the abort; the preflight's 1433 assumption would stop (not log in) if the instance port changed (11 of 11 earlier monthly runs reached it).
+
+### Deviations, need decision, found not done
+
+- **Need decision.** None required by this task. One note for the user: item 1 above makes a failing auxiliary pull stop the monthly run; if the user prefers the earlier tolerant behaviour for non-login failures, the stage's failure would have to be classified (login or connection error against a query error), which needs the child scripts to report it.
+- **Found, not done (from the Validator).** The failure memory is per process, so a refusal in one task does not stop the other task or a manual re-run (medium, user decision, a small persisted lock file would do it); the refusal is recognised by its text, so a differently worded refusal would let the noon start try again (small); 11 hand-run scripts in `src/investigations` bypass the single login function (small); a child script that swallowed a login error and exited 0 would not stop later stages (none does today).
+- **Found, not done.** The DB host value appears in the current `STATUS.md` (and 1 commit): a server name, not a credential — small — user decision. The DB driver's own connection-resiliency default is not verified (no connection allowed) — small — user. The earlier notes still open: the daily noon start and the monthly task remain Interactive-only (decision of the user: unchanged).

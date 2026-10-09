@@ -174,14 +174,43 @@ def check_tcp_reachable(host: str, port: int, timeout: float = 5.0) -> tuple:
         return False, str(e)
 
 
+# One login attempt per run is what a failure may cost: after the first database stage that fails (a script that opens a connection exits non-zero) no later stage of this run logs in again,
+# and the run ends non-zero as soon as the stage group is done (Prompt 20; METRICS.md Sec.53).
+_DB_STAGE_FAILURE = None
+DB_REGENERATION_SCRIPTS = ("order_leadtime.py", "delivery_performance.py")      # the step 4 analysis scripts that open their own connection
+
+
+def _skip_because_of_database_failure(label: str, script: str):
+    if _DB_STAGE_FAILURE is None:
+        return None
+    return {"label": label, "script": script, "returncode": None, "refreshed": False,
+            "not_refreshed_reason": f"skipped: the database stage '{_DB_STAGE_FAILURE}' failed earlier in this run, so no further login attempt is made"}
+
+
+def _note_database_stage_failure(label: str, returncode) -> None:
+    global _DB_STAGE_FAILURE
+    if returncode not in (0, None) and _DB_STAGE_FAILURE is None:
+        _DB_STAGE_FAILURE = label
+
+
+def _abort_if_a_database_stage_failed(step: str) -> None:
+    if _DB_STAGE_FAILURE is not None:
+        raise MonthlyRefreshAbort(f"{step} ABORTED: the database stage '{_DB_STAGE_FAILURE}' failed; no later stage of this run logs in again (one login attempt per run on failure). "
+                                  f"The reason is in that stage's entry of the run log.")
+
+
 def _pull_stage(label: str, script: str, output_path: str, args: list = None) -> dict:
     """One pull script of step 1 beyond the main pull. refreshed is True only if the script exited 0 and its
-    output file is newer than before it ran."""
+    output file is newer than before it ran. After a failed database stage no further stage runs."""
+    skipped = _skip_because_of_database_failure(label, script)
+    if skipped:
+        return skipped
     before = os.path.getmtime(output_path) if os.path.exists(output_path) else None
     proc = run_script(script, args)
     after = os.path.getmtime(output_path) if os.path.exists(output_path) else None
     ok = proc.returncode == 0 and after is not None and after != before
     out = {"label": label, "script": script, "returncode": proc.returncode, "refreshed": ok}
+    _note_database_stage_failure(label, proc.returncode)
     if not ok:
         out["not_refreshed_reason"] = (f"script exited {proc.returncode}" if proc.returncode else "output file not rewritten")
         out["stderr_tail"] = proc.stderr[-1500:]
@@ -207,10 +236,8 @@ def step1_pull_data(dry_run: bool, offline: bool = False) -> dict:
     # invoking this script from e.g. C:\Windows\system32 would silently fail to find .env.
     load_dotenv(dotenv_path=os.path.join(PROJECT_ROOT, ".env"))
     db_server_raw = os.getenv("DB_SERVER", "")
-    db_host = db_server_raw.split("\\")[0].split(",")[0]
-    db_port = 1433  # SQL Server default; DB_SERVER (.env) names a host\instance with no explicit
-    #                 port -- this is a stated assumption for the reachability check only, not
-    #                 for the actual ODBC connection (which resolves the named instance itself).
+    import db as db_module
+    db_host, db_port = db_module.split_server(db_server_raw)   # 1433 unless DB_SERVER gives host,port: an assumption for the reachability check only, not for the ODBC login
     db_reachable, db_err = check_tcp_reachable(db_host, db_port) if db_host else (False, "DB_SERVER not set")
     github_reachable, github_err = check_tcp_reachable("github.com", 443)
 
@@ -221,8 +248,8 @@ def step1_pull_data(dry_run: bool, offline: bool = False) -> dict:
     }
     if not db_reachable:
         raise MonthlyRefreshAbort(
-            f"Step 1 (pull data) ABORTED: database host {db_host}:{db_port} is not reachable "
-            f"({db_err}). Never retrying the database (DATABASE ACCESS rule)."
+            f"Step 1 (pull data) ABORTED: {db_module.UNREACHABLE_MESSAGE}: {db_host}:{db_port} is not reachable "
+            f"({db_err}). No login was attempted. Never retrying the database (DATABASE ACCESS rule)."
         )
 
     # ---- THE one real DB connection attempt this run makes: the 335-item, 5-division pull ----
@@ -258,6 +285,7 @@ def step1_pull_data(dry_run: bool, offline: bool = False) -> dict:
     # the revenue targets of the executive summary tab: aggregates of Cube_Target_PMIS, its own session (src/build_trend_tab.py --pull-targets)
     result["exec_targets_pull"] = _pull_stage("Executive summary targets pull", "build_trend_tab.py",
                                               os.path.join(PROJECT_ROOT, *load_config()["exec_summary"]["target_pull_dir"].split("/"), "targets_meta.json"), args=["--pull-targets"])
+    _abort_if_a_database_stage_failed("Step 1 (pull data)")
     return result
 
 
@@ -388,8 +416,15 @@ def _run_regeneration_step(label: str, script_name: str, output_rel_path: str, s
     if skip_reason:
         return {"label": label, "script": script_name, "output_file": output_rel_path, "returncode": None,
                 "refreshed": False, "not_refreshed_reason": skip_reason}
+    uses_database = os.path.basename(script_name) in DB_REGENERATION_SCRIPTS
+    if uses_database:
+        skipped = _skip_because_of_database_failure(label, script_name)
+        if skipped:
+            return {**skipped, "output_file": output_rel_path}
     mtime_before = os.path.getmtime(out_path) if os.path.exists(out_path) else None
     proc = run_script(script_name)
+    if uses_database:
+        _note_database_stage_failure(label, proc.returncode)
     mtime_after = os.path.getmtime(out_path) if os.path.exists(out_path) else None
     succeeded = proc.returncode == 0 and mtime_after is not None and mtime_after != mtime_before
     result = {
@@ -474,6 +509,7 @@ def step4_backtest(run_id: str, offline: bool = False) -> dict:
                                 "delivery_by_year.csv",
                                 skip_reason="offline mode: this script opens its own database connection" if offline else None),
     ]
+    _abort_if_a_database_stage_failed("Step 4 (backtest and analysis inputs)")
     # Pilot-scope inputs derived from the 128-item monthly file step 1 refreshed (C-fix Part 2); no database.
     analysis_inputs_refreshed.append(
         _run_regeneration_step("Item forecast vs actual by origin (report_item_forecast_vs_actual_by_origin.csv)",
@@ -940,6 +976,19 @@ def record_snapshot_not_reproducible(vintage_id: int, reason: str) -> None:
     _add_metadata_fields(FORWARD_TEST_METADATA_PATH, vintage_id, {"fit_series_snapshot": "not_reproducible", "fit_series_snapshot_reason": reason})
 
 
+def _short_path(path: str) -> str:
+    """The 8.3 short form of an existing Windows path ('' when there is none or this is not Windows)."""
+    if os.name != "nt" or not path or not os.path.exists(path):
+        return ""
+    try:
+        import ctypes
+        buf = ctypes.create_unicode_buffer(1024)
+        n = ctypes.windll.kernel32.GetShortPathNameW(path, buf, 1024)
+        return buf.value if 0 < n < 1024 else ""
+    except Exception:      # noqa: BLE001
+        return ""
+
+
 def _mask(message: str, root: str = None) -> str:
     """No resolved backup path and no Windows login in any message or log line, in any form: the OneDrive root and the user profile folder as written with back or forward slashes, doubled
     back slashes, any letter case, the bare user name, and any C:\\Users\\<name> path. The root becomes %OneDriveCommercial%, the rest <windows-login>."""
@@ -951,10 +1000,12 @@ def _mask(message: str, root: str = None) -> str:
     def forms(value):
         v = value.rstrip("\\/")
         return {v, v.replace("\\", "/"), v.replace("/", "\\"), v.replace("\\", "\\\\"), v.replace("\\", "/").replace("/", "//")} if v else set()
-    for value in sorted(forms(root), key=len, reverse=True):
+    short_root, short_profile = _short_path(root), _short_path(profile)
+    for value in sorted(forms(root) | forms(short_root), key=len, reverse=True):
         message = re.sub(re.escape(value), "%" + env + "%", message, flags=re.I)
     message = re.sub(r"[A-Za-z]:[\\/]+Users[\\/]+[^\\/\s\"']+", r"<windows-login-path>", message, flags=re.I)
-    for value in sorted(forms(profile) | ({user, os.path.basename(profile.rstrip("\\/"))} if user else set()), key=len, reverse=True):
+    short_names = {os.path.basename(x.rstrip("\\/")) for x in (short_profile,) if x}
+    for value in sorted(forms(profile) | forms(short_profile) | short_names | ({user, os.path.basename(profile.rstrip("\\/"))} if user else set()), key=len, reverse=True):
         if len(value) >= 4:
             message = re.sub(re.escape(value), "<windows-login>", message, flags=re.I)
     return message
@@ -1001,6 +1052,47 @@ def _sha256_file(path: str) -> str:
         for chunk in iter(lambda: f.read(1 << 20), b""):
             h.update(chunk)
     return h.hexdigest()
+
+
+def _pid_running(pid: int) -> bool:
+    try:
+        out = subprocess.run(["tasklist", "/FI", f"PID eq {int(pid)}", "/NH"], capture_output=True, text=True).stdout
+    except Exception:      # noqa: BLE001
+        return True        # when it cannot be told, assume it runs: nothing is removed
+    return str(int(pid)) in out
+
+
+def check_stale_backup_folders(config: dict = None, now: datetime = None) -> dict:
+    """At job start: looks for `_incomplete_*` folders in the backup root (left by a power loss, a kill or a locked cleanup) and records them. A folder is removed only when it is safe: older than
+    config backup.stale_after_minutes and the process id in its name is no longer running; otherwise it is kept and reported with the reason. Never touches a dated folder. Names only in the result."""
+    config = config or load_config()
+    now = now or datetime.now()
+    try:
+        base = backup_root(config)
+    except BackupError as e:
+        return {"checked": False, "reason": _mask(str(e))}
+    result = {"checked": True, "found": [], "removed": [], "kept": []}
+    if not os.path.isdir(base):
+        return result
+    limit = float(config["backup"]["stale_after_minutes"]) * 60
+    for name in sorted(os.listdir(base)):
+        path = os.path.join(base, name)
+        if not (name.startswith("_incomplete_") and os.path.isdir(path)):
+            continue
+        result["found"].append(name)
+        pid = name.rsplit("_", 1)[-1]
+        age = now.timestamp() - os.path.getmtime(path)
+        if age < limit:
+            result["kept"].append({"name": name, "reason": f"younger than {config['backup']['stale_after_minutes']} minutes"})
+        elif pid.isdigit() and _pid_running(int(pid)):
+            result["kept"].append({"name": name, "reason": "the process that made it is still running"})
+        else:
+            shutil.rmtree(path, ignore_errors=True)
+            if os.path.isdir(path):
+                result["kept"].append({"name": name, "reason": "could not be removed (locked?)"})
+            else:
+                result["removed"].append(name)
+    return result
 
 
 def run_backup(config: dict = None, now: datetime = None) -> dict:
@@ -1790,6 +1882,15 @@ def main(dry_run: bool, force_new_vintage: bool = False, sandbox: bool = False, 
     run_log = {"run_id": run_id, "dry_run": dry_run, "dry_run_in_temporary_copy": sandbox, "offline": offline,
                "force_new_vintage": force_new_vintage,
                "started_at": datetime.now().isoformat(timespec="seconds"), "steps": {}}
+    global _DB_STAGE_FAILURE
+    _DB_STAGE_FAILURE = None
+    if dry_run or sandbox or offline:
+        run_log["stale_backup_folders"] = {"checked": False, "reason": "dry run, sandbox or offline run"}
+    else:
+        try:
+            run_log["stale_backup_folders"] = check_stale_backup_folders(config)
+        except Exception as e:      # noqa: BLE001 -- never stops the run; recorded
+            run_log["stale_backup_folders"] = {"checked": False, "reason": _mask(f"{type(e).__name__}: {e}")[:500]}
 
     def record(step_name, fn, *args, **kwargs):
         """Runs one step. Any failure -- a deliberate abort or an uncaught exception -- ends the run with a run

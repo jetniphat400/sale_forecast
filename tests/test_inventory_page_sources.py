@@ -167,17 +167,42 @@ def test_a_history_that_is_not_the_vintages_fit_window_stops_the_build(tmp_path,
         bd.latest_vintage_item_history(str(tmp_path))
 
 
+def _read_log_or_skip(meta_path, log_path):
+    """The forward-test log and its metadata. A file that is not on this machine is a skip (said so); a file that is there but cannot be read or parsed is an error, never a skip."""
+    import forward_test_common as ftc
+    if not (os.path.exists(meta_path) and os.path.exists(log_path)):
+        pytest.skip("SKIPPED, not passed: the forward-test log is not on this machine")
+    return ftc.load_metadata(meta_path), ftc.read_forward_test_log(log_path)
+
+
+def test_a_corrupt_or_unreadable_log_fails_instead_of_turning_into_a_skip(tmp_path):
+    meta, log = tmp_path / "meta.json", tmp_path / "log.csv"
+    with pytest.raises(pytest.skip.Exception):                                           # not on this machine: a skip, as before
+        _read_log_or_skip(str(meta), str(log))
+    meta.write_text("{ not json", encoding="utf-8")
+    log.write_text("a,b" + chr(10) + "1,2" + chr(10), encoding="utf-8")
+    outcome = None
+    try:
+        _read_log_or_skip(str(meta), str(log))
+    except BaseException as e:      # noqa: BLE001 -- what kind of ending is it?
+        outcome = e
+    assert outcome is not None and not isinstance(outcome, pytest.skip.Exception), "a corrupt log was turned into a skip"
+    meta.write_text("{}", encoding="utf-8")                                              # valid metadata, a log without the columns the reader needs
+    outcome = None
+    try:
+        _read_log_or_skip(str(meta), str(log))
+    except BaseException as e:      # noqa: BLE001
+        outcome = e
+    assert isinstance(outcome, (KeyError, ValueError)) and not isinstance(outcome, pytest.skip.Exception)
+
+
 def test_the_tracked_pages_history_equals_the_log_vintages_series_for_every_item():
     import operation_plan as op
     import forward_test_common as ftc
     root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     cfg = op.load_config(root)
     series_file = os.path.join(root, "output", "data", "processed_all_divisions_monthly_qty.csv")
-    try:
-        meta = ftc.load_metadata(op.path_of(root, cfg["forecast_log_metadata_file"]))
-        log = ftc.read_forward_test_log(op.path_of(root, cfg["forecast_log_file"]))
-    except Exception:       # noqa: BLE001
-        pytest.skip("SKIPPED, not passed: the forward-test log is not on this machine")
+    meta, log = _read_log_or_skip(op.path_of(root, cfg["forecast_log_metadata_file"]), op.path_of(root, cfg["forecast_log_file"]))
     vid = int(log["vintage_id"].max())
     entry = meta[str(vid)] if str(vid) in meta else meta[vid]
     if entry.get("fit_series_sha256"):

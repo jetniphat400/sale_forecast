@@ -171,6 +171,7 @@ def main():
     log under output/runs/daily/). The scheduled task starts it at 08:00 and again at 12:00; the second start does nothing when a successful
     run of today already exists (--force overrides)."""
     import daily_stock_job as djob
+    import db
     from db import session
     config = load_config()
     root_config = djob.load_config()
@@ -186,6 +187,18 @@ def main():
         logger.info("Skipped: a successful daily run of today exists (run %s, %s). Log: %s", existing.get("run_id"), existing.get("status"),
                     djob.record_skip(PROJECT_ROOT, root_config, existing))
         return
+    refused = djob.login_refused_today(PROJECT_ROOT, root_config)
+    if refused:                       # the 12:00 start does not log in again after the server refused the login earlier today
+        exc = RuntimeError(f"an earlier run today (run {refused.get('run_id')}) was refused at the database login: not logging in again (repeated refused logins can lock the account)")
+        logger.error("%s", exc)
+        djob.record_failure(PROJECT_ROOT, root_config, "login retry blocked", exc)
+        raise SystemExit(1)
+    try:
+        db.require_reachable()                # a plain TCP connect, no authentication: off the organisation's network no login is attempted
+    except db.DatabaseUnreachableError as exc:
+        logger.error("%s", exc)
+        djob.record_failure(PROJECT_ROOT, root_config, "database host unreachable", exc)
+        raise SystemExit(1)
     base = djob.load_base(PROJECT_ROOT, root_config)      # before today's snapshot file is written below
     try:
         with session():

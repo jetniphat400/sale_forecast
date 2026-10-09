@@ -170,3 +170,164 @@ def test_a_real_run_writes_the_vintage_with_a_hash_taken_from_the_read_back_rows
     from forward_test_common import load_metadata, read_forward_test_log
     verify_consistency(read_forward_test_log(log), load_metadata(meta))
     assert sorted(load_metadata(meta)) == ["1", "2"]
+
+
+# ---------------------------------------------------------------------------------------------------------------------------------------------
+# One login attempt per run at most, a reachability preflight before any login (Prompt 20). A fake connector only: nothing here touches the real
+# database or the network.
+# ---------------------------------------------------------------------------------------------------------------------------------------------
+import subprocess as _subprocess  # noqa: E402
+
+
+class _Proc:
+    def __init__(self, rc=0):
+        self.returncode, self.stdout, self.stderr = rc, "", "stderr text"
+
+
+def _step1_env(monkeypatch, run_rc):
+    """Step 1 with a reachable host, a fake run_script that returns run_rc[i] for the i-th call, and a stand-in monthly file. Returns the list of scripts started."""
+    import db
+    db.reset_login_state()
+    started = []
+
+    def fake_run_script(script, args=None):
+        started.append(script)
+        rc = run_rc[len(started) - 1] if len(started) <= len(run_rc) else 0
+        return _Proc(rc)
+    monkeypatch.setenv("DB_SERVER", "dbhost.invalid\\INSTANCE")
+    monkeypatch.setattr(mr, "check_tcp_reachable", lambda *a, **k: (True, None))
+    monkeypatch.setattr(mr, "run_script", fake_run_script)
+    monkeypatch.setattr(mr, "_DB_STAGE_FAILURE", None)
+    monkeypatch.setattr(pd, "read_csv", lambda *a, **k: pd.DataFrame({"snapshot_pull_date": ["2026-10-05 07:00:01"], "itemcode": ["A"], "division": ["PEM101"]}))
+    return started
+
+
+def test_an_unreachable_host_makes_zero_login_attempts_and_the_run_ends_non_zero(monkeypatch, tmp_path):
+    import db
+    db.reset_login_state()
+    started = []
+    monkeypatch.setenv("DB_SERVER", "dbhost.invalid")
+    monkeypatch.setattr(mr.socket, "create_connection", lambda *a, **k: (_ for _ in ()).throw(OSError("timed out")))     # the real preflight code, a fake network
+    monkeypatch.setattr(mr, "run_script", lambda *a, **k: started.append(a) or _Proc(0))
+    with pytest.raises(mr.MonthlyRefreshAbort, match=r"DB host unreachable \(off org network\?\)") as exc:
+        mr.step1_pull_data(False, offline=False)
+    assert started == [] and db.login_attempts() == 0                                  # no script (so no login) was started
+    # as a whole run: step 1 fails, nothing after it runs, the run log holds the reason and the command exits non-zero
+    pushed = _stub_steps(monkeypatch, "1_pull_data", exc.value)
+    with pytest.raises(mr.MonthlyRefreshAbort):
+        _run(monkeypatch, tmp_path)
+    log = json.loads((tmp_path / "logs" / "monthly_refresh_t1.json").read_text(encoding="utf-8"))
+    assert log["failed_step"] == "1_pull_data" and "DB host unreachable" in log["error"]["message"] and not pushed
+    monkeypatch.setattr(mr, "main", lambda **k: (_ for _ in ()).throw(mr.MonthlyRefreshAbort("x")))
+    assert mr.cli(["--dry-run"]) == 1
+
+
+def test_a_failed_login_makes_exactly_one_attempt_in_the_main_pull_and_the_run_ends_non_zero(monkeypatch):
+    import db
+    started = _step1_env(monkeypatch, run_rc=[1])                                      # the first script (the main pull) cannot log in
+    with pytest.raises(mr.MonthlyRefreshAbort, match="Never retrying the database"):
+        mr.step1_pull_data(False, offline=False)
+    assert started == ["load_data_all_divisions.py"]                                   # exactly one script, so one login attempt, and nothing after it
+    assert db.login_attempts() == 0
+
+
+def test_after_the_first_failed_database_stage_no_later_stage_logs_in_and_the_step_aborts(monkeypatch):
+    started = _step1_env(monkeypatch, run_rc=[0, 0, 1])                                # main pull ok, pilot file ok, the inventory pull fails
+    with pytest.raises(mr.MonthlyRefreshAbort, match="no later stage of this run logs in again"):
+        mr.step1_pull_data(False, offline=False)
+    assert started == ["load_data_all_divisions.py", "load_data_full.py", "build_inventory_dataset.py"]      # the material, trend and targets pulls were never started
+    assert mr._DB_STAGE_FAILURE == "inventory.json pulls"
+
+
+def test_a_success_path_runs_every_stage_normally(monkeypatch):
+    started = _step1_env(monkeypatch, run_rc=[])
+    monkeypatch.setattr(mr, "_pull_stage", lambda label, script, out, args=None: started.append(script) or {"label": label, "refreshed": True})
+    out = mr.step1_pull_data(False, offline=False)
+    assert started == ["load_data_all_divisions.py", "load_data_full.py", "build_inventory_dataset.py", "material_plan.py", "build_trend_tab.py", "build_trend_tab.py"]
+    assert out["db_reachable"] is True and out["rows_pulled"] == 1
+
+
+def test_a_failed_database_analysis_script_in_step_4_stops_the_other_one_and_the_step(monkeypatch, tmp_path):
+    started = []
+    monkeypatch.setattr(mr, "_DB_STAGE_FAILURE", None)
+    monkeypatch.setattr(mr, "SUMMARY_DIR", str(tmp_path))
+    monkeypatch.setattr(mr, "run_script", lambda script, args=None: started.append(script) or _Proc(1))
+    first = mr._run_regeneration_step("order notice", os.path.join("investigations", "order_leadtime.py"), "a.csv")
+    second = mr._run_regeneration_step("delivery", os.path.join("investigations", "delivery_performance.py"), "b.csv")
+    assert started == [os.path.join("investigations", "order_leadtime.py")] and first["returncode"] == 1
+    assert second["refreshed"] is False and "no further login attempt" in second["not_refreshed_reason"]
+    with pytest.raises(mr.MonthlyRefreshAbort, match="one login attempt per run"):
+        mr._abort_if_a_database_stage_failed("Step 4")
+
+
+class _FakeConn:
+    def __init__(self):
+        self.closed = False
+
+    def close(self):
+        self.closed = True
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *a):
+        self.close()
+
+
+class _FakeEngine:
+    def __init__(self, fail):
+        self.fail, self.connects = fail, 0
+
+    def connect(self):
+        self.connects += 1
+        if self.fail:
+            raise RuntimeError("Login failed for user (fake)")
+        return _FakeConn()
+
+    def dispose(self):
+        pass
+
+
+def test_the_db_helper_makes_one_attempt_per_failed_login_and_refuses_every_later_one(monkeypatch):
+    import db
+    db.reset_login_state()
+    engine = _FakeEngine(fail=True)
+    monkeypatch.setattr(db, "get_connection", lambda: engine)
+    with pytest.raises(RuntimeError, match="Login failed"):
+        db.run_query("SELECT 1")
+    with pytest.raises(db.DatabaseLoginAlreadyFailedError):                            # a script that swallowed the first error and tries again
+        db.run_query("SELECT 2")
+    with pytest.raises(db.DatabaseLoginAlreadyFailedError):
+        with db.session():
+            pass
+    assert engine.connects == 1 and db.login_attempts() == 1
+    db.reset_login_state()
+
+
+def test_the_db_helper_session_logs_in_once_for_many_queries(monkeypatch):
+    import db
+    db.reset_login_state()
+    engine = _FakeEngine(fail=False)
+    monkeypatch.setattr(db, "get_connection", lambda: engine)
+    monkeypatch.setattr(db.pd, "read_sql", lambda sql, conn: pd.DataFrame({"n": [1]}))
+    with db.session():
+        assert db.run_query("SELECT 1")["n"].iloc[0] == 1 and len(db.run_query("SELECT 2")) == 1
+    assert engine.connects == 1 and db.login_attempts() == 1
+    db.reset_login_state()
+
+
+def test_the_preflight_is_a_plain_tcp_connect_that_never_logs_in(monkeypatch):
+    import db
+    db.reset_login_state()
+    seen = []
+    monkeypatch.setenv("DB_SERVER", "somehost,14330\\INSTANCE")
+    monkeypatch.setattr(db.socket, "create_connection", lambda addr, timeout=None: seen.append((addr, timeout)) or _FakeConn())
+    out = db.preflight(timeout=2.0)
+    assert out["reachable"] is True and seen == [(("somehost", 14330), 2.0)] and db.login_attempts() == 0
+    monkeypatch.setenv("DB_SERVER", "somehost\\INSTANCE")
+    db.preflight()
+    assert seen[-1][0] == ("somehost", 1433)
+    monkeypatch.setattr(db.socket, "create_connection", lambda *a, **k: (_ for _ in ()).throw(OSError("no route")))
+    with pytest.raises(db.DatabaseUnreachableError, match=r"DB host unreachable \(off org network\?\)"):
+        db.require_reachable()
+    assert db.login_attempts() == 0

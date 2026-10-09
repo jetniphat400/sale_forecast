@@ -1,6 +1,7 @@
 """Database connection helper. Loads credentials from .env — never hardcode them here."""
 import contextlib
 import os
+import socket
 import urllib.parse
 
 import pandas as pd
@@ -37,6 +38,76 @@ def refuse_if_blocked(where: str) -> None:
         with open(log, "a", encoding="utf-8") as f:
             f.write("|".join([os.environ.get("SALE_FORECAST_DB_EXPECTED", "0"), os.environ.get("PYTEST_CURRENT_TEST", "-").replace("|", "/"), where]) + chr(10))
     raise DatabaseBlockedError(f"database connection refused ({where}): the test suite must not connect to the database; run it from tracked data or a fixture")
+
+
+class DatabaseUnreachableError(RuntimeError):
+    """The database host does not answer a plain TCP connect (for example the machine is off the organisation's network). No login was attempted."""
+
+
+class DatabaseLoginAlreadyFailedError(RuntimeError):
+    """A login already failed in this process: no further login attempt is made (an account can be locked by repeated attempts)."""
+
+
+UNREACHABLE_MESSAGE = "DB host unreachable (off org network?)"
+DEFAULT_PORT = 1433                  # SQL Server default; DB_SERVER names host\instance, so the port is an assumption for the reachability check only, never for the ODBC login itself
+
+_LOGIN_ATTEMPTS = 0                  # engine.connect() calls made by this process (a successful login counts, a failed one counts)
+_LOGIN_FAILURE = None                # the first login failure of this process, if any
+
+
+def login_attempts() -> int:
+    return _LOGIN_ATTEMPTS
+
+
+def reset_login_state() -> None:
+    """For tests only: forgets the attempt count and any recorded failure."""
+    global _LOGIN_ATTEMPTS, _LOGIN_FAILURE
+    _LOGIN_ATTEMPTS, _LOGIN_FAILURE = 0, None
+
+
+def split_server(server: str) -> tuple:
+    """(host, port) for the reachability check from DB_SERVER: `host`, `host\\instance` or `host,port`."""
+    host = server.split("\\")[0].split(",")[0].strip()
+    port = DEFAULT_PORT
+    if "," in server:
+        tail = server.split(",", 1)[1].split("\\")[0].strip()
+        if tail.isdigit():
+            port = int(tail)
+    return host, port
+
+
+def preflight(timeout: float = 5.0) -> dict:
+    """A plain TCP connect to the DB host and port with a short timeout and NO authentication: no login is attempted. Returns {reachable, host, port, error}."""
+    server = os.getenv("DB_SERVER", "")
+    host, port = split_server(server)
+    if not host:
+        return {"reachable": False, "host": host, "port": port, "error": "DB_SERVER not set"}
+    try:
+        with socket.create_connection((host, port), timeout=timeout):
+            return {"reachable": True, "host": host, "port": port, "error": None}
+    except OSError as e:
+        return {"reachable": False, "host": host, "port": port, "error": str(e)}
+
+
+def require_reachable(timeout: float = 5.0) -> dict:
+    """preflight(), raising DatabaseUnreachableError (message UNREACHABLE_MESSAGE) when the host does not answer; never logs in."""
+    result = preflight(timeout)
+    if not result["reachable"]:
+        raise DatabaseUnreachableError(f"{UNREACHABLE_MESSAGE}: {result['host']}:{result['port']} ({result['error']})")
+    return result
+
+
+def _login(engine):
+    """The ONE place a login happens: one attempt per call, never retried. After a failed login every later call in this process raises at once without connecting."""
+    global _LOGIN_ATTEMPTS, _LOGIN_FAILURE
+    if _LOGIN_FAILURE is not None:
+        raise DatabaseLoginAlreadyFailedError(f"a database login already failed in this process ({_LOGIN_FAILURE}); no further login attempt is made")
+    _LOGIN_ATTEMPTS += 1
+    try:
+        return engine.connect()
+    except Exception as e:      # noqa: BLE001 -- remember it, then raise the original
+        _LOGIN_FAILURE = type(e).__name__
+        raise
 
 
 def _get_required_env(name: str) -> str:
@@ -82,7 +153,7 @@ def session():
     if _SHARED_CONNECTION is not None:
         raise RuntimeError("a database session is already open")
     engine = get_connection()
-    conn = engine.connect()
+    conn = _login(engine)
     _SHARED_CONNECTION = conn
     try:
         yield conn
@@ -97,5 +168,5 @@ def run_query(sql: str) -> pd.DataFrame:
     if _SHARED_CONNECTION is not None:
         return pd.read_sql(sql, _SHARED_CONNECTION)
     engine = get_connection()
-    with engine.connect() as conn:
+    with _login(engine) as conn:
         return pd.read_sql(sql, conn)

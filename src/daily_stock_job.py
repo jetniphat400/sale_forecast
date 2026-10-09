@@ -326,11 +326,39 @@ def _write_log(root: str, config: dict, log: dict) -> str:
     return path
 
 
+def failure_kind(exc: Exception) -> str:
+    """'unreachable' (the host did not answer; no login was attempted), 'login_refused' (the server answered and refused the login) or 'other'."""
+    name, text = type(exc).__name__, str(exc).lower()
+    if name == "DatabaseUnreachableError":
+        return "unreachable"
+    if name == "DatabaseLoginAlreadyFailedError" or "login failed" in text or "18456" in text or "28000" in text or "password" in text and "expired" in text:
+        return "login_refused"
+    return "other"
+
+
+def login_refused_today(root: str, config: dict, today=None) -> dict:
+    """The log of a run of today (this machine's clock) that ended because the server REFUSED the database login, or None. Used so the second start of the day does not log in again after a refusal
+    (repeated refused logins can lock the account); an unreachable host does not count, since no login was attempted then."""
+    today = str(today or datetime.now().date())
+    log_dir = os.path.join(root, config["daily_stock"]["log_dir"])
+    for name in sorted(os.listdir(log_dir)) if os.path.isdir(log_dir) else []:
+        if not (name.startswith("daily_stock_") and name.endswith(".json")):
+            continue
+        try:
+            with open(os.path.join(log_dir, name), encoding="utf-8") as f:
+                log = json.load(f)
+        except (OSError, ValueError):
+            continue
+        if not log.get("dry_run") and log.get("status") == "failed" and (log.get("error") or {}).get("kind") == "login_refused" and str(log.get("finished_at", ""))[:10] == today:
+            return log
+    return None
+
+
 def record_failure(root: str, config: dict, step: str, exc: Exception) -> str:
-    """Log for a failure that happened before the job itself ran (login refused, the measurement failed)."""
+    """Log for a failure that happened before the job itself ran (login refused, host unreachable, the measurement failed)."""
     log = {"run_id": datetime.now().strftime("%Y%m%dT%H%M%S"), "dry_run": False, "status": "failed", "failed_gate": None,
            "failed_step": step, "committed": False, "pushed": False, "gates": [], "steps": [],
-           "error": {"type": type(exc).__name__, "message": str(exc)[:3000], "traceback_tail": traceback.format_exc()[-2500:]},
+           "error": {"type": type(exc).__name__, "kind": failure_kind(exc), "message": str(exc)[:3000], "traceback_tail": traceback.format_exc()[-2500:]},
            "finished_at": datetime.now().isoformat(timespec="seconds")}
     return _write_log(root, config, log)
 

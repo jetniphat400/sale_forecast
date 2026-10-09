@@ -1461,3 +1461,16 @@ Implementation (added with the code, after the rule above; the rule text is unch
     Prompt 19 additions to the backup: the folder is built as _incomplete_<name> beside the dated folder, every sha256 is verified, then it is renamed (a failure removes only that temporary folder, so a partial
     dated folder never exists); the moving-average comparator log and metadata are in the list from the run that creates them (vintage 3); every message is masked for the OneDrive root and the Windows login in any
     form (slashes, doubled back slashes, letter case, bare name). tests/test_guards.py fails when a tracked file contains the Windows login or the DB login (file:line only).
+
+## 53. database_login_safety
+
+    One database login attempt per run at most when something fails (an account can be locked by repeated refused logins). Prompt 20, 2026-10-09.
+
+    db.py        = one place logs in (`_login`): after a failed login a process refuses every later login at once; `preflight` / `require_reachable` is a plain TCP connect to the DB host (port 1433 unless DB_SERVER
+                   gives host,port) with a short timeout and no authentication.
+    monthly run  = step 1 checks the host first (unreachable: abort, no login); the first failed database stage (main pull, an auxiliary pull, a step 4 database script) stops every later database stage and
+                   the run ends non-zero with the reason in the run log.
+    daily job    = the same preflight before its single session; the second start of a day does not log in again when the server refused the login earlier today (log error.kind = login_refused); an unreachable host
+                   (error.kind = unreachable, no login attempted) does not block it.
+    not covered  = the ODBC driver's own connection-resiliency default (not verified; no connection allowed in the task); the scheduled tasks themselves (RestartOnFailure 0 on both; the daily task's 12:00 trigger is the decided
+                   second start).

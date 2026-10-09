@@ -144,6 +144,16 @@ Code: `src/investigations/task2b_part2_fulfilment_segmentation.py` (`run_from_pu
 - Reader text: see SENTENCES NEEDING THAI TEXT of this task (demand column header on the material page, a label for the list of divisions covered, a line for the six PEM101 codes never sold, the approved heading for six divisions) (the user's assistant).
 - Category-level view of the two product categories and the three items' settings (brief item "settings"), storms and the other external factors, utility budgets, sales insight and EGP bids: not done (brief table).
 
+### Week 4, prompt 20 -- secret history check, database-login retry safety, three hardening fixes -- DONE, 2026-10-09 (no database, no network; the test suite made none)
+
+**Report:** `docs/reports/summary/prompt5_g2_vintage_target_map.md`, heading "Prompt 20". Method: METRICS.md Sec.53.
+
+**Secrets.** All refs (269 commits): `.env` never committed (only the template `.env.example`, no secret in it); the DB password value is in 0 commits (content and messages); two pattern hits were false positives. No exposure. Informational: the DB host value is in the current `STATUS.md`.
+
+**Retry safety.** No retry loop exists in the code and both tasks have RestartOnFailure 0. Fixed: a failed database stage of the monthly run now stops every later database stage and the run (it used to go on to the next stage's login); `db.py` refuses any later login in a process after a failed one; the daily job has a reachability preflight (plain TCP connect, 5 s, no login) and its noon start does not log in again after a refused login of the morning (an unreachable host does not block it). Tests count attempts with a fake connector: failed login 1, unreachable 0.
+
+**Small fixes.** Stale `_incomplete_` backup folders are removed or reported at job start; the mask covers the 8.3 short name; the inventory test fails on a corrupt log instead of skipping.
+
 ### Week 4, prompt 19 -- login names out of the repo, scheduled-task settings, backup hardening, the skipped test -- DONE, 2026-10-09 (no database; the test suite made none)
 
 **Report:** `docs/reports/summary/prompt5_g2_vintage_target_map.md`, heading "Prompt 19".
