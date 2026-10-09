@@ -655,3 +655,62 @@ Existing files extended: `test_index_w3.py` (seven labels in order and ids; the 
 - PEM103's YTD is 5.5 times last year's and its to-target moves with single tender orders; PEM107's target (172.9 million) is derived from the database's PEM103 rows by category: low, the user to confirm the split with the target owners.
 - The workbook `target_data.xlsx` (user-stated latest version) is not the target source of this tab (the database table is, as instructed); the two agree at Business totals (Prompt 7) but not by revenue stream: low, Claude Code with the target owners.
 - The user manual does not describe the new tab or the renamed link: with the manual update of 2026-10-19 to 10-21, medium, Claude Code.
+
+
+## Prompt 14
+
+Executive summary tab fixes: scope labels (D1), the remaining months from the larger of the forecast and the orders already on the books (D2), order concentration per division (D3, report only). Run 2026-10-09. Database sessions: 1 of 1 (the order-level totals of D3 were not in a saved pull: the saved sales pull has no contract column; the same session also read the outside-scope bookings). The test suite made no connection. New files: none. No contract, customer or order number was written to any file or to this report: the order-level result stayed in memory and only counts, sums and rank shares were kept.
+
+### Part 1, D1 scope labels
+
+Card 2 as rendered: "คาดการณ์ทั้งปี 2569 (สินค้าใน Price List) | 982.4 ล้านบาท | ถึงเป้า 106.3% · เป้ารวมสินค้า Omni ทุกตัว % นี้จึงน่าจะต่ำกว่าจริง". Footer as rendered: "ยอดขายนับตามเดือนที่ต้องส่งของ รวม PO ที่รับแล้วแต่ยังไม่ส่ง (MPS) · ไม่รวม VAT · คาดการณ์ = ยอดจริงถึง ส.ค. 69 + เดือนที่เหลือใช้ค่าที่มากกว่าระหว่างยอดทายกับออเดอร์ที่รับแล้ว × ราคาขายเฉลี่ยจริง · เป้ามาจากระบบเป้าของบริษัท (Revenue) · ยังไม่ได้ยืนยันว่าเป้านับจากวันส่งของหรือวันออก invoice · ยอดขายและคาดการณ์นับเฉพาะสินค้าใน Price List แต่เป้ารวมสินค้า Omni ทุกตัว". The texts are in config; nothing else on the tab changed in wording.
+
+### Part 2, D2 remaining months
+
+Definition (METRICS.md Sec.49): per forecast-scope item and remaining month, units = max(forecast units of vintage 2, units on the books), baht = whole baht of units x the item's unit price (the forecast page's prices); units on the books = Actual + MPS units with forecast_date in the month from the saved sales pull of 2026-10-05 (Omni, forecast_date not before createDate, the 335 forecast-scope items; the same scope and key as YTD). Projection = YTD + the sum. The forecast page is unchanged.
+
+| division | YTD (M) | old projection | new projection | difference | Sep | Oct | Nov | Dec | to target old | to target new |
+|---|---|---|---|---|---|---|---|---|---|---|
+| PEM101 | 219.0 | 352.1 | 380.9 | +28.8 | +19.8 | +8.1 | +1.0 | 0.0 | 86.3% | 93.4% |
+| PEM103 | 178.5 | 270.8 | 333.0 | +62.2 | +25.0 | +37.0 | +0.2 | 0.0 | 128.3% | 157.8% |
+| PEM107 | 73.8 | 117.3 | 128.7 | +11.4 | +1.9 | +6.7 | +2.5 | +0.3 | 67.8% | 74.5% |
+| PEM102 | 46.5 | 68.3 | 81.0 | +12.7 | +1.1 | +11.2 | +0.5 | 0.0 | 64.1% | 76.1% |
+| CI101 | 24.3 | 44.0 | 58.7 | +14.7 | +1.2 | +12.6 | +0.7 | +0.2 | 168.0% | 224.3% |
+| total | 542.1 | 852.4 | 982.4 | +130.0 | +49.1 | +75.6 | +4.8 | +0.5 | 92.2% | 106.3% |
+
+(Million baht; the difference is new minus old: the booked orders add 130.0, 94 percent of it in September and October.) Old to new baht per month (Sep, Oct, Nov, Dec; million baht): PEM101 33.3 to 53.0, 33.3 to 41.4, 33.3 to 34.2, 33.3 to 33.3; PEM103 23.1 to 48.1, 23.1 to 60.0, 23.1 to 23.3, 23.1 to 23.1; PEM107 10.9 to 12.8, 10.9 to 17.6, 10.9 to 13.3, 10.9 to 11.2; PEM102 5.4 to 6.6, 5.4 to 16.6, 5.4 to 5.9, 5.4 to 5.4; CI101 4.9 to 6.2, 4.9 to 17.5, 4.9 to 5.6, 4.9 to 5.1. The forecast is flat (the forecast page holds the same baht in every month), so the difference is the orders on the books above the flat forecast, item by item. Total to target moves from 92.2 to 106.3 percent. The gate compares each division's projection with YTD plus, per item and month, the larger of the forecast page's baht (read from its per-item rows) and the baht on the books.
+
+On the books for Price List items outside the forecast scope (110 items, Omni, Actual + MPS, forecast_date Sep to Dec 2026, database): two rows only: PEM104 THB 0.14 million (September, Actual) and PEM101 THB 678 (September, Actual); no MPS. Not added to the projection.
+
+### Part 3, D3 order concentration (report only)
+
+An order = one contract: the `contractid` of cube_Sale_APD, the purchase-order document the customer placed; its lines (items) are summed over the lines in the window (forecast_date month Jan to Aug of the year, Omni, Actual + MPS, the 335 forecast-scope items, division by the Price List). Why: it is the document the business receives and the project's existing order key (a contract spans several items); the table's other keys (job, quotation) are not on every line. Every in-scope row has a contract id (0 rows without one). Orders are referred to by rank only.
+
+| division | year | orders | sum (M baht) | largest 1 | largest 3 | largest 5 |
+|---|---|---|---|---|---|---|
+| CI101 | 2026 | 121 | 24.3 | 12.0% | 26.6% | 34.3% |
+| CI101 | 2025 | 115 | 24.4 | 10.4% | 28.9% | 40.4% |
+| PEM101 | 2026 | 2,750 | 219.0 | 0.8% | 1.8% | 2.7% |
+| PEM101 | 2025 | 2,521 | 176.7 | 1.1% | 2.7% | 3.8% |
+| PEM102 | 2026 | 132 | 46.5 | 6.8% | 11.9% | 15.5% |
+| PEM102 | 2025 | 96 | 32.8 | 6.5% | 14.1% | 19.0% |
+| PEM103 | 2026 | 530 | 178.5 | 2.9% | 6.9% | 9.3% |
+| PEM103 | 2025 | 114 | 32.2 | 3.8% | 10.3% | 14.7% |
+| PEM107 | 2026 | 694 | 73.8 | 3.7% | 7.2% | 9.5% |
+| PEM107 | 2025 | 663 | 85.7 | 3.3% | 9.1% | 13.5% |
+
+(Current YTD = Jan to Aug 2026, previous year = the same months of 2025.) The sums equal the saved monthly series' YTD exactly for every division and year. PEM103: YTD growth +454.1 percent as it stands; +416.0 percent without the three largest orders of 2026 (12.3 million, 6.9 percent of 178.5); +475.4 percent without each year's three largest. The growth comes from the number of orders (114 to 530, 4.6 times) and a larger average order (0.28 to 0.34 million), not from a few large ones. CI101 is the only division where five orders are a third of YTD or more.
+
+### Validator
+
+Independent recomputation of the new projection per division and in total, the cards and the percent to target (from the raw pull, the forward-test log, the Price List and the saved targets; results saved before the tab was read): MATCH on all 36 table cells, the four cards, card 2's label and sub-line and the footer; its old and new projection and the monthly differences equal the above. Concentration: the Validator wrote its own SQL from the stated scope (it ran in the same session; aggregate output only) and its shares equal the implementer's to the last digit; its check total + rows without a contract id = all rows holds for all ten division-years.
+
+### Tests, rendering
+
+Existing files extended (`test_index_w3.py`): the three texts verbatim; the max rule on fixed examples (forecast above the orders, orders above the forecast, an item with no forecast row, half-up rounding, no price) and the on-the-books selection (Omni only, Actual and MPS only, forecast_date not before createDate, scope, months); the gate on a fixed forecast page with a projection that is not the per-item maxima, one that equals the forecast page alone, a wrong total row and wrong months. Rendered at 1440x900 and 390x844: the new card label, sub-line and footer are visible and nothing scrolls sideways; screenshots in `output/shots_p14/` (untracked).
+
+### Found, not done
+
+- With the booked orders the total projection is above the target; the target covers all Omni products and the sales only Price List items (labelled by D1). The all-Omni comparison is the later task (2026-10-21 to 10-23): Claude Code.
+- The projection is flat for months with no orders on the books (no seasonality) and the item-wise maximum can only raise the old figure; the user's decision to keep it: low, the user.
+- CI101: five orders are 34 to 40 percent of its YTD, so its "ถึงเป้า" (224 percent against a 26.2 million target) rests on a few orders: low, the user.

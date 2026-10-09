@@ -562,7 +562,7 @@ def test_the_exec_tab_texts_cards_table_and_remarks_are_verbatim_from_fixed_data
     lines = _exec_visible(bt.exec_render(d, cfg))
     assert lines[0].startswith("ยอดขาย ม.ค.–ส.ค. 69 | ") or "ยอดขาย ม.ค.–ส.ค. 69" in lines
     joined = "\n".join(lines)
-    for text in ["ยอดขาย ม.ค.–ส.ค. 69", "130.0 ล้านบาท", "เทียบช่วงเดียวกันปีก่อน +8.3%", "คาดการณ์ทั้งปี 2569", "190.0 ล้านบาท", "ถึงเป้า – · ยังไม่ยืนยันฐานเทียบเป้า",
+    for text in ["ยอดขาย ม.ค.–ส.ค. 69", "130.0 ล้านบาท", "เทียบช่วงเดียวกันปีก่อน +8.3%", "คาดการณ์ทั้งปี 2569 (สินค้าใน Price List)", "190.0 ล้านบาท", "ถึงเป้า – · เป้ารวมสินค้า Omni ทุกตัว % นี้จึงน่าจะต่ำกว่าจริง",
                  "ความแม่นของยอดทาย", "1 จาก 2 ฝ่าย", "ดีกว่า Naive", "เรื่องที่ต้องระวัง", "0 เรื่อง", "ดูรายการด้านล่าง", "เรื่องที่รอผู้บริหารตัดสิน", "หัวข้อ · ต้องตัดสินอะไร",
                  "ฝ่าย | ยอดขาย YTD | ปีก่อน YTD | เปลี่ยน | คาดการณ์ทั้งปี | เป้า (Revenue) | ถึงเป้า | Relative MAE | หมายเหตุ",
                  "AAA | 100.0 | 80.0 | +25.0% | 150.0 | 200.0 | 75.0% | 0.60 |",
@@ -570,15 +570,15 @@ def test_the_exec_tab_texts_cards_table_and_remarks_are_verbatim_from_fixed_data
                  "รวม | 130.0 | 120.0 | +8.3% | 190.0 | – | – | – |",
                  "PEM104 | – | – | – | – | – | – | – | PEM104 ผลิตตามสั่งทั้งหมด จึงไม่ได้ทายยอดขาย",
                  "PEMC | – | – | – | – | – | – | – | PEMC อยู่นอกขอบเขตสินค้าของ Omni Channel ในโปรเจกต์นี้",
-                 "ยอดขายนับตามเดือนที่ต้องส่งของ รวม PO ที่รับแล้วแต่ยังไม่ส่ง (MPS) · ไม่รวม VAT · คาดการณ์ = ยอดจริงถึง ส.ค. 69 + ยอดทายเดือนที่เหลือ × ราคาขายเฉลี่ยจริง · "
-                 "เป้ามาจากระบบเป้าของบริษัท (Revenue) · ยังไม่ได้ยืนยันว่าเป้านับจากวันส่งของหรือวันออก invoice"]:
+                 "ยอดขายนับตามเดือนที่ต้องส่งของ รวม PO ที่รับแล้วแต่ยังไม่ส่ง (MPS) · ไม่รวม VAT · คาดการณ์ = ยอดจริงถึง ส.ค. 69 + เดือนที่เหลือใช้ค่าที่มากกว่าระหว่างยอดทายกับออเดอร์ที่รับแล้ว × ราคาขายเฉลี่ยจริง · "
+                 "เป้ามาจากระบบเป้าของบริษัท (Revenue) · ยังไม่ได้ยืนยันว่าเป้านับจากวันส่งของหรือวันออก invoice · ยอดขายและคาดการณ์นับเฉพาะสินค้าใน Price List แต่เป้ารวมสินค้า Omni ทุกตัว"]:
         assert text in joined, text
     assert "{" not in joined and "}" not in joined
     # a division with a target and the total with every target: a percent to target in the total row and in card 2
     d["rows"][1].update(target=50e6, to_target=0.8)
     d["total"].update(target=250e6, to_target=190 / 250)
     again = "\n".join(_exec_visible(bt.exec_render(d, cfg)))
-    assert "ถึงเป้า 76.0% · ยังไม่ยืนยันฐานเทียบเป้า" in again and "ไม่พบเป้าของฝ่ายนี้ในระบบเป้า" not in again.split("PEM104")[0]
+    assert "ถึงเป้า 76.0% · เป้ารวมสินค้า Omni ทุกตัว % นี้จึงน่าจะต่ำกว่าจริง" in again and "ไม่พบเป้าของฝ่ายนี้ในระบบเป้า" not in again.split("PEM104")[0]
 
 
 def test_each_watch_out_line_appears_only_when_its_condition_holds():
@@ -604,25 +604,69 @@ def test_each_watch_out_line_appears_only_when_its_condition_holds():
     assert not any("ทายต่ำกว่าจริง" in x for x in _exec_visible(bt.exec_render(dict(d, watch=high), cfg)))
 
 
+def _fixed_page(tmp_path, a_vals, b_vals):
+    """A forecast page with a per-item baht table for AAA (two items) and BBB (one item); each value list is the baht of the remaining months Sep and Oct."""
+    def table(div, items):
+        rows = "".join(f'<tr class="fwd-btype" id="x{i}"><td>T</td><td>0</td><td>0</td></tr><tr class="fwd-bitem" data-parent="x{i}" hidden><td>{code} <span class="fwd-name">n</span></td>'
+                       + "".join(f"<td>{'-' if v is None else format(v, ',')}</td>" for v in vals) + "</tr>" for i, (code, vals) in enumerate(items))
+        return (f'<table class="report-table fwd-table" id="fwd-baht-table-{div}"><thead><tr><th>ประเภทสินค้า</th><th>ก.ย. 69</th><th>ต.ค. 69</th></tr></thead><tbody>{rows}'
+                f'<tr class="total-row"><td>รวม {div}</td><td>0</td><td>0</td></tr></tbody></table>')
+    page = tmp_path / "sales_report.html"
+    page.write_text(table("AAA", a_vals) + table("BBB", b_vals), encoding="utf-8")
+    return str(page)
+
+
+def _gate_data(rows_projection):
+    d = _fixed_exec_data()
+    d["remaining_months"] = ["2026-09", "2026-10"]
+    d["booked_baht"] = {"A1": {"2026-09": 40, "2026-10": 5}, "A2": {"2026-09": 0, "2026-10": 70}, "B1": {"2026-09": 3, "2026-10": 4}}
+    d["rows"][0]["projection"] = d["rows"][0]["ytd"] + rows_projection[0]
+    d["rows"][1]["projection"] = d["rows"][1]["ytd"] + rows_projection[1]
+    d["total"]["projection"] = d["rows"][0]["projection"] + d["rows"][1]["projection"]
+    d["total"]["forecast_remaining"] = rows_projection[0] + rows_projection[1]
+    for r, v in zip(d["rows"], rows_projection):
+        r["forecast_remaining"] = v
+    d["total"]["ytd"] = d["rows"][0]["ytd"] + d["rows"][1]["ytd"]
+    d["total"]["last_ytd"] = d["rows"][0]["last_ytd"] + d["rows"][1]["last_ytd"]
+    d["total"]["target"] = None
+    return d
+
+
 def test_the_total_row_and_the_year_end_projection_identities_are_gated(tmp_path):
     import build_trend_tab as bt
-    d = _fixed_exec_data()
-    page = tmp_path / "sales_report.html"
-    page.write_text('<table id="baht-summary-table"><thead><tr><th>ฝ่าย</th><th>ก.ย. 69</th><th>ต.ค. 69</th></tr></thead><tbody>'
-                    '<tr><td>AAA</td><td>50,000,000</td><td>1</td></tr><tr><td>BBB</td><td>10,000,000</td><td>1</td></tr><tr class="total-row"><td>รวมทุกฝ่าย</td><td>60,000,000</td><td>2</td></tr></tbody></table>', encoding="utf-8")
-    assert bt.exec_gate(d, str(page))["passed"]
-    bad = _fixed_exec_data()
-    bad["rows"][0]["projection"] += 1.0                                                                  # a projection that is not YTD plus the page's baht
+    # AAA: item A1 forecast 10 and 20 against 40 and 5 on the books -> 40 + 20; item A2 forecast 30 and 8 against 0 and 70 -> 30 + 70; BBB: B1 forecast 2 and 9 against 3 and 4 -> 3 + 9
+    page = _fixed_page(tmp_path, [("A1", [10, 20]), ("A2", [30, 8])], [("B1", [2, 9])])
+    assert bt.exec_gate(_gate_data([40 + 20 + 30 + 70, 3 + 9]), page)["passed"]
     with pytest.raises(bt.ExecSummaryError, match="projection"):
-        bt.exec_gate(bad, str(page))
-    bad = _fixed_exec_data()
+        bt.exec_gate(_gate_data([40 + 20 + 30 + 70 + 1, 3 + 9]), page)                                   # a projection that is not YTD plus the per-item maxima
+    with pytest.raises(bt.ExecSummaryError, match="projection"):
+        bt.exec_gate(_gate_data([10 + 20 + 30 + 8, 3 + 9]), page)                                         # the forecast page's baht alone is no longer the rule
+    bad = _gate_data([40 + 20 + 30 + 70, 3 + 9])
     bad["total"]["ytd"] += 5.0                                                                           # a total row that is not the sum of the division rows
     with pytest.raises(bt.ExecSummaryError, match="total row"):
-        bt.exec_gate(bad, str(page))
-    wrong_months = _fixed_exec_data()
-    wrong_months["remaining_months"] = ["2026-10"]
+        bt.exec_gate(bad, page)
+    wrong_months = _gate_data([40 + 20 + 30 + 70, 3 + 9])
+    wrong_months["remaining_months"] = ["2026-10", "2026-11"]
     with pytest.raises(bt.ExecSummaryError, match="remaining months"):
-        bt.exec_gate(wrong_months, str(page))
+        bt.exec_gate(wrong_months, page)
+
+
+def test_the_remaining_months_take_the_larger_of_the_forecast_and_the_orders_on_the_books():
+    import build_trend_tab as bt
+    assert bt.exec_month_units(10, 4) == 10 and bt.exec_month_units(4, 10) == 10                          # forecast above the orders, orders above the forecast
+    assert bt.exec_month_units(None, 7) == 7 and bt.exec_month_units(0, 0) == 0                           # an item with no forecast row counts 0 forecast units
+    assert bt.exec_month_baht(10.4, 4, 100.0) == 1040 and bt.exec_month_baht(2.0, 3.5, 100.0) == 350     # units x unit price in whole baht
+    assert bt.exec_month_baht(2.5, 0, 0.1) == 0 and bt.exec_month_baht(2.5, 0, 0.3) == 1 and bt.exec_month_baht(5, 9, None) == 0   # half up at item and month level; no price: 0
+    raw = pd.DataFrame([
+        {"itemcode": "A", "createDate": "2026-08-01", "forecast_date": "2026-09-10", "qty": 3, "status": "MPS", "revenue_type": "Omni Channel"},
+        {"itemcode": "A", "createDate": "2026-08-05", "forecast_date": "2026-09-20", "qty": 4, "status": "Actual", "revenue_type": "Omni Channel"},
+        {"itemcode": "A", "createDate": "2026-08-05", "forecast_date": "2026-10-20", "qty": 6, "status": "MPS", "revenue_type": "Omni Channel"},
+        {"itemcode": "A", "createDate": "2026-09-30", "forecast_date": "2026-09-01", "qty": 50, "status": "MPS", "revenue_type": "Omni Channel"},      # forecast_date before createDate: not counted
+        {"itemcode": "A", "createDate": "2026-08-01", "forecast_date": "2026-09-10", "qty": 60, "status": "Cancel", "revenue_type": "Omni Channel"},    # not Actual or MPS
+        {"itemcode": "A", "createDate": "2026-08-01", "forecast_date": "2026-09-10", "qty": 70, "status": "MPS", "revenue_type": "Tendering"},          # not Omni Channel
+        {"itemcode": "B", "createDate": "2026-08-01", "forecast_date": "2026-09-10", "qty": 80, "status": "MPS", "revenue_type": "Omni Channel"},       # outside the scope
+        {"itemcode": "A", "createDate": "2026-08-01", "forecast_date": "2026-03-10", "qty": 90, "status": "Actual", "revenue_type": "Omni Channel"}])  # a month already in YTD
+    assert bt.exec_booked_units(raw, {"A"}, ["2026-09", "2026-10"]) == {("A", "2026-09"): 7.0, ("A", "2026-10"): 6.0}
 
 
 def test_the_targets_are_split_by_category_and_a_division_without_a_row_has_no_target(tmp_path):

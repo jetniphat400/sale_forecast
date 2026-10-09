@@ -456,6 +456,31 @@ def exec_targets(root: str, config: dict, pl: pd.DataFrame, year: int) -> tuple:
     return by, {"pulled_at": meta["pulled_at"], "year": int(year), "omni_total": float(o["amount"].fillna(0).sum()), "unallocated": unallocated, "other_divisions": other}
 
 
+def exec_month_units(forecast_units, booked_units) -> float:
+    """Units counted for one item in one remaining month: the larger of the forecast units of the vintage and the units already on the books (Actual + MPS with forecast_date
+    in the month). An item with no forecast row counts 0 forecast units (decision D2 of the user, 2026-10-09; METRICS.md Sec.49)."""
+    return max(float(forecast_units or 0.0), float(booked_units or 0.0))
+
+
+def exec_month_baht(forecast_units, booked_units, price) -> int:
+    """Whole baht of exec_month_units x the item's unit price (rounded half up at item and month level, as the forecast page does); 0 for an item with no price."""
+    if price is None:
+        return 0
+    return int(math.floor(exec_month_units(forecast_units, booked_units) * float(price) + 0.5))
+
+
+def exec_booked_units(raw: pd.DataFrame, items: set, months: list) -> dict:
+    """{(item, month): units} already on the books: Actual + MPS units of the forecast-scope `items` with forecast_date (not before createDate) in `months`, from the saved sales
+    pull `raw` (columns itemcode, createDate, forecast_date, qty, status, revenue_type); Omni Channel only, the scope and key of the YTD."""
+    d = raw[raw["revenue_type"].eq("Omni Channel") & raw["status"].isin(["Actual", "MPS"]) & raw["itemcode"].isin(items)].copy()
+    d["createDate"] = pd.to_datetime(d["createDate"])
+    d["forecast_date"] = pd.to_datetime(d["forecast_date"], errors="coerce")
+    d = d[d["forecast_date"].notna() & (d["forecast_date"] >= d["createDate"])]
+    d["ym"] = d["forecast_date"].dt.strftime("%Y-%m")
+    g = d[d["ym"].isin(months)].groupby(["itemcode", "ym"])["qty"].sum()
+    return {k: float(v) for k, v in g.items()}
+
+
 def exec_watch(ts_rows: list, limit: float, plan_above: list, n_late: int, pem107_alert) -> list:
     """The lines of "เรื่องที่ต้องระวัง", each only while its condition holds: a group whose Tracking Signal is beyond plus or minus `limit` (below: forecast below the actual), each
     division-month of the plan above the historical peak, materials already late (n_late above 0), the PEM107 not-late alert (a dict with `since` and `pct`, or None)."""
@@ -510,14 +535,30 @@ def exec_data(root: str = PROJECT_ROOT, plan_dir: str = None) -> dict:
     acc = br.gather_accuracy_vs_naive(config, primary)
     rel = {r["label"]: r["relative_mae"] for r in acc["rows"] if r["kind"] == "division"}
     th = acc["thresholds"]
+    # the remaining months: per item the larger of the forecast units and the units already on the books (D2), whole baht at the item's unit price
+    import forward_test_scoring as fts
+    raw = pd.read_csv(fts.RAW_HISTORY_PATH, usecols=["itemcode", "createDate", "forecast_date", "qty", "status", "revenue_type"])
+    booked = exec_booked_units(raw, set(codes), remaining)
+    prices = price_info["prices"]
+    booked_baht = {}
     rows = []
     for d in baht["divisions"]:
-        fc_rem = float(sum(baht["divisions"][d]["total"][forward["months"].index(m)] for m in remaining))
+        new_by_month = {m: 0 for m in remaining}
+        old_by_month = {m: baht["divisions"][d]["total"][forward["months"].index(m)] for m in remaining}
+        for t in forward["divisions"][d]:
+            for it in t["items"]:
+                price = prices[it["item"]]["price"]
+                for m in remaining:
+                    b = exec_month_baht(0.0, booked.get((it["item"], m), 0.0), price)
+                    booked_baht.setdefault(it["item"], {})[m] = b
+                    new_by_month[m] += exec_month_baht(it["values"][forward["months"].index(m)], booked.get((it["item"], m), 0.0), price)
+        fc_rem = float(sum(new_by_month.values()))
         ytd, ly = float(cur.get(d, 0.0)), float(prev.get(d, 0.0))
         proj = ytd + fc_rem
         tgt = targets.get(d)
         rows.append({"division": d, "ytd": ytd, "last_ytd": ly, "change": (ytd / ly - 1) if ly else None, "forecast_remaining": fc_rem, "projection": proj, "target": tgt,
-                     "to_target": (proj / tgt) if tgt else None, "relative_mae": rel.get(d)})
+                     "to_target": (proj / tgt) if tgt else None, "relative_mae": rel.get(d), "projection_page_only": ytd + float(sum(old_by_month.values())),
+                     "by_month": {m: {"page": int(old_by_month[m]), "used": int(new_by_month[m])} for m in remaining}})
     tot = {k: sum(r[k] for r in rows) for k in ("ytd", "last_ytd", "forecast_remaining", "projection")}
     have = [r for r in rows if r["target"]]
     tot["target"] = sum(r["target"] for r in rows) if len(have) == len(rows) else None
@@ -532,7 +573,7 @@ def exec_data(root: str = PROJECT_ROOT, plan_dir: str = None) -> dict:
     watch = exec_watch([{"group": r["label"], "value": r["tracking_signal"]} for r in acc["rows"]], th["limit"], plan_above, n_late,
                        None if alert.get("not_late_from_may_2026_pct") is None else {"since": rv.thai_month_year(alert["split_date"]), "pct": f"{float(alert['not_late_from_may_2026_pct']):.1f}%"})
     pending = [r for r in maxmin_v1.pending_criteria_rows() if r["who"] == "ผู้บริหาร"]
-    return {"data_month": data_month, "data_month_label": rv.thai_month_short(data_month), "year": year, "year_be": year + 543, "remaining_months": remaining, "rows": rows, "total": tot,
+    return {"data_month": data_month, "data_month_label": rv.thai_month_short(data_month), "year": year, "year_be": year + 543, "remaining_months": remaining, "booked_baht": booked_baht, "rows": rows, "total": tot,
             "n_forecast_divisions": len(rows), "n_beat_naive": sum(1 for r in rows if r["relative_mae"] is not None and r["relative_mae"] < th["pass"]), "thresholds": th,
             "watch": watch, "pending": pending, "target_report": target_report, "vintage_id": vf["vintage_id"]}
 
@@ -599,8 +640,8 @@ def exec_render(data: dict, config: dict) -> str:
 
 
 def exec_gate(data: dict, sales_report_path: str) -> dict:
-    """The tab's checks: (1) the total row equals the sum of the division rows (YTD, last-year YTD, projection, target); (2) each division's projection equals its YTD plus the baht of the
-    remaining months read from the rendered forecast page (its baht summary table). Raises ExecSummaryError on any difference."""
+    """The tab's checks: (1) the total row equals the sum of the division rows (YTD, last-year YTD, projection, target); (2) each division's projection equals its YTD plus, per item and
+    remaining month, the larger of the baht on the rendered forecast page (its per-item baht rows) and the baht already on the books (data["booked_baht"]). Raises ExecSummaryError on any difference."""
     import reader_values as rv
     rows, tot = data["rows"], data["total"]
     for k in ("ytd", "last_ytd", "projection", "forecast_remaining"):
@@ -610,21 +651,26 @@ def exec_gate(data: dict, sales_report_path: str) -> dict:
         raise ExecSummaryError("the total row's target differs from the sum of the division targets")
     with open(sales_report_path, encoding="utf-8") as f:
         text = f.read()
-    m = re.search(r'id="baht-summary-table">.*?<thead><tr>(.*?)</tr></thead><tbody>(.*?)</tbody>', text, re.S)
-    if not m:
-        raise ExecSummaryError("the forecast page has no baht summary table")
-    heads = re.findall(r"<th>(.*?)</th>", m.group(1))[1:]
-    page = {}
-    for label, cells in re.findall(r"<tr[^>]*><td>([^<]+)</td>((?:<td>[^<]*</td>)+)</tr>", m.group(2)):
-        page[label] = [int(c.replace(",", "")) for c in re.findall(r"<td>(.*?)</td>", cells)]
     labels = [rv.thai_month_short(x) for x in data["remaining_months"]]
-    if heads[:len(labels)] != labels:
-        raise ExecSummaryError(f"the forecast page's first months {heads[:len(labels)]} are not the remaining months {labels}")
+    booked = data["booked_baht"]
+    checked = 0
     for r in rows:
-        from_page = sum(page[r["division"]][:len(labels)])
-        if abs(r["projection"] - (r["ytd"] + from_page)) > 1e-6:
-            raise ExecSummaryError(f"{r['division']}: the year-end projection {r['projection']} differs from YTD plus the forecast page's baht {r['ytd'] + from_page}")
-    return {"passed": True, "divisions": [r["division"] for r in rows], "months": labels}
+        m = re.search(r'id="fwd-baht-table-' + re.escape(r["division"]) + r'">.*?<thead><tr>(.*?)</tr></thead><tbody>(.*?)</tbody>', text, re.S)
+        if not m:
+            raise ExecSummaryError(f"the forecast page has no baht table for {r['division']}")
+        heads = re.findall(r"<th>(.*?)</th>", m.group(1))[1:]
+        if heads[:len(labels)] != labels:
+            raise ExecSummaryError(f"the forecast page's first months {heads[:len(labels)]} are not the remaining months {labels}")
+        total = 0
+        for code, cells in re.findall(r'<tr class="fwd-bitem"[^>]*><td>(.*?)</td>((?:<td>[^<]*</td>)+)</tr>', m.group(2), re.S):
+            code = html.unescape(re.sub(r"<[^>]+>", "", code.split(" <span")[0])).strip()
+            vals = [0 if c == "-" else int(c.replace(",", "")) for c in re.findall(r"<td>(.*?)</td>", cells)]
+            for i, mm in enumerate(data["remaining_months"]):
+                total += max(vals[i], booked.get(code, {}).get(mm, 0))
+            checked += 1
+        if abs(r["projection"] - (r["ytd"] + total)) > 1e-6:
+            raise ExecSummaryError(f"{r['division']}: the year-end projection {r['projection']} differs from YTD plus the larger of the forecast page's baht and the baht on the books per item and month {r['ytd'] + total}")
+    return {"passed": True, "divisions": [r["division"] for r in rows], "months": labels, "items_checked": checked}
 
 
 def write_between(path: str, begin: str, end: str, block: str) -> None:

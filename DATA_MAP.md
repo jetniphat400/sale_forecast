@@ -2052,3 +2052,13 @@ Source: STATUS.md "Week 4, prompt 13"; docs/reports/summary/prompt5_g2_vintage_t
 - **Year-end projection (YTD plus the vintage 2 baht for Sep to Dec):** total 852.4 million; against the five divisions' target 924.4 = 92.2 percent. **V2.**
 - **The Price List items are about 64 percent of the Omni value in the database for 2026 (createDate, Actual + MPS, to date):** 749.2 million of 1,162.7 million (the second figure from Prompt 7). The target is for all Omni. **V1.**
 - **The createDate basis of the Trend tab is higher than the forecast_date basis for the same months in every division** (Jan to Aug 2026, forecast-scope items: total 626.8 million against 542.1; CI101 43.0 against 24.3): expected (the PO receipt comes before the delivery month). **V1.**
+
+## Prompt 14 (2026-10-09): remaining months on the books and order concentration -- verified facts
+
+Source: STATUS.md "Week 4, prompt 14"; docs/reports/summary/prompt5_g2_vintage_target_map.md, heading "Prompt 14". **V2** = recomputed by the implementer and independently by a Validator.
+
+- **Year-end projection with the orders on the books (forecast-scope items, Omni, forecast_date key, vintage 2, unit prices of the forecast page):** total THB 982.4 million against 852.4 million from the forecast alone; 106.3 percent of the five divisions' 924.4 million target (92.2 before). By division: PEM101 380.9, PEM103 333.0, PEM107 128.7, PEM102 81.0, CI101 58.7. **V2.**
+- **The Price List items outside the forecast scope have almost nothing on the books for Sep to Dec 2026:** THB 0.14 million (PEM104) and THB 678 (PEM101), no MPS. **V1.**
+- **Order concentration, Jan to Aug (an order = a contract; the largest 1 / 3 / 5 orders as a share of YTD):** 2026: CI101 12.0 / 26.6 / 34.3 percent, PEM101 0.8 / 1.8 / 2.7, PEM102 6.8 / 11.9 / 15.5, PEM103 2.9 / 6.9 / 9.3, PEM107 3.7 / 7.2 / 9.5; the same months of 2025: CI101 10.4 / 28.9 / 40.4, PEM101 1.1 / 2.7 / 3.8, PEM102 6.5 / 14.1 / 19.0, PEM103 3.8 / 10.3 / 14.7, PEM107 3.3 / 9.1 / 13.5. **V2.**
+- **PEM103's YTD growth (+454.1 percent) comes from the number of orders (114 to 530), not from a few large ones** (without the three largest orders of 2026: +416.0 percent). **V2.**
+- **Every in-scope row of the 2025 and 2026 Jan to Aug YTD has a contract id.** **V2.**

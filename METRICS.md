@@ -1349,12 +1349,12 @@ pipeline — no new section is needed for this; it is already covered by section
                      series' key; the monthly sale series output/data/processed_all_divisions_monthly_sale.csv), division = the Price List's division
     data month     = the last month of that series (the last complete month of the pull the forecast uses; it must equal the fit window's last month of the vintage the page uses)
     YTD            = January to the data month of the data month's year; last-year YTD = the same months one year earlier; change = YTD / last-year YTD - 1
-    projection     = YTD + for each remaining month of the year the baht forecast of the forecast page (the same vintage, the same unit prices: METRICS.md Sec.46); stops when the
-                     vintage does not cover a remaining month
-    target         = TargetRevenueAmount of Cube_Target_PMIS (the revenue target "Revenue (MB)-Conting" at Business totals, DATA_MAP.md Prompt 7), year of the data month, RevenueType
-                     'Omni Channel', summed per division; the database's PEM103 rows hold PEM107's Types too and are split by the Price List category of each row (a row whose
-                     category is on no sheet of the two divisions stays unallocated and is reported); other database divisions (group companies) are not shown. A forecast division with no
-                     target row shows a dash and a remark. The pull is aggregate only (year, division, revenue type, category, type, sum, row count).
+    projection     = YTD + for each remaining month of the year and each forecast-scope item, whole baht of max(forecast units of the vintage, units already on the books with
+                     forecast_date in that month) x the item's unit price (the forecast page's prices, METRICS.md Sec.46); decision of the user 2026-10-09 (D2, Prompt 14; before it the
+                     remaining months were the forecast page's baht alone). "Units already on the books" = Actual + MPS units with forecast_date in the month from the same saved
+                     sales pull (output/data/raw_all_divisions_sales.csv: Omni Channel, forecast_date not before createDate, forecast-scope items) as YTD; an item with no forecast row
+                     counts 0 forecast units. Stops when the vintage does not cover a remaining month. The forecast page's baht forecast is unchanged. The on-the-books value of Price
+                     List items outside the forecast scope is reported, not added.
     to target      = projection / target
     Relative MAE   = the division's value in the forecast page's "เทียบกับร่างเกณฑ์" table (Sec.48)
     total row      = sums of the division rows (YTD, last-year YTD, projection, target); change and to target recomputed from the sums; Relative MAE not shown
@@ -1363,7 +1363,13 @@ pipeline — no new section is needed for this; it is already covered by section
                      plus the limit: above); a division-month of the operation plan above 100 percent of the historical peak (the plan page's own flag and percent); the material plan
                      page's count of materials "ขาดแล้ว สั่งตอนนี้ไม่ทัน" when above 0; the PEM107 Omni not-late share since the split date, while the Min-Max page has its PEM107 alert
     pending rows   = the rows of the table "เกณฑ์ที่รอกำหนด" whose ใครกำหนด is ผู้บริหาร
-    gates          = the total row equals the sum of the division rows; each division's projection equals its YTD plus the baht of the remaining months read from the rendered forecast page
+    gates          = the total row equals the sum of the division rows; each division's projection equals its YTD plus, per item and remaining month, the larger of the baht on the
+                     rendered forecast page and the on-the-books baht (Prompt 14; Prompt 13 compared with the page's division totals alone)
 
 - Sources are the saved pulls and the recorded outputs only; the revenue targets are one aggregate database pull of their own (output/data/exec_pull/, untracked), made in step 1 of the monthly run in its own session.
+- Order concentration (report only, Prompt 14, decision D3): per forecast division, for YTD and for the same months one year earlier (the YTD scope), the number of orders, their sum of
+  sale and the share of the largest 1, 3 and 5 orders by rank. An order = one contract (the contractid of cube_Sale_APD): the purchase-order document the customer placed, whose lines
+  (items) are summed over the lines in the window; no contract or customer identifier is written to any file.
+- Scope labels (decision D1, 2026-10-09): card 2 and the footer say that sales and forecast count only Price List items while the target covers every Omni product, so the percent to
+  target is probably below the true figure; the all-Omni comparison (every Omni item, a Naive run-rate for items outside the Price List) is a later task (2026-10-21 to 10-23).
 - The footer states that the target's basis (delivery date or invoice date) is unconfirmed; the projection is a flat-forecast extrapolation without seasonality (STATUS.md plan).
