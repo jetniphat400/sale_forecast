@@ -67,7 +67,7 @@
   
     <details class="note-box" style="margin:10px 0" id="page-data-line">
       <summary style="cursor:pointer"><!-- round = run month of vintage 2 of the forward-test log; fit_last = that vintage's last fit month; built_at = page_built_at; oldest data_pulled_at of the page: 2026-10-05 07:41 ICT (UTC+7), per section below
-        --><span id="freshness-line">ยอดทายรอบ ต.ค. 69 · ใช้ยอดขายถึง ส.ค. 69 · หน้าสร้างเมื่อ 9 ต.ค. 69 11:18</span><!-- source: src/build_report.py rv.vintage_facts()/datetime.now(), this build run --></summary>
+        --><span id="freshness-line">Forecast (ยอดทาย) รันเมื่อ ต.ค. 69 · ใช้ยอดขายถึง ส.ค. 69 · หน้าสร้างเมื่อ 9 ต.ค. 69 12:01</span><!-- source: src/build_report.py rv.vintage_facts()/datetime.now(), this build run --></summary>
       <h3 style="margin-top:10px">ข้อมูลแต่ละส่วนดึงเมื่อ</h3>
       <table class="report-table" style="margin-top:8px">
         <thead><tr><th>ส่วน</th><th>ดึงเมื่อ</th><th>สถานะ</th></tr></thead>
@@ -78,7 +78,7 @@
   
     <section id="exec-summary">
       <h2>1. บทสรุปผู้บริหาร (Executive Summary)</h2>
-      <p>Top-down Combination คือการพยากรณ์ยอดขายในระดับ &quot;Type&quot; (กลุ่มสินค้าที่ขายในลักษณะเดียวกัน เช่น High Voltage Distribution Fuse Cutout) ก่อน โดยใช้ค่าเฉลี่ยของโมเดลพยากรณ์ 6 แบบร่วมกัน (Naive, MA3, MA6, MA12, Croston, SBA) แล้วจึงกระจายยอดพยากรณ์ของ Type นั้นไปยังสินค้าแต่ละ รายการ (Item) ตามสัดส่วนยอดขายจริงในอดีตของสินค้านั้นเทียบกับยอดขายรวมของ Type ทั้งหมด</p>
+      <p>วิธีที่ใช้ประกอบด้วยสองส่วน Combination คือเฉลี่ยผลของโมเดลพยากรณ์ 6 แบบ (Naive, MA3, MA6, MA12, Croston, SBA) เพื่อทายยอดรวมของแต่ละ &quot;Type&quot; (กลุ่มสินค้าที่ขายในลักษณะเดียวกัน เช่น High Voltage Distribution Fuse Cutout) Top-down คือการแบ่งยอดทายของ Type นั้นลงสินค้าแต่ละรายการ (Item) ตามสัดส่วนยอดขายจริงในอดีตของสินค้านั้นเทียบกับยอดขายรวมของ Type ทั้งหมด</p>
       <p>
         <!-- source: output/summary/phaseC_step1revised_item_status_445.csv, column status_category -->
         โครงการนี้ครอบคลุมสินค้าทั้งหมด <b>445</b> รหัส ใน Omni Channel ทุกฝ่าย
@@ -89,7 +89,7 @@
         ลูกค้าให้เวลาแจ้งล่วงหน้าก่อนส่งมอบเพียง <b>6</b> วัน
         (median) ซึ่งสั้นกว่าระยะเวลาจัดหาวัตถุดิบมาก
         <!-- source: output/summary/delivery_by_year.csv, column pct_on_time -->
-        อัตราการส่งมอบตรงเวลาปรับตัวขึ้นจาก 57.8% (2023) เป็น
+        สัดส่วนส่งตรงวันพอดี (exact-day delivery: ส่งวันนัดเป๊ะ ไม่นับส่งก่อน) ปรับตัวขึ้นจาก 57.8% (2023) เป็น
         <b>73.2%</b> ในปี 2026 (ข้อมูลบางส่วน)
       </p>
     </section>
@@ -154,7 +154,7 @@
           <!-- Split lots; STATUS.md, Locked Decisions -->
           <tr><td colspan="2">รายการที่ดูเหมือนซ้ำแต่เป็นการแบ่งส่งหลายงวด นับครบทุกงวด</td></tr>
           <!-- MPS retained; STATUS.md, Locked Decisions -->
-          <tr><td colspan="2">PO ที่รับแล้วแต่ยังไม่ส่ง (MPS) นับเป็นยอดขาย เพราะลูกค้าสั่งแล้วจริง</td></tr>
+          <tr><td colspan="2">MPS (open PO: PO ที่รับแล้วแต่ยังไม่ส่ง) นับรวมในยอดที่ใช้ทาย (Actual + MPS) เพราะลูกค้าสั่งแล้วจริง แต่ยังไม่ใช่ยอดที่ส่งมอบแล้ว</td></tr>
           <!-- forecast_date keying: the series is keyed on forecast_date, a frozen snapshot, not queried live each time; STATUS.md, Locked Decisions -->
           <tr><td colspan="2">ยอดขายนับตามเดือนที่ต้องส่งของตามสัญญา ไม่ใช่เดือนที่รับ PO</td></tr>
           <!-- Pricelist as division source; the database division column is not used to filter; STATUS.md, CONVENTIONS.md -->
@@ -164,7 +164,7 @@
     </section>
     <section id="model">
       <h2>6. โมเดลพยากรณ์ (Model)</h2>
-      <p>Top-down Combination คือการพยากรณ์ยอดขายในระดับ &quot;Type&quot; (กลุ่มสินค้าที่ขายในลักษณะเดียวกัน เช่น High Voltage Distribution Fuse Cutout) ก่อน โดยใช้ค่าเฉลี่ยของโมเดลพยากรณ์ 6 แบบร่วมกัน (Naive, MA3, MA6, MA12, Croston, SBA) แล้วจึงกระจายยอดพยากรณ์ของ Type นั้นไปยังสินค้าแต่ละ รายการ (Item) ตามสัดส่วนยอดขายจริงในอดีตของสินค้านั้นเทียบกับยอดขายรวมของ Type ทั้งหมด</p>
+      <p>วิธีที่ใช้ประกอบด้วยสองส่วน Combination คือเฉลี่ยผลของโมเดลพยากรณ์ 6 แบบ (Naive, MA3, MA6, MA12, Croston, SBA) เพื่อทายยอดรวมของแต่ละ &quot;Type&quot; (กลุ่มสินค้าที่ขายในลักษณะเดียวกัน เช่น High Voltage Distribution Fuse Cutout) Top-down คือการแบ่งยอดทายของ Type นั้นลงสินค้าแต่ละรายการ (Item) ตามสัดส่วนยอดขายจริงในอดีตของสินค้านั้นเทียบกับยอดขายรวมของ Type ทั้งหมด</p>
       <p>ไม่มีวิธีทายวิธีเดียวที่ชนะทุกกลุ่มสินค้า และการเลือกวิธีตามกฎทางวิชาการก็ไม่ได้ดีกว่าการเฉลี่ยหลายวิธี จึงใช้ค่าเฉลี่ย (Combination) ซึ่งเสี่ยงน้อยกว่าพึ่งวิธีเดียว</p>
       <p>ไม่ใช้ Neural Network (เช่น TensorFlow) หรือ Prophet เนื่องจากมีข้อมูลย้อนหลังเพียง 31 เดือน และ 73% ของรหัสสินค้ามีลักษณะการขายแบบ Intermittent หรือ Lumpy (ขายไม่สม่ำเสมอ ไม่ต่อเนื่อง) ทำให้ Neural Network มีความเสี่ยงสูงที่จะ Overfit กับข้อมูลจำนวนน้อย และ Prophet มีสมมติฐาน ว่าข้อมูลต่อเนื่อง (continuous) ซึ่งไม่ตรงกับลักษณะข้อมูลจริงของโครงการนี้</p>
       <h3>MAE ของโมเดลพื้นฐาน 6 แบบ เทียบกับ Combination และ Top-down (3 focus codes)</h3>
@@ -197,7 +197,7 @@
       </table>
       <h3>ตารางรอง — วิธี Combination ระดับประเภทสินค้า</h3>
       <!-- Previous wording, kept off screen: Combination model only, at Type level (not item level), averaged across all Types and the 7 rolling origins per division -- src/backtest_all_divisions.py:126-139 (first disclosed in output/summary/manual_factsheet.md Part 5 item 2); kept for comparison, no longer the primary table. -->
-      <p class="hint">เก็บไว้เทียบ ไม่ใช่วิธีที่ใช้</p>
+      <p class="hint">ผลของส่วน Combination ก่อนแบ่งลงรหัสสินค้า ใช้เทียบเท่านั้น ตัวเลขที่ใช้วางแผนคือตารางหลัก</p>
       <!-- source: output/summary/phaseC_step2_per_division_summary_qty.csv, column MAE / RMSE / Bias / MASE / n_items -->
       <table class="report-table" id="div-results-table">
         <thead><tr><th>ฝ่าย</th><th>MAE</th><th>RMSE</th><th>MASE</th><th>Bias</th><th>จำนวนสินค้า</th></tr></thead>
@@ -212,8 +212,8 @@
       <p class="hint" id="pilot-shadow">▸ Surge Arrester shadow forecast (ยอดทายทดลองที่คำนวณคู่กับยอดทายจริง) ใช้วิธี Holt (ทายตามแนวโน้มยอดขายที่ขึ้นหรือลง) · สถานะ: ยังไม่มีเดือนที่เทียบได้ ผลเดือนแรกออกในรอบวันที่ 5 พ.ย. 69 · ยังไม่ได้ใช้ในแผน</p>
       <h3 id="criteria-vs-draft">เทียบกับร่างเกณฑ์</h3>
       <!-- source: Relative MAE, Horizon 3 and Tracking Signal recomputed at build from the saved monthly series with the functions of the main table (src/transferability_all_divisions.py), Naive = the last month before each origin; the forward months from the forward-test log (src/forward_test_scoring.py forward_naive_items); thresholds: config maxmin_v1.pending_criteria_values (draft). METRICS.md Sec.48. Tracking Signal points used per row: PEM101 8, PEM103 8, PEM107 8, PEM102 8, CI101 8, Fuse Cutout 8, Surge Arrester 8. -->
-      <p class="hint">▸ วิธีทายของเราดีกว่าวิธี Naive (ใช้ยอดเดือนที่แล้วเป็นค่าทาย) ไหม<br>▸ Relative MAE = MAE ของเรา ÷ MAE ของ Naive ในเดือนทดสอบเดียวกัน ต่ำกว่า 1 = ดีกว่า Naive · ต่ำกว่า 0.7 = ดี<br>▸ Horizon 3 = ทายล่วงหน้า 3 เดือน ใช้ดูความแม่นในช่วงที่ต้องสั่งวัตถุดิบล่วงหน้า<br>▸ Tracking Signal = ความคลาดสะสม ÷ ความคลาดเฉลี่ย บอกว่าทายเอียงไปทางเดียวต่อเนื่องไหม เกิน ±4 = เตือน<br>▸ ผลมาจากการทดสอบย้อนหลัง และเกณฑ์ยังเป็นร่าง ยังไม่ใช่การตัดสินสุดท้าย</p>
-      <div class="table-scroll"><table class="report-table" id="criteria-table"><thead><tr><th>ฝ่าย / กลุ่ม</th><th>Relative MAE</th><th>ผล</th><th>Relative MAE (Horizon 3)</th><th>ผล</th><th>Tracking Signal</th><th>ผล</th></tr></thead><tbody><tr><td>PEM101</td><td>0.80</td><td>ผ่าน</td><td>0.83</td><td>ผ่าน</td><td>-3.3</td><td>ปกติ</td></tr><tr><td>PEM103</td><td>1.04</td><td>ไม่ผ่าน</td><td>1.06</td><td>ไม่ผ่าน</td><td>-7.8</td><td>เตือน</td></tr><tr><td>PEM107</td><td>0.86</td><td>ผ่าน</td><td>1.05</td><td>ไม่ผ่าน</td><td>1.3</td><td>ปกติ</td></tr><tr><td>PEM102</td><td>0.92</td><td>ผ่าน</td><td>0.88</td><td>ผ่าน</td><td>-1.4</td><td>ปกติ</td></tr><tr><td>CI101</td><td>0.83</td><td>ผ่าน</td><td>0.77</td><td>ผ่าน</td><td>6.7</td><td>เตือน</td></tr><tr><td>Fuse Cutout</td><td>0.93</td><td>ผ่าน</td><td>0.83</td><td>ผ่าน</td><td>-4.7</td><td>เตือน</td></tr><tr><td>Surge Arrester</td><td>1.07</td><td>ไม่ผ่าน</td><td>0.99</td><td>ผ่าน</td><td>-6.8</td><td>เตือน</td></tr></tbody></table></div>
+      <p class="hint">▸ วิธีทายของเราดีกว่าวิธี Naive (ใช้ยอดเดือนที่แล้วเป็นค่าทาย) ไหม<br>▸ Relative MAE = MAE ของเรา ÷ MAE ของ Naive ในเดือนทดสอบเดียวกัน ต่ำกว่า 1 = ต่ำกว่า Naive ในการทดสอบนี้ (ถึงเกณฑ์ผ่านของร่าง) · ต่ำกว่า 0.7 = ถึงเกณฑ์ดีของร่าง<br>▸ Horizon 3 = ทายล่วงหน้า 3 เดือน ใช้ดูความแม่นในช่วงที่ต้องสั่งวัตถุดิบล่วงหน้า<br>▸ Tracking Signal = ความคลาดสะสม ÷ ความคลาดเฉลี่ย บอกว่าทายเอียงไปทางเดียวต่อเนื่องไหม เกิน ±4 = เตือน<br>▸ ถึงเกณฑ์ร่าง ยังไม่ได้แปลว่าพิสูจน์แล้วว่าดีกว่า Naive: ผลมาจากการทดสอบย้อนหลังเพียง 7 รอบ ดูว่าฝ่ายไหนต่างจาก Naive จริงในหัวข้อ &quot;ใช้วิธี Top-down ดีกว่าวิธีอื่นไหม&quot;<br>▸ เกณฑ์เป็นร่าง ผู้บริหารยืนยันหลังรอบ 5 ธ.ค. 69</p>
+      <div class="table-scroll"><table class="report-table" id="criteria-table"><thead><tr><th>ฝ่าย / กลุ่ม</th><th>Relative MAE</th><th>ผล</th><th>Relative MAE (Horizon 3)</th><th>ผล</th><th>Tracking Signal</th><th>ผล</th></tr></thead><tbody><tr><td>PEM101</td><td>0.80</td><td>ถึงเกณฑ์ผ่าน (ร่าง)</td><td>0.83</td><td>ถึงเกณฑ์ผ่าน (ร่าง)</td><td>-3.3</td><td>ปกติ</td></tr><tr><td>PEM103</td><td>1.04</td><td>ยังไม่ถึงเกณฑ์ (ร่าง)</td><td>1.06</td><td>ยังไม่ถึงเกณฑ์ (ร่าง)</td><td>-7.8</td><td>เตือน</td></tr><tr><td>PEM107</td><td>0.86</td><td>ถึงเกณฑ์ผ่าน (ร่าง)</td><td>1.05</td><td>ยังไม่ถึงเกณฑ์ (ร่าง)</td><td>1.3</td><td>ปกติ</td></tr><tr><td>PEM102</td><td>0.92</td><td>ถึงเกณฑ์ผ่าน (ร่าง)</td><td>0.88</td><td>ถึงเกณฑ์ผ่าน (ร่าง)</td><td>-1.4</td><td>ปกติ</td></tr><tr><td>CI101</td><td>0.83</td><td>ถึงเกณฑ์ผ่าน (ร่าง)</td><td>0.77</td><td>ถึงเกณฑ์ผ่าน (ร่าง)</td><td>6.7</td><td>เตือน</td></tr><tr><td>Fuse Cutout</td><td>0.93</td><td>ถึงเกณฑ์ผ่าน (ร่าง)</td><td>0.83</td><td>ถึงเกณฑ์ผ่าน (ร่าง)</td><td>-4.7</td><td>เตือน</td></tr><tr><td>Surge Arrester</td><td>1.07</td><td>ยังไม่ถึงเกณฑ์ (ร่าง)</td><td>0.99</td><td>ถึงเกณฑ์ผ่าน (ร่าง)</td><td>-6.8</td><td>เตือน</td></tr></tbody></table></div>
       <h3>Rolling-origin MAE (Type level) — คลิก legend เพื่อซ่อน/แสดงแต่ละโมเดล</h3>
       <!-- source: output/summary/phaseC_step2_rolling_origin_qty.csv, column origin / model / MAE -->
       <div id="chart-rolling" class="plotly-chart"></div>
@@ -240,7 +240,7 @@
       <p class="hint">▸ ยอดที่ทายไว้ล่วงหน้า พอถึงเดือนจริงพลาดแค่ไหน<br>▸ MAE เดือนจริงสูงกว่าผลทดสอบย้อนหลังมาก = ช่วงนี้ทายยากกว่าปกติ<br>▸ ตอนนี้มีผล 1 เดือน ยังสรุปไม่ได้ว่าวิธีทายดีขึ้นหรือแย่ลง</p>
       <div class="table-scroll"><table class="report-table" id="scored-table"><thead><tr><th>ฝ่าย</th><th>เดือน</th><th>MAE</th><th>MAE (Naive)</th><th>Relative MAE</th><th>Bias</th><th>MAE ในการทดสอบย้อนหลัง</th><th>ยอดทาย (บาท)</th><th>ยอดจริง (บาท)</th><th>ต่าง (บาท)</th></tr></thead><tbody><tr><td>CI101</td><td>ส.ค. 69</td><td>9.8</td><td>9.1</td><td>1.08</td><td>-3.7</td><td>11.0</td><td>2,728,378</td><td>9,916,552</td><td>-7,188,174</td></tr><tr><td>PEM101</td><td>ส.ค. 69</td><td>348.8</td><td>401.0</td><td>0.87</td><td>-46.0</td><td>315.4</td><td>28,868,690</td><td>40,099,829</td><td>-11,231,139</td></tr><tr><td>PEM102</td><td>ส.ค. 69</td><td>1.2</td><td>0.8</td><td>1.56</td><td>-0.2</td><td>1.2</td><td>5,221,306</td><td>6,277,815</td><td>-1,056,509</td></tr><tr><td>PEM103</td><td>ส.ค. 69</td><td>6.1</td><td>2.6</td><td>2.31</td><td>-0.4</td><td>2.9</td><td>21,516,978</td><td>26,695,081</td><td>-5,178,103</td></tr><tr><td>PEM107</td><td>ส.ค. 69</td><td>6.1</td><td>4.2</td><td>1.45</td><td>2.8</td><td>11.3</td><td>10,312,689</td><td>10,958,273</td><td>-645,584</td></tr></tbody></table></div>
       <!-- baht: items = the items the row's MAE is computed over; forecast and actual units of each item x its unit price (as section 2); difference = forecast minus actual, the sign of Bias. Items without a price in these rows: 0. -->
-      <p class="hint" id="scored-baht-note">ตัวเลขบาทคิดทั้งยอดทายและยอดจริงด้วยราคาขายเฉลี่ยเดียวกัน เพื่อดูว่าทายจำนวนพลาดคิดเป็นเงินเท่าไหร่ ต่างติดลบ = ทายต่ำกว่าจริง</p>
+      <p class="hint" id="scored-baht-note">ตัวเลขบาทคิดทั้งยอดทายและยอดจริงด้วยราคาขายเฉลี่ยเดียวกัน (ยอดจริงคือจำนวนที่ขายจริง × ราคาขายเฉลี่ย ไม่ใช่รายได้ตามบัญชี) เพื่อดูว่าทายจำนวนพลาดคิดเป็นเงินเท่าไหร่ ต่างติดลบ = ทายต่ำกว่าจริง</p>
     </section>
     <section id="limitations">
       <h2>8. ข้อจำกัด (Limitations)</h2>

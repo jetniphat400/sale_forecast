@@ -144,6 +144,16 @@ Code: `src/investigations/task2b_part2_fulfilment_segmentation.py` (`run_from_pu
 - Reader text: see SENTENCES NEEDING THAI TEXT of this task (demand column header on the material page, a label for the list of divisions covered, a line for the six PEM101 codes never sold, the approved heading for six divisions) (the user's assistant).
 - Category-level view of the two product categories and the three items' settings (brief item "settings"), storms and the other external factors, utility budgets, sales insight and EGP bids: not done (brief table).
 
+### Week 4, prompt 17 -- shadow-log persistence check and the text and manual pass -- DONE, 2026-10-09 (no database; the test suite made none)
+
+**Report:** `docs/reports/summary/prompt5_g2_vintage_target_map.md`, heading "Prompt 17".
+
+**Persistence (report only).** The production log and the shadow log are git-ignored, one local copy each, in `D:\sale_forecast\output\summary`; the monthly task runs from `D:\sale_forecast_publish`, whose `output` is a junction to that folder, so the 2026-11-05 run finds them. The vintage-2 back-fill can be rebuilt exactly only until the next monthly pull overwrites the saved series. **Proposal pending the user:** save vintage 2's fit series with its hash and back up the three files (see the report).
+
+**Text pass.** The ten ranked confusing terms of the Prompt 12 list (plus the material "ขาดแล้ว" title) were rewritten at their generators; the five "ผ่าน" / "ดีกว่า Naive" statements now say a result meets the DRAFT criteria ("ถึงเกณฑ์ผ่าน (ร่าง)") and that this is not proof of being better than Naive; the decision date and the number of test rounds come from config and data. The manual gained Relative MAE, Horizon 3, Tracking Signal, the draft criteria, the shadow forecast, the realized average price and the two date bases. **47 further Part 7 items are not changed** (each text needs the user's approval); the S&OP Plan (เดิม) tab is untouched.
+
+**Checks.** Numbers identical on all five pages and the data files (only build times and the numbers inside the new sentences differ); Validator: no numeric mismatch, seven sentence flags, all applied; suite 730 passed.
+
 ### Week 4, prompt 16 -- shadow forecast system, Surge Arrester on Holt -- DONE, 2026-10-09 (no database; the test suite made none)
 
 **Report:** `docs/reports/summary/prompt5_g2_vintage_target_map.md`, heading "Prompt 16". Rule: METRICS.md Sec.51 and config `shadow`, **pre-registered in commit 717f2cb (2026-10-09 11:08:59) before any shadow forecast was computed or scored**.

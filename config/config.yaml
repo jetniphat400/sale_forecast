@@ -1063,10 +1063,10 @@ report:
   # Plain-language description of Top-down combination forecasting, for a non-technical reader.
   # Source: STATUS.md Locked Decisions, "Final forecasting method: Top-down combination".
   model_description: >-
-    Top-down Combination คือการพยากรณ์ยอดขายในระดับ "Type" (กลุ่มสินค้าที่ขายในลักษณะเดียวกัน
-    เช่น High Voltage Distribution Fuse Cutout) ก่อน โดยใช้ค่าเฉลี่ยของโมเดลพยากรณ์ {n_base_models} แบบร่วมกัน
-    (Naive, MA3, MA6, MA12, Croston, SBA) แล้วจึงกระจายยอดพยากรณ์ของ Type นั้นไปยังสินค้าแต่ละ
-    รายการ (Item) ตามสัดส่วนยอดขายจริงในอดีตของสินค้านั้นเทียบกับยอดขายรวมของ Type ทั้งหมด
+    วิธีที่ใช้ประกอบด้วยสองส่วน Combination คือเฉลี่ยผลของโมเดลพยากรณ์ {n_base_models} แบบ
+    (Naive, MA3, MA6, MA12, Croston, SBA) เพื่อทายยอดรวมของแต่ละ "Type" (กลุ่มสินค้าที่ขายในลักษณะเดียวกัน
+    เช่น High Voltage Distribution Fuse Cutout) Top-down คือการแบ่งยอดทายของ Type นั้นลงสินค้าแต่ละรายการ (Item)
+    ตามสัดส่วนยอดขายจริงในอดีตของสินค้านั้นเทียบกับยอดขายรวมของ Type ทั้งหมด
 
   # Source: STATUS.md Current Status Summary, "Phase 2 -- Model Selection" (high confidence).
   # Previous wording (kept off screen): no single model consistently beats the others at every
@@ -1106,7 +1106,7 @@ report:
 
   # Approved Thai text of the 2026-10-08 task (verbatim); {braced} names are filled at build time by src/build_report.py from the forward-test log,
   # its metadata, the scope table, the pilot-category view and the recorded forward-test scores. The unconditional "▸" lines are in config/manual_notes.yaml.
-  freshness_line: "ยอดทายรอบ {round} · ใช้ยอดขายถึง {fit_last} · หน้าสร้างเมื่อ {built_at}"
+  freshness_line: "Forecast (ยอดทาย) รันเมื่อ {round} · ใช้ยอดขายถึง {fit_last} · หน้าสร้างเมื่อ {built_at}"
   fit_range_line: "ยอดขายที่ใช้ทาย {first_month} ถึง {last_month}"
   forward_heading: "ยอดทาย {first_month} ถึง {last_month}"
   forward_missing_line: "รหัสที่ยังไม่มียอดทาย {n} รหัส ดูเหตุผลใน{scope_link}"
@@ -1133,6 +1133,8 @@ report:
   scored_columns: ["ฝ่าย", "เดือน", "MAE", "MAE (Naive)", "Relative MAE", "Bias", "MAE ในการทดสอบย้อนหลัง", "ยอดทาย (บาท)", "ยอดจริง (บาท)", "ต่าง (บาท)"]
   # Block "เทียบกับร่างเกณฑ์" of the Results section (approved text of 2026-10-09, verbatim; the lines under the table are in config/manual_notes.yaml, criteria-comparison).
   criteria_heading: "เทียบกับร่างเกณฑ์"
+  # The words of the verdict columns: they say a result meets the DRAFT criteria, never that it is proven better than Naive.
+  verdict_words: {"ดี": "ถึงเกณฑ์ดี (ร่าง)", "ผ่าน": "ถึงเกณฑ์ผ่าน (ร่าง)", "ไม่ผ่าน": "ยังไม่ถึงเกณฑ์ (ร่าง)"}
   criteria_columns: ["ฝ่าย / กลุ่ม", "Relative MAE", "ผล", "Relative MAE (Horizon 3)", "ผล", "Tracking Signal", "ผล"]
 
   # Baht view of the forecast (decisions of the user, 2026-10-08, Prompt 10). Approved Thai text, verbatim; {braced} names are filled at build time.
@@ -1150,7 +1152,7 @@ report:
   baht_no_price_line: "{n} รหัสไม่มีทั้งประวัติขายและราคาใน Price List ไม่ได้รวมในยอดบาท"
   baht_no_price_columns: ["รหัส", "ชื่อ", "ฝ่าย"]
   flat_forecast_line: "ยอดทายทุกเดือนเท่ากัน เพราะวิธีทายตอนนี้ให้ค่าระดับเดียวกับทุกเดือนข้างหน้า ยังไม่คิดช่วงขายดีขายน้อยตามฤดูกาล"
-  scored_baht_note: "ตัวเลขบาทคิดทั้งยอดทายและยอดจริงด้วยราคาขายเฉลี่ยเดียวกัน เพื่อดูว่าทายจำนวนพลาดคิดเป็นเงินเท่าไหร่ ต่างติดลบ = ทายต่ำกว่าจริง"
+  scored_baht_note: "ตัวเลขบาทคิดทั้งยอดทายและยอดจริงด้วยราคาขายเฉลี่ยเดียวกัน (ยอดจริงคือจำนวนที่ขายจริง × ราคาขายเฉลี่ย ไม่ใช่รายได้ตามบัญชี) เพื่อดูว่าทายจำนวนพลาดคิดเป็นเงินเท่าไหร่ ต่างติดลบ = ทายต่ำกว่าจริง"
 
   # Unit price per item for the baht view (decisions of the user, 2026-10-08). Tried in this order; the first rule that gives a price is used.
   #   sales_recent_window : sum of sale / sum of qty over the most recent `window_months` complete months inside the fit window of the vintage the page uses
@@ -1198,7 +1200,7 @@ exec_summary:
     card2_sub: "ถึงเป้า {pct} · เป้ารวมสินค้า Omni ทุกตัว % นี้จึงน่าจะต่ำกว่าจริง"
     card3_label: "ความแม่นของยอดทาย"
     card3_value: "{n} จาก {N} ฝ่าย"
-    card3_sub: "ดีกว่า Naive"
+    card3_sub: "Relative MAE ต่ำกว่าวิธีเทียบ Naive (ใช้ยอดเดือนก่อนเป็นค่าทาย) ตามเกณฑ์ร่าง · ฝ่ายที่พิสูจน์แล้วว่าดีกว่าจริงดูในหน้ายอดขาย · ยืนยันเกณฑ์หลังรอบ {decision_date}"
     card4_label: "เรื่องที่ต้องระวัง"
     card4_value: "{n} เรื่อง"
     card4_sub: "ดูรายการด้านล่าง"
@@ -1214,7 +1216,7 @@ exec_summary:
     watch_low: "{group} ทายต่ำกว่าจริงต่อเนื่อง (Tracking Signal {value}) คาดการณ์ทั้งปีของกลุ่มนี้อาจต่ำกว่าที่จะเกิดจริง"
     watch_high: "{group} ทายสูงกว่าจริงต่อเนื่อง (Tracking Signal {value}) คาดการณ์ทั้งปีของกลุ่มนี้อาจสูงกว่าที่จะเกิดจริง"
     watch_plan: "แผนผลิต {division} เดือน {month} สูงกว่ายอดผลิตสูงสุดที่เคยทำ ({pct})"
-    watch_material: "วัตถุดิบ {n} รายการขาดแล้ว สั่งตอนนี้ไม่ทันแผน"
+    watch_material: "วัตถุดิบ {n} รายการเลยกำหนดสั่ง (Late to order) สั่งวันนี้ของมาไม่ทันแผน"
     watch_pem107: "PEM107 ส่งของช่องทาง Omni ทันน้อยลงตั้งแต่ {since} ({pct} ไม่สาย)"
     decide_heading: "เรื่องที่รอผู้บริหารตัดสิน"
     decide_link: "สมมติฐานที่ใช้อยู่"
@@ -1740,7 +1742,7 @@ maxmin_v1:
   pending_criteria_values: {relative_mae_pass: 1, relative_mae_good: 0.7, tracking_signal_limit: 4, decision_date: "2026-12-05"}
   # Approved text of 2026-10-08 (verbatim); {braces} are filled from pending_criteria_values (the date with the shared Thai date formatter).
   pending_criteria_rows:
-    - {topic: "ยอดทายดีกว่าวิธีง่ายไหม", to_decide: "Relative MAE ต่ำแค่ไหนถึงผ่าน (MAE ของเรา ÷ MAE ของ Naive)", now_used: "ร่าง: ต่ำกว่า {relative_mae_pass} ผ่าน, ต่ำกว่า {relative_mae_good} ดี", who: "ผู้บริหาร", when: "หลังรอบ {decision_date}"}
+    - {topic: "ยอดทายดีกว่าวิธีง่ายไหม", to_decide: "Relative MAE ต่ำแค่ไหนถึงนับว่าถึงเกณฑ์ (MAE ของเรา ÷ MAE ของ Naive)", now_used: "ร่าง: ต่ำกว่า {relative_mae_pass} ถึงเกณฑ์ผ่าน, ต่ำกว่า {relative_mae_good} ถึงเกณฑ์ดี", who: "ผู้บริหาร", when: "หลังรอบ {decision_date}"}
     - {topic: "ยอดทายเอียงต่อเนื่อง", to_decide: "tracking signal เกินเท่าไหร่ถึงเตือน", now_used: "ร่าง: ±{tracking_signal_limit}", who: "ผู้บริหาร", when: "ทุกเดือน"}
     - {topic: "ฝ่ายที่ยอดทายไม่ชนะวิธีง่าย", to_decide: "ใช้วิธีง่ายแทนไหม", now_used: "ยังใช้วิธีเดิม และแสดงผลเทียบ", who: "ผู้บริหาร", when: "หลังรอบ {decision_date}"}
     - {topic: "เป้าการส่งไม่สาย", to_decide: "บริษัทต้องการกี่ %", now_used: "ให้เลือกเองบนหน้าแผนสต็อก", who: "ผู้บริหาร", when: "ยังไม่กำหนด"}

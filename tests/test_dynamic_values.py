@@ -495,7 +495,7 @@ def test_operation_plan_page_numbers_dates_and_items_follow_their_sources():
     pert = bp.render(bp.compute_values(im2, dm2, meta2, {}, "2027-01-04", ["PEM101", "PEM107"]))
     lines = lambda page: _re.findall(r'<p class="note-line">(.*?)</p>', page)
     assert "6 ต.ค. 69 08:00" in base and "15 ม.ค. 70 17:45" in pert and "6 ต.ค. 69" not in pert
-    assert "ยอดทายรอบ ต.ค. 69" in base and "ยอดทายรอบ ม.ค. 70" in pert
+    assert "Forecast (ยอดทาย) รันเมื่อ ต.ค. 69" in base and "Forecast (ยอดทาย) รันเมื่อ ม.ค. 70" in pert
     lb, lp = lines(base), lines(pert)
     assert lb[0].startswith("ต.ค. 69 PEM101") and lp[0].startswith("ก.พ. 70 PEM101")
     assert "A7" in lb[1] and "Z9" in lp[1] and "Z9" not in lb[1] and "A7" not in lp[1]
@@ -563,8 +563,8 @@ def test_new_sales_report_lines_and_tables_follow_their_sources(two_builds):
     b, p = base.sales_html, pert.sales_html
     # the round, the last month of the sales used and the build time come from the vintage and the clock
     fb, fp = _first(r'id="freshness-line">(.*?)</span>', b), _first(r'id="freshness-line">(.*?)</span>', p)
-    assert fb != fp and fp.startswith("ยอดทายรอบ ม.ค. 70 · ใช้ยอดขายถึง พ.ย. 69 · หน้าสร้างเมื่อ ")
-    assert re.fullmatch(r"ยอดทายรอบ \S+ \d\d · ใช้ยอดขายถึง \S+ \d\d · หน้าสร้างเมื่อ \d{1,2} \S+ \d\d \d\d:\d\d", fb)
+    assert fb != fp and fp.startswith("Forecast (ยอดทาย) รันเมื่อ ม.ค. 70 · ใช้ยอดขายถึง พ.ย. 69 · หน้าสร้างเมื่อ ")
+    assert re.fullmatch(r"Forecast \(ยอดทาย\) รันเมื่อ \S+ \d\d · ใช้ยอดขายถึง \S+ \d\d · หน้าสร้างเมื่อ \d{1,2} \S+ \d\d \d\d:\d\d", fb)
     # the fit window, the forecast months
     rb, rp = _first(r'id="fit-range-line">(.*?)</td>', b), _first(r'id="fit-range-line">(.*?)</td>', p)
     assert rb != rp and rp == "ยอดขายที่ใช้ทาย พ.ค. 67 ถึง พ.ย. 69"

@@ -39,13 +39,13 @@ DASH = "-"
 # Approved Thai text, verbatim. {braces} are computed values.
 TEXT = {
     "heading": "แผนการผลิต {n_months} เดือน · ทุกฝ่าย",
-    "data_line": "ข้อมูล stock ดึงเมื่อ {pull_time} · ยอดทายรอบ {forecast_run_month}",
-    "col_month": "เดือน", "col_demand": "ผลิตตามความต้องการ", "col_refill": "เติมให้ถึง Max", "col_mto": "ผลิตตามสั่ง", "col_total": "รวม",
-    "col_capacity": "เทียบยอดผลิตสูงสุดที่เคยทำ", "above_capacity": "สูงกว่ายอดผลิตสูงสุดที่เคยทำ",
+    "data_line": "ข้อมูล stock ดึงเมื่อ {pull_time} · Forecast (ยอดทาย) รันเมื่อ {forecast_run_month}",
+    "col_month": "เดือน", "col_demand": "ผลิตตามยอดทาย + ออเดอร์ (Demand-driven)", "col_refill": "เติมให้ถึง Max (Build to Max)", "col_mto": "ผลิตตามสั่ง (MTO: Make to Order)", "col_total": "รวม",
+    "col_capacity": "เทียบกับยอดผลิตสูงสุดต่อเดือนในอดีต (Historical peak)", "above_capacity": "สูงกว่าที่เคยผลิตได้ในอดีต (ไม่ใช่ขีดความสามารถ)",
     "line_refill": "{first_month} PEM101 ต้องเติมให้ถึง Max {refill_units} หน่วย นอกเหนือจากความต้องการเดือนนั้น เพราะ stock ตอนนี้ต่ำกว่า Max ทยอยเติมในเดือนถัดไปได้",
     "line_backlog": "{first_month} PEM107 มีออเดอร์ที่รับแล้วสูงกว่ายอดทาย {backlog_above_forecast} หน่วย ส่วนใหญ่จาก {top_backlog_items}",
     "line_capacity": "ยอดผลิตสูงสุดที่เคยทำ คือยอดผลิตเสร็จต่อเดือนสูงสุดในอดีต นับทุกสินค้ารวมกันโดยไม่แยกขนาด ใช้ดูทิศทาง ไม่ได้แปลว่าเป็นกำลังผลิตเต็มที่",
-    "line_no_stock": "{division} ไม่มีสินค้าที่เข้าเกณฑ์เก็บ stock แผนจึงเป็นการผลิตตามความต้องการทั้งหมด",
+    "line_no_stock": "{division} ไม่มีสินค้าที่เข้าเกณฑ์เก็บ stock แผนจึงเป็นการผลิตตามยอดทาย + ออเดอร์ทั้งหมด",
     "line_no_forecast": "{n} รหัสยังไม่มียอดทาย แผนนับเฉพาะออเดอร์ที่รับแล้ว ตอนนี้มีออเดอร์ค้าง {k} รหัส",
     "line_no_forecast_no_orders": "{n} รหัสยังไม่มียอดทาย แผนนับเฉพาะออเดอร์ที่รับแล้ว ตอนนี้ไม่มีออเดอร์ค้างในกลุ่มนี้",
     "line_no_production": "{n} รหัสไม่พบการผลิตในระบบ ไม่นับเป็นภาระผลิต",

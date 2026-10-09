@@ -470,7 +470,7 @@ def test_the_page_text_is_the_approved_text_and_every_braced_value_comes_from_th
     n = int(mp.load_config(project)["order_window_days"])
     assert n == 30 and v["n_days"] == n
     assert f'<h2 id="within-title">ต้องสั่งภายใน {n} วัน</h2>' in page and f"วัตถุดิบที่ต้องสั่งภายใน {n} วันข้างหน้า ถึงจะได้ของทันตามแผน" in page
-    assert '<h2 id="late-title">ขาดแล้ว สั่งตอนนี้ไม่ทัน</h2>' in page
+    assert '<h2 id="late-title">เลยกำหนดสั่ง (Late to order) สั่งวันนี้ของมาไม่ทันแผน</h2>' in page
     assert "วัตถุดิบที่แผนต้องใช้ก่อนที่ของจะมาถึงแม้สั่งวันนี้ ควรตรวจของที่มีอยู่จริง หรือเร่งของที่สั่งไว้แล้ว" in page
     assert "ต้องสั่งทันที" not in page and page.index('id="within-title"') < page.index('id="late-title"') < page.index('id="material-table"')
 

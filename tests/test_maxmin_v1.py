@@ -305,7 +305,7 @@ def test_an_unknown_mixed_item_stops_the_computation():
 # ------------------------------------------------------------------ 2026-10-09: the table "เกณฑ์ที่รอกำหนด"
 # The approved rows, verbatim; {braces} are the draft values of config (pending_criteria_values) and the decision date as 'd MMM yy'.
 PENDING_ROWS = [
-    ["ยอดทายดีกว่าวิธีง่ายไหม", "Relative MAE ต่ำแค่ไหนถึงผ่าน (MAE ของเรา ÷ MAE ของ Naive)", "ร่าง: ต่ำกว่า {relative_mae_pass} ผ่าน, ต่ำกว่า {relative_mae_good} ดี", "ผู้บริหาร", "หลังรอบ {decision_date}"],
+    ["ยอดทายดีกว่าวิธีง่ายไหม", "Relative MAE ต่ำแค่ไหนถึงนับว่าถึงเกณฑ์ (MAE ของเรา ÷ MAE ของ Naive)", "ร่าง: ต่ำกว่า {relative_mae_pass} ถึงเกณฑ์ผ่าน, ต่ำกว่า {relative_mae_good} ถึงเกณฑ์ดี", "ผู้บริหาร", "หลังรอบ {decision_date}"],
     ["ยอดทายเอียงต่อเนื่อง", "tracking signal เกินเท่าไหร่ถึงเตือน", "ร่าง: ±{tracking_signal_limit}", "ผู้บริหาร", "ทุกเดือน"],
     ["ฝ่ายที่ยอดทายไม่ชนะวิธีง่าย", "ใช้วิธีง่ายแทนไหม", "ยังใช้วิธีเดิม และแสดงผลเทียบ", "ผู้บริหาร", "หลังรอบ {decision_date}"],
     ["เป้าการส่งไม่สาย", "บริษัทต้องการกี่ %", "ให้เลือกเองบนหน้าแผนสต็อก", "ผู้บริหาร", "ยังไม่กำหนด"],
@@ -335,14 +335,14 @@ def test_the_criteria_table_is_in_the_file_with_the_eight_approved_rows_and_valu
     # the draft values and the date are config's: the rendered row text carries them
     cfg = mm.load_config()["pending_criteria_values"]
     assert values == {"relative_mae_pass": "1", "relative_mae_good": "0.7", "tracking_signal_limit": "4", "decision_date": "5 ธ.ค. 69"} and cfg["decision_date"] == "2026-12-05"
-    assert payload["pending_criteria"][0]["now_used"] == "ร่าง: ต่ำกว่า 1 ผ่าน, ต่ำกว่า 0.7 ดี" and payload["pending_criteria"][1]["now_used"] == "ร่าง: ±4"
+    assert payload["pending_criteria"][0]["now_used"] == "ร่าง: ต่ำกว่า 1 ถึงเกณฑ์ผ่าน, ต่ำกว่า 0.7 ถึงเกณฑ์ดี" and payload["pending_criteria"][1]["now_used"] == "ร่าง: ±4"
 
 
 def test_the_criteria_rows_follow_config_values_and_only_the_sales_report_scores_against_them():
     cfg = copy.deepcopy(mm.load_config())
     cfg["pending_criteria_values"] = {"relative_mae_pass": 2, "relative_mae_good": 0.5, "tracking_signal_limit": 3.5, "decision_date": "2027-01-05"}
     rows = mm.pending_criteria_rows(cfg)
-    assert rows[0]["now_used"] == "ร่าง: ต่ำกว่า 2 ผ่าน, ต่ำกว่า 0.5 ดี" and rows[1]["now_used"] == "ร่าง: ±3.5"
+    assert rows[0]["now_used"] == "ร่าง: ต่ำกว่า 2 ถึงเกณฑ์ผ่าน, ต่ำกว่า 0.5 ถึงเกณฑ์ดี" and rows[1]["now_used"] == "ร่าง: ±3.5"
     assert rows[0]["when"] == rows[2]["when"] == rows[4]["when"] == "หลังรอบ 5 ม.ค. 70"
     # the values are drafts: no source file other than the builder and the sales report's "เทียบกับร่างเกณฑ์" block (labelled as a draft) reads them
     hits = [f for f in os.listdir(os.path.join(PROJECT_ROOT, "src")) if f.endswith(".py")

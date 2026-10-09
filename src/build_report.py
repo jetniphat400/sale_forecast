@@ -876,7 +876,7 @@ def render_page(config: dict) -> str:
         ลูกค้าให้เวลาแจ้งล่วงหน้าก่อนส่งมอบเพียง <b>{fmt_num(biz['median_notice'], 0)}</b> วัน
         (median) ซึ่งสั้นกว่าระยะเวลาจัดหาวัตถุดิบมาก
         {cite('delivery_by_year.csv', 'pct_on_time')}
-        อัตราการส่งมอบตรงเวลาปรับตัวขึ้นจาก {fmt_num(ontime_2023_val, 1)}% ({ontime_first_year}) เป็น
+        สัดส่วนส่งตรงวันพอดี (exact-day delivery: ส่งวันนัดเป๊ะ ไม่นับส่งก่อน) ปรับตัวขึ้นจาก {fmt_num(ontime_2023_val, 1)}% ({ontime_first_year}) เป็น
         <b>{fmt_num(ontime_2026_val, 1)}%</b> ในปี {ontime_last_year} (ข้อมูลบางส่วน)
       </p>
     </section>"""
@@ -1021,7 +1021,7 @@ def render_page(config: dict) -> str:
           <!-- Split lots; STATUS.md, Locked Decisions -->
           <tr><td colspan="2">รายการที่ดูเหมือนซ้ำแต่เป็นการแบ่งส่งหลายงวด นับครบทุกงวด</td></tr>
           <!-- MPS retained; STATUS.md, Locked Decisions -->
-          <tr><td colspan="2">PO ที่รับแล้วแต่ยังไม่ส่ง (MPS) นับเป็นยอดขาย เพราะลูกค้าสั่งแล้วจริง</td></tr>
+          <tr><td colspan="2">MPS (open PO: PO ที่รับแล้วแต่ยังไม่ส่ง) นับรวมในยอดที่ใช้ทาย (Actual + MPS) เพราะลูกค้าสั่งแล้วจริง แต่ยังไม่ใช่ยอดที่ส่งมอบแล้ว</td></tr>
           <!-- forecast_date keying: the series is keyed on forecast_date, a frozen snapshot, not queried live each time; STATUS.md, Locked Decisions -->
           <tr><td colspan="2">ยอดขายนับตามเดือนที่ต้องส่งของตามสัญญา ไม่ใช่เดือนที่รับ PO</td></tr>
           <!-- Pricelist as division source; the database division column is not used to filter; STATUS.md, CONVENTIONS.md -->
@@ -1075,11 +1075,12 @@ def render_page(config: dict) -> str:
     # Against the draft criteria: Relative MAE (all horizons and Horizon 3) and Tracking Signal per division and pilot group (METRICS.md Sec.48).
     th = accuracy["thresholds"]
     crit_rows = "".join(
-        f"<tr><td>{html.escape(r['label'])}</td><td>{fmt_ratio(r['relative_mae'], 2)}</td><td>{r['verdict_relative']}</td>"
-        f"<td>{fmt_ratio(r['relative_mae_h3'], 2)}</td><td>{r['verdict_relative_h3']}</td>"
+        f"<tr><td>{html.escape(r['label'])}</td><td>{fmt_ratio(r['relative_mae'], 2)}</td><td>{html.escape(report['verdict_words'].get(r['verdict_relative'], r['verdict_relative']))}</td>"
+        f"<td>{fmt_ratio(r['relative_mae_h3'], 2)}</td><td>{html.escape(report['verdict_words'].get(r['verdict_relative_h3'], r['verdict_relative_h3']))}</td>"
         f"<td>{fmt_ratio(r['tracking_signal'], 1)}</td><td>{r['verdict_tracking']}</td></tr>" for r in accuracy["rows"])
     crit_head = "".join(f"<th>{html.escape(c)}</th>" for c in report["criteria_columns"])
-    crit_values = {"pass_value": f"{th['pass']:g}", "good_value": f"{th['good']:g}", "warn_value": f"{th['limit']:g}"}
+    crit_values = {"pass_value": f"{th['pass']:g}", "good_value": f"{th['good']:g}", "warn_value": f"{th['limit']:g}", "n_rounds": str(rv.backtest_rounds(config)),
+                   "decision_date": rv.thai_date_short(config["maxmin_v1"]["pending_criteria_values"]["decision_date"])}
     criteria_html = f"""<h3 id="criteria-vs-draft">{html.escape(report['criteria_heading'])}</h3>
       <!-- source: Relative MAE, Horizon 3 and Tracking Signal recomputed at build from the saved monthly series with the functions of the main table (src/transferability_all_divisions.py), Naive = the last month before each origin; the forward months from the forward-test log (src/forward_test_scoring.py forward_naive_items); thresholds: config maxmin_v1.pending_criteria_values (draft). METRICS.md Sec.48. Tracking Signal points used per row: {", ".join(f"{r['label']} {r['n_points']}" for r in accuracy["rows"])}. -->
       {render_notes_html('sales_report.html', 'criteria-comparison', values=crit_values)}
@@ -1119,7 +1120,7 @@ def render_page(config: dict) -> str:
       </table>
       <h3>ตารางรอง — วิธี Combination ระดับประเภทสินค้า</h3>
       <!-- Previous wording, kept off screen: Combination model only, at Type level (not item level), averaged across all Types and the 7 rolling origins per division -- src/backtest_all_divisions.py:126-139 (first disclosed in output/summary/manual_factsheet.md Part 5 item 2); kept for comparison, no longer the primary table. -->
-      <p class="hint">เก็บไว้เทียบ ไม่ใช่วิธีที่ใช้</p>
+      <p class="hint">ผลของส่วน Combination ก่อนแบ่งลงรหัสสินค้า ใช้เทียบเท่านั้น ตัวเลขที่ใช้วางแผนคือตารางหลัก</p>
       {cite('phaseC_step2_per_division_summary_qty.csv', 'MAE / RMSE / Bias / MASE / n_items')}
       <table class="report-table" id="div-results-table">
         <thead><tr><th>ฝ่าย</th><th>MAE</th><th>RMSE</th><th>MASE</th><th>Bias</th><th>จำนวนสินค้า</th></tr></thead>

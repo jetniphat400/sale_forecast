@@ -557,13 +557,15 @@ def test_the_s_and_op_pointer_line_is_under_the_kpi_cards_and_links_to_the_new_t
 def test_the_exec_tab_texts_cards_table_and_remarks_are_verbatim_from_fixed_data():
     import build_trend_tab as bt
     cfg = bt.load_config()
+    import reader_values as rv
+    DECISION_DATE_TH = rv.thai_date_short(cfg["maxmin_v1"]["pending_criteria_values"]["decision_date"])
     d = _fixed_exec_data()
     d["watch"] = []
     lines = _exec_visible(bt.exec_render(d, cfg))
     assert lines[0].startswith("ยอดขาย ม.ค.–ส.ค. 69 | ") or "ยอดขาย ม.ค.–ส.ค. 69" in lines
     joined = "\n".join(lines)
     for text in ["ยอดขาย ม.ค.–ส.ค. 69", "130.0 ล้านบาท", "เทียบช่วงเดียวกันปีก่อน +8.3%", "คาดการณ์ทั้งปี 2569 (สินค้าใน Price List)", "190.0 ล้านบาท", "ถึงเป้า – · เป้ารวมสินค้า Omni ทุกตัว % นี้จึงน่าจะต่ำกว่าจริง",
-                 "ความแม่นของยอดทาย", "1 จาก 2 ฝ่าย", "ดีกว่า Naive", "เรื่องที่ต้องระวัง", "0 เรื่อง", "ดูรายการด้านล่าง", "เรื่องที่รอผู้บริหารตัดสิน", "หัวข้อ · ต้องตัดสินอะไร",
+                 "ความแม่นของยอดทาย", "1 จาก 2 ฝ่าย", "Relative MAE ต่ำกว่าวิธีเทียบ Naive (ใช้ยอดเดือนก่อนเป็นค่าทาย) ตามเกณฑ์ร่าง · ฝ่ายที่พิสูจน์แล้วว่าดีกว่าจริงดูในหน้ายอดขาย · ยืนยันเกณฑ์หลังรอบ " + DECISION_DATE_TH, "เรื่องที่ต้องระวัง", "0 เรื่อง", "ดูรายการด้านล่าง", "เรื่องที่รอผู้บริหารตัดสิน", "หัวข้อ · ต้องตัดสินอะไร",
                  "ฝ่าย | ยอดขาย YTD | ปีก่อน YTD | เปลี่ยน | คาดการณ์ทั้งปี | เป้า (Revenue) | ถึงเป้า | Relative MAE | หมายเหตุ",
                  "AAA | 100.0 | 80.0 | +25.0% | 150.0 | 200.0 | 75.0% | 0.60 |",
                  "BBB | 30.0 | 40.0 | -25.0% | 40.0 | – | – | 1.20 | ไม่พบเป้าของฝ่ายนี้ในระบบเป้า",
@@ -598,7 +600,7 @@ def test_each_watch_out_line_appears_only_when_its_condition_holds():
     assert "G ทายต่ำกว่าจริงต่อเนื่อง (Tracking Signal -4.1) คาดการณ์ทั้งปีของกลุ่มนี้อาจต่ำกว่าที่จะเกิดจริง" in lines
     assert "H ทายสูงกว่าจริงต่อเนื่อง (Tracking Signal 6.7) คาดการณ์ทั้งปีของกลุ่มนี้อาจสูงกว่าที่จะเกิดจริง" in lines
     assert "แผนผลิต D1 เดือน ต.ค. 69 สูงกว่ายอดผลิตสูงสุดที่เคยทำ (119.9%)" in lines
-    assert "วัตถุดิบ 584 รายการขาดแล้ว สั่งตอนนี้ไม่ทันแผน" in lines
+    assert "วัตถุดิบ 584 รายการเลยกำหนดสั่ง (Late to order) สั่งวันนี้ของมาไม่ทันแผน" in lines
     assert "PEM107 ส่งของช่องทาง Omni ทันน้อยลงตั้งแต่ พ.ค. 2569 (57.7% ไม่สาย)" in lines
     assert "5 เรื่อง" in "\n".join(lines)                                                                 # card 4 counts the lines shown
     assert not any("ทายต่ำกว่าจริง" in x for x in _exec_visible(bt.exec_render(dict(d, watch=high), cfg)))

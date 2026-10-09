@@ -419,7 +419,7 @@ def test_the_data_line_shows_the_round_and_the_stock_pull_time_and_the_script_fo
     import reader_values as rv
     from page_helpers import load_stock_payload
     payload = load_stock_payload()
-    expected = f"ยอดทายรอบ {rv.thai_month_short(rv.vintage_facts()['run_date'])} · ข้อมูล stock ดึงเมื่อ {rv.thai_datetime_short(payload['pull_time'])}"
+    expected = f"Forecast (ยอดทาย) รันเมื่อ {rv.thai_month_short(rv.vintage_facts()['run_date'])} · ข้อมูล stock ดึงเมื่อ {rv.thai_datetime_short(payload['pull_time'])}"
     assert desktop.ev("document.getElementById('data-line').innerText") == expected
     assert desktop.ev("document.getElementById('page-title').nextElementSibling.id") == "data-line"
     for stamp in ("2026-10-08 08:01:01", "2027-01-05 00:09:59", "2026-12-31 23:59:00", "2026-03-09 12:00:00"):

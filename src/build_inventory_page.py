@@ -399,7 +399,7 @@ def build_page(**data_sources) -> str:
       <div class="summary-box" id="summary-box">
         <div class="summary-title">ผลจากตัวควบคุม</div>
         <div class="totals-box">
-          <div class="stat">Stock value (Σ Min×unit_cost)<b id="tot-stock-value">-</b></div>
+          <div class="stat">Value of Min level (มูลค่าตาม Min จำลอง = Min × ต้นทุนต่อชิ้น รวมทุกรหัส)<b id="tot-stock-value">-</b></div>
           <div class="stat">Holding cost (annual)<b id="tot-holding-cost">-</b></div>
           <div class="stat">Items with a Min/Max<b id="tot-n-items">-</b></div>
           <!-- previously: Excess stock items (METRICS.md §40) -->
@@ -442,7 +442,7 @@ def build_page(**data_sources) -> str:
   <!-- Stock figures (Months of cover, ของค้าง, the stock-with-no-forecast table, the count in the summary box) come from the stock file loaded when the page opens; the three dates below describe that file. -->
   <p class="note-box" id="stock-labels" style="display:none"></p>
   <!-- Formula: Value at risk = max(0, current_min − scenario_min) × unit_cost, the earlier on-screen hint described the opposite direction (current stock below the scenario) although the formula measures a system Min above the simulated one. Excess = months of cover above the obsolescence threshold set above (METRICS.md §40), recomputed whenever the ticked warehouses or the threshold change. -->
-  <p class="hint">Value at risk = ถ้า Min ในระบบสูงกว่าที่จำลอง ส่วนเกินคิดเป็นเงินเท่าไหร่<br>ของค้าง = stock พอขายเกินจำนวนเดือนที่ตั้งไว้ด้านบน</p>
+  <p class="hint">Excess Min value (มูลค่า Min ส่วนเกิน) = ถ้า Min ในระบบสูงกว่าที่จำลอง ส่วนเกินคิดเป็นเงินเท่าไหร่<br>ของค้าง = stock พอขายเกินจำนวนเดือนที่ตั้งไว้ด้านบน</p>
   {render_notes_html('inventory.html', 'excess-threshold', values=note_values)}
   <!-- Previous wording of the class caption, kept off screen: Policy = METRICS.md §23 class (stock_policy/confirmed_to_order/conflict) for PEM101/PEM107, supersedes section 15. Only stock_policy items receive a Min/Max here; confirmed_to_order and conflict items are listed with no Min/Max in the separate table below. Label = dominant manufacturing_type (MTS/MTO/ETO/mixed). Signals = S1 (on-hand stock) / S2 (batch-before-PO share) / S3 (median notice, days), check/cross/dash (dash = S2 could not be computed, S1+S3 both required instead). The number of signals and the notice threshold below are read at build time: src/reader_values.py fulfilment_signal_count (task2b_part2_item_level.csv) and fulfilment_notice_threshold_days (S3_THRESHOLD_DAYS in src/investigations/task2b_part2_fulfilment_segmentation.py). -->
   <div id="policy-class-notes" style="display:none">
@@ -456,7 +456,7 @@ def build_page(**data_sources) -> str:
       <th onclick="sortTable(4)">Min</th><th onclick="sortTable(5)">Max</th>
       <th onclick="sortTable(6)">Min (ค่าที่ตั้งในระบบ)</th><th onclick="sortTable(7)">Max (ค่าที่ตั้งในระบบ)</th>
       <th onclick="sortTable(8)">Months of cover</th>
-      <th onclick="sortTable(9)">Value at risk (THB)</th><th onclick="sortTable(10)">ของค้าง</th>
+      <th onclick="sortTable(9)">Excess Min value (THB)</th><th onclick="sortTable(10)">ของค้าง</th>
     </tr></thead>
     <tbody id="item-table-body"></tbody>
     <tfoot><tr class="total-row"><td colspan="7">Total</td><td id="item-total-system-max"></td><td colspan="3"></td></tr></tfoot>
@@ -1167,7 +1167,7 @@ function renderStockLabels() {{
 
 function renderDataLine() {{
   document.getElementById('data-line').textContent =
-    'ยอดทายรอบ ' + DATA.forecast_round_label + ' · ข้อมูล stock ดึงเมื่อ ' + (STOCK_OK ? thaiDateTime(STOCK.pull_time) : STOCK_UNKNOWN);
+    'Forecast (ยอดทาย) รันเมื่อ ' + DATA.forecast_round_label + ' · ข้อมูล stock ดึงเมื่อ ' + (STOCK_OK ? thaiDateTime(STOCK.pull_time) : STOCK_UNKNOWN);
 }}
 
 function startPage() {{

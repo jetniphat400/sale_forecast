@@ -268,7 +268,7 @@ def test_the_three_approved_lines_are_on_the_page_with_their_values_filled():
     import reader_values as rv
     h = _tracked_sales_html()
     vf = rv.vintage_facts()
-    m = re.search(r'id="freshness-line">ยอดทายรอบ (.*?) · ใช้ยอดขายถึง (.*?) · หน้าสร้างเมื่อ (\d{1,2} \S+ \d{2} \d{2}:\d{2})</span>', h)
+    m = re.search(r'id="freshness-line">Forecast \(ยอดทาย\) รันเมื่อ (.*?) · ใช้ยอดขายถึง (.*?) · หน้าสร้างเมื่อ (\d{1,2} \S+ \d{2} \d{2}:\d{2})</span>', h)
     assert m, "the freshness line is missing or not in the approved shape"
     assert m.group(1) == rv.thai_month_short(vf["run_date"]) and m.group(2) == rv.thai_month_short(vf["fit_last"])
     assert f'id="fit-range-line">ยอดขายที่ใช้ทาย {rv.thai_month_short(vf["fit_first"])} ถึง {rv.thai_month_short(vf["fit_last"])}</td>' in h
@@ -568,7 +568,7 @@ def test_the_forecast_versus_actual_table_has_the_baht_columns_and_the_note_and_
     vf, info = _page_prices()
     head = re.search(r'<table class="report-table" id="scored-table"><thead><tr>(.*?)</tr>', h, re.S).group(1)
     assert head.endswith("<th>ยอดทาย (บาท)</th><th>ยอดจริง (บาท)</th><th>ต่าง (บาท)</th>")
-    assert "ตัวเลขบาทคิดทั้งยอดทายและยอดจริงด้วยราคาขายเฉลี่ยเดียวกัน เพื่อดูว่าทายจำนวนพลาดคิดเป็นเงินเท่าไหร่ ต่างติดลบ = ทายต่ำกว่าจริง" in " ".join(_visible(h).split())
+    assert "ตัวเลขบาทคิดทั้งยอดทายและยอดจริงด้วยราคาขายเฉลี่ยเดียวกัน (ยอดจริงคือจำนวนที่ขายจริง × ราคาขายเฉลี่ย ไม่ใช่รายได้ตามบัญชี) เพื่อดูว่าทายจำนวนพลาดคิดเป็นเงินเท่าไหร่ ต่างติดลบ = ทายต่ำกว่าจริง" in " ".join(_visible(h).split())
     body = re.search(r'id="scored-table">.*?<tbody>(.*?)</tbody>', h, re.S).group(1)
     rows = re.findall(r"<tr><td>(\w+)</td><td>(.*?)</td><td>(.*?)</td><td>[^<]*</td><td>[^<]*</td><td>(.*?)</td><td>.*?</td><td>(-?[\d,]+)</td><td>(-?[\d,]+)</td><td>(-?[\d,]+)</td></tr>", body)
     assert rows
@@ -687,6 +687,7 @@ def _criteria_rows(h: str) -> list:
 def test_the_criteria_block_is_verbatim_has_every_division_and_group_and_reads_its_thresholds_from_config(tmp_path, monkeypatch):
     import reader_values as rv
     h = _tracked_sales_html()
+    import reader_values as rv
     cfg = load_config()
     crit = cfg["maxmin_v1"]["pending_criteria_values"]
     text = " ".join(_visible(re.search(r'<section id="results">.*?</section>', h, re.S).group(0)).split())
@@ -694,19 +695,22 @@ def test_the_criteria_block_is_verbatim_has_every_division_and_group_and_reads_i
     head = re.search(r'<table class="report-table" id="criteria-table"><thead><tr>(.*?)</tr>', h, re.S).group(1)
     assert re.findall(r"<th>(.*?)</th>", head) == ["ฝ่าย / กลุ่ม", "Relative MAE", "ผล", "Relative MAE (Horizon 3)", "ผล", "Tracking Signal", "ผล"]
     lines = ["▸ วิธีทายของเราดีกว่าวิธี Naive (ใช้ยอดเดือนที่แล้วเป็นค่าทาย) ไหม",
-             f"▸ Relative MAE = MAE ของเรา ÷ MAE ของ Naive ในเดือนทดสอบเดียวกัน ต่ำกว่า {crit['relative_mae_pass']:g} = ดีกว่า Naive · ต่ำกว่า {crit['relative_mae_good']:g} = ดี",
+             f"▸ Relative MAE = MAE ของเรา ÷ MAE ของ Naive ในเดือนทดสอบเดียวกัน ต่ำกว่า {crit['relative_mae_pass']:g} = ต่ำกว่า Naive ในการทดสอบนี้ (ถึงเกณฑ์ผ่านของร่าง) · ต่ำกว่า {crit['relative_mae_good']:g} = ถึงเกณฑ์ดีของร่าง",
              "▸ Horizon 3 = ทายล่วงหน้า 3 เดือน ใช้ดูความแม่นในช่วงที่ต้องสั่งวัตถุดิบล่วงหน้า",
              f"▸ Tracking Signal = ความคลาดสะสม ÷ ความคลาดเฉลี่ย บอกว่าทายเอียงไปทางเดียวต่อเนื่องไหม เกิน ±{crit['tracking_signal_limit']:g} = เตือน",
-             "▸ ผลมาจากการทดสอบย้อนหลัง และเกณฑ์ยังเป็นร่าง ยังไม่ใช่การตัดสินสุดท้าย"]
+             f"▸ ถึงเกณฑ์ร่าง ยังไม่ได้แปลว่าพิสูจน์แล้วว่าดีกว่า Naive: ผลมาจากการทดสอบย้อนหลังเพียง {rv.backtest_rounds(cfg)} รอบ ดูว่าฝ่ายไหนต่างจาก Naive จริงในหัวข้อ \"ใช้วิธี Top-down ดีกว่าวิธีอื่นไหม\"",
+             f"▸ เกณฑ์เป็นร่าง ผู้บริหารยืนยันหลังรอบ {rv.thai_date_short(crit['decision_date'])}"]
     block = re.search(r'<h3 id="criteria-vs-draft">.*?</table>', h, re.S).group(0)
-    assert "<br>".join(lines) in re.sub(r"<!--.*?-->", "", block, flags=re.S).replace("&lt;", "<")
+    assert "<br>".join(lines) in re.sub(r"<!--.*?-->", "", block, flags=re.S).replace("&lt;", "<").replace("&quot;", '"')
     rows = _criteria_rows(h)
     assert [r[0] for r in rows] == [d for d in ["PEM101", "PEM103", "PEM107", "PEM102", "CI101"]] + ["Fuse Cutout", "Surge Arrester"]
     for r in rows:
-        assert r[2] in ("ดี", "ผ่าน", "ไม่ผ่าน") and r[4] in ("ดี", "ผ่าน", "ไม่ผ่าน") and r[6] in ("ปกติ", "เตือน")
+        words = cfg["report"]["verdict_words"]
+        inverse = {v: k for k, v in words.items()}
+        assert r[2] in inverse and r[4] in inverse and r[6] in ("ปกติ", "เตือน")
         for value, verdict in ((r[1], r[2]), (r[3], r[4])):
             if min(abs(float(value) - 1.0), abs(float(value) - 0.7)) > 0.006:                                 # away from a threshold at the page's rounding
-                assert verdict == build_report.verdict_relative(float(value), 0.7, 1.0), r
+                assert inverse[verdict] == build_report.verdict_relative(float(value), 0.7, 1.0), r
     # the model MAE behind Relative MAE is the main table's MAE, for every division (the build stops otherwise)
     primary = build_report.gather_primary_results()
     acc = build_report.gather_accuracy_vs_naive(cfg, primary)
@@ -721,8 +725,8 @@ def test_the_criteria_block_is_verbatim_has_every_division_and_group_and_reads_i
     out = run_build_report(output_path=str(tmp_path / "sales_report.html"))
     h2 = open(out, encoding="utf-8").read()
     r2 = {r[0]: r for r in _criteria_rows(h2)}
-    assert r2["PEM101"][2] == "ไม่ผ่าน" and r2["CI101"][6] == "ปกติ"                                         # |TS| 6.7 is inside the widened limit
-    assert "ต่ำกว่า 0.5 = ดีกว่า Naive · ต่ำกว่า 0.3 = ดี" in _visible(h2) and "เกิน ±9 = เตือน" in _visible(h2)
+    assert r2["PEM101"][2] == cfg["report"]["verdict_words"]["ไม่ผ่าน"] and r2["CI101"][6] == "ปกติ"                                         # |TS| 6.7 is inside the widened limit
+    assert "ต่ำกว่า 0.5 = ต่ำกว่า Naive ในการทดสอบนี้ (ถึงเกณฑ์ผ่านของร่าง) · ต่ำกว่า 0.3 = ถึงเกณฑ์ดีของร่าง" in _visible(h2) and "เกิน ±9 = เตือน" in _visible(h2)
     assert "{" not in _visible(h2) and "}" not in _visible(h2)
 
 

@@ -1332,6 +1332,7 @@ pipeline — no new section is needed for this; it is already covered by section
                         test month), then one per scored forward month; the number of points is reported; undefined when every e is 0
     items beyond the limit (report only) = share of the division's items whose own horizon-1 Tracking Signal (same points) is beyond the limit, items with a point error of 0 throughout left out
     verdict           = Relative MAE: ดี below relative_mae_good, ผ่าน below relative_mae_pass, ไม่ผ่าน otherwise; Tracking Signal: เตือน when |TS| is above tracking_signal_limit, ปกติ otherwise
+                      Displayed words (config report.verdict_words, from Prompt 17): ดี = "ถึงเกณฑ์ดี (ร่าง)", ผ่าน = "ถึงเกณฑ์ผ่าน (ร่าง)", ไม่ผ่าน = "ยังไม่ถึงเกณฑ์ (ร่าง)": a result meets the DRAFT criteria; it is not claimed to be proven better than Naive (the significance block tests that).
 
 - Thresholds (draft, pending the user's decision after 2026-12-05): config pending_criteria_values (relative_mae_pass, relative_mae_good, tracking_signal_limit); the same values the
   assumptions tab shows in "เกณฑ์ที่รอกำหนด". Source of the ratio: Morlidge's ratio of forecast MAE to naive MAE (Gilliland / SAS, "The avoidability of forecast error, Part 4").

@@ -253,7 +253,7 @@ def test_the_criteria_table_shows_its_heading_columns_and_eight_approved_rows_un
         rows = edge.ev("[...document.querySelectorAll('#pendingCriteriaTable tbody tr')].map(r=>[...r.children].map(c=>c.textContent.trim()))")
         assert rows == expected and len(rows) == 8
         text = edge.ev("document.getElementById('pendingCriteriaTable').innerText")
-        assert "{" not in text and "}" not in text and "ร่าง: ต่ำกว่า 1 ผ่าน, ต่ำกว่า 0.7 ดี" in text and "ร่าง: ±4" in text and "หลังรอบ 5 ธ.ค. 69" in text
+        assert "{" not in text and "}" not in text and "ร่าง: ต่ำกว่า 1 ถึงเกณฑ์ผ่าน, ต่ำกว่า 0.7 ถึงเกณฑ์ดี" in text and "ร่าง: ±4" in text and "หลังรอบ 5 ธ.ค. 69" in text
         # it sits below the first table, after its own heading, and the first table is unchanged (ten rows)
         order = edge.ev("(function(){var a=document.getElementById('assumptionsTable'), h=document.getElementById('pendingCriteriaHeading'), b=document.getElementById('pendingCriteriaTable');"
                         "return [a.compareDocumentPosition(h) & 4, h.compareDocumentPosition(b) & 4, document.querySelectorAll('#assumptionsTable tbody tr').length]})()")
