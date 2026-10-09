@@ -46,7 +46,7 @@ from any file or dataset anywhere.
 
 **Verified from data.** `run_query('SELECT 1 AS test')` via `src/db.py`
 succeeded on the first attempt this session (result: `test=1`). The
-previously-expired SQL Server password for `jetniphat.boo` has been reset
+previously-expired SQL Server password for `<db-login>` has been reset
 (per the human's note); no credential was written, printed, or logged
 anywhere in this session or in the script.
 

@@ -17,12 +17,12 @@ No customer names, contract IDs or employee names appear anywhere below.
 ## Check 1 -- system32 dry run
 
 **Python executable confirmed independently** (`python -c "import sys; print(sys.executable)"`,
-run from the project folder): `C:\Users\jetniphat.boo\AppData\Local\Programs\Python\Python312\python.exe`
+run from the project folder): `C:\Users\<windows-login>\AppData\Local\Programs\Python\Python312\python.exe`
 -- matches the path task 2cfix2 itself recorded.
 
 **Command run, exactly the scheduled-task form, from `C:\Windows\system32`:**
 ```
-C:\Users\jetniphat.boo\AppData\Local\Programs\Python\Python312\python.exe D:\sale_forecast\src\monthly_refresh.py --dry-run
+C:\Users\<windows-login>\AppData\Local\Programs\Python\Python312\python.exe D:\sale_forecast\src\monthly_refresh.py --dry-run
 ```
 
 **Result: every step `ok`, every gate (8, 9, 10) passed.** Own run log:

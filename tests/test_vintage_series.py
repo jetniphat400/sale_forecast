@@ -261,3 +261,88 @@ def test_a_missing_environment_variable_in_a_real_run_is_a_recorded_failure_not_
     assert log["backup"]["status"] == "FAILED" and "is not set" in log["backup"]["error"]
     dry = mr.main(dry_run=True, sandbox=True, run_id="t4", run_log_dir=str(tmp_path / "logs"), offline=True, skip_tests=True)
     assert dry["backup"]["status"] == "skipped"
+
+
+# ---------------------------------------------------------------------------------------------------------------------------------------------
+# Atomic backup, the comparator log in the backup, and masking of every path form (Prompt 19). Temporary folders only.
+# ---------------------------------------------------------------------------------------------------------------------------------------------
+def test_an_injected_failure_leaves_no_dated_folder_and_no_temporary_folder_and_the_job_exits_non_zero(tmp_path, monkeypatch):
+    _evidence_in(tmp_path, monkeypatch)
+    drive = tmp_path / "drive"
+    drive.mkdir()
+    cfg = _config()
+    monkeypatch.setenv(cfg["backup"]["env_var"], str(drive))
+    real, calls = shutil.copy2, []
+
+    def failing_third(a, b, *x, **k):
+        calls.append(b)
+        if len(calls) == 3:
+            raise OSError(f"disk error writing {b}")
+        return real(a, b, *x, **k)
+    monkeypatch.setattr(mr.shutil, "copy2", failing_third)
+    with pytest.raises(mr.BackupError) as exc:
+        mr.run_backup(cfg)
+    assert len(calls) == 3
+    base = drive / cfg["backup"]["subfolder"]
+    assert not base.exists() or os.listdir(base) == []                               # no dated folder and no temporary folder
+    assert str(drive) not in str(exc.value)                                          # and the reason does not carry the resolved path
+    # through the job: the pages are built, the failure is in the run log, the exit is non-zero
+    calls.clear()
+    pushed = _stub_all_steps(monkeypatch)
+    monkeypatch.setattr(mr, "RUNS_DIR", str(tmp_path / "runs"))
+    log = mr.main(dry_run=False, sandbox=False, run_id="t5", run_log_dir=str(tmp_path / "logs"), offline=False, skip_tests=True)
+    assert log["backup"]["status"] == "FAILED" and str(drive) not in json.dumps(log) and pushed and log["steps"]["7_rebuild_pages"]["status"] == "ok"
+    assert not base.exists() or os.listdir(base) == []
+    monkeypatch.setattr(mr, "main", lambda **k: log)
+    assert mr.cli(["--dry-run"]) == 1
+    # a later successful backup the same day is a normal dated folder
+    monkeypatch.setattr(mr.shutil, "copy2", real)
+    from datetime import datetime
+    ok = mr.run_backup(cfg, datetime(2026, 11, 5, 7, 0, 0))
+    assert sorted(os.listdir(base)) == ["2026-11-05"] and ok["all_sha256_match"] is True
+
+
+def test_the_comparator_log_and_its_metadata_are_in_the_backup_when_they_exist(tmp_path, monkeypatch):
+    src, names = _evidence_in(tmp_path, monkeypatch)
+    drive = tmp_path / "drive"
+    drive.mkdir()
+    cfg = _config()
+    monkeypatch.setenv(cfg["backup"]["env_var"], str(drive))
+    monkeypatch.setattr(mr, "COMPARATOR_LOG_PATH", str(src / "forward_test_comparator_log.csv"))
+    monkeypatch.setattr(mr, "COMPARATOR_METADATA_PATH", str(src / "forward_test_comparator_metadata.json"))
+    from datetime import datetime
+    absent = mr.run_backup(cfg, datetime(2026, 11, 5, 7, 0, 0))
+    assert absent["comparator_log"].startswith("not present yet") and absent["files"] == 8
+    (src / "forward_test_comparator_log.csv").write_bytes(b"comparator rows\n")
+    with pytest.raises(mr.BackupError, match="comparator log does"):                  # a log without its metadata is an error, not a skip
+        mr.run_backup(cfg, datetime(2026, 12, 5, 7, 0, 0))
+    (src / "forward_test_comparator_metadata.json").write_bytes(b"{}")
+    present = mr.run_backup(cfg, datetime(2026, 12, 5, 7, 0, 0))
+    assert present["comparator_log"] == "included" and present["files"] == 10
+    assert {"forward_test_comparator_log.csv", "forward_test_comparator_metadata.json"} <= set(present["sha256"])
+    dest = drive / cfg["backup"]["subfolder"] / "2026-12-05"
+    for n in ("forward_test_comparator_log.csv", "forward_test_comparator_metadata.json"):
+        assert hashlib.sha256((dest / n).read_bytes()).hexdigest() == present["sha256"][n] == hashlib.sha256((src / n).read_bytes()).hexdigest()
+    assert sorted(os.listdir(drive / cfg["backup"]["subfolder"])) == ["2026-11-05", "2026-12-05"]
+
+
+def test_masking_covers_every_form_of_the_path_and_the_user_name(monkeypatch):
+    cfg = _config()
+    env = cfg["backup"]["env_var"]
+    root = "C:\\Users\\Alice.Example\\OneDrive - Some Org"
+    monkeypatch.setenv(env, root)
+    monkeypatch.setenv("USERNAME", "alice.example")
+    monkeypatch.setenv("USERPROFILE", "C:\\Users\\Alice.Example")
+    forms = [root + "\\sale_forecast_backup\\2026-11-05\\log.csv",
+             root.replace("\\", "/") + "/sale_forecast_backup/2026-11-05/log.csv",
+             root.replace("\\", "\\\\") + "\\\\sale_forecast_backup",
+             root.lower() + "\\x", root.upper() + "\\x",
+             "C:\\Users\\ALICE.EXAMPLE\\AppData\\Local\\Temp\\x.tmp", "c:/users/alice.example/AppData/x",
+             "PermissionError for user alice.example while writing",
+             "[WinError 5] Access is denied: 'C:\\\\Users\\\\Alice.Example\\\\OneDrive - Some Org\\\\sale_forecast_backup'",
+             "ALICE.example"]
+    for text in forms:
+        out = mr._mask(text)
+        assert "alice" not in out.lower(), (text, out)
+    assert mr._mask(forms[0]).startswith("%" + env + "%")
+    assert mr._mask("nothing to hide here: 2026-11-05") == "nothing to hide here: 2026-11-05"

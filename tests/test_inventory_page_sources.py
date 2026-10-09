@@ -178,13 +178,19 @@ def test_the_tracked_pages_history_equals_the_log_vintages_series_for_every_item
         log = ftc.read_forward_test_log(op.path_of(root, cfg["forecast_log_file"]))
     except Exception:       # noqa: BLE001
         pytest.skip("SKIPPED, not passed: the forward-test log is not on this machine")
-    if not os.path.exists(series_file):
-        pytest.skip("SKIPPED, not passed: the monthly series is not on this machine")
     vid = int(log["vintage_id"].max())
     entry = meta[str(vid)] if str(vid) in meta else meta[vid]
     if entry.get("fit_series_sha256"):
-        pytest.skip("SKIPPED, not passed: this vintage has a saved fit series; compare through vintage_series")
-    df = pd.read_csv(series_file)
+        # the series the vintage was fitted on is its saved snapshot, hash-checked against the metadata (vintage 2 on); no skip
+        import io
+        import vintage_series
+        snapshot = vintage_series.read_series(vid)
+        assert vintage_series.sha256_hex(snapshot) == entry["fit_series_sha256"], "the saved fit series does not hash to the value in the metadata"
+        df = pd.read_csv(io.BytesIO(snapshot))
+    else:
+        if not os.path.exists(series_file):
+            pytest.skip("SKIPPED, not passed: the monthly series is not on this machine")
+        df = pd.read_csv(series_file)
     df = df[(df["year_month"] >= entry["fit_first_month"]) & (df["year_month"] <= entry["fit_last_month"])]
     expect = {c: g.sort_values("year_month")["qty"].round(3).tolist() for c, g in df.groupby("itemcode")}
     data = op.read_page_data(os.path.join(root, "forecast", "inventory.html"))

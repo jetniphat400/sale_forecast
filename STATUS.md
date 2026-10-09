@@ -144,6 +144,16 @@ Code: `src/investigations/task2b_part2_fulfilment_segmentation.py` (`run_from_pu
 - Reader text: see SENTENCES NEEDING THAI TEXT of this task (demand column header on the material page, a label for the list of divisions covered, a line for the six PEM101 codes never sold, the approved heading for six divisions) (the user's assistant).
 - Category-level view of the two product categories and the three items' settings (brief item "settings"), storms and the other external factors, utility budgets, sales insight and EGP bids: not done (brief table).
 
+### Week 4, prompt 19 -- login names out of the repo, scheduled-task settings, backup hardening, the skipped test -- DONE, 2026-10-09 (no database; the test suite made none)
+
+**Report:** `docs/reports/summary/prompt5_g2_vintage_target_map.md`, heading "Prompt 19".
+
+**Login names.** Eight lines in five old reports under `docs/reports/summary` held the Windows login (3) or the DB login (5; the two are the same value) and now read `<windows-login>` or `<db-login>`; a test fails on any tracked file that contains either (file:line only in the message). Git history was not touched: the login is in the content of 8 commits and in the author e-mail field of 268 of 268 commits (facts for the user's decision, in the report).
+
+**Scheduled tasks (read only).** Both tasks (monthly, daily): Interactive logon, StartWhenAvailable True, WakeToRun False, no battery or network restriction, 72-hour limit, last result 0. Options to make the 2026-11-05 run independent of a logon are in the report; nothing was changed.
+
+**Backup.** Atomic (temporary folder, verify, rename; no partial dated folder), every path form of the root and the login masked, the moving-average comparator log and metadata in the list from the run that creates them (vintage 3; they do not exist yet). New backup made (7 files, all sha256 match). The skipped inventory test now compares the page with the saved vintage 2 snapshot and passes.
+
 ### Week 4, prompt 18 -- vintage fit-series snapshots and the automatic backup of the forward-test evidence -- DONE, 2026-10-09 (no database; the test suite made none)
 
 **Report:** `docs/reports/summary/prompt5_g2_vintage_target_map.md`, heading "Prompt 18". Method: METRICS.md Sec.52, config `backup`.

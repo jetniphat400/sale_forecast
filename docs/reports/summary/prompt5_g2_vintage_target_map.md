@@ -1013,3 +1013,67 @@ At the end of every real monthly run, after the pages are built and committed, t
 - **Deviations.** The backup also copies the score record's integrity file (the record cannot be verified without it); the backup runs after the commit and push, so a failure is reported but does not undo the published pages (as asked).
 - **Need decision.** (1) Should an aborted run (a step before the end fails) still try the backup of what exists? Today it does not; the previous backups stay. (2) Task Scheduler's task is Interactive only: if the user is not logged on at 07:00 on 2026-11-05 the run (and the backup) does not happen, as before; changing the task was out of scope.
 - **Found, not done.** The moving-average comparator log (`forward_test_comparator_log.csv` and metadata, first rows with vintage 3) is the same kind of git-ignored single copy and is not in the backup list: small, user decision. The backup keeps every dated folder forever (about 1 MB each): none now. Old reports under `docs/reports/summary` contain the login name (five files, predate this task): small, user.
+
+
+## Prompt 19
+
+Login names out of the public repo, scheduled-task settings (read only), backup hardening and the permanently skipped test. Run 2026-10-09 (`git pull` first: up to date at ad61ed9; Get-Date 13:58 at the start). Database sessions: 0. New repo files: none. No value of any login is written here; locations are file:line only.
+
+### Step 1, login names
+
+- **Scan.** All tracked files, case-insensitive, for the Windows login (environment variable plus the user-profile folder name), the DB login (read from the app's own credential source, `.env`, without connecting) and the git author name as a third candidate. **The DB login is the same value as the Windows login**, so both types hit the same lines.
+- **Hits before (8 locations in 5 files, none outside `docs/reports/summary`):**
+  - Windows login: `check_v1_v2_v3.md:13` (task event log, user of the scheduled launch); `task2cfix2_validator_report.md:20` and `:25` (the Python path of the scheduled command).
+  - DB login: `phaseE0_synthesis_report.md:16`, `:54`, `:124`; `phaseE0_validator1_leakage_report.md:118`; `phaseE0_validator2_cancellations_report.md:49` (the SQL Server login whose password had expired).
+  - Other: `check_v1_v2_v3.md:24` holds the git author's first name inside the public GitHub Pages address of this repository (the account name in the URL). It is the repository's own public address, not a login, and is **left as it is** (a placeholder would break the reference; see NEED DECISION).
+- **All replaced: YES.** The eight locations now read `<windows-login>` (3) or `<db-login>` (5); the surrounding text is unchanged. A re-scan finds 0 hits of either type.
+- **Git history (read only, counts only; nothing rewritten, no force push):** 268 commits in all refs. The login value appears in the content of **8 commits** (the same 8 for both types, since it is one value; `git log -S`, exact case and case-insensitive agree); in 0 commit messages. **In the commit metadata, the author e-mail field contains the login value in 268 of 268 commits and the committer e-mail in 267 of 268** (the author and committer names do not). That metadata cannot be changed without rewriting history.
+- **DB login readable without connecting: YES** (parsed from `.env`; no connection).
+- **Test added** (`tests/test_guards.py::test_no_windows_login_or_db_login_appears_in_a_tracked_file`): fails, naming file:line only, if any tracked file contains the Windows login or the DB login. When the DB login cannot be read it prints and warns that it checked the Windows login only (never a silent pass), and it fails when even the Windows login cannot be read. Checked that it detects a planted value.
+
+### Step 2, scheduled tasks (read only; nothing modified)
+
+| field | SaleForecastMonthlyRefresh | SaleForecast_PostingDelaySnapshot (the daily job) |
+|---|---|---|
+| StartWhenAvailable | True | True |
+| WakeToRun | False | False |
+| DisallowStartIfOnBatteries | False | False |
+| StopIfGoingOnBatteries | False | False |
+| RunOnlyIfNetworkAvailable | False | False |
+| ExecutionTimeLimit | PT72H (72 hours) | PT72H |
+| MultipleInstances | IgnoreNew | IgnoreNew |
+| logon type / run level | Interactive / Limited, the current user | Interactive / Limited, the current user |
+| last run | 2026-10-05 07:40:43 (scheduled 07:00), result 0 | 2026-10-09 12:00:01, result 0 |
+| next run | 2026-11-05 07:00 | 2026-10-10 08:00 (two daily triggers) |
+| missed runs counted | 0 | 0 |
+
+Only these two tasks of this project matched a search of all scheduled tasks for the project folder and the stock job. The monthly task started 40 minutes late on 2026-10-05, consistent with StartWhenAvailable catching up a missed start.
+
+### Step 3, backup hardening
+
+- **Moving-average comparator log added** to the backup list: `output/summary/forward_test_comparator_log.csv` and `output/summary/forward_test_comparator_metadata.json` (`src/ma_comparator.py` paths). **They do not exist yet** (vintages 1 and 2 predate the comparator; its first rows come with vintage 3 at the 2026-11-05 run), so today's backup cannot hold them; the result says "comparator log: not present yet", and from the first run that creates them they are copied and checked like the rest. A log without its metadata is an error, not a skip (tested).
+- **Atomic backup.** The files are copied into `_incomplete_<name>` next to the dated folder, every sha256 is verified, `SHA256SUMS.txt` is written, and only then the folder is renamed to the dated name. Any failure removes the temporary folder (only that one) and raises; no partial dated folder is ever left. Nothing is overwritten or deleted.
+- **Masking.** Every message goes through one function that replaces the OneDrive root (back or forward slashes, doubled back slashes, any letter case), the user-profile folder, any `<drive>:\Users\<name>` path and the bare Windows login, with `%OneDriveCommercial%`, `<windows-login-path>` or `<windows-login>`.
+- **New backup now:** `%OneDriveCommercial%\sale_forecast_backup\2026-10-09_140327` (a second backup the same day goes to its own folder; the first, `2026-10-09`, is untouched), 7 files plus `SHA256SUMS.txt`, 1,034,337 bytes, sha256 of every file matches its source: **YES**; no leftover temporary folder; all 7 files are identical to the first backup's, so nothing changed since Prompt 18.
+
+### Step 4, the permanently skipped test
+
+`tests/test_inventory_page_sources.py::test_the_tracked_pages_history_equals_the_log_vintages_series_for_every_item` no longer skips when the vintage has a saved fit series. It now reads the saved snapshot, checks its sha256 against the vintage's metadata and compares the tracked inventory page's embedded `actual_history` of every item with the snapshot (values to 0.001 and the number of months equal to `fit_n_months`). It passes for vintage 2. It still skips (and says so) only when the forward-test log or the monthly series is not on the machine.
+
+### Checks
+
+- **Gate unchanged: YES.** The production log, shadow log, score record, their metadata and the vintage 2 snapshot are identical to the Prompt 18 backup (sha256, 7 of 7); the plan outputs are identical to the earlier snapshot; `data/` files and the four pages are unmodified (git status). In the reports only the eight placeholder substitutions changed.
+- **Tests added:** an injected copy failure leaves no dated folder and no temporary folder, the reason carries no resolved path, the job exits non-zero with the pages built (and a later backup the same day is a normal dated folder); the comparator log and metadata are in the backup when they exist; masking covers each path form; the login-scan test; the converted inventory test.
+- **Full suite: 741 passed, 0 failed, 0 skipped** (exit 0); database connection attempts 0 (blocked attempts only the block's own test). No skip remains: the inventory test that skipped is converted, and one earlier suite run that stopped at 77% without a summary (the process ended, not a test failure) was re-run in full.
+- **Page check:** index.html with its five tabs (S&OP Plan (เดิม), สรุปผู้บริหาร, Trend, สมมติฐานที่ใช้อยู่, คู่มือการใช้งาน), sales_report, inventory, operation_plan and material_plan opened in headless Edge on a temporary profile (only my own Edge and local web server PIDs closed, profile deleted): 0 script errors on the four pages (text lengths 13,937; 25,237; 44,667; 302,185 characters, identical to before), the five tabs present and switching, the new manual headings, card 3 and the shadow line render; the only console message on index.html is the /favicon.ico 404 that the page never had (same before).
+- **Validator:** **MATCH.** Its own scan of all 384 tracked files finds 0 hits for the Windows login, the DB login (same value), the profile folder name and its 8.3 short form, and the OneDrive path; the five reports hold 3 placeholders for the Windows login and 5 for the DB login, 8 changed lines, each only that substitution; the new backup is 7 of 7 sha256 matches against its sums and the sources, the older folder is intact and identical, no temporary folder exists, the comparator log does not exist yet; the gate files equal the earlier backup. Its notes (not done, small): a stale _incomplete_ folder after a power loss or a locked cleanup is not checked at the next start; the 8.3 short form and the DB login are not in the masking function (the DB login equals the Windows login here); the login-scan test warns instead of checking the DB login when .env is missing; the inventory test's broad except hides a corrupt log as a skip.
+
+### Deviations, need decision, found not done
+
+- **Need decision (1), history rewrite, facts only.** The login value is in the file content of 8 commits (the same 8 for both types) and in the author e-mail field of 268 of 268 commits and the committer e-mail of 267 of 268. Commit metadata (author and committer fields) changes only by rewriting every commit; file content in the 8 commits changes only by rewriting from the earliest of them forward. A rewrite changes every later commit hash, needs a force push to the public repository and invalidates existing clones (the publishing clone and the pre-registration commit hashes quoted in reports, for example 8f8ef46 and 717f2cb). GitHub caches and forks may keep the old commits. The current files are clean. No history operation was run.
+- **Need decision (2), task settings that would let the 2026-11-05 07:00 run happen with the user not logged on.** Today logon type is Interactive: the task runs only in a session of the logged-on user; with StartWhenAvailable True a run missed because the user was logged out or the machine was off is started when the conditions are met again (consistent with the 2026-10-05 start 40 minutes late; the logged-out case itself was not tested). The settings that change this are the logon type of the principal:
+  - **Run whether the user is logged on or not, password stored** (logon type Password): Windows stores the account password for the task; it is entered once when the task is saved; it must be updated when the account password changes. The task then runs in a non-interactive session with the user's profile.
+  - **Run whether the user is logged on or not, password not stored** (logon type S4U): no password stored; the task runs as the user without network credentials of that user. The pull and push to GitHub use the Windows credential store of the user, which an S4U session cannot be assumed to read; this would need a trial run.
+  - Both leave the account's rights as they are (run level Limited). Neither wakes a sleeping or shut-down machine: that is WakeToRun (currently False, needs wake timers allowed) and the machine being on. The OneDrive variable lives in the user's environment, which a stored-password session loads (not verified; a trial run would show it). This task did not change any setting.
+- **Deviations.** None beyond the comparator files not existing yet (stated above).
+- **Found, not done.** The GitHub account name in the public Pages address at `check_v1_v2_v3.md:24` (small, user: it is the repository's address, left as it is). The old `forecast/Chase S&OP Plan 2026 - PEM Group.html` and other generated pages were not scanned beyond the tracked-file scan above (they are included in it: 0 hits).

@@ -270,3 +270,47 @@ def test_the_database_block_refuses_every_way_to_connect(monkeypatch):
         pyodbc.connect("DRIVER={none};SERVER=none")
     with pytest.raises(db.DatabaseBlockedError, match="Engine.connect"):
         Engine.connect(None)
+
+
+# ---------------------------------------------------------------------------
+# No login name in any tracked file (rule of the project; Prompt 19). The Windows login comes from the environment, the DB login from the app's own credential source (.env, read without
+# connecting). The messages name file:line only, never the value.
+# ---------------------------------------------------------------------------
+def _login_locations() -> dict:
+    import subprocess
+    from dotenv import dotenv_values
+    values = {"Windows login": {os.environ.get("USERNAME", ""), os.path.basename(os.environ.get("USERPROFILE", ""))},
+              "DB login": {str(dotenv_values(os.path.join(PROJECT_ROOT, ".env")).get("DB_USER") or "")}}
+    values = {k: {v.lower() for v in vs if len(v) >= 4} for k, vs in values.items()}
+    if os.path.isdir(os.path.join(PROJECT_ROOT, ".git")):
+        files = [os.path.join(PROJECT_ROOT, f) for f in subprocess.run(["git", "ls-files"], cwd=PROJECT_ROOT, capture_output=True, text=True, encoding="utf-8", check=True).stdout.split("\n") if f]
+    else:
+        files = scope_files()
+    found = {k: [] for k in values}
+    for f in files:
+        if not os.path.isfile(f):
+            continue
+        with open(f, "rb") as fh:
+            data = fh.read()
+        if b"\0" in data[:4000]:
+            continue
+        for n, line in enumerate(data.decode("utf-8", errors="ignore").lower().split("\n"), 1):
+            for kind, vs in values.items():
+                if any(v in line for v in vs):
+                    found[kind].append(f"{rel(f)}:{n}")
+    found["_checked"] = {k: bool(v) for k, v in values.items()}
+    return found
+
+
+def test_no_windows_login_or_db_login_appears_in_a_tracked_file():
+    import warnings
+    found = _login_locations()
+    checked = found.pop("_checked")
+    assert checked["Windows login"], "the Windows login could not be read from the environment, so nothing was checked"
+    if not checked["DB login"]:
+        warnings.warn("DB login not readable from the credential source (.env): this run checked the Windows login only", UserWarning)
+        print("login scan: checked the Windows login only (the DB login is not readable here)")
+    for kind, locations in found.items():
+        if kind == "DB login" and not checked["DB login"]:
+            continue
+        assert not locations, f"a {kind} appears in: " + ", ".join(locations[:20])

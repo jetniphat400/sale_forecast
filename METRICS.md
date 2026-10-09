@@ -1457,3 +1457,7 @@ Implementation (added with the code, after the rule above; the rule text is unch
                    SHA256SUMS.txt. Nothing is deleted or overwritten. The root is the environment variable config backup.env_var (OneDriveCommercial) read at run time; a missing variable or folder is an error
                    and there is no fallback location. A failed backup does not stop page building: it is written to the run log (backup.status FAILED, the resolved path masked) and the job exits non-zero.
                    A dry-run, sandbox or offline run makes no backup.
+
+    Prompt 19 additions to the backup: the folder is built as _incomplete_<name> beside the dated folder, every sha256 is verified, then it is renamed (a failure removes only that temporary folder, so a partial
+    dated folder never exists); the moving-average comparator log and metadata are in the list from the run that creates them (vintage 3); every message is masked for the OneDrive root and the Windows login in any
+    form (slashes, doubled back slashes, letter case, bare name). tests/test_guards.py fails when a tracked file contains the Windows login or the DB login (file:line only).

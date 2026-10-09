@@ -941,9 +941,23 @@ def record_snapshot_not_reproducible(vintage_id: int, reason: str) -> None:
 
 
 def _mask(message: str, root: str = None) -> str:
-    """No resolved backup path in any message: it contains the account name."""
-    root = root or os.environ.get(load_config()["backup"]["env_var"]) or ""
-    return message.replace(root, "%" + load_config()["backup"]["env_var"] + "%") if root else message
+    """No resolved backup path and no Windows login in any message or log line, in any form: the OneDrive root and the user profile folder as written with back or forward slashes, doubled
+    back slashes, any letter case, the bare user name, and any C:\\Users\\<name> path. The root becomes %OneDriveCommercial%, the rest <windows-login>."""
+    env = load_config()["backup"]["env_var"]
+    root = root or os.environ.get(env) or ""
+    user = os.environ.get("USERNAME") or ""
+    profile = os.environ.get("USERPROFILE") or ""
+
+    def forms(value):
+        v = value.rstrip("\\/")
+        return {v, v.replace("\\", "/"), v.replace("/", "\\"), v.replace("\\", "\\\\"), v.replace("\\", "/").replace("/", "//")} if v else set()
+    for value in sorted(forms(root), key=len, reverse=True):
+        message = re.sub(re.escape(value), "%" + env + "%", message, flags=re.I)
+    message = re.sub(r"[A-Za-z]:[\\/]+Users[\\/]+[^\\/\s\"']+", r"<windows-login-path>", message, flags=re.I)
+    for value in sorted(forms(profile) | ({user, os.path.basename(profile.rstrip("\\/"))} if user else set()), key=len, reverse=True):
+        if len(value) >= 4:
+            message = re.sub(re.escape(value), "<windows-login>", message, flags=re.I)
+    return message
 
 
 def backup_root(config: dict = None) -> str:
@@ -960,14 +974,19 @@ def backup_root(config: dict = None) -> str:
 
 def evidence_files() -> list:
     """(source path, name inside the backup) of everything the forward test stands on: the production log and its metadata, the shadow log and its metadata, the score record
-    (and its integrity file) and every vintage series snapshot. A missing log is an error, not a skip."""
-    required = [(FORWARD_TEST_LOG_PATH, None), (FORWARD_TEST_METADATA_PATH, None), (SHADOW_LOG_PATH, None), (SHADOW_METADATA_PATH, None),
-                (SCORE_RECORD_PATH, None), (SCORE_INTEGRITY_PATH, None)]
+    (and its integrity file), the moving-average comparator log and its metadata (they exist from vintage 3 on; once the log exists its metadata must too) and every vintage series
+    snapshot. A missing required file is an error, not a skip."""
     files = []
-    for path, _ in required:
+    for path in (FORWARD_TEST_LOG_PATH, FORWARD_TEST_METADATA_PATH, SHADOW_LOG_PATH, SHADOW_METADATA_PATH, SCORE_RECORD_PATH, SCORE_INTEGRITY_PATH):
         if not os.path.exists(path):
             raise BackupError(f"{os.path.basename(path)} does not exist: nothing to back up for it")
         files.append((path, os.path.basename(path)))
+    if os.path.exists(COMPARATOR_LOG_PATH):
+        if not os.path.exists(COMPARATOR_METADATA_PATH):
+            raise BackupError(f"{os.path.basename(COMPARATOR_METADATA_PATH)} does not exist although the comparator log does")
+        files += [(COMPARATOR_LOG_PATH, os.path.basename(COMPARATOR_LOG_PATH)), (COMPARATOR_METADATA_PATH, os.path.basename(COMPARATOR_METADATA_PATH))]
+    elif os.path.exists(COMPARATOR_METADATA_PATH):
+        files.append((COMPARATOR_METADATA_PATH, os.path.basename(COMPARATOR_METADATA_PATH)))
     series_dir = vintage_series.SERIES_DIR
     if os.path.isdir(series_dir):
         for name in sorted(os.listdir(series_dir)):
@@ -985,21 +1004,25 @@ def _sha256_file(path: str) -> str:
 
 
 def run_backup(config: dict = None, now: datetime = None) -> dict:
-    """Copies the evidence files to <root>\\<subfolder>\\<run date>\\ (a second backup the same day goes to <run date>_<time>; nothing is overwritten or deleted), then verifies every
-    copy by sha256 against its source and writes SHA256SUMS.txt beside them. Raises BackupError on any failure. The result names the folder with the variable, never the resolved path."""
+    """Copies the evidence files into a temporary folder next to the dated folder, verifies every copy by sha256 against its source, writes SHA256SUMS.txt, and only then renames the
+    temporary folder to <root>\\<subfolder>\\<run date> (a second backup the same day: <run date>_<time>). Any failure removes the temporary folder and raises BackupError: a partial dated
+    folder is never left behind and nothing existing is overwritten or deleted. The result names the folder with the variable, never the resolved path."""
     config = config or load_config()
     now = now or datetime.now()
     base = backup_root(config)
     root = os.environ[config["backup"]["env_var"]]
+    tmp = None
     try:
         files = evidence_files()
+        os.makedirs(base, exist_ok=True)
         dest = os.path.join(base, now.strftime("%Y-%m-%d"))
         if os.path.exists(dest):
             dest = dest + "_" + now.strftime("%H%M%S")
-        os.makedirs(dest)
+        tmp = os.path.join(base, "_incomplete_" + os.path.basename(dest) + "_" + str(os.getpid()))
+        os.makedirs(tmp)
         sums, total = {}, 0
         for src, name in files:
-            target = os.path.join(dest, *name.split("/"))
+            target = os.path.join(tmp, *name.split("/"))
             os.makedirs(os.path.dirname(target), exist_ok=True)
             shutil.copy2(src, target)
             expected, got = _sha256_file(src), _sha256_file(target)
@@ -1007,14 +1030,23 @@ def run_backup(config: dict = None, now: datetime = None) -> dict:
                 raise BackupError(f"{name}: the copy hashes to {got[:16]}, the source to {expected[:16]}")
             sums[name] = expected
             total += os.path.getsize(target)
-        with open(os.path.join(dest, "SHA256SUMS.txt"), "w", encoding="utf-8", newline="\n") as f:
+        with open(os.path.join(tmp, "SHA256SUMS.txt"), "w", encoding="utf-8", newline="\n") as f:
             f.write("".join(f"{h}  {name}\n" for name, h in sums.items()))
-    except BackupError:
+        if os.path.exists(dest):
+            raise BackupError("the dated folder appeared while the backup was being made: nothing was overwritten")
+        os.rename(tmp, dest)
+        tmp = None
+    except BaseException as e:      # noqa: BLE001 -- clean up the temporary folder whatever happened, then raise
+        if tmp and os.path.isdir(tmp):
+            shutil.rmtree(tmp, ignore_errors=True)
+        if isinstance(e, BackupError):
+            raise
+        if isinstance(e, OSError):
+            raise BackupError(_mask(f"{type(e).__name__}: {e}", root)) from None
         raise
-    except OSError as e:
-        raise BackupError(_mask(f"{type(e).__name__}: {e}", root)) from None
     return {"folder": "%" + config["backup"]["env_var"] + "%\\" + config["backup"]["subfolder"] + "\\" + os.path.basename(dest), "files": len(sums), "total_bytes": total,
-            "all_sha256_match": True, "sha256": sums}
+            "all_sha256_match": True, "sha256": sums,
+            "comparator_log": "included" if "forward_test_comparator_log.csv" in sums else "not present yet (its first rows come with vintage 3)"}
 
 
 def verify_shadow_log() -> dict:

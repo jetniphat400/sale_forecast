@@ -10,7 +10,7 @@ Read-only check. Nothing in code, config, data, pages, scheduled tasks or any mo
 |---|---|---|
 | Ran | **YES.** Started 2026-10-05 07:40:43 (scheduled 07:00), ended 07:48:23. Event 114 at 07:40:43: "could not launch ... as scheduled ... started now as required by the configuration option to start the task when available". Events 100, 129, 200 (launch) and 102, 201 (finish, return code 0) follow. Many other tasks logged the same missed-schedule start between 07:34 and 07:44, so the laptop was not running (inferred: off or asleep) at 07:00 and the task caught up when it resumed | Task Scheduler operational log |
 | Result code | **0** (`LastTaskResult` 0; next run 2026-11-05 07:00; missed runs 0) | Get-ScheduledTaskInfo; event 201 |
-| Unattended | The Task Scheduler launched it (event 100, user PRECISE\jetniphat.boo); no manual launch is recorded | event log |
+| Unattended | The Task Scheduler launched it (event 100, user PRECISE\<windows-login>); no manual launch is recorded | event log |
 | Steps | **11 of 11 ok** (run log, every step `status: ok`) | run log |
 | Step 5 | **Skipped** under the one-vintage-per-month guard ("a vintage already exists for 2026-10 (vintage_id=2, forecast_run_date=2026-10-02)") | run log step 5 |
 | Step 6 | Verified both vintages; target month 2026-08 only; 390 rows (re)filled; score record: 0 appended, 8 already recorded | run log step 6 |

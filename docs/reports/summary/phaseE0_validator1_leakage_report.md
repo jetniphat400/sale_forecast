@@ -115,7 +115,7 @@ modification-timestamp column exists anywhere in this schema for `cube_Sale_APD`
 **I attempted to re-verify this independently** with a fresh `INFORMATION_SCHEMA.COLUMNS` search
 (`LIKE '%modif%'/'%audit%'/'%revis%'/'%version%'/...`) via `src/db.py`'s `run_query()`, but the
 database connection in this session failed (`pyodbc.InterfaceError: Login failed for user
-'jetniphat.boo'` — a credentials/environment issue in this session, not a finding about the
+'<db-login>'` — a credentials/environment issue in this session, not a finding about the
 schema). I am not able to independently confirm this negative finding today; I am relying on the
 prior Validator's high-confidence result, carried forward explicitly labelled as such (per
 `AGENTS.md` rule 7), not re-stated as newly verified.
