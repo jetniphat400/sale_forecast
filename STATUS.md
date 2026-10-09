@@ -144,6 +144,12 @@ Code: `src/investigations/task2b_part2_fulfilment_segmentation.py` (`run_from_pu
 - Reader text: see SENTENCES NEEDING THAI TEXT of this task (demand column header on the material page, a label for the list of divisions covered, a line for the six PEM101 codes never sold, the approved heading for six divisions) (the user's assistant).
 - Category-level view of the two product categories and the three items' settings (brief item "settings"), storms and the other external factors, utility budgets, sales insight and EGP bids: not done (brief table).
 
+### Week 4, prompt 21 -- line-level audit of the material plan: labor, subcontract and service charges removed, with evidence -- DONE, 2026-10-09 (database read only, 4 sessions, no write)
+
+**Report:** `docs/reports/summary/prompt5_g2_vintage_target_map.md`, heading "Prompt 21". Method: METRICS.md Sec.54, config `material_plan.non_stock_rule`.
+
+**Finding.** The ERP item master marks only a minority of labor and subcontract items (item group 2000, 400, 4012 or a labor/service stock account); most are set up as ordinary raw materials with normal receipts. So a code prefix is no rule and the master alone is not enough. **Rule:** an item is excluded only when the master marks it AND its description names a labor, subcontract or service charge. Result on the 2,244 plan components: 28 excluded (15 labor, 9 subcontract, 4 service), 19 master-only and 56 description-only items stay in the plan and are listed for the user's decision (including the injection-charge example), 6 have no master record. The material plan lost 28 lines (2,244 to 2,216), 16 late and 1 within-30-days lines; one note line opens to the list of all 28. The operation plan (439 items) and the inventory page (306 items) hold no such item.
+
 ### Week 4, prompt 20 -- secret history check, database-login retry safety, three hardening fixes -- DONE, 2026-10-09 (no database, no network; the test suite made none)
 
 **Report:** `docs/reports/summary/prompt5_g2_vintage_target_map.md`, heading "Prompt 20". Method: METRICS.md Sec.53.

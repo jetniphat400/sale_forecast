@@ -1690,6 +1690,22 @@ material_plan:
   output_material_summary_file: "output/summary/material_plan_v1_material_summary.csv"
   # The material plan page's first list: materials whose latest order date falls from the day of the plan to that day plus this many days (decided by the user, 2026-10-06).
   order_window_days: 30
+  # Items that are NOT materials to stock but services bought by purchase order (labor, subcontract and processing charges, freight): excluded from the material plan (METRICS.md Sec.54).
+  # The rule is attribute values, never a list of codes and never a code prefix. An item is excluded only when BOTH independent directions agree: (A) the item master marks it as a
+  # labor / service item and (B) its description names a labor, subcontract or service charge. A without B, B without A, or no master record: the item stays in the plan and is listed for a decision.
+  non_stock_rule:
+    enabled: true
+    attributes_file: output/data/material_pull/item_attributes.pkl      # pulled read-only with the material plan inputs (Cube_ItemList, Cube_Inventory_Aging, Cube_Inventory_Exact, cube_inventory_tran)
+    master_markers:                                                      # (A) values that mark a labor or service item in the item master
+      item_group: ["2000", "400", "4012"]                                # Cube_ItemList.ItemGroup
+      gl_description: ["Direct Labor Control", "Contra service"]         # Cube_Inventory_Aging.GLDescription (the stock account of the item)
+    keywords:                                                            # (B) description keywords, first match decides the category
+      labor: ["ค่าแรง", "LABOR"]
+      subcontract: ["ค่าจ้าง", "จ้าง", "SLIT COST", "ค่าชุบ"]
+      service: ["ค่าบริการ", "ค่า บริการ", "ค่าขนส่ง", "LOGISTICS COST", "SERVICE"]
+    service_units: ["HOUR", "LOT", "JOB"]                                # flagged (not excluded): a unit of measure that names work, not a thing
+    consumable_gl_description: ["Supplies"]                              # flagged (not excluded): consumables
+    reason: "งานจ้างภายนอกและค่าแรงซื้อด้วยใบสั่งซื้อ ไม่ใช่วัตถุดิบที่ต้องสต็อก"
   # Items shown in the "used in" column (the finished goods that need most of the material).
   used_in_max_items: 3
 

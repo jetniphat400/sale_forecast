@@ -1152,3 +1152,93 @@ No retry loop, reconnect-on-failure or sleep-and-retry exists anywhere in the co
 - **Need decision.** None required by this task. One note for the user: item 1 above makes a failing auxiliary pull stop the monthly run; if the user prefers the earlier tolerant behaviour for non-login failures, the stage's failure would have to be classified (login or connection error against a query error), which needs the child scripts to report it.
 - **Found, not done (from the Validator).** The failure memory is per process, so a refusal in one task does not stop the other task or a manual re-run (medium, user decision, a small persisted lock file would do it); the refusal is recognised by its text, so a differently worded refusal would let the noon start try again (small); 11 hand-run scripts in `src/investigations` bypass the single login function (small); a child script that swallowed a login error and exited 0 would not stop later stages (none does today).
 - **Found, not done.** The DB host value appears in the current `STATUS.md` (and 1 commit): a server name, not a credential — small — user decision. The DB driver's own connection-resiliency default is not verified (no connection allowed) — small — user. The earlier notes still open: the daily noon start and the monthly task remain Interactive-only (decision of the user: unchanged).
+
+
+## Prompt 21
+
+Line-level audit of the material plan: labor, subcontract and service charges are not materials to stock. Run 2026-10-09 (`git pull` first: up to date at c8f59a8; Get-Date 15:30 at the start). Items are named by code only; descriptions appear only on the generated page.
+
+### Step 1, evidence for classification
+
+**Local data cannot classify the items.** The saved pulls hold the BOM line type (Standard, Machine Hour or Labor hour), the unit, the item description and the raw-material stock; for the example `LABOR-VT-R-VT-0269` the BOM line is Standard with unit "-", it has stock records in the raw-material warehouses and 50 purchase-order lines, i.e. nothing there marks it as a service. So the item master was read from the database.
+
+**Database, read only, 4 sessions, 4 login attempts, none failed, no retry.** Each session started with the reachability preflight and went through `db.session()` (one login), SELECT only: (1) the schema (information schema tables and columns); (2) the item attributes of the 2,244 components on the material plan; (3) the columns of the purchase-order tables and the stock-movement types of the same items; (4) the item attributes of the 439 items of the operation plan and the inventory page. Tables and columns used: `Cube_ItemList` (ItemCode, Condition, MainWarehouse, ItemGroup, Assortment1, 2, 6, 9, 10), `Cube_Inventory_Aging` (Warehouse, ItemCode, Type, ItemStatus, Unit, GLAccount, GLDescription, Stock), `Cube_Inventory_Exact` (product category and type), `cube_inventory_tran` (movements per item: count, first and last date, receipts, and the movement types). The purchase-order tables (`Cube_PO_Exact`, `Cube_ReceiveRM`, `Cube_tobe_received`, `Cube_PriceList`) hold no item type or service flag. The result is saved under `output/data/material_pull/` (generated, git-ignored) and the same read is now part of the monthly material pull (`material_plan.py pull_item_attributes`, in the session the pull already opens).
+
+**What the item master says (2,238 of the 2,244 plan items have a master record).**
+- Item group: 100 for 2,175 items, 2000 for 45, 700 for 7, 300 for 5, 200 for 4, 400 for 1, 4012 for 1.
+- Stock account (GL description): Raw materials 2,220, Supplies 7, Finished goods 6, Semi Products 4, Direct Labor Control 1, Contra service 1.
+- Item status Active for all, type S for all, condition A for all.
+- **Attribute values that mark a non-stock item:** item group 2000 (45 items), 400 (1) and 4012 (1); stock account Direct Labor Control (1) and Contra service (1) (the same two items as groups 400 and 4012). That is 47 items marked in all.
+- **What the master does not mark:** most labor and subcontract items are set up as ordinary stocked items: item group 100, stock account Raw materials, normal receipts and issues in `cube_inventory_tran` (movement types do not separate them either).
+
+**Two independent directions on the 2,244 components.** A = the item master marks it: the item group OR the stock account is a marker value (every master row of the item must agree). The 45 group-2000 items carry the stock account Raw materials, so the stock account confirms only 2 items (groups 400 and 4012) and the 28 rest on item group 2000 plus the description; under a stricter reading (both must mark) only 2 would qualify. B = its description holds a keyword (ค่าจ้าง, จ้าง, ค่าแรง, ค่าบริการ, ค่า บริการ, ค่าขนส่ง, LABOR, SERVICE, LOGISTICS COST, SLIT COST, ค่าชุบ; the data also shows OUTSOURCE, which is only listed).
+
+| | items |
+|---|---|
+| A and B (excluded) | 28 |
+| A only | 19 |
+| B only | 56 |
+| neither (ordinary materials) | 2,135 |
+| no master record | 6 |
+
+Excluded by category: labor 15, subcontract 9, service 4, other 0. The excluded codes:
+- labor (15): `LABOR-CP-C-00-0207CV`, `LABOR-CP-C-00-0210CV`, `LABOR-LS-R-01-0307`, `LABOR-MC-R-01-0501`, `LABOR-RS-R-10-0004-I`, `LABOR-VT-R-09-0027`, `LABOR-VT-R-VT-0269`, `LABOR-VT-R-VT-0301`, `LABOR-VT-R-VT-0309`, `LABOR-VT-R-VT-0319`, `LABOR-VT-R-VT-0324`, `LABOR-VT-R-VT-0327`, `LABOR_TF-R-08-01090`, `LABOR_TF-R-09-0903`, `LABOR_TF-R-09-0904`
+- service (4): `LOGISTICS COST-01`, `LOGISTICS COST-04`, `SLIT COST-PAPER-11`, `SLIT COST-PAPER-5`
+- subcontract (9): `LABOR-02-00-R-2031`, `LABOR-02-00-R-2220`, `LABOR-02-00-R-7035`, `LABOR-02-00-R-7036`, `LABOR-DS-R-03-1006`, `LABOR-DS-R-03-1007`, `SLIT COST-COPPER FOIL-3`, `SLIT COST-COPPER FOIL-7`, `SLIT COST-COPPER FOIL-8`
+
+**A only (19, stay in the plan):**
+- item group 2000, stock account Raw materials, keyword none (19): `02-00-R-7048`, `LABOR-RS-R-06-0006`, `LABOR-RS-R-06-0017`, `LABOR-RS-R-06-0025`, `SLIT COST-01`, `SLIT COST-04`, `SLIT COST-09`, `SLIT COST-20`, `SLIT COST-26`, `SLIT COST-27`, `SLIT COST-28`, `SLIT COST-29`, `SLIT COST-30`, `SLIT COST-31`, `SLIT COST-35`, `SLIT COST-COPPER FOIL-105`, `SLIT COST-PAPER`, `SLIT COST-PAPER-12`, `SLIT COST-RESIZE`
+
+**B only (56, stay in the plan):**
+- item group 100, stock account Raw materials, keyword ค่าจ้าง (20): `LABOR-02-00-R-1951-1`, `LABOR-02-00-R-2184-1`, `LABOR-02-00-R-4361`, `LABOR-02-03-R-8326-1`, `LABOR-02-03-R-8334-1`, `LABOR-03-CC-R-1022`, `LABOR-03-CC-R-1023`, `LABOR-03-CC-R-1034`, `LABOR-03-CC-R-1049`, `LABOR-03-CC-R-1052`, `LABOR-03-CC-R-2071`, `LABOR-03-CC-R-5107`, `LABOR-03-CC-R-9081`, `LABOR-03-CC-R-9084`, `LABOR-03-CC-R-9085`, `LABOR-DS-R-03-0213`, `LABOR-DS-R-03-0232`, `LABOR-DS-R-03-0233`, `LABOR-DS-R-03-0234`, `LABOR_TF-R-03-0122`
+- item group 100, stock account Raw materials, keyword ค่าชุบ (3): `LABOR-DS-R-03-0214-1`, `LABOR-DS-R-03-0215-1`, `LABOR-DS-R-03-0216-1`
+- item group 100, stock account Raw materials, keyword จ้าง (33): `03-CC-R-2324`, `03-CC-R-2325`, `03-CC-R-2326`, `03-CC-R-5034`, `03-CC-R-5309`, `03-CC-R-5360`, `03-CC-R-5361`, `03-CC-R-5362`, `03-CC-R-5363`, `03-CC-R-5364`, `03-CC-R-5365`, `03-CC-R-5368`, `03-CC-R-5369`, `03-CC-R-5372`, `03-CC-R-5373`, `03-CC-R-5374`, `03-CC-R-5375`, `03-CC-R-5376`, `03-CC-R-5380`, `03-CC-R-5381`, `03-CC-R-5384`, `03-CC-R-5385`, `03-CC-R-5396`, `03-CC-R-5512`, `03-CC-R-5536`, `03-CC-R-5537`, `03-CC-R-5542`, `03-CC-R-5543`, `03-CC-R-5544`, `03-CC-R-5578`, `03-CC-R-6000`, `03-CC-R-9979`, `LABOR-02-00-R-2026-1`
+
+**No master record (6, stay):** `COST OF PAPER`, `LABOR_TF-R-09-0027`, `TF-R-01-0077`, `TF-R-05-0216`, `TF-R-08-0223TF`, `TF-R-08-0224TF`
+
+**Separate flags (not excluded, defined from the data):** never stocked = no row at all in the stock-movement table, any warehouse (15 items): `02-00-IR-6327`, `02-00-IR-6328`, `02-00-IR-7006`, `02-00-IR-7007`, `02-03-R-8011`, `COST OF PAPER`, `LABOR-DS-R-03-1006`, `LABOR-DS-R-03-1007`, `RS-F-99-180004`, `RS-F-99-180047`, `RS-R-00-180047`, `TF-R-04-1084`, `TF-R-05-0216`, `TF-R-09-0243`, `VT-F-99-010207`. Service-like unit = the BOM unit is HOUR, LOT or JOB (3 items): `LABOR-DS-R-03-1006`, `LABOR-DS-R-03-1007`, `LOGISTICS COST-01`. Consumable = the stock account is Supplies (7 items): `00-C-GS-00-006`, `00-C-GS-00-012`, `01-CS-R-0289`, `02-CS-R-0268`, `04-CS-R-0078`, `04-CS-R-0269`, `06-CS-R-0004`.
+
+### Step 2, the rule
+
+Config `material_plan.non_stock_rule` (attribute values, not codes, not a code prefix): excluded only when A and B both hold; A only, B only, no master record or master rows that disagree stay in the plan and are listed. Reason in config: services bought by purchase order, not stocked.
+
+### Step 3, applied to the material plan
+
+Excluded items produce no order quantity or order-by date and are not in any headline count. One line above the order tables, "ค่าแรง (labor) และงานจ้างภายนอก (subcontract) 28 รายการ ไม่นับเป็นวัตถุดิบที่ต้องสต็อก ... (ค่าแรง 15, งานจ้างภายนอก 9, ค่าบริการและค่าขนส่ง 4) กดดูรายการ", opens to the list of every excluded item (code, description, category). All numbers are computed at build. When the item attributes are missing the page says the check was not made and nothing is excluded.
+
+**Reconciliation** (the recorded plan rebuilt with the same date, 2026-10-08, before and after the rule; the old rebuild equals the recorded file):
+
+| | old | new | excluded |
+|---|---|---|---|
+| material lines (summary) | 2,244 | 2,216 | 28 |
+| rows of the month file | 11,220 | 11,080 | 140 |
+| lines in the 30-day order list | 156 | 155 | 1 |
+| lines in the late order list | 584 | 568 | 16 |
+| to order now (items) | 587 | 571 | 16 |
+| total net requirement | 2,979,184.280 | 2,964,060.403 | 15,123.878 |
+| quantity to order now | 332,629.988 | 330,086.428 | 2,543.560 |
+| quantity in the 30-day list | 190,933.363 | 189,416.672 | 1,516.691 |
+| quantity in the late list | 332,501.587 | 329,958.028 | 2,543.560 |
+
+New = old minus excluded in every row (the last two differ by 0.001 only through rounding of float sums). The remaining rows of the new files equal the old rebuild exactly (in memory and in the summary file); against the old month file as recorded, 8 lines of 11,222 differ in the sixth decimal (about 1e-6, for example the net columns of `CT-R-01-0001`): a rebuild of the old plan with the rule off shows the same 8 differences, so it is floating-point noise of the rebuild, not an effect of the rule. The page shows no value in baht, so there is none to reconcile. The distinct order-by dates are the same 168 before and after (17 excluded items had a date, 14 distinct dates, all shared with other items): no date disappeared.
+
+### Step 4, other pages
+
+- **operation_plan.html:** 439 items. Direction A: 0 marked, direction B: 0 keyword hits (all 439 have a description). 38 of the 439 have no master record (placeholder-style finished-good codes), so they cannot be classified; they are not service-like by description. **Excluded: 0. Action: none.**
+- **inventory.html:** 306 items (PEM101, PEM103, PEM107). A: 0, B: 0. **Excluded: 0. Action: none.** Their stock accounts are Finished goods and Raw materials; item group 300 and 100.
+- No change to either page or its inputs.
+
+### Checks
+
+- **Gate unchanged: YES** for the production forecast, the forward-test, shadow and score logs and the operation-plan outputs (sha256 identical); only the material plan's two recorded files and their hash entry in the plan's integrity file changed, as the reconciliation above shows.
+- **Full suite: 759 passed, 1 failed, 0 skipped** in the first full run: the executive-summary test found that the executive tab of index.html still said 584 late materials (its watch-out follows the material plan's late list, now 568). I rebuilt that tab from the saved pulls (one number changes on index.html: 584 to 568 late materials, 16 fewer) and re-ran that test file and the other index and text tests: 95 passed, 0 skipped. Database connection attempts 0 (blocked attempts only the block's own test). I did not re-run the whole suite after that one fix.
+- **Page check** (headless Edge, own PID, temporary profile deleted): material_plan: 0 script errors, the note renders, closed at first, opens on click and lists 28 rows (15 labor, 9 subcontract, 4 service); `LABOR-VT-R-VT-0269` is in the expanded list and in none of the three order tables; the three tables hold 155, 568 and 2,216 rows; the ambiguous `LABOR-02-00-R-4361` is still in the order tables. operation_plan, inventory and sales_report: 0 script errors, text lengths unchanged (44,667; 25,237; 13,937), no note.
+- **Validator:** **MATCH** on the counts: its own reclassification gives the same 28 (labor 15, subcontract 9, service 4), 19 A only, 56 B only, 6 without a master record and 2,135 ordinary materials, with no differing code; the reconciliation matches (2,244 to 2,216, 11,220 to 11,080 month rows, 587 to 571 to-order-now); the page note, its 28 rows and the three tables (155, 568, 2,216) are as described and none of the 28 is in an order table; 0 tracked files contain any description of an excluded or ambiguous item; every pull statement is a SELECT, one session after the preflight, no retry; the gate files are identical. Its notes: (a) 8 lines of the month file as recorded differ in the sixth decimal from a rebuild of the old plan (noise of the rebuild, shown to be independent of the rule); (b) A is the item group OR the stock account; the stock account confirms only 2 of the 28 (the other 26 group-2000 items carry the stock account Raw materials), so under a both-must-mark reading only 2 would be excluded: stated in the report and METRICS as the user's decision point.
+
+### Deviations, need decision, found not done
+
+- **Deviations.** Four database sessions were needed (the schema first, then the pulls). The material plan outputs were rebuilt with the recorded date 2026-10-08 so every date is unchanged. The monthly material pull now also reads the item attributes (8 more SELECTs in its existing session; the time cost of the movement query on the first real run on 2026-11-05 is not measured).
+- **Need decision: ambiguous items (stay in the plan).** The 56 B-only and 19 A-only items above are listed with their master values and keyword. Facts: all 56 B-only items have item group 100 and stock account Raw materials, like ordinary materials, and they are received and issued like stock, so the master gives no unambiguous mark; this includes the injection-charge example `LABOR-02-00-R-4361`, which in this data does carry a LABOR prefix. The 19 A-only items are in item group 2000 but their descriptions name no charge (including `02-00-R-7048`, whose group is 2000 although its description reads like a physical part). Each group can be added to the exclusion by the user (for example by accepting the keyword alone for items whose stock account is Raw materials), or left.
+- **Also changed (a consequence).** The executive summary tab of `index.html` counts the late materials from the material plan: its watch-out line now says 568 instead of 584 (16 fewer, the excluded items that were late). No other number on any page changed.
+- **Need decision (the A reading).** The stock account confirms only 2 of the 28 excluded items; the other 26 rest on item group 2000 plus the description. If the user wants both attributes to be required, 26 of the 28 would stay in the plan.
+- **Found, not done.** 38 operation-plan items with no master record (small, user). Whether the "no master record" items on the material plan (6 codes) should be checked in the ERP (small, user).

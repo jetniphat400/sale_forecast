@@ -50,6 +50,12 @@ TEXT = {
     "coverage_line": "สินค้าในแผนการผลิต {n_items} รหัส คิดวัตถุดิบ {n_exploded} รหัส ไม่ได้คิด {n_not} รหัส: ไม่มียอดผลิตใน {n_months} เดือนนี้ {n_no_demand} รหัส · ไม่พบการผลิตในระบบ {n_no_production} รหัส · ไม่มี BOM ในระบบ {n_no_bom} รหัส",
     "coverage_cols": ["รหัส", "ชื่อ", "ฝ่าย", "เหตุผล"],
     "coverage_reason": {"no_demand": "ไม่มียอดผลิต", "no_production": "ไม่พบการผลิตในระบบ", "no_bom": "ไม่มี BOM ในระบบ"},
+    # Items that are services bought by purchase order, not materials to stock (METRICS.md Sec.54): one line that opens to the list of every excluded item.
+    "non_stock_line": "ค่าแรง (labor) และงานจ้างภายนอก (subcontract) {n} รายการ ไม่นับเป็นวัตถุดิบที่ต้องสต็อก เพราะซื้อด้วยใบสั่งซื้อเป็นค่าจ้าง ไม่ได้เก็บเป็นของ ({parts}) กดดูรายการ",
+    "non_stock_category": {"labor": "ค่าแรง {n}", "subcontract": "งานจ้างภายนอก {n}", "service": "ค่าบริการและค่าขนส่ง {n}"},
+    "non_stock_category_label": {"labor": "ค่าแรง (labor)", "subcontract": "งานจ้างภายนอก (subcontract)", "service": "ค่าบริการและค่าขนส่ง (service)"},
+    "non_stock_cols": ["รหัส", "ชื่อ", "ประเภท"],
+    "non_stock_not_checked": "ยังไม่ได้ตรวจว่ารายการไหนเป็นค่าแรงหรืองานจ้างภายนอก จึงยังนับทุกรายการเป็นวัตถุดิบ",
 }
 
 
@@ -128,7 +134,7 @@ def compute_values(material_month: pd.DataFrame, summary: pd.DataFrame, meta: di
         cov = {"n_items": n_items, "n_exploded": n_exploded, "n_not": n_not, "n_months": len(months), "n_no_demand": n_reason["no_demand"],
                "n_no_production": n_reason["no_production"], "n_no_bom": n_reason["no_bom"], "listed": listed,
                "divisions_with_production": [d for d in order if has_production[d]], "divisions_without_production": [d for d in order if not has_production[d]]}
-    return {"coverage": cov, "n_months": len(months), "months": months, "month_labels": [thai_month(m) for m in months], "n_days": int(n_days), "today": str(today.date()),
+    return {"coverage": cov, "non_stock": meta.get("non_stock"), "n_months": len(months), "months": months, "month_labels": [thai_month(m) for m in months], "n_days": int(n_days), "today": str(today.date()),
             "n_unit_flag": int(s["unit_flag"].sum()), "n_no_unit": int(s["no_unit_flag"].sum()),
             "n_within": int(len(within)), "n_late": int(len(late)), "n_within_flagged": int(within["no_figure"].sum()), "n_late_flagged": int(late["no_figure"].sum()),
             "plan_month": thai_month(str(meta["operation_plan_today"])[:7]), "pull_time": thai_datetime(meta["rm_pulled_at_local"]),
@@ -138,8 +144,8 @@ def compute_values(material_month: pd.DataFrame, summary: pd.DataFrame, meta: di
 
 
 CSS_EXTRA = """
-  #coverage-details { margin: 6px 0 12px; }
-  #coverage-details summary { cursor: pointer; }
+  #coverage-details, #non-stock-details { margin: 6px 0 12px; }
+  #coverage-details summary, #non-stock-details summary { cursor: pointer; }
   .notice { background: #fdecea; border: 2px solid #8f2b2b; color: #5b1414; font-weight: 700; font-size: 15px; border-radius: 6px; padding: 12px 16px; margin: 0 0 14px; }
   .flag.unit { display: inline-block; margin: 0 0 0 8px; font-size: 11.5px; }
   .report-table td.num, .report-table th.num { text-align: right; }
@@ -180,6 +186,28 @@ def coverage_html(v: dict) -> list:
             f'<div class="table-scroll"><table class="report-table" id="coverage-table"><thead><tr>{th}</tr></thead><tbody>{rows}</tbody></table></div></details>']
 
 
+def non_stock_html(v: dict) -> list:
+    """The line saying how many labor, subcontract and service items are not counted as materials to stock, with the list of every one of them (closed until opened). When the
+    check could not run (the item attributes are not pulled) a line says so instead: nothing is excluded then."""
+    ns = v.get("non_stock")
+    if not ns:
+        return []
+    if not ns["applied"]:
+        return [f'<p class="note-line" id="non-stock-not-checked">{_e(TEXT["non_stock_not_checked"])}</p>']
+    if not ns["n_excluded"]:
+        return []
+    by = {}
+    for r in ns["excluded"]:
+        by[r["category"]] = by.get(r["category"], 0) + 1
+    parts = ", ".join(TEXT["non_stock_category"][c].format(n=by[c]) for c in TEXT["non_stock_category"] if by.get(c))
+    line = TEXT["non_stock_line"].format(n=ns["n_excluded"], parts=parts)
+    th = "".join(f'<th class="name">{_e(x)}</th>' for x in TEXT["non_stock_cols"])
+    rows = "".join(f'<tr data-item="{_e(r["material"])}"><td class="code">{_e(r["material"])}</td><td class="name">{_e(r["name"] or DASH)}</td>'
+                   f'<td class="name">{_e(TEXT["non_stock_category_label"][r["category"]])}</td></tr>' for r in sorted(ns["excluded"], key=lambda r: (list(TEXT["non_stock_category"]).index(r["category"]), r["material"])))
+    return [f'<details id="non-stock-details"><summary class="note-line" id="non-stock-line">{_e(line)}</summary>'
+            f'<div class="table-scroll"><table class="report-table" id="non-stock-table"><thead><tr>{th}</tr></thead><tbody>{rows}</tbody></table></div></details>']
+
+
 def render(values: dict) -> str:
     """The page as one HTML string. Reader-facing text is the approved text; comments hold what must stay off screen."""
     T, v = TEXT, values
@@ -191,6 +219,7 @@ def render(values: dict) -> str:
              *[f'<p class="scope-note division-no-production" data-division="{_e(d)}">{_e(T["division_no_production"].format(division=d))}</p>'
                for d in (v["coverage"]["divisions_without_production"] if v["coverage"] else [])],
              *coverage_html(v),
+             *non_stock_html(v),
              f'<h2 id="within-title">{_e(T["within_title"].format(n_days=v["n_days"]))}</h2>',
              f'<p class="note-line" id="within-line">{_e(T["within_line"].format(n_days=v["n_days"]))}</p>', order_table(v["within"], "within-table"),
              f'<h2 id="late-title">{_e(T["late_title"])}</h2>', f'<p class="note-line" id="late-line">{_e(T["late_line"])}</p>', order_table(v["late"], "late-table")]
