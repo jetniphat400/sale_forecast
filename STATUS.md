@@ -144,6 +144,12 @@ Code: `src/investigations/task2b_part2_fulfilment_segmentation.py` (`run_from_pu
 - Reader text: see SENTENCES NEEDING THAI TEXT of this task (demand column header on the material page, a label for the list of divisions covered, a line for the six PEM101 codes never sold, the approved heading for six divisions) (the user's assistant).
 - Category-level view of the two product categories and the three items' settings (brief item "settings"), storms and the other external factors, utility budgets, sales insight and EGP bids: not done (brief table).
 
+### Week 4, prompt 22 -- material-plan lines back in the tables, remarks instead of removal, counts without the not-goods lines -- DONE, 2026-10-09 (no database)
+
+**Report:** `docs/reports/summary/prompt5_g2_vintage_target_map.md`, heading "Prompt 22". Method: METRICS.md Sec.54 (rewritten), config `material_plan.non_stock_rule`. **Supersedes the design of Prompt 21** (its evidence and findings stand; its removal of 28 lines and its expandable note are gone).
+
+**Design (decision of the user).** Every one of the 2,244 lines is back in every table, with its values and dates exactly as before Prompt 21. Lines that are labor, subcontract or service charges carry a remark (ค่าแรง 27, ค่าจ้าง 62, ค่าบริการ 4 = 93 lines) and are not counted in the summary line under each list (30-day, late, all lines) nor in the executive tab's late-materials watch-out (584 before Prompt 21, 548 now). 26 lines whose type is uncertain carry the remark รอตรวจ and are counted. A Validator review of the 98 first matches moved 5 codes to รอตรวจ by an explicit config exception.
+
 ### Week 4, prompt 21 -- line-level audit of the material plan: labor, subcontract and service charges removed, with evidence -- DONE, 2026-10-09 (database read only, 4 sessions, no write)
 
 **Report:** `docs/reports/summary/prompt5_g2_vintage_target_map.md`, heading "Prompt 21". Method: METRICS.md Sec.54, config `material_plan.non_stock_rule`.

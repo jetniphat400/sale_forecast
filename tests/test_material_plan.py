@@ -908,7 +908,8 @@ def test_the_coverage_line_and_the_divisions_follow_the_plan_items_given_to_the_
 
 
 # ---------------------------------------------------------------------------------------------------------------------------------------------
-# Materials that are not stocked: labor, subcontract and service charges bought by purchase order (METRICS.md Sec.54). No database: frames and fakes only.
+# Remarks on material lines: labor, subcontract and service charges are tagged and left out of the counts; uncertain lines are tagged รอตรวจ and counted (METRICS.md Sec.54).
+# No database: frames and fakes only. Every line stays in every table.
 # ---------------------------------------------------------------------------------------------------------------------------------------------
 def _attrs(master_rows, aging_rows=(), moved=()):
     """Item attributes as pull_item_attributes returns them: master (ItemCode, ItemGroup), aging (ItemCode, GLDescription), movements (itemcode)."""
@@ -922,82 +923,96 @@ def _rule():
     return copy.deepcopy(mp.load_config(PROJECT_ROOT)["non_stock_rule"])
 
 
-NAMES_21 = {"LAB-1": "ค่าแรงจ้างขึ้นรูป ชิ้นงาน X", "SUB-1": "ค่าจ้างฉีด ชิ้นงาน W", "RAW-1": "COPPER ROD 8 MM", "LAB-2": "ค่าแรงจ้างขึ้นรูป ชิ้นงาน Y", "ODD-1": "SLIT SILICON STEEL BPS",
-            "SVC-1": "ค่าจ้างผลิต ชิ้นงาน Z", "NOM-1": "ค่าจ้างพิเศษ", "FRT-1": "ค่าขนส่งวัตถุดิบ"}
+NAMES_22 = {"LAB-1": "ค่าแรงจ้างขึ้นรูป ชิ้นงาน X", "SUB-1": "ค่าจ้างฉีด ชิ้นงาน W", "RAW-1": "COPPER ROD 8 MM", "ODD-1": "SLIT SILICON STEEL BPS", "NOM-1": "BRACKET PLAIN",
+            "FRT-1": "ค่าขนส่งวัตถุดิบ", "WRK-1": "UNIT OF WORK", "EXC-1": "STEEL PLATE", "LABOR-9": "STEEL PLATE 5 MM", "labor_x": "SPACER", "GRP-1": "ค่าจ้างผลิต ชิ้นงาน Z"}
 
 
-def test_the_rule_classifies_fixed_examples_from_the_item_master_and_the_description():
-    attrs = _attrs([("LAB-1", "2000"), ("SUB-1", "2000"), ("RAW-1", "100"), ("LAB-2", "100"), ("ODD-1", "2000"), ("FRT-1", "2000")],
-                   aging_rows=[("SVC-1", "Direct Labor Control"), ("RAW-1", "Raw materials")], moved=["RAW-1", "LAB-1"])
-    c = mp.classify_non_stock(["LAB-1", "SUB-1", "RAW-1", "LAB-2", "ODD-1", "SVC-1", "NOM-1", "FRT-1"], attrs, NAMES_21, {"SVC-1": "hour", "RAW-1": "KG."}, _rule()).set_index("material")
-    assert (c.loc["LAB-1", "status"], c.loc["LAB-1", "category"]) == ("excluded", "labor")             # labor-coded, group 2000 and a labor description
-    assert (c.loc["SUB-1", "status"], c.loc["SUB-1", "category"]) == ("excluded", "subcontract")      # subcontract with no LABOR prefix in its code
-    assert (c.loc["SVC-1", "status"], c.loc["SVC-1", "category"]) == ("excluded", "subcontract")      # marked by its stock account (Direct Labor Control) and a description
-    assert (c.loc["FRT-1", "status"], c.loc["FRT-1", "category"]) == ("excluded", "service")
-    assert c.loc["RAW-1", "status"] == "stock" and not c.loc["RAW-1", "A"] and not c.loc["RAW-1", "B"]  # an ordinary raw material
-    assert c.loc["LAB-2", "status"] == "b_only"                       # the description says labor, the master says an ordinary item (group 100): ambiguous, stays in the plan
-    assert c.loc["ODD-1", "status"] == "a_only"                       # the master says service group, the description names no charge: ambiguous, stays
-    assert c.loc["NOM-1", "status"] == "no_master"                    # no master record at all: stays
-    assert bool(c.loc["SVC-1", "service_unit"]) and not bool(c.loc["RAW-1", "service_unit"])
-    assert bool(c.loc["LAB-2", "never_stocked"]) and not bool(c.loc["RAW-1", "never_stocked"])
-    # a code prefix alone is no rule: a LABOR-looking code with an ordinary master and an ordinary description stays
-    assert mp.classify_non_stock(["LABOR-X"], _attrs([("LABOR-X", "100")]), {"LABOR-X": "STEEL PLATE"}, {}, _rule()).iloc[0]["status"] == "stock"
-    # an item whose master rows disagree is ambiguous
-    two = _attrs([("LAB-1", "2000"), ("LAB-1", "100")])
-    assert mp.classify_non_stock(["LAB-1"], two, NAMES_21, {}, _rule()).iloc[0]["status"] == "a_conflict"
-    # the rule is attribute values in config, not a list of codes
+def _remarks(codes, attrs, units=None, rule=None):
+    return mp.remark_lines(codes, attrs, NAMES_22, units or {}, rule or _rule()).set_index("material")
+
+
+def test_remarks_on_fixed_examples_paid_pending_none_and_a_config_exception():
+    attrs = _attrs([("LAB-1", "2000"), ("SUB-1", "100"), ("RAW-1", "100"), ("ODD-1", "2000"), ("FRT-1", "100"), ("WRK-1", "100"), ("EXC-1", "100"), ("LABOR-9", "100"), ("labor_x", "100"),
+                    ("GRP-1", "100")], aging_rows=[("RAW-1", "Raw materials")])
     rule = _rule()
-    assert set(rule["master_markers"]) == {"item_group", "gl_description"} and not any(isinstance(v, str) and v.startswith("LABOR") for v in rule["master_markers"]["item_group"])
+    rule["exceptions"] = {"LABOR-9": "the name reads like a physical plate"}
+    c = _remarks(["LAB-1", "SUB-1", "RAW-1", "ODD-1", "NOM-1", "FRT-1", "WRK-1", "EXC-1", "LABOR-9", "labor_x", "GRP-1"], attrs, {"WRK-1": "HOUR"}, rule)
+    assert (c.loc["LAB-1", "remark"], c.loc["LAB-1", "evidence"]) == ("ค่าแรง", "จากชื่อ") and bool(c.loc["LAB-1", "paid"])        # a labor description
+    assert (c.loc["SUB-1", "remark"], c.loc["SUB-1", "evidence"]) == ("ค่าจ้าง", "จากชื่อ")             # a ค่าจ้าง name with no LABOR in the code
+    assert (c.loc["FRT-1", "remark"], c.loc["FRT-1", "evidence"]) == ("ค่าบริการ", "จากชื่อ")           # freight is a service
+    assert (c.loc["ODD-1", "remark"], c.loc["ODD-1", "evidence"]) == ("รอตรวจ", "จากกลุ่มสินค้า") and not bool(c.loc["ODD-1", "paid"])      # item group 2000, no keyword
+    assert (c.loc["NOM-1", "remark"], c.loc["NOM-1", "evidence"]) == ("รอตรวจ", "ไม่มีข้อมูลในระบบ")     # no item-master record
+    assert (c.loc["WRK-1", "remark"], c.loc["WRK-1", "evidence"]) == ("รอตรวจ", "หน่วยนับ")             # a unit that names work
+    assert c.loc["RAW-1", "remark"] == "" and not bool(c.loc["RAW-1", "paid"])                          # a normal raw material: no remark
+    assert (c.loc["LABOR-9", "remark"], c.loc["LABOR-9", "evidence"]) == ("รอตรวจ", "จากการตรวจชื่อ")    # a LABOR- code moved to รอตรวจ by an explicit exception
+    assert (c.loc["labor_x", "remark"], c.loc["labor_x", "evidence"]) == ("ค่าแรง", "จากรหัส")          # a code starting with labor_ , any case, with an ordinary name
+    # a line matching both the paid keywords and a รอตรวจ condition gets the paid remark, and the overlap is recorded
+    assert (c.loc["GRP-1", "remark"], c.loc["GRP-1", "also_pending"]) == ("ค่าจ้าง", False)
+    both = _remarks(["LAB-1"], _attrs([("LAB-1", "2000")]))
+    assert (both.loc["LAB-1", "remark"], bool(both.loc["LAB-1", "also_pending"])) == ("ค่าแรง", True)
+    # a code prefix is not a rule on its own for ordinary lines: an ordinary code and name carry nothing
+    assert _remarks(["RAW-1"], _attrs([("RAW-1", "100")])).loc["RAW-1", "remark"] == ""
+    # the rule is keywords and attribute values in config, not a list of codes
+    assert set(rule["pending_review"]) == {"item_group", "no_master_record", "service_units"} and set(rule["paid_remarks"]) == {"ค่าแรง", "ค่าจ้าง", "ค่าบริการ"} and rule["paid_remark_order"] == ["ค่าแรง", "ค่าจ้าง", "ค่าบริการ"]
 
 
-def _with_labor(project, group="2000"):
-    """The project's saved pulls with RM-B described as a labor charge and an item master that marks it (or not, group='100')."""
+def _with_labor(project, attrs=True):
+    """The project's saved pulls: RM-B described as a labor charge (item group 2000, so it also meets a รอตรวจ condition), RM-C with no master record, RM-A an ordinary material."""
     cfg = mp.load_config(project)
     w3_path = os.path.join(project, *cfg["operation_plan"]["week3_inputs_file"].split("/"))
     w3 = pd.read_pickle(w3_path)
     w3["item_names"] = pd.DataFrame({"ItemCode": ["RM-A", "RM-B"], "Description": ["Alpha part", "ค่าแรงจ้างขึ้นรูป Beta"]})
     pd.to_pickle(w3, w3_path)
-    attrs = _attrs([("RM-A", "100"), ("RM-B", group), ("RM-C", "100")], aging_rows=[("RM-A", "Raw materials")], moved=["RM-A", "RM-B", "RM-C"])
     target = os.path.join(project, *cfg["non_stock_rule"]["attributes_file"].split("/"))
-    os.makedirs(os.path.dirname(target), exist_ok=True)
-    pd.to_pickle(attrs, target)
+    if attrs:
+        os.makedirs(os.path.dirname(target), exist_ok=True)
+        pd.to_pickle(_attrs([("RM-A", "100"), ("RM-B", "2000")], aging_rows=[("RM-A", "Raw materials")], moved=["RM-A", "RM-B"]), target)
 
 
-def test_an_excluded_item_never_reaches_an_order_quantity_and_the_rest_of_the_plan_is_unchanged(project):
-    base = _result(project)                                            # no attributes pulled: nothing is excluded
-    assert base["meta"]["non_stock"]["applied"] is False and base["meta"]["n_materials"] == 3
+def test_every_line_stays_and_only_the_summary_counts_leave_out_the_paid_remark_lines(project):
+    _with_labor(project, attrs=False)                                  # the names are set, no attributes pulled: no master information
+    base = _result(project)
     _with_labor(project)
     new = _result(project)
-    assert new["meta"]["non_stock"]["applied"] is True and new["meta"]["non_stock"]["n_excluded"] == 1 and new["meta"]["n_materials"] == 2
-    assert "RM-B" not in set(new["summary"]["material"]) and "RM-B" not in set(new["material_month"]["material"])
-    # lines new = old - excluded; every quantity of every other material is identical
-    assert len(new["summary"]) == len(base["summary"]) - 1 and len(new["material_month"]) == len(base["material_month"]) - len(MONTHS)
-    rest = base["summary"][base["summary"]["material"] != "RM-B"].reset_index(drop=True)
-    assert rest.equals(new["summary"].reset_index(drop=True))
-    assert base["material_month"][base["material_month"]["material"] != "RM-B"].reset_index(drop=True).equals(new["material_month"].reset_index(drop=True))
-    excl_qty = float(base["summary"].set_index("material").loc["RM-B", "total_net"])
-    assert round(float(base["summary"]["total_net"].sum()) - float(new["summary"]["total_net"].sum()), 6) == round(excl_qty, 6)
-    assert new["meta"]["non_stock"]["excluded"] == [{"material": "RM-B", "name": "ค่าแรงจ้างขึ้นรูป Beta", "category": "labor"}]
-    # an item the master does not mark stays, even when its description says labor
-    _with_labor(project, group="100")
-    assert _result(project)["meta"]["non_stock"]["n_excluded"] == 0 and _result(project)["meta"]["n_materials"] == 3
+    # every line stays: the recorded files hold the same lines and the same values as before the remarks
+    assert new["meta"]["n_materials"] == base["meta"]["n_materials"] == 3
+    assert new["summary"].equals(base["summary"]) and new["material_month"].equals(base["material_month"])
+    ns = new["meta"]["non_stock"]
+    by = {r["material"]: r for r in ns["remarks"]}
+    assert (by["RM-B"]["remark"], by["RM-B"]["paid"]) == ("ค่าแรง", True) and (by["RM-C"]["remark"], by["RM-C"]["paid"]) == ("รอตรวจ", False) and "RM-A" not in by
+    assert (ns["n_paid"], ns["n_pending"], ns["n_paid_also_pending"]) == (1, 1, 1)
+    assert new["meta"]["n_to_order_now_counted"] <= new["meta"]["n_to_order_now"]
 
 
-def test_the_page_note_count_equals_the_excluded_count_and_lists_every_excluded_item(project):
+def test_paid_remark_lines_are_left_out_of_every_summary_count_and_pending_lines_are_in_it(project):
     _with_labor(project)
     page, v = _page(project)
-    ns = v["non_stock"]
-    assert ns["n_excluded"] == 1
-    summary_line = re.search(r'<summary class="note-line" id="non-stock-line">(.*?)</summary>', page, re.S).group(1)
-    assert f"{ns['n_excluded']} รายการ" in summary_line and "ไม่นับเป็นวัตถุดิบที่ต้องสต็อก" in summary_line and "ค่าแรง 1" in summary_line
-    rows = re.findall(r'<tr data-item="([^"]+)"><td class="code">[^<]*</td><td class="name">([^<]*)</td><td class="name">([^<]*)</td></tr>', page.split('id="non-stock-table"')[1].split("</table>")[0])
-    assert [r[0] for r in rows] == ["RM-B"] and len(rows) == ns["n_excluded"] and "ค่าแรงจ้างขึ้นรูป Beta" in rows[0][1] and "ค่าแรง (labor)" in rows[0][2]
-    assert 'data-material="RM-B"' not in page                          # not in any order table
-    assert page.index('id="non-stock-details"') < page.index('id="within-title"')
-    # nothing is excluded and no attributes: the page says the check was not made instead of staying silent
-    os.remove(os.path.join(project, *mp.load_config(project)["non_stock_rule"]["attributes_file"].split("/")))
-    page2, v2 = _page(project)
-    assert 'id="non-stock-not-checked"' in page2 and "ยังไม่ได้ตรวจ" in page2 and 'id="non-stock-details"' not in page2
+    allm, _sm, _meta = mp.read_outputs(project)
+    s = v["summaries"]
+    assert s["main"] == {"all": 3, "paid": 1, "counted": 2, "pending": 1}                          # RM-B left out; RM-C (รอตรวจ) counted
+    for key in ("within", "late", "main"):
+        c = s[key]
+        assert c["counted"] == c["all"] - c["paid"]                                              # counted = all lines minus the paid-remark lines
+    assert len(v["within"]) == s["within"]["all"] and len(v["late"]) == s["late"]["all"] and len(v["main"]) == s["main"]["all"] == 3    # the tables hold every line
+    assert v["n_late"] == s["late"]["counted"] and v["n_within"] == s["within"]["counted"]
+    line = re.search(r'<p class="note-line summary-line" id="main-summary">(.*?)</p>', page, re.S).group(1)
+    assert line == f"ทั้งหมด 3 รายการ นับ 2 รายการ · ไม่นับค่าแรง/ค่าจ้าง/ค่าบริการ 1 รายการ (ไม่ใช่สินค้า ไม่ต้อง stock) · รอตรวจ 1 รายการ ยังนับรวมไว้จนกว่าจะมีคนยืนยันว่าเป็นสินค้าหรือไม่"
+    for key in ("within", "late"):
+        assert f'id="{key}-summary"' in page
+    # the remark sits beside the code in the table, with its evidence
+    found_b = re.search(r'data-material="RM-B"><td class="code">RM-B.*?data-remark="ค่าแรง">ค่าแรง · จากชื่อ</span>', page, re.S)
+    assert found_b, page[page.index('data-material="RM-B"'):][:600]
+    assert re.search(r'data-material="RM-C"><td class="code">RM-C.*?data-remark="รอตรวจ">รอตรวจ · ไม่มีข้อมูลในระบบ</span>', page, re.S)
+    assert 'data-material="RM-A"><td class="code">RM-A</td>' in page or 'data-material="RM-A"><td class="code">RM-A<' in page
+
+
+def test_the_main_table_row_count_equals_the_input_line_count_with_and_without_the_item_attributes(project):
+    for with_attrs in (False, True):
+        _with_labor(project, attrs=with_attrs)
+        page, v = _page(project)
+        rows = re.findall(r'<tr data-material="([^"]+)">', page.split('id="material-table"')[1].split("</table>")[0])
+        assert len(rows) == mp.read_outputs(project)[1].shape[0] == 3 and sorted(rows) == ["RM-A", "RM-B", "RM-C"]
+        assert "non-stock-details" not in page                                                   # the Prompt 21 exclusion note is gone
 
 
 def test_the_item_attribute_pull_is_read_only_and_reads_the_master_the_stock_account_and_the_movements(monkeypatch):

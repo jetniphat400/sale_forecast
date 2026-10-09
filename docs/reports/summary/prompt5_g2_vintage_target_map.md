@@ -1242,3 +1242,61 @@ New = old minus excluded in every row (the last two differ by 0.001 only through
 - **Also changed (a consequence).** The executive summary tab of `index.html` counts the late materials from the material plan: its watch-out line now says 568 instead of 584 (16 fewer, the excluded items that were late). No other number on any page changed.
 - **Need decision (the A reading).** The stock account confirms only 2 of the 28 excluded items; the other 26 rest on item group 2000 plus the description. If the user wants both attributes to be required, 26 of the 28 would stay in the plan.
 - **Found, not done.** 38 operation-plan items with no master record (small, user). Whether the "no master record" items on the material plan (6 codes) should be checked in the ERP (small, user).
+
+
+## Prompt 22
+
+Put every material-plan line back in the tables, tag labor, subcontract and service lines with a remark and leave them out of the summary counts only. Run 2026-10-09 (`git pull` first: up to date at cda62fa; Get-Date 16:10 at the start). Database sessions: 0 (the data pulled in Prompt 21 was used). New repo files: none. Items by code only; descriptions are on the generated pages only. **This supersedes the design of Prompt 21** (its evidence and findings stand; its removal of 28 lines and its expandable note are gone).
+
+### Step 1, the removal is reverted
+
+The plan is rebuilt with the recorded date 2026-10-08 and no line is removed. Against the files recorded before Prompt 21: the same 2,244 lines (same codes), 11,220 month rows, identical `latest_order_date` and `to_order_now` columns, identical summary quantities (largest difference 0), and a few month-file cells that differ by about 1e-6 (the rebuild noise already reported in Prompt 21, not an effect of the remarks; the files are not byte-identical for that reason). The expandable exclusion note is removed from the page.
+
+| table | before Prompt 21 | after Prompt 21 | now |
+|---|---|---|---|
+| all lines (main table) | 2,244 | 2,216 | 2,244 |
+| 30-day order list | 156 | 155 | 156 |
+| late order list | 584 | 568 | 584 |
+| to order now (meta) | 587 | 571 | 587 |
+
+### Step 2, remarks (config `material_plan.non_stock_rule`: keywords and attribute values, no list of codes)
+
+- **Remark counts (lines):** ค่าแรง 27, ค่าจ้าง 62, ค่าบริการ 4 (93 not-goods lines, not counted); รอตรวจ 26 (counted). Evidence of the paid remarks: จากชื่อ for those found in the description, จากรหัส for 17 found only in the code.
+- **Overlap:** 32 lines matched both a paid keyword and a รอตรวจ condition (item group 2000 or 400/4012, no master record or a work unit); the paid remark wins, as the rule says. Four of them (`LABOR-RS-R-06-0006`, `-0017`, `-0025`, `LABOR_TF-R-09-0027`) were then moved to รอตรวจ by the name review below.
+- **Matches outside the expected sets** (the 28 of Prompt 21, the 56 keyword-only items, `LABOR-RS-R-06-0006`, `-0017`, `-0025` and `LABOR_TF-R-09-0027`): 10 codes, all with a LABOR- code and a description that has no keyword of the other kind: `LABOR-03-CC-R-1046`, `LABOR-DS-R-03-0196`, `-0200`, `-0201`, `-0202`, `-0203`, `-0212`, `-0214`, `-0215`, `-0216`. The two logistics lines of the Prompt 21 set (`LOGISTICS COST-01`, `-04`) were not matched by the keywords of the task and are covered by one added keyword, "LOGISTICS COST", under ค่าบริการ (a freight charge). Also added to the keyword lists: the spaced form "ค่า บริการ" that the data shows. `OUTSOURCE` is not a keyword (the 16 `03-CC-R-5xxx`/`6xxx`/`9xxx` lines carrying it only stay without remark).
+- **รอตรวจ list (26, counted):** by item group (evidence จากกลุ่มสินค้า): `02-00-R-7048` and the 15 `SLIT COST-01`, `-04`, `-09`, `-20`, `-26`, `-27`, `-28`, `-29`, `-30`, `-31`, `-35`, `SLIT COST-COPPER FOIL-105`, `SLIT COST-PAPER`, `SLIT COST-PAPER-12`, `SLIT COST-RESIZE`; no master record (ไม่มีข้อมูลในระบบ): `COST OF PAPER`, `TF-R-01-0077`, `TF-R-05-0216`, `TF-R-08-0223TF`, `TF-R-08-0224TF`; moved by the name review (จากการตรวจชื่อ): the five codes below. No line matched only the work-unit condition (the three lines with a work unit also carry a paid keyword).
+
+### Step 3, Validator name review
+
+The Validator read the description of every one of the first 98 lines tagged as not goods. Judged physical-good: `LABOR-RS-R-06-0006` and `LABOR-RS-R-06-0025` (a part name, the remark rested on the code only). Unclear: `LABOR-03-CC-R-1046`, `LABOR-RS-R-06-0017`, `LABOR_TF-R-09-0027` (no description in the item names). The other 93 read like a charge (61 with explicit fee or labor wording; 32 `03-CC-R-*` lines "hire to make a part" read as subcontract work with lower confidence and stay tagged). No keyword matched inside a physical-good name by accident. No hard mismatch between the remark and the description; three plating charges (`LABOR-DS-R-03-0214-1`, `-0215-1`, `-0216-1`) are tagged ค่าแรง where ค่าบริการ is closer (a judgement call, left). **Moved to รอตรวจ by an explicit config exception (code and a one-line reason, no description):** `LABOR-RS-R-06-0006`, `LABOR-RS-R-06-0025` (the name reads like a physical part), `LABOR-03-CC-R-1046`, `LABOR-RS-R-06-0017` (unclear), `LABOR_TF-R-09-0027` (no description). I moved the unclear ones as well because the user's design keeps uncertain lines visible and counted.
+
+### Step 4, summary counts
+
+Under the 30-day list, the late list and the all-lines table one line, computed at build, for example "ทั้งหมด 2244 รายการ นับ 2151 รายการ · ไม่นับค่าแรง/ค่าจ้าง/ค่าบริการ 93 รายการ (ไม่ใช่สินค้า ไม่ต้อง stock) · รอตรวจ 26 รายการ ยังนับรวมไว้จนกว่าจะมีคนยืนยันว่าเป็นสินค้าหรือไม่". The remark (for example "ค่าแรง · จากชื่อ") sits beside the code in every table. The page showed no count before; these lines are new, and they are the counts the rule applies to. The executive tab's late-materials watch-out is the counted late lines.
+
+| summary | all | counted | excluded (paid remark) | รอตรวจ (inside counted) |
+|---|---|---|---|---|
+| all lines | 2,244 | 2,151 | 93 | 26 |
+| 30-day list | 156 | 154 | 2 | 1 |
+| late list | 584 | 548 | 36 | 14 |
+| to order now (items, meta) | 587 | 550 | 37 | n/a |
+| total net requirement | 2,979,184.280 | 2,904,982.581 | 74,201.699 | included |
+| quantity to order now | 332,629.988 | 317,742.392 | 14,887.595 | included |
+| quantity in the late list | 332,501.587 | 317,694.006 | 14,807.581 | included |
+| quantity in the 30-day list | 190,933.363 | 189,211.080 | 1,722.284 | included |
+
+Counted = all minus the paid-remark lines in every row. **Executive watch-out (index.html): 584 before Prompt 21, 568 after it, 548 now; it equals the counted late lines on the material page: YES.** The dates did not move (the plan is rebuilt with 2026-10-08).
+
+### Checks
+
+- **Gate unchanged: YES.** The production forecast, the forward-test, shadow and score logs and the operation-plan outputs are byte-identical (sha256); the pages `operation_plan.html`, `inventory.html`, `sales_report.html` and `data/` are unmodified; `index.html` changes only in the watch-out number.
+- **Tests added** (`tests/test_material_plan.py`, the Prompt 21 exclusion tests replaced): remarks on fixed examples (a LABOR- code, a ค่าจ้าง name without LABOR, a group 2000 item without keyword gives รอตรวจ, a no-master item gives รอตรวจ, a normal raw material has no remark, a work unit gives รอตรวจ, a config exception, a lower-case `labor_` code, a line matching both); every line stays and the recorded plan is unchanged by the remarks; paid-remark lines are in no summary count and รอตรวจ lines are in it (counted = all - paid in all three summaries, the summary text, the remark beside the code); the main table row count equals the input line count with and without the item attributes; the read-only pull test.
+- **Full suite (final run, after the last code and test change): 761 passed, 0 failed, 0 skipped**; database connection attempts 0 (blocked attempts only the block's own test). Earlier full runs on the way found three test failures that I fixed in the tests (two reader-text tests flagged the item code `LABOR_TF-R-09-0027` as a config key because a config exception key is an item code; a browser test expected the code cell without the new remark), one Assumptions-tab browser test that failed once under load and passes alone, and two runs that ended early without a summary (the process stopped, not a test). This report file and the final test line were written after that run; the tests that scan documents (guards, reader text, manual notes) are re-run below.
+- **Page check** (headless Edge, own PID and the local web server's PID closed, temporary profile deleted): material_plan: 0 script errors; the three tables hold 156, 584 and 2,244 rows; `LABOR-VT-R-VT-0269` (ค่าแรง · จากชื่อ) and `LABOR-02-00-R-4361` (ค่าจ้าง · จากชื่อ) are both visible in the 30-day table and in the all-lines table with their remark; the remark counts in the main table are ค่าแรง 27, ค่าจ้าง 62, ค่าบริการ 4, รอตรวจ 26; the three summary lines show the numbers above; no exclusion note. index.html executive tab: the watch-out reads 548. operation_plan, inventory and sales_report: 0 script errors, text lengths unchanged (44,667; 25,237; 13,937).
+- **Validator:** **MATCH.** Own recomputation of all 2,244 remarks: ค่าแรง 27, ค่าจ้าง 62, ค่าบริการ 4 (93), รอตรวจ 26, overlap 32, with 0 codes differing from the page; tables 156 / 584 / 2,244 with no code missing; the recorded files equal the pre-Prompt-21 files in codes, lines, dates and `to_order_now` (summary quantities identical, a few month-file cells at 1e-6); the three summary lines and the quantity totals match (counted = all - paid; รอตรวจ inside the counts; to order now 587 / 550); the executive watch-out 548 equals the counted late lines; the five exception codes show รอตรวจ on the page; 0 tracked files contain a description of a remarked line; the gate files are identical. Name review: no keyword accident; two physical-good codes and three unclear codes moved to รอตรวจ; one note: an exception reason uses the English word the description also contains (left).
+
+### Deviations, need decision, found not done
+
+- **Deviations.** The material page showed no counts before, so the "summary counts" are new lines under the three lists (and the quantity totals are in this report only: summing quantities of different units has no meaning on the page). Added keywords beyond the task's list: "LOGISTICS COST" and "ค่า บริการ". The name review moved five codes (two physical-good, three unclear) instead of two. The evidence label "จากการตรวจชื่อ" was added for the moved codes. The priority between remarks is a config list (ค่าแรง, ค่าจ้าง, ค่าบริการ) because the order of keys in a config file is not reliable.
+- **Need decision.** (1) The 32 `03-CC-R-*` "hire to make a part" lines are tagged ค่าจ้าง on the strength of the hire wording; the Validator rates that as lower confidence. If the user wants them counted, they go into the exceptions list. (2) The three plating charges are tagged ค่าแรง; ค่าบริการ is closer. (3) The 15 `SLIT COST-*` lines and `02-00-R-7048` wait for a person's check (รอตรวจ, counted).
+- **Found, not done.** None beyond the items of Prompt 21.

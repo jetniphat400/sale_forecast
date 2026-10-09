@@ -50,12 +50,10 @@ TEXT = {
     "coverage_line": "สินค้าในแผนการผลิต {n_items} รหัส คิดวัตถุดิบ {n_exploded} รหัส ไม่ได้คิด {n_not} รหัส: ไม่มียอดผลิตใน {n_months} เดือนนี้ {n_no_demand} รหัส · ไม่พบการผลิตในระบบ {n_no_production} รหัส · ไม่มี BOM ในระบบ {n_no_bom} รหัส",
     "coverage_cols": ["รหัส", "ชื่อ", "ฝ่าย", "เหตุผล"],
     "coverage_reason": {"no_demand": "ไม่มียอดผลิต", "no_production": "ไม่พบการผลิตในระบบ", "no_bom": "ไม่มี BOM ในระบบ"},
-    # Items that are services bought by purchase order, not materials to stock (METRICS.md Sec.54): one line that opens to the list of every excluded item.
-    "non_stock_line": "ค่าแรง (labor) และงานจ้างภายนอก (subcontract) {n} รายการ ไม่นับเป็นวัตถุดิบที่ต้องสต็อก เพราะซื้อด้วยใบสั่งซื้อเป็นค่าจ้าง ไม่ได้เก็บเป็นของ ({parts}) กดดูรายการ",
-    "non_stock_category": {"labor": "ค่าแรง {n}", "subcontract": "งานจ้างภายนอก {n}", "service": "ค่าบริการและค่าขนส่ง {n}"},
-    "non_stock_category_label": {"labor": "ค่าแรง (labor)", "subcontract": "งานจ้างภายนอก (subcontract)", "service": "ค่าบริการและค่าขนส่ง (service)"},
-    "non_stock_cols": ["รหัส", "ชื่อ", "ประเภท"],
-    "non_stock_not_checked": "ยังไม่ได้ตรวจว่ารายการไหนเป็นค่าแรงหรืองานจ้างภายนอก จึงยังนับทุกรายการเป็นวัตถุดิบ",
+    # Remarks (METRICS.md Sec.54): every line stays in its table; a line that is not goods carries a remark and is left out of the counts of the summary line under each list.
+    "summary_line": "ทั้งหมด {all} รายการ นับ {counted} รายการ · ไม่นับค่าแรง/ค่าจ้าง/ค่าบริการ {paid} รายการ (ไม่ใช่สินค้า ไม่ต้อง stock)",
+    "summary_pending": " · รอตรวจ {pending} รายการ ยังนับรวมไว้จนกว่าจะมีคนยืนยันว่าเป็นสินค้าหรือไม่",
+    "remark_title": "หมายเหตุ: {evidence}",
 }
 
 
@@ -105,6 +103,11 @@ def compute_values(material_month: pd.DataFrame, summary: pd.DataFrame, meta: di
     s["unit_flag"] = s["unit_vs_purchase"].eq("differs")                 # purchase unit differs from the BOM unit and no conversion can be derived
     s["no_unit_flag"] = s["purchase_unit"].fillna("").astype(str).str.strip().eq("")      # no purchase unit in the system
     s["no_figure"] = s["unit_flag"] | s["no_unit_flag"]
+    ns = meta.get("non_stock") or {}
+    tag = {r["material"]: r for r in ns.get("remarks", [])}
+    s["remark"] = s["material"].map(lambda m: tag[m]["remark"] if m in tag else "")
+    s["evidence"] = s["material"].map(lambda m: tag[m]["evidence"] if m in tag else "")
+    s["paid"] = s["material"].map(lambda m: bool(tag[m]["paid"]) if m in tag else False)
     late = s[s["first_dt"] < today].assign(qty=lambda d: d["material"].map(qty_late))
     within = s[(s["first_dt"] >= today) & (s["first_dt"] <= end)].assign(qty=lambda d: d["material"].map(qty_window))
     order = {"by": ["first_dt", "qty", "material"], "ascending": [True, False, True]}
@@ -134,9 +137,13 @@ def compute_values(material_month: pd.DataFrame, summary: pd.DataFrame, meta: di
         cov = {"n_items": n_items, "n_exploded": n_exploded, "n_not": n_not, "n_months": len(months), "n_no_demand": n_reason["no_demand"],
                "n_no_production": n_reason["no_production"], "n_no_bom": n_reason["no_bom"], "listed": listed,
                "divisions_with_production": [d for d in order if has_production[d]], "divisions_without_production": [d for d in order if not has_production[d]]}
-    return {"coverage": cov, "non_stock": meta.get("non_stock"), "n_months": len(months), "months": months, "month_labels": [thai_month(m) for m in months], "n_days": int(n_days), "today": str(today.date()),
+    def counts(df):
+        paid, pending = int(df["paid"].sum()), int(((df["remark"] != "") & ~df["paid"]).sum())
+        return {"all": int(len(df)), "paid": paid, "counted": int(len(df)) - paid, "pending": pending}
+    summaries = {"within": counts(within), "late": counts(late), "main": counts(main)}
+    return {"coverage": cov, "summaries": summaries, "non_stock": meta.get("non_stock"), "n_months": len(months), "months": months, "month_labels": [thai_month(m) for m in months], "n_days": int(n_days), "today": str(today.date()),
             "n_unit_flag": int(s["unit_flag"].sum()), "n_no_unit": int(s["no_unit_flag"].sum()),
-            "n_within": int(len(within)), "n_late": int(len(late)), "n_within_flagged": int(within["no_figure"].sum()), "n_late_flagged": int(late["no_figure"].sum()),
+            "n_within": summaries["within"]["counted"], "n_late": summaries["late"]["counted"], "n_within_all": int(len(within)), "n_late_all": int(len(late)), "n_within_flagged": int(within["no_figure"].sum()), "n_late_flagged": int(late["no_figure"].sum()),
             "plan_month": thai_month(str(meta["operation_plan_today"])[:7]), "pull_time": thai_datetime(meta["rm_pulled_at_local"]),
             "rm_warehouses": ", ".join(meta["rm_warehouses"]), "open_orders_used": bool(meta["open_orders_used"]),
             "divisions": ", ".join(cov["divisions_with_production"]) if cov else ", ".join(meta["divisions"]),
@@ -144,8 +151,11 @@ def compute_values(material_month: pd.DataFrame, summary: pd.DataFrame, meta: di
 
 
 CSS_EXTRA = """
-  #coverage-details, #non-stock-details { margin: 6px 0 12px; }
-  #coverage-details summary, #non-stock-details summary { cursor: pointer; }
+  #coverage-details { margin: 6px 0 12px; }
+  #coverage-details summary { cursor: pointer; }
+  .flag.remark { display: inline-block; margin: 0 0 0 8px; font-size: 11.5px; }
+  .flag.remark.paid { background: #eef1f6; color: #33415c; }
+  .flag.remark.pending { background: #fff4d6; color: #6b4e00; }
   .notice { background: #fdecea; border: 2px solid #8f2b2b; color: #5b1414; font-weight: 700; font-size: 15px; border-radius: 6px; padding: 12px 16px; margin: 0 0 14px; }
   .flag.unit { display: inline-block; margin: 0 0 0 8px; font-size: 11.5px; }
   .report-table td.num, .report-table th.num { text-align: right; }
@@ -160,12 +170,27 @@ def flag_html(r) -> str:
     return f'<span class="flag unit">{_e(TEXT["unit_flag"])}</span>' if r["unit_flag"] else ""
 
 
+def remark_html(r) -> str:
+    """The remark beside a code: ค่าแรง, ค่าจ้าง or ค่าบริการ (not goods, not counted) or รอตรวจ (to be checked, counted), with its evidence in short form."""
+    if not r["remark"]:
+        return ""
+    kind = "paid" if r["paid"] else "pending"
+    return f'<span class="flag remark {kind}" data-remark="{_e(r["remark"])}">{_e(r["remark"])} · {_e(r["evidence"])}</span>'
+
+
+def summary_html(v: dict, key: str, element_id: str) -> str:
+    """The line under a list: all lines, the lines counted, the paid-remark lines left out of the count (and the lines waiting for a check, which are counted); every number computed."""
+    c = v["summaries"][key]
+    text = TEXT["summary_line"].format(all=c["all"], counted=c["counted"], paid=c["paid"]) + (TEXT["summary_pending"].format(pending=c["pending"]) if c["pending"] else "")
+    return f'<p class="note-line summary-line" id="{element_id}">{_e(text)}</p>'
+
+
 def order_table(rows_df: pd.DataFrame, table_id: str) -> str:
     """One list: the approved columns; a flagged material shows a dash for its quantity and date."""
     th = "".join(f'<th class="{"name" if i in (1, 2) else ""}">{_e(c)}</th>' for i, c in enumerate(TEXT["now_cols"]))
     rows = []
     for _, r in rows_df.iterrows():
-        rows.append(f'<tr data-material="{_e(r["material"])}"><td class="code">{_e(r["material"])}{flag_html(r)}</td><td class="name">{_e(r["name"] or DASH)}</td>'
+        rows.append(f'<tr data-material="{_e(r["material"])}"><td class="code">{_e(r["material"])}{flag_html(r)}{remark_html(r)}</td><td class="name">{_e(r["name"] or DASH)}</td>'
                     f'<td class="name">{_e(used_in_text(r["used_in"], r["n_products"], 3))}</td><td>{DASH if r["no_figure"] else fmt_qty(r["qty"])}</td>'
                     f'<td>{DASH if r["no_figure"] else _e(fmt_date(r["latest_order_date"]))}</td><td>{fmt_qty(r["lead_days"])}</td>'
                     f'<td class="name">{_e(TEXT["source"][r["lead_source"]])}</td></tr>')
@@ -186,28 +211,6 @@ def coverage_html(v: dict) -> list:
             f'<div class="table-scroll"><table class="report-table" id="coverage-table"><thead><tr>{th}</tr></thead><tbody>{rows}</tbody></table></div></details>']
 
 
-def non_stock_html(v: dict) -> list:
-    """The line saying how many labor, subcontract and service items are not counted as materials to stock, with the list of every one of them (closed until opened). When the
-    check could not run (the item attributes are not pulled) a line says so instead: nothing is excluded then."""
-    ns = v.get("non_stock")
-    if not ns:
-        return []
-    if not ns["applied"]:
-        return [f'<p class="note-line" id="non-stock-not-checked">{_e(TEXT["non_stock_not_checked"])}</p>']
-    if not ns["n_excluded"]:
-        return []
-    by = {}
-    for r in ns["excluded"]:
-        by[r["category"]] = by.get(r["category"], 0) + 1
-    parts = ", ".join(TEXT["non_stock_category"][c].format(n=by[c]) for c in TEXT["non_stock_category"] if by.get(c))
-    line = TEXT["non_stock_line"].format(n=ns["n_excluded"], parts=parts)
-    th = "".join(f'<th class="name">{_e(x)}</th>' for x in TEXT["non_stock_cols"])
-    rows = "".join(f'<tr data-item="{_e(r["material"])}"><td class="code">{_e(r["material"])}</td><td class="name">{_e(r["name"] or DASH)}</td>'
-                   f'<td class="name">{_e(TEXT["non_stock_category_label"][r["category"]])}</td></tr>' for r in sorted(ns["excluded"], key=lambda r: (list(TEXT["non_stock_category"]).index(r["category"]), r["material"])))
-    return [f'<details id="non-stock-details"><summary class="note-line" id="non-stock-line">{_e(line)}</summary>'
-            f'<div class="table-scroll"><table class="report-table" id="non-stock-table"><thead><tr>{th}</tr></thead><tbody>{rows}</tbody></table></div></details>']
-
-
 def render(values: dict) -> str:
     """The page as one HTML string. Reader-facing text is the approved text; comments hold what must stay off screen."""
     T, v = TEXT, values
@@ -219,12 +222,12 @@ def render(values: dict) -> str:
              *[f'<p class="scope-note division-no-production" data-division="{_e(d)}">{_e(T["division_no_production"].format(division=d))}</p>'
                for d in (v["coverage"]["divisions_without_production"] if v["coverage"] else [])],
              *coverage_html(v),
-             *non_stock_html(v),
              f'<h2 id="within-title">{_e(T["within_title"].format(n_days=v["n_days"]))}</h2>',
-             f'<p class="note-line" id="within-line">{_e(T["within_line"].format(n_days=v["n_days"]))}</p>', order_table(v["within"], "within-table"),
-             f'<h2 id="late-title">{_e(T["late_title"])}</h2>', f'<p class="note-line" id="late-line">{_e(T["late_line"])}</p>', order_table(v["late"], "late-table")]
+             f'<p class="note-line" id="within-line">{_e(T["within_line"].format(n_days=v["n_days"]))}</p>', summary_html(v, "within", "within-summary"), order_table(v["within"], "within-table"),
+             f'<h2 id="late-title">{_e(T["late_title"])}</h2>', f'<p class="note-line" id="late-line">{_e(T["late_line"])}</p>', summary_html(v, "late", "late-summary"), order_table(v["late"], "late-table")]
     notes = [T["note_open_used"] if v["open_orders_used"] else T["note_open_not_used"], T["note_warehouses"].format(rm_warehouses=v["rm_warehouses"])]
     parts.append("".join(f'<p class="note-line material-note">{_e(n)}</p>' for n in notes))
+    parts.append(summary_html(v, "main", "main-summary"))
     head1 = "".join(f'<th rowspan="2" class="{"name" if i == 1 else ""}">{_e(c)}</th>' for i, c in enumerate(T["main_cols"]))
     head1 += "".join(f'<th colspan="2">{_e(l)}</th>' for l in v["month_labels"])
     head2 = "".join(f'<th>{_e(T["demand_col"])}</th><th>{_e(T["net_col"])}</th>' for _ in v["month_labels"])
@@ -232,7 +235,7 @@ def render(values: dict) -> str:
     for _, r in v["main"].iterrows():
         m = r["material"]
         cells = "".join(f'<td>{fmt_qty(v["gross"].loc[m, ym])}</td><td>{DASH if r["no_figure"] else fmt_qty(v["net"].loc[m, ym])}</td>' for ym in v["months"])
-        body.append(f'<tr data-material="{_e(m)}"><td class="code">{_e(m)}{flag_html(r)}</td><td class="name">{_e(r["name"] or DASH)}</td><td>{fmt_qty(r["stock_now"])}</td>'
+        body.append(f'<tr data-material="{_e(m)}"><td class="code">{_e(m)}{flag_html(r)}{remark_html(r)}</td><td class="name">{_e(r["name"] or DASH)}</td><td>{fmt_qty(r["stock_now"])}</td>'
                     f'<td>{fmt_qty(r["open_orders_total"])}</td>{cells}</tr>')
     parts.append(f'<div class="table-scroll"><table class="report-table" id="material-table"><thead><tr>{head1}</tr><tr>{head2}</tr></thead><tbody>{"".join(body)}</tbody></table></div>')
     comment = ("<!-- Source: the recorded material plan (output/summary/material_plan_v1_*, SHA-256 checked in operation_plan_v1_integrity.json): the operation plan's "

@@ -1477,13 +1477,18 @@ Implementation (added with the code, after the rule above; the rule text is unch
 
 ## 54. non_stock_items
 
-    The material plan lists materials to stock and order. Labor, subcontract and service charges are bought by purchase order but are not stocked; they must not carry an order quantity or an order-by date. Prompt 21, 2026-10-09.
+    The material plan lists every component of the planned production. Some components are not goods: labor, subcontract (hire) and service charges bought by purchase order are not stocked and have no meaning as a
+    quantity to stock. Prompt 21 (2026-10-09) removed 28 of them from the tables; Prompt 22 (2026-10-09, decision of the user) replaces that: NO line leaves any table (2,244 lines, as before Prompt 21); a line that is
+    not goods carries a remark and is left out of the page's summary counts; a line whose type is uncertain carries the remark "รอตรวจ" and IS counted until a person confirms it.
 
-    evidence     = the ERP item master read only (Cube_ItemList.ItemGroup; Cube_Inventory_Aging.GLDescription) and the item description. The master marks only part of such items (item group 2000, 400 or 4012; stock account
-                   Direct Labor Control or Contra service); the rest are set up as ordinary raw materials, so the master alone, a code prefix alone or a keyword alone is not enough.
-    rule         = config material_plan.non_stock_rule: excluded only when (A) the master marks the item (its item group OR its stock account is a marker value; every master row of it) AND (B) its description holds a keyword of the rule (labor, subcontract or service group).
-                   A only, B only, master rows that disagree, or no master record: the item stays in the plan and is listed for a decision. Flags, not exclusions: never stocked (no movement row ever), a unit of measure that names
-                   work (HOUR, LOT, JOB), consumable (stock account Supplies).
-    effect       = an excluded item has no row in the material plan files, no order quantity, no order-by date and is in no headline count; the page shows one line with the count and, opened, the list of every excluded item
-                   (code, description, category). When the item attributes are not pulled the page says the check was not made and nothing is excluded.
-    data         = output/data/material_pull/item_attributes.pkl, pulled with the monthly material pull in its existing session (material_plan.pull_item_attributes).
+    rules        = config material_plan.non_stock_rule: keywords and attribute values, never a list of codes.
+                   paid remark (ค่าแรง, ค่าจ้าง or ค่าบริการ, in that order of priority): a keyword of the remark (ค่าแรง, LABOR | ค่าจ้าง, จ้าง | ค่าบริการ, ค่า บริการ, ค่าขนส่ง, LOGISTICS COST, SERVICE) is found in the
+                   description, else in the code (a code starting with LABOR- or LABOR_ in any case, with an ordinary description, is ค่าแรง). Evidence shown: จากชื่อ or จากรหัส.
+                   รอตรวจ: no keyword, and any of: item group 2000, 400 or 4012 (the groups the ERP item master gives to labor and processing charges; the evidence is จากกลุ่มสินค้า), no item-master record
+                   (ไม่มีข้อมูลในระบบ), a unit of measure that names work (HOUR, JOB, LOT; หน่วยนับ). A line matching both gets the paid remark (the overlap is counted). A person's review of names can move a code
+                   to รอตรวจ through config exceptions (code and a one-line reason; evidence จากการตรวจชื่อ).
+    effect       = the recorded plan files are unchanged by the remarks (every line, every quantity, every date). The remarks are in the plan's meta; the page shows the remark beside the code in every table and, under each
+                   list (30-day, late, all lines), one line: all lines, lines counted, lines left out (paid remarks) and the lines waiting for a check (counted). The executive tab's late-materials watch-out is the counted late
+                   lines. A paid-remark line is in no summary count; a รอตรวจ line is in every count.
+    evidence     = the item master (Cube_ItemList.ItemGroup, Cube_Inventory_Aging.GLDescription) read only with the material pull (material_plan.pull_item_attributes, saved as item_attributes.pkl); the master marks only
+                   part of the labor and subcontract items (most are set up as ordinary raw materials), which is why the description keywords carry the paid remarks and the master only raises รอตรวจ.

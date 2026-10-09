@@ -624,15 +624,16 @@ def test_the_material_plan_page_shows_its_approved_text_sections_and_tables(edge
         assert edge.ev("[...document.querySelectorAll('#%s thead th')].map(t=>t.innerText.trim())" % table) == \
             ["รหัสวัตถุดิบ", "ชื่อ", "ใช้ในสินค้า (รหัส)", "ต้องสั่งเพิ่ม", "ต้องสั่งภายใน", "lead time (วัน)", "ที่มา lead time"]
         rows = edge.ev("[...document.querySelectorAll('#%s tbody tr')].map(r=>[...r.children].map(c=>c.innerText.trim()))" % table)
-        assert len(rows) == v["n_" + key] and {r[6] for r in rows} <= {"ใบสั่งซื้อจริง", "ผู้ขายแจ้ง", "ค่าประมาณ"}
+        assert len(rows) == v["n_" + key + "_all"] and {r[6] for r in rows} <= {"ใบสั่งซื้อจริง", "ผู้ขายแจ้ง", "ค่าประมาณ"}
         lst = v[key].reset_index(drop=True)
         for r, (_, x) in zip(rows[:40], lst.head(40).iterrows()):
+            rm = (x["remark"] + " · " + x["evidence"]) if x["remark"] else ""      # the remark beside the code
             if x["no_unit_flag"]:      # no purchase unit in the system: its own flag beside the code, a dash for quantity and date
-                assert r[0] == x["material"] + "ไม่มีหน่วยซื้อในระบบ" and r[3] == "-" and r[4] == "-" and r[5] == bm.fmt_qty(x["lead_days"])
+                assert r[0] == x["material"] + "ไม่มีหน่วยซื้อในระบบ" + rm and r[3] == "-" and r[4] == "-" and r[5] == bm.fmt_qty(x["lead_days"])
             elif x["unit_flag"]:       # purchase unit differs from the BOM unit
-                assert r[0] == x["material"] + "หน่วยซื้อไม่ตรงกับหน่วยใน BOM" and r[3] == "-" and r[4] == "-" and r[5] == bm.fmt_qty(x["lead_days"])
+                assert r[0] == x["material"] + "หน่วยซื้อไม่ตรงกับหน่วยใน BOM" + rm and r[3] == "-" and r[4] == "-" and r[5] == bm.fmt_qty(x["lead_days"])
             else:
-                assert r[0] == x["material"] and r[3] == bm.fmt_qty(x["qty"]) and r[4] == bm.fmt_date(x["latest_order_date"]) and r[5] == bm.fmt_qty(x["lead_days"])
+                assert r[0] == x["material"] + rm and r[3] == bm.fmt_qty(x["qty"]) and r[4] == bm.fmt_date(x["latest_order_date"]) and r[5] == bm.fmt_qty(x["lead_days"])
     top = edge.ev("[...document.querySelectorAll('#material-table thead tr:first-child th')].map(t=>t.innerText.trim())")
     assert top[:4] == ["รหัส", "ชื่อ", "stock ตอนนี้", "ของที่สั่งแล้วรอรับ"] and top[4:] == v["month_labels"]
     assert edge.ev("[...document.querySelectorAll('#material-table thead tr:nth-child(2) th')].map(t=>t.innerText.trim())") == ["ความต้องการ", "ต้องสั่งเพิ่ม"] * v["n_months"]

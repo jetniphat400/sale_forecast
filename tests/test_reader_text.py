@@ -62,6 +62,8 @@ def _config_keys() -> set:
     def walk(node):
         if isinstance(node, dict):
             for k, v in node.items():
+                if k == "exceptions":
+                    continue                      # its keys are item codes (material_plan.non_stock_rule.exceptions): codes are shown on the pages by design
                 if isinstance(k, str) and "_" in k and len(k) >= 6:
                     keys.add(k)
                 walk(v)

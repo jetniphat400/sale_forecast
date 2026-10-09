@@ -297,56 +297,41 @@ def load_item_attributes(root: str, rule: dict):
     return pd.read_pickle(path) if os.path.exists(path) else None
 
 
-def classify_non_stock(materials: list, attrs: dict, names: dict, bom_units: dict, rule: dict) -> pd.DataFrame:
-    """One row per material: A = the item master marks it as a labor/service item (item group or stock-account description in rule.master_markers; every master row of the item must agree),
-    B = its description holds a keyword of rule.keywords (the first keyword group that matches is its category), and the status:
-      excluded            A and B both hold: not a material to stock
-      a_only / b_only     only one direction holds: stays in the plan, listed for a decision
-      a_conflict          the item's master rows disagree: stays in the plan, listed
-      no_master           no master record for the item: stays in the plan (listed when B holds)
-      stock               neither: an ordinary material
-    plus flags never_stocked (no stock movement ever), service_unit and consumable. Item codes only; descriptions are used for B and never stored here."""
-    master = attrs["master"].assign(m=attrs["master"]["ItemCode"].map(key))
-    aging = attrs["aging"].assign(m=attrs["aging"]["ItemCode"].map(key))
-    moves = set(attrs["movements"]["itemcode"].map(key))
-    groups, gls = {str(g) for g in rule["master_markers"]["item_group"]}, {str(g) for g in rule["master_markers"]["gl_description"]}
-    cons = {str(g) for g in rule.get("consumable_gl_description", [])}
-    units = {str(u).upper() for u in rule.get("service_units", [])}
-    by_master = {m: g["ItemGroup"].astype(str).str.strip().tolist() for m, g in master.groupby("m")}
-    by_gl = {m: {str(x).strip() for x in g["GLDescription"].dropna()} for m, g in aging.groupby("m")}
+def remark_lines(materials: list, attrs, names: dict, bom_units: dict, rule: dict) -> pd.DataFrame:
+    """One row per material with its remark (METRICS.md Sec.54): a PAID remark (ค่าแรง, ค่าจ้าง, ค่าบริการ: not goods, not counted in the page's summary counts) when the description (then the code)
+    holds a keyword of rule.paid_remarks; else รอตรวจ (counted) when the item group is one of rule.pending_review.item_group, or the item has no master record, or its unit names work;
+    else none. A line matching both gets the paid remark (`also_pending` records it). A code in rule.exceptions is moved to รอตรวจ with the evidence 'reviewed'. Without attributes only the
+    keywords and the unit can apply. Columns: material, remark, evidence, paid, also_pending, item_group."""
+    ev = rule["evidence_labels"]
+    pending = rule["pending_review"]
+    groups, units = {str(g) for g in pending["item_group"]}, {str(u).upper() for u in pending["service_units"]}
+    by_group, has_record = {}, set()
+    if attrs is not None:
+        master = attrs["master"].assign(m=attrs["master"]["ItemCode"].map(key))
+        by_group = {m: set(g["ItemGroup"].astype(str).str.strip()) for m, g in master.groupby("m")}
+        has_record = set(by_group) | set(attrs["aging"]["ItemCode"].map(key))
     rows = []
     for m in materials:
-        mg, gl = by_master.get(m, []), by_gl.get(m, set())
-        marks = [g in groups for g in mg]
-        gl_mark = bool(gl & gls)
-        a_all = (all(marks) if marks else False) or gl_mark
-        a_any = any(marks) or gl_mark
-        desc = names.get(m, "")
-        category, kw_hit = "", ""
-        for cat, words in rule["keywords"].items():
-            for w in words:
-                if (w.isascii() and w.lower() in desc.lower()) or (not w.isascii() and w in desc):
-                    category, kw_hit = cat, w
+        desc, code = names.get(m, ""), m
+        remark, evidence = "", ""
+        for where, text in (("name", desc), ("code", code)):                  # the description first, then the code
+            for label in rule["paid_remark_order"]:
+                words = rule["paid_remarks"][label]
+                if any((w.isascii() and w.lower() in text.lower()) or (not w.isascii() and w in text) for w in words):
+                    remark, evidence = label, ev[where]
                     break
-            if category:
+            if remark:
                 break
-        b = bool(category)
-        if not mg and not gl:
-            status = "no_master"
-        elif a_all and b:
-            status = "excluded"
-        elif a_any and not a_all:
-            status = "a_conflict"
-        elif a_all:
-            status = "a_only"
-        elif b:
-            status = "b_only"
-        else:
-            status = "stock"
-        rows.append({"material": m, "A": bool(a_all), "B": b, "status": status, "category": category if status == "excluded" else "", "keyword": kw_hit,
-                     "item_group": "|".join(sorted(set(mg))), "gl_description": "|".join(sorted(gl)), "never_stocked": m not in moves,
-                     "service_unit": norm_unit(bom_units.get(m, "")) in units, "consumable": bool(gl & cons)})
-    return pd.DataFrame(rows, columns=["material", "A", "B", "status", "category", "keyword", "item_group", "gl_description", "never_stocked", "service_unit", "consumable"])
+        grp = by_group.get(m, set())
+        why = ev["item_group"] if grp & groups else (ev["no_master"] if (attrs is not None and rule["pending_review"]["no_master_record"] and m not in has_record) else
+                                                  (ev["unit"] if norm_unit(bom_units.get(m, "")) in units else ""))
+        also = bool(remark and why)
+        if not remark and why:
+            remark, evidence = rule["pending_label"], why
+        if m in rule.get("exceptions", {}):
+            remark, evidence = rule["pending_label"], ev["reviewed"]
+        rows.append({"material": m, "remark": remark, "evidence": evidence, "paid": remark in rule["paid_remarks"], "also_pending": also, "item_group": "|".join(sorted(grp))})
+    return pd.DataFrame(rows, columns=["material", "remark", "evidence", "paid", "also_pending", "item_group"])
 
 
 def build(root: str = PROJECT_ROOT, today: pd.Timestamp = None, op_out_dir: str = None, cfg: dict = None) -> dict:
@@ -365,14 +350,12 @@ def build(root: str = PROJECT_ROOT, today: pd.Timestamp = None, op_out_dir: str 
     rm_list = [str(w).strip() for w in cfg["rm_warehouses"]]
     ex = explode(demand, lines, has_bom, purchased, len(months), int(cfg["max_bom_levels"]), stock=raw_material_stock(w3["rm_inventory"], rm_list),
                  plan_used_stock=items_with_min_max(im))
-    all_materials = sorted(ex["gross"])
+    materials = sorted(ex["gross"])                      # every line stays: the remarks below tag lines, they never remove one
     names = {key(c): " ".join(str(n).split()) for c, n in zip(w3["item_names"]["ItemCode"], w3["item_names"]["Description"]) if pd.notna(n)}
     rule = cfg.get("non_stock_rule", {"enabled": False})
     attrs = load_item_attributes(root, rule) if rule.get("enabled") else None
-    bom_unit0 = lines.groupby("comp")["unit"].first().to_dict()
-    classes = classify_non_stock(all_materials, attrs, names, bom_unit0, rule) if attrs is not None else None
-    excluded = set(classes.loc[classes["status"] == "excluded", "material"]) if classes is not None else set()
-    materials = [m for m in all_materials if m not in excluded]
+    remarks = remark_lines(materials, attrs, names, lines.groupby("comp")["unit"].first().to_dict(), rule) if rule.get("enabled") else None
+    tagged = remarks[remarks["remark"] != ""] if remarks is not None else None
     leads = material_lead_times(materials, w3["po_lines"], w3["receipts"], w3["price"], float(cfg["lead_time_v1"]["fallback_material_days"]),
                                 cfg["usable_lead_days"])
     stock = raw_material_stock(w3["rm_inventory"], [str(w).strip() for w in cfg["rm_warehouses"]])
@@ -416,12 +399,13 @@ def build(root: str = PROJECT_ROOT, today: pd.Timestamp = None, op_out_dir: str 
             "open_orders_used": use_open, "open_orders_lines_after_last_month": n_after,
             "levels": ex["levels"], "n_in_house_expanded": len(ex["in_house_expanded"]), "subassembly_stock_netted": True, "items_without_bom": sorted(ex["no_bom"]),
             "n_items_exploded": len(demand), "n_materials": len(materials),
-            "non_stock": {"applied": classes is not None, "enabled": bool(rule.get("enabled")), "n_before": len(all_materials), "n_excluded": len(excluded),
-                          "reason": rule.get("reason", ""), "attributes_pulled_at_local": str(attrs.get("pulled_at_local", "")) if attrs is not None else "",
-                          "excluded": [{"material": m, "name": names.get(m, ""), "category": c} for m, c in
-                                       zip(classes.loc[classes["status"] == "excluded", "material"], classes.loc[classes["status"] == "excluded", "category"])] if classes is not None else [],
-                          "counts": classes["status"].value_counts().to_dict() if classes is not None else {}},
+            "non_stock": {"applied": remarks is not None, "attributes_available": attrs is not None, "attributes_pulled_at_local": str(attrs.get("pulled_at_local", "")) if attrs is not None else "",
+                          "paid_remarks": list(rule.get("paid_remarks", {})), "pending_label": rule.get("pending_label", ""),
+                          "remarks": ([{"material": r.material, "remark": r.remark, "evidence": r.evidence, "paid": bool(r.paid)} for r in tagged.itertuples()] if tagged is not None else []),
+                          "n_paid": int(tagged["paid"].sum()) if tagged is not None else 0, "n_pending": int((~tagged["paid"]).sum()) if tagged is not None else 0,
+                          "n_paid_also_pending": int(remarks["also_pending"].sum()) if remarks is not None else 0},
             "n_to_order_now": int(summary["to_order_now"].sum()) if len(summary) else 0,
+            "n_to_order_now_counted": int(summary[~summary["material"].isin(set(tagged[tagged["paid"]]["material"]) if tagged is not None else set())]["to_order_now"].sum()) if len(summary) else 0,
             "lead_sources": summary["lead_source"].value_counts().to_dict() if len(summary) else {},
             "assumptions": ["open orders count in the month of their expected date; an expected date before the first month counts in it",
                             "stock is the raw-material warehouses' stock of the pull; stock of in-house sub-assemblies is not netted",
