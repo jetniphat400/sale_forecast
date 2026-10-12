@@ -144,6 +144,16 @@ Code: `src/investigations/task2b_part2_fulfilment_segmentation.py` (`run_from_pu
 - Reader text: see SENTENCES NEEDING THAI TEXT of this task (demand column header on the material page, a label for the list of divisions covered, a line for the six PEM101 codes never sold, the approved heading for six divisions) (the user's assistant).
 - Category-level view of the two product categories and the three items' settings (brief item "settings"), storms and the other external factors, utility budgets, sales insight and EGP bids: not done (brief table).
 
+### Week 4, prompt 23 -- weekday-only scheduling, database-login safety round 2, material-plan remarks from the user's answers -- DONE, 2026-10-12 (no database, no network; the test suite made none)
+
+**Report:** `docs/reports/summary/prompt5_g2_vintage_target_map.md`, heading "Prompt 23". Method: METRICS.md Sec.51 (dated note only), Sec.53, Sec.54.
+
+**Scheduling.** The monthly job runs on the first Monday-Friday on or after the 5th (`monthly_refresh.run_day`), once per month (success state file under output/state, written only on exit 0), a missed run day is made up on the next weekday; the daily job exits 0 on Saturday and Sunday. Both decide before the lock check, the preflight and any login. Triggers changed to weekly Monday-Friday (monthly 07:00; daily 08:00 and 12:00), all other task settings unchanged (XML before and after compared). Derived dates: criteria decision 2026-12-07; shadow targets 2026-09, 10, 11 scoreable on 2026-11-05, 2026-12-07, 2027-01-05; the shadow evaluation run is 2027-01-05. **Open:** the October run (2026-10-05, task result 0) is not in the new state file; see the report (the first weekday start would run October again unless the state file is seeded).
+
+**Login safety.** `db.LoginRefused` (SQLSTATE 28000 first) maps to exit code 3 in every job; a shared lock `output/state/db_login_refused.lock` stops every start until a person fixes the credentials and deletes it; an auxiliary pull that fails for another reason keeps its old file, adds a WARN line and ends the run with exit code 2. The DB host is out of every tracked file (placeholder), and the tracked-file scan test also looks for it.
+
+**Material plan.** Remarks from the user's answers: LABOR- and LABOR_ codes are labor cost, OUTSOURCE lines are ค่าจ้าง, SLIT COST, COST OF PAPER and five confirmed codes are ไม่ใช่สินค้า (not counted); no line waits for a check (0 รอตรวจ). Counts: all lines 2,244, counted 2,109, not counted 135; late 584 / 533 / 51 (executive watch-out 533, before 548).
+
 ### Week 4, prompt 22 -- material-plan lines back in the tables, remarks instead of removal, counts without the not-goods lines -- DONE, 2026-10-09 (no database)
 
 **Report:** `docs/reports/summary/prompt5_g2_vintage_target_map.md`, heading "Prompt 22". Method: METRICS.md Sec.54 (rewritten), config `material_plan.non_stock_rule`. **Supersedes the design of Prompt 21** (its evidence and findings stand; its removal of 28 lines and its expandable note are gone).
