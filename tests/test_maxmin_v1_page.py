@@ -240,7 +240,7 @@ def test_the_tab_shows_the_failure_message_when_the_json_cannot_load(edge, tmp_p
 
 
 # ------------------------------------------------------------------ 2026-10-09: the table "เกณฑ์ที่รอกำหนด" under the assumptions table
-def test_the_criteria_table_shows_its_heading_columns_and_eight_approved_rows_under_the_first_table(edge, tmp_path_factory):
+def test_the_criteria_table_shows_its_heading_columns_and_six_approved_rows_under_the_first_table(edge, tmp_path_factory):
     from test_maxmin_v1 import PENDING_HEADS, _pending_expected
     expected, _values = _pending_expected()
     site = _site(tmp_path_factory, "idx_pending")
@@ -251,7 +251,7 @@ def test_the_criteria_table_shows_its_heading_columns_and_eight_approved_rows_un
         assert edge.ev("document.getElementById('pendingCriteriaHeading').textContent.trim()") == "เกณฑ์ที่รอกำหนด"
         assert edge.ev("[...document.querySelectorAll('#pendingCriteriaTable thead th')].map(t=>t.textContent.trim())") == PENDING_HEADS
         rows = edge.ev("[...document.querySelectorAll('#pendingCriteriaTable tbody tr')].map(r=>[...r.children].map(c=>c.textContent.trim()))")
-        assert rows == expected and len(rows) == 8
+        assert rows == expected and len(rows) == 6
         text = edge.ev("document.getElementById('pendingCriteriaTable').innerText")
         assert "{" not in text and "}" not in text and "ร่าง: ต่ำกว่า 1 ถึงเกณฑ์ผ่าน, ต่ำกว่า 0.7 ถึงเกณฑ์ดี" in text and "ร่าง: ±4" in text and "หลังรอบ 7 ธ.ค. 69" in text
         # it sits below the first table, after its own heading, and the first table is unchanged (ten rows)

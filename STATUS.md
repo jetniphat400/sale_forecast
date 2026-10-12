@@ -144,6 +144,10 @@ Code: `src/investigations/task2b_part2_fulfilment_segmentation.py` (`run_from_pu
 - Reader text: see SENTENCES NEEDING THAI TEXT of this task (demand column header on the material page, a label for the list of divisions covered, a line for the six PEM101 codes never sold, the approved heading for six divisions) (the user's assistant).
 - Category-level view of the two product categories and the three items' settings (brief item "settings"), storms and the other external factors, utility budgets, sales insight and EGP bids: not done (brief table).
 
+### Week 4, prompt 27 -- out-of-scope and unused parts removed (revenue-target comparison, omni_tendering, two dead config keys, posting-delay queries, Cube_Backlog, cube_inventory_tran, two unused material pulls) -- DONE, 2026-10-12 (no database; the test suite made none)
+
+**Report:** `docs/reports/summary/prompt5_g2_vintage_target_map.md`, heading "Prompt 27". Rows 1-6, 13-19 and 28 of the Prompt 26 table; rows 7-12 and 20-27 untouched. Database statements per run: monthly 30 to 25, daily 7 to 3. Full suite 792 passed, 0 skipped. Every number on every page is unchanged except the removed targets and the PEMC row. Sec.21 and Q23 annotated, not deleted (decision asked). Open: stale texts and two dead functions (report, Found not done).
+
 ### Week 4, prompt 26 -- scope audit (read only), 28 findings listed, nothing removed -- DONE, 2026-10-12
 
 **Report:** `docs/reports/summary/prompt5_g2_vintage_target_map.md`, heading "Prompt 26". Full suite 796 passed (closes the open check of Prompt 25). Awaiting the user's choice of rows to remove.

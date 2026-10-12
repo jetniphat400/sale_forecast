@@ -1579,3 +1579,68 @@ Scope audit, read only. Date and time: 2026-10-12, 15:45 +07:00 (`git pull origi
 **Limits.** Consumers traced by grep of src and tests, so dynamic keys could be missed. monthly_refresh.py lines 836-2108 and part of config.yaml were read by grep. Script-rendered parts were read from code and data JSON; no Edge was started (no PID, no profile).
 
 **Found, not done.** Row 24 label mismatch; row 12 needs a data check; whether the original S&OP tab's actuals are Omni-only. Nothing removed.
+
+
+## Prompt 27
+
+Removal of out-of-scope and unused parts (the pilot covers Price List items only). Date and time: 2026-10-12, started 16:19 +07:00 (`git pull origin main`: nothing new). No database session, no npm. Items by code only. The user approved rows 1–6, 13, 14, 15, 16, 17, 18, 19 and 28 of the Prompt 26 table; rows 7–12 and 20–27 were not touched. One agent did the removal (one coherent change set, so no split); a separate Validator, evaluate-only, re-checked the evidence, the gates and the counts.
+
+### Step 0: evidence per row (grep of src, tests, config, docs, index.html, forecast, data)
+| row | what | readers found outside the row | result |
+|---|---|---|---|
+| 1–3, 5 | executive target text, columns, remarks, two assumptions rows | only `build_trend_tab.py` (`exec_render`, `exec_data`), config `exec_summary`, `tests/test_index_w3.py`, `tests/test_maxmin_v1.py`, `tests/test_maxmin_v1_page.py` (the eight-row table test) | removed; tests updated |
+| 4 | PEMC row | `build_trend_tab.py` only; test_index_w3 | removed |
+| 6 | `pull_targets`, `exec_targets`, `--pull-targets`, step 1 `exec_targets_pull` | `monthly_refresh.py` (step 1 and its offline stub), 2 tests | removed |
+| 28 | DATA_MAP Cube_Target_PMIS | the entry was a gap, not a reader; interpreted as "drop with row 6": no entry added, a dated note put on the two existing target entries | done |
+| 13 | `channel_scope`, `omni_tendering` | setter: none in src, config, scheduled-job scripts or tests except `tests/test_channel_scope.py` itself; the Q23 investigation scripts hard-code their own SQL and do not import `channel_scope.py`; readers of the helper functions are `load_data_all_divisions.py` and `load_data_full.py` (IN, default Omni) | branch and key removed; the helper functions stay (IN readers), now returning the Omni value only |
+| 14 | `cross_division_excluded_*` | none in src, tests, pages, data (comment and PROJECT_GRAPH text only) | removed |
+| 15 | D1, D2 in `snapshot_daily.py` | `posting_delay.csv` is read only by `src/investigations/posting_delay_analysis.py`, which reads the file as it is and does not break when it stops growing; `tests/test_daily_stock.py` pinned the queries | removed; file not deleted |
+| 16 | `query_backlog`, `aggregate_backlog`, console comparison, `old_total_cube_backlog` | `phaseE1_common.py` and the investigations hold their own copies; no page, test or script reads the key | removed |
+| 17 | `cube_inventory_tran`, `query_transfer_pairs`, `classify_warehouse_roles`, warehouse `role` | the `role` field is read by no page and no test; `warehouses[].code` is still used by the file's own verify step | removed (code list kept) |
+| 18 | `query_backlog_unfiltered` | no caller anywhere | removed |
+| 19 | material plan `category`, `movements` pulls | only `master` and `aging` are read (`material_plan.py:317-319`); `item_movement_types` does not exist in src, tests or config; the material-plan tests built a `movements` fixture that nothing read | removed; fixtures updated |
+
+### Result
+**Removed per row.**
+- Rows 1–6 and 28: `pull_targets`, `exec_targets` and `--pull-targets` in `build_trend_tab.py`; the target and attainment fields of `exec_data`, the target columns and card-2 subtitle of `exec_render`, the PEMC row, the target check in `exec_gate`; step 1 `exec_targets_pull` (and its offline stub) in `monthly_refresh.py`; config `exec_summary` keys `target_table`, `target_revenue_type`, `target_pull_dir`, `target_division_same_name`, `target_division_split`, text keys `card2_sub`, `remark_PEMC`, `remark_no_target`, the two columns, the footer target sentences; the two `pending_criteria` rows in config and, regenerated through `maxmin_v1.write_assumptions`, in `data/assumptions.json`; the executive block of `index.html` rebuilt by `build_trend_tab.py --build-exec` (one line changed). METRICS Sec.49 got a dated note (2026-10-12) and the history is kept; DATA_MAP got dated notes on the two target entries.
+- Row 13: `channel_scope.py` reduced to the Omni value; config `channel_scope` key and comment; the `omni_tendering` and unknown-scope tests (default-SQL tests kept); the log text of the two loaders.
+- Row 14: the two config keys.
+- Row 15: `take_snapshot`, `append_snapshot`, `SNAPSHOT_CSV`, `SALE_TABLE`, `CUBE_FINAL_TABLE`, `LOOKBACK_DAYS`, `load_config` and the unused imports in `snapshot_daily.py`.
+- Rows 16–18: `query_backlog`, `aggregate_backlog`, `query_backlog_unfiltered`, `query_transfer_pairs`, `classify_warehouse_roles`, `TRAN_TABLE`, `BACKLOG_TABLE`, `BACKLOG_SALE_COMPANIES`; saved pulls now hold two tables (`PULL_NAMES`).
+- Row 19: the two entries of `ITEM_ATTRIBUTE_SQL`.
+
+**Kept despite approval, or done differently.**
+- METRICS Sec.21 and PROJECT_GRAPH Q23 were annotated with a dated note, not deleted: Q23 is an answered finding that Q22 and other entries cite, and the prompt says not to rewrite history. The selector lines of Sec.21 were replaced by the note. NEED DECISION below.
+- `inventory.json`: the removal of M5 and M7 removes more than the one key named in the prompt, because the other keys are computed from the removed pulls: `backlog.reserved_change_report.old_codes_with_reserved`, `n_codes_changed`, `changed_codes_sample`, and `warehouses[].role` (44 entries). The tracked `data/inventory.json` was not rewritten by hand; the daily job drops these on its next run (a build from the saved pull of today differs from the tracked file only by these removals).
+- Two tests that tested only removed parts were deleted: `test_the_targets_are_split_by_category_and_a_division_without_a_row_has_no_target` (`test_index_w3.py`) and the two omni_tendering SQL tests plus the unknown-scope test in `test_channel_scope.py`. Everything else was updated, not deleted. Updated: `test_cfix_inventory_pull.py` (two-table fixture; schema assertions added), `test_cfix_runner_and_scores.py`, `test_daily_stock.py` (posting-delay test now asserts the removal), `test_operation_plan.py`, `test_material_plan.py`, `test_monthly_refresh.py` (no skip any more), `test_index_w3.py` (no target text or column, no PEMC row, no 924.4 or 106.3, removed config keys absent; the two skips that depended on the target pull are gone), `test_channel_scope.py`, `test_maxmin_v1.py` and `test_maxmin_v1_page.py` (six criteria rows).
+
+**DB statements per run** (distinct call sites, a chunked loop counts once; counted by me from the audit and by the Validator from `git show HEAD` and the working tree):
+- Monthly: 30 before, 25 after (removed Cube_Backlog, cube_inventory_tran, material "category", material "movements", Cube_Target_PMIS).
+- Daily: 7 before, 3 after (removed the posting-delay query, the cube_final count, Cube_Backlog, cube_inventory_tran).
+
+**Runner dry runs (fakes, no database).**
+- Monthly `python src/monthly_refresh.py --dry-run --offline --skip-tests`: exit 0. Steps: 1_pull_data, 2_validate, 3_frozen_snapshot, 4_backtest, 5_new_forward_test_vintage, 6_fill_and_score, 7_rebuild_pages, 7b_operation_plan, 7c_material_plan, 7d_vintage_gate, 7e_trend_tab, 7f_exec_summary, 8_run_tests (skipped by flag), 9_scan_sensitive_content, 10_change_magnitude, 11_commit_and_push (dry). The exec gate passed (step 7f ran its gate on the rebuilt tab).
+- Daily `python src/daily_stock_job.py --dry-run --from-pulls output/data/daily_stock_pull`: exit 0, every gate passed, no tracked file touched.
+
+**Numeric gate.** Rendered text of every page and tab before (the HEAD files) and after, opened in headless Edge: S&OP tab, Trend, manual, stock panel, sales report, Min-Max page, operation plan and material plan are text-identical. Differences, all removals, none added: executive tab: 106.3% (twice, card 2 and total row), 924.4 (total target), 407.8, 211.0, 172.9, 106.5, 26.2 (the five division targets), 93.4%, 157.8%, 74.5%, 76.1%, 224.3% (the five attainments); the PEMC row. Assumptions tab: the two rows. 982.4 (card 2 value), 542.1 and every other executive figure are unchanged.
+
+**Data gate.**
+- `data/stock_daily.json`: working copy sha256 unchanged from the start (945e8181...); a build from the saved pull equals the HEAD blob byte for byte.
+- `data/inventory.json`: not modified; build from the saved pull differs from the tracked file only by the removed keys above (no value changed, nothing added).
+- `data/assumptions.json`: differs only by the two removed `pending_criteria` rows (8 to 6).
+- Forward-test, shadow, score and comparator logs and the vintage snapshot: no file of those kinds was modified during the task (checked by modification time) and none is tracked.
+
+**Files outside the tracked repo for the user to delete (not deleted):** the saved target pull `output/data/exec_pull/` (`targets.csv`, `targets_meta.json`; untracked, in the working folder) and the private copy of the target workbook held outside the repository (path recorded in DATA_MAP only in masked form). `output/snapshots/posting_delay.csv` was kept as asked.
+
+**Browser check** (headless Edge on a temporary profile, both HEAD and new pages): 0 script errors on all five pages; the only console line, one 404, is identical before and after (the page has no icon link, so it is the browser's default icon request). Executive tab: no target text, no target columns, no PEMC row, PEM104 row kept, card 2 shows 982.4 with no subtitle. Assumptions tab: six rows. Stock panel unchanged. The first Edge run left child processes on the temporary profile; only those PIDs (found by their profile path) were stopped and the profile deleted. Two older profile folders from 2026-10-11 and the processes using them are not mine and were left alone.
+
+**Validator: MATCH.** It agreed with the Step 0 evidence, the counts (30 to 25, 7 to 3), the absence of target values, the data gates and the diff review. It found: (a) a test not in my first subset still asserted eight criteria rows (`tests/test_maxmin_v1.py`, `tests/test_maxmin_v1_page.py`): fixed before the final run; (b) stale text, listed under FOUND, NOT DONE; (c) the nested same-quote f-string in `exec_render` needs Python 3.12 or later (3.12.10 here; it was already used elsewhere in the file before this change).
+
+**Tests.** Final full run after the last change (792 tests, about 15 minutes): 792 passed, 0 failed, 0 skipped. Test-suite database connection attempts: 0 (the block's own 4 deliberate attempts were blocked). An earlier full run had 1 failure (the test of the monthly failure log still expected the removed second Trend-tab stage); it was fixed and the whole suite run again. The skips that the old executive tests had (no saved target pull) are gone.
+
+### Found, not done
+- `forecast/sales_report.html:101` and `config/config.yaml` `baht_explanation` still say the baht figures were "not checked against the revenue target counting" (a mention of the target on the sales page, asserted by `tests/test_build_report.py:456`). Not in the approved rows. Size S.
+- Stale comments: `tests/test_page_timestamps.py:151-156` (says `query_backlog` is kept), `src/snapshot_daily.py` docstring line on `run_query`, the module docstring of `build_inventory_dataset.py` (Step 2B still describes Cube_Backlog; stale before this task). Size S.
+- Dead code left in `build_inventory_dataset.py`: `build_backlog_rows` and `classify_negative_causes` (no callers; not in the approved rows). Size S.
+- `src/investigations/posting_delay_analysis.py` still works on the old file but can no longer reach its 30 and 60 day minimums. Its purpose is gone. Size S.
+- Old pickles `backlog_cube.pkl` and `transfer_pairs.pkl` remain in the local untracked pull folders; harmless.

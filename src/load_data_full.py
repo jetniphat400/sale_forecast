@@ -134,9 +134,9 @@ def pull_raw_sales(config: dict, item_codes: list, division_by_code: dict) -> pd
     """
     df = run_query(sql)
     logger.info(
-        "Pulled %d raw rows: %d items, channel_scope=%s (revenue_type in %s), status in %s, createDate >= %s "
+        "Pulled %d raw rows: %d items (revenue_type in %s), status in %s, createDate >= %s "
         "(no division filter — division is attached from the pricelist below, not queried)",
-        len(df), len(item_codes), config.get("channel_scope", "omni"), revenue_types, statuses, start_date,
+        len(df), len(item_codes), revenue_types, statuses, start_date,
     )
     df["division"] = df["itemcode"].map(division_by_code)
     unmapped = df[df["division"].isna()]

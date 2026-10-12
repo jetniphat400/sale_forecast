@@ -685,8 +685,6 @@ def _fake_run_query(log):
         if "Cube_Inventory_Aging" in sql:
             return pd.DataFrame({"Warehouse": ["WH21"] * len(codes), "ItemCode": sorted(codes), "Type": ["S"] * len(codes), "ItemStatus": ["Active"] * len(codes), "Unit": ["PC"] * len(codes),
                                  "GLAccount": ["117300"] * len(codes), "GLDescription": ["Raw materials"] * len(codes), "Stock": [1.0] * len(codes)})
-        if "cube_inventory_tran" in sql:
-            return pd.DataFrame({"itemcode": sorted(codes), "n_movements": [1] * len(codes), "first_movement": ["2026-01-01"] * len(codes), "last_movement": ["2026-02-01"] * len(codes), "n_receipts": [1] * len(codes)})
         if "Cube_ItemList" in sql:
             return pd.DataFrame({"ItemCode": sorted(codes), "Description": ["d"] * len(codes)})
         raise AssertionError("an unexpected statement: " + sql[:80])
@@ -911,12 +909,11 @@ def test_the_coverage_line_and_the_divisions_follow_the_plan_items_given_to_the_
 # Remarks on material lines: labor, subcontract and service charges are tagged and left out of the counts; uncertain lines are tagged รอตรวจ and counted (METRICS.md Sec.54).
 # No database: frames and fakes only. Every line stays in every table.
 # ---------------------------------------------------------------------------------------------------------------------------------------------
-def _attrs(master_rows, aging_rows=(), moved=()):
-    """Item attributes as pull_item_attributes returns them: master (ItemCode, ItemGroup), aging (ItemCode, GLDescription), movements (itemcode)."""
+def _attrs(master_rows, aging_rows=()):
+    """Item attributes as pull_item_attributes returns them: master (ItemCode, ItemGroup), aging (ItemCode, GLDescription)."""
     return {"pulled_at_local": "2026-10-09 15:50:00",
             "master": pd.DataFrame([{"Company": "c", "ItemCode": c + "   ", "ItemGroup": g} for c, g in master_rows], columns=["Company", "ItemCode", "ItemGroup"]),
-            "aging": pd.DataFrame([{"ItemCode": c, "GLDescription": d} for c, d in aging_rows], columns=["ItemCode", "GLDescription"]),
-            "movements": pd.DataFrame({"itemcode": list(moved)})}
+            "aging": pd.DataFrame([{"ItemCode": c, "GLDescription": d} for c, d in aging_rows], columns=["ItemCode", "GLDescription"])}
 
 
 def _rule():
@@ -1010,7 +1007,7 @@ def _with_labor(project, attrs=True):
     target = os.path.join(project, *cfg["non_stock_rule"]["attributes_file"].split("/"))
     if attrs:
         os.makedirs(os.path.dirname(target), exist_ok=True)
-        pd.to_pickle(_attrs([("RM-A", "100"), ("RM-B", "2000")], aging_rows=[("RM-A", "Raw materials")], moved=["RM-A", "RM-B"]), target)
+        pd.to_pickle(_attrs([("RM-A", "100"), ("RM-B", "2000")], aging_rows=[("RM-A", "Raw materials")]), target)
 
 
 def test_every_line_stays_and_only_the_summary_counts_leave_out_the_paid_remark_lines(project):
@@ -1059,7 +1056,7 @@ def test_the_main_table_row_count_equals_the_input_line_count_with_and_without_t
         assert "non-stock-details" not in page                                                   # the Prompt 21 exclusion note is gone
 
 
-def test_the_item_attribute_pull_is_read_only_and_reads_the_master_the_stock_account_and_the_movements(monkeypatch):
+def test_the_item_attribute_pull_is_read_only_and_reads_the_master_and_the_stock_account(monkeypatch):
     import db
     log = []
 
@@ -1068,6 +1065,6 @@ def test_the_item_attribute_pull_is_read_only_and_reads_the_master_the_stock_acc
         return pd.DataFrame({"ItemCode": ["A"], "itemcode": ["A"]})
     monkeypatch.setattr(db, "run_query", fake)
     got = mp.pull_item_attributes(["A", "B"])
-    assert set(got) == {"master", "aging", "category", "movements"} and len(log) == 4
+    assert set(got) == {"master", "aging"} and len(log) == 2
     assert all(s.lstrip().upper().startswith("SELECT") and not re.search(r"\b(INSERT|UPDATE|DELETE|DROP|ALTER|CREATE|EXEC|INTO)\b", s, re.I) for s in log)
-    assert any("Cube_ItemList" in s and "ItemGroup" in s for s in log) and any("Cube_Inventory_Aging" in s and "GLDescription" in s for s in log) and any("cube_inventory_tran" in s for s in log)
+    assert any("Cube_ItemList" in s and "ItemGroup" in s for s in log) and any("Cube_Inventory_Aging" in s and "GLDescription" in s for s in log)

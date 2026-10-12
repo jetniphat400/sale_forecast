@@ -265,7 +265,7 @@ def test_the_executive_summary_step_runs_after_the_trend_step_and_before_the_tes
     assert gates["gates"]["exec_summary_gate"]["status"] == "passed"
     assert "exec_summary_gate" not in mr.gate_outcomes({"passed": True}, {"passed": True, "findings": []}, {"gates": {}})["gates"]
     offline = mr.step1_pull_data(False, offline=True)
-    assert offline["exec_targets_pull"]["refreshed"] is False
+    assert "exec_targets_pull" not in offline and offline["trend_tab_pull"]["refreshed"] is False
 
 
 def test_the_executive_summary_step_stops_the_run_when_a_projection_differs_from_the_forecast_page(tmp_path, monkeypatch):
@@ -278,8 +278,5 @@ def test_the_executive_summary_step_stops_the_run_when_a_projection_differs_from
         d["total"]["projection"] += 1.0
         return d
     monkeypatch.setattr(bt, "exec_data", wrong)
-    cfg = bt.load_config(mr.PROJECT_ROOT)
-    if not os.path.exists(os.path.join(mr.PROJECT_ROOT, *cfg["exec_summary"]["target_pull_dir"].split("/"), "targets.csv")):
-        pytest.skip("SKIPPED, not passed: the saved revenue-target pull (untracked output) is not on this machine")
     with pytest.raises(mr.MonthlyRefreshAbort, match="projection"):
         mr.step7f_exec_summary(True, str(tmp_path), {"rendered_path": os.path.join(mr.PROJECT_ROOT, "forecast", "sales_report.html")})

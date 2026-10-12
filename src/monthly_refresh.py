@@ -285,7 +285,6 @@ def step1_pull_data(dry_run: bool, offline: bool = False) -> dict:
                 "inventory_pull": {"refreshed": False, "not_refreshed_reason": "offline mode: no database connection"},
                 "material_plan_pull": {"refreshed": False, "not_refreshed_reason": "offline mode: no database connection"},
                 "trend_tab_pull": {"refreshed": False, "not_refreshed_reason": "offline mode: no database connection"},
-                "exec_targets_pull": {"refreshed": False, "not_refreshed_reason": "offline mode: no database connection"},
                 "snapshot_pull_date": str(monthly["snapshot_pull_date"].iloc[0]),
                 "n_items": monthly["itemcode"].nunique(), "n_divisions": monthly["division"].nunique()}
     from dotenv import load_dotenv
@@ -341,9 +340,6 @@ def step1_pull_data(dry_run: bool, offline: bool = False) -> dict:
     # the Trend tab of index.html: its own session (src/build_trend_tab.py --pull); a failure leaves the earlier pull in place and the log says so
     result["trend_tab_pull"] = _pull_stage("Trend tab pull", "build_trend_tab.py", os.path.join(PROJECT_ROOT, *load_config()["trend_tab"]["pull_dir"].split("/"), "completeness.json"),
                                            args=["--pull"])
-    # the revenue targets of the executive summary tab: aggregates of Cube_Target_PMIS, its own session (src/build_trend_tab.py --pull-targets)
-    result["exec_targets_pull"] = _pull_stage("Executive summary targets pull", "build_trend_tab.py",
-                                              os.path.join(PROJECT_ROOT, *load_config()["exec_summary"]["target_pull_dir"].split("/"), "targets_meta.json"), args=["--pull-targets"])
     _abort_if_a_database_stage_failed("Step 1 (pull data)")
     return result
 

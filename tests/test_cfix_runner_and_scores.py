@@ -226,8 +226,7 @@ def test_inventory_json_is_regenerated_from_the_saved_pull_and_must_carry_its_ti
     # the stock file is written from the same saved pull (src/stock_daily.py); the pull needs its tables, and the output
     # goes to a temporary path, never to the tracked data/stock_daily.json
     for name, df in (("inventory", pd.DataFrame({"itemcode": ["A"], "warehouse": ["W1"], "stock": [1.0], "timestamp": ["2026-10-01 21:45:00"]})),
-                     ("backlog_ces", pd.DataFrame({"Timestamp": ["2026-09-28 06:58:00"]})), ("backlog_cube", pd.DataFrame()),
-                     ("transfer_pairs", pd.DataFrame())):
+                     ("backlog_ces", pd.DataFrame({"Timestamp": ["2026-09-28 06:58:00"]}))):
         df.to_pickle(pull / f"{name}.pkl")
     inv = tmp_path / "inventory.json"
     stock_json = tmp_path / "stock_daily.json"
@@ -275,7 +274,7 @@ def test_step1_pulls_the_pilot_file_and_the_inventory_tables_in_the_same_stage(m
     monkeypatch.setattr(mr, "run_script", lambda *a, **k: _Proc())
     monkeypatch.setattr(pd, "read_csv", lambda *a, **k: pd.DataFrame({"snapshot_pull_date": ["2026-10-05 07:00:01"], "itemcode": ["A"], "division": ["PEM101"]}))
     out = mr.step1_pull_data(False, offline=False)
-    assert [s for s, _ in seen] == ["load_data_full.py", "build_inventory_dataset.py", "material_plan.py", "build_trend_tab.py", "build_trend_tab.py"]      # week 4: the material plan's inputs are a third stage; prompt 11: the Trend tab pull a fourth
+    assert [s for s, _ in seen] == ["load_data_full.py", "build_inventory_dataset.py", "material_plan.py", "build_trend_tab.py"]      # week 4: the material plan's inputs are a third stage; prompt 11: the Trend tab pull a fourth; prompt 27: no revenue-target pull
     assert seen[1][1][0] == "--save-pulls" and out["pilot_128item_refresh"]["refreshed"] and out["inventory_pull"]["refreshed"]
     assert seen[2][1] == ["--pull"] and out["material_plan_pull"]["refreshed"]
 

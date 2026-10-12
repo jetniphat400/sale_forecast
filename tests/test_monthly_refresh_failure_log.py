@@ -319,7 +319,7 @@ def test_exit_code_3_from_a_stage_stops_every_later_database_stage_and_the_run(m
 def test_any_other_failure_of_an_auxiliary_pull_keeps_the_previous_file_and_warns_and_the_step_goes_on(monkeypatch):
     started = _step1_env(monkeypatch, run_rc=[0, 0, 1])                                      # the inventory pull fails, but not by a refused login
     out = mr.step1_pull_data(False, offline=False)                                           # the step completes
-    assert started == ["load_data_all_divisions.py", "load_data_full.py", "build_inventory_dataset.py", "material_plan.py", "build_trend_tab.py", "build_trend_tab.py"]
+    assert started == ["load_data_all_divisions.py", "load_data_full.py", "build_inventory_dataset.py", "material_plan.py", "build_trend_tab.py"]
     assert out["inventory_pull"]["refreshed"] is False and "exited 1" in out["inventory_pull"]["not_refreshed_reason"]
     assert len(mr._PARTIAL_WARNINGS) == 1 and mr._PARTIAL_WARNINGS[0].startswith("WARN:") and "inventory.json pulls" in mr._PARTIAL_WARNINGS[0]
 

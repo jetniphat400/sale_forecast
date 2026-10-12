@@ -384,11 +384,11 @@ always stated.
 
 ## 21. channel_scope and cross-scope comparison
 
-    channel_scope ∈ { omni, omni_tendering }
-      omni           : revenue_type = 'Omni Channel'
-                       — project default and official requirement
-      omni_tendering : revenue_type IN ('Omni Channel', 'Tendering')
-                       — contingency scope
+    Note 2026-10-12 (Prompt 27): the config key channel_scope and its option omni_tendering
+    (revenue_type IN ('Omni Channel', 'Tendering')) were removed, because the pilot scope is Price List
+    items under the Omni Channel filter only (revenue_type = 'Omni Channel', the project default and
+    official requirement). This section stays as the record of the Q23 comparison; that comparison can
+    no longer be re-run from the current code.
     relative_bias    = bias / mean(actual) over the same window, in %
 
     same-target rule: two scopes are compared for accuracy ONLY on the
@@ -1374,6 +1374,8 @@ pipeline — no new section is needed for this; it is already covered by section
 - Scope labels (decision D1, 2026-10-09): card 2 and the footer say that sales and forecast count only Price List items while the target covers every Omni product, so the percent to
   target is probably below the true figure; the all-Omni comparison (every Omni item, a Naive run-rate for items outside the Price List) is a later task (2026-10-21 to 10-23).
 - The footer states that the target's basis (delivery date or invoice date) is unconfirmed; the projection is a flat-forecast extrapolation without seasonality (STATUS.md plan).
+
+- **Note 2026-10-12 (Prompt 27): the target comparison was removed** because the pilot scope is Price List items only and the target covers every Omni product. Gone from the tab: the target and "to target" columns, the total row's target and percent, card 2's "ถึงเป้า" line, the PEMC row, the remark that no target was found and the footer sentences about the target; gone from the runner: the target pull (`--pull-targets`, step 1) and the target part of the step 7f gate. The lines above that define "to target", the total row's target and the scope labels describe the tab as it was built on 2026-10-09 to 2026-10-12 and are kept as history.
 
 ## 50. model_experiment_2026_10
 

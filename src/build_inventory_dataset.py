@@ -26,8 +26,7 @@ Each item also carries `backlog_rows`: the individual Cube_Backlog rows behind i
 never de-duplicated, so a reviewer can judge each row for themselves. Every item's rows are asserted
 to sum exactly to that item's backlog total.
 
-Step 3: classifies each warehouse's role (staging vs holding vs unknown) from
-cube_inventory_tran transfer-pair evidence only -- never from the warehouse code's name.
+Step 3: the per-warehouse stock breakdown of each item.
 """
 import json
 import logging
@@ -50,12 +49,7 @@ CONFIG_PATH = os.path.join(PROJECT_ROOT, "config", "config.yaml")
 SCOPE_335_FILE = os.path.join(PROJECT_ROOT, "output", "summary", "phaseC_step2_scope_335items.csv")
 OUTPUT_PATH = os.path.join(PROJECT_ROOT, "data", "inventory.json")
 SOURCE_TABLE = "[salewarehouse].[dbo].[Cube_Inventory_Exact]"
-TRAN_TABLE = "[salewarehouse].[dbo].[cube_inventory_tran]"
-BACKLOG_TABLE = "[salewarehouse].[dbo].[Cube_Backlog]"  # RETIRED as the Reserved source, 2026-09-25
-# (task 2a, Part 5; DATA_MAP.md Trap 23) -- kept here ONLY for the one-time before/after
-# comparison query in __main__ (`query_backlog`, below), never again as the written figure.
 CES_TABLE = "[salewarehouse].[dbo].[Cube_CES]"  # NEW Reserved source, per METRICS.md Sec.14
-BACKLOG_SALE_COMPANIES = ["PEM", "CI"]
 # Rows sharing every one of these values but sitting under different docID (contract) numbers are
 # the cross-contract duplicate-recording pattern documented in
 # output/summary/reserve_backlog_relationship_report.md. Used for DIAGNOSTICS ONLY here -- the
@@ -230,55 +224,6 @@ def report_snapshot_timestamp(inv: pd.DataFrame) -> dict:
 
 
 # --------------------------------------------------------------------------------------------
-# STEP 2B -- outstanding backlog + available
-# --------------------------------------------------------------------------------------------
-
-def query_backlog(item_codes: list) -> pd.DataFrame:
-    """Outstanding customer backlog rows for the registry codes, scoped to PEM + CI.
-
-    No status filter: every Cube_Backlog row is already outstanding. `sale_company` is compared
-    after stripping, because the column is fixed-width padded like `warehouse` is.
-    """
-    code_list = "','".join(sorted(item_codes))
-    sql = f"""
-        SELECT id, docID, job, customer, itemcode, quantity, status, viewType, sale_company,
-               sale_division, deliverydate, plan_deliverydate, receivedate, backlog_from, timestamp
-        FROM {BACKLOG_TABLE}
-        WHERE itemcode IN ('{code_list}')
-    """
-    df = run_query(sql)
-    df["sale_company"] = df["sale_company"].astype(str).str.strip()
-
-    non_outstanding = df[df["viewType"].astype(str).str.strip() != "CTR/PO to be delivered"]
-    if len(non_outstanding):
-        logger.warning(
-            "%d of %d backlog rows do NOT carry viewType='CTR/PO to be delivered' -- the "
-            "no-status-filter assumption (every row is outstanding) rests on that value being "
-            "universal. Counted anyway, per the instruction that all statuses count, but this "
-            "needs re-checking: %s",
-            len(non_outstanding), len(df), sorted(non_outstanding["viewType"].unique().tolist()))
-
-    kept = df[df["sale_company"].isin(BACKLOG_SALE_COMPANIES)].copy()
-    logger.info(
-        "Pulled %d backlog rows from %s for the registry codes; %d rows kept after "
-        "sale_company IN %s, %d rows dropped (%s). Status values kept (no filter applied): %s",
-        len(df), BACKLOG_TABLE, len(kept), BACKLOG_SALE_COMPANIES, len(df) - len(kept),
-        df[~df["sale_company"].isin(BACKLOG_SALE_COMPANIES)]["sale_company"].value_counts().to_dict(),
-        kept["status"].value_counts().to_dict())
-    return kept
-
-
-def aggregate_backlog(backlog: pd.DataFrame) -> pd.DataFrame:
-    """One row per code: summed outstanding quantity across all its backlog lines.
-
-    Cube_Backlog's grain is one row per scheduled delivery line within a contract-item, so a code's
-    total must sum every matching row -- never take a single row's value.
-    """
-    return backlog.groupby("itemcode", as_index=False)["quantity"].sum().rename(
-        columns={"itemcode": "code", "quantity": "backlog"})
-
-
-# --------------------------------------------------------------------------------------------
 # STEP 2B (NEW, 2026-09-25, task 2a Part 5) -- Reserved from Cube_CES Status='Backlog'
 # --------------------------------------------------------------------------------------------
 # DATA_MAP.md Trap 23 ("PENDING VERIFICATION, NOT CONFIRMED -- stock panel Reserved from
@@ -421,20 +366,6 @@ def add_backlog_and_available(classified: pd.DataFrame, backlog_per_code: pd.Dat
     return merged
 
 
-def query_backlog_unfiltered(item_codes: list) -> pd.DataFrame:
-    """The same registry-code backlog rows WITHOUT the sale_company filter, so the run can report
-    exactly what the filter removed. Diagnostics only -- never used for the written figure."""
-    code_list = "','".join(sorted(item_codes))
-    df = run_query(f"""
-        SELECT id, docID, itemcode, quantity, status, sale_company, sale_division,
-               deliverydate, plan_deliverydate, receivedate
-        FROM {BACKLOG_TABLE}
-        WHERE itemcode IN ('{code_list}')
-    """)
-    df["sale_company"] = df["sale_company"].astype(str).str.strip()
-    return df
-
-
 def classify_negative_causes(negatives: pd.DataFrame, flagged_backlog: pd.DataFrame) -> pd.DataFrame:
     """Assigns each negative-available code a most-likely cause from row-level evidence.
 
@@ -557,7 +488,7 @@ def sellable_split_totals(split: dict) -> dict:
 
 
 # --------------------------------------------------------------------------------------------
-# STEP 3 -- warehouse breakdown + role classification
+# STEP 3 -- warehouse breakdown
 # --------------------------------------------------------------------------------------------
 
 def build_by_warehouse(inv: pd.DataFrame) -> dict:
@@ -570,94 +501,17 @@ def build_by_warehouse(inv: pd.DataFrame) -> dict:
     return out
 
 
-def query_transfer_pairs(item_codes: list) -> pd.DataFrame:
-    code_list = "','".join(sorted(item_codes))
-    sql = f"""
-        SELECT itemcode, ourref, trans_date, warehouse, QtyIn, QtyOut
-        FROM {TRAN_TABLE}
-        WHERE itemcode IN ('{code_list}')
-          AND (QtyIn > 0 OR QtyOut > 0)
-          AND ourref IS NOT NULL
-    """
-    df = run_query(sql)
-    n_padded = (df["warehouse"] != df["warehouse"].str.strip()).sum()
-    if n_padded:
-        logger.info("%d of %d movement rows have a fixed-width-padded warehouse code -- stripped "
-                     "before pairing.", n_padded, len(df))
-    df["warehouse"] = df["warehouse"].str.strip()
-    logger.info("Pulled %d movement rows from %s for %d item codes (QtyIn>0 or QtyOut>0, ourref not null).",
-                len(df), TRAN_TABLE, len(item_codes))
-    return df
-
-
-def classify_warehouse_roles(tran: pd.DataFrame, all_warehouses: list) -> pd.DataFrame:
-    """Pairs QtyOut/QtyIn legs sharing the same (itemcode, ourref, trans_date) into transfer
-    edges (source_warehouse -> dest_warehouse), then flags each warehouse:
-      - staging  : appears ONLY as a source across all evidenced transfers
-      - holding  : appears ONLY as a destination across all evidenced transfers
-      - unknown  : appears as both, or never appears in any transfer pair at all (no evidence)
-    """
-    out_count = {w: 0 for w in all_warehouses}
-    in_count = {w: 0 for w in all_warehouses}
-    n_edges = 0
-    n_groups = 0
-    n_paired_groups = 0
-    n_rows_in_paired_groups = 0
-
-    for (_itemcode, _ourref, _date), grp in tran.groupby(["itemcode", "ourref", "trans_date"]):
-        n_groups += 1
-        sources = grp[grp["QtyOut"] > 0]["warehouse"].tolist()
-        dests = grp[grp["QtyIn"] > 0]["warehouse"].tolist()
-        if sources and dests:
-            n_paired_groups += 1
-            n_rows_in_paired_groups += len(grp)
-        for s in sources:
-            for d in dests:
-                if s == d:
-                    continue
-                out_count[s] = out_count.get(s, 0) + 1
-                in_count[d] = in_count.get(d, 0) + 1
-                n_edges += 1
-
-    logger.info(
-        "Found %d transfer edges from %d paired (itemcode, ourref, trans_date) groups (both an in-leg "
-        "and an out-leg present) out of %d total groups. IMPORTANT CAVEAT: only %d of %d movement rows "
-        "(%.1f%%) fall inside a paired group -- the remaining rows are singleton entries under their own "
-        "ourref (e.g. issues/receipts against a job or production order) that provide NO directional "
-        "transfer evidence under this method and are excluded from the role classification below. Role "
-        "flags below are therefore based on a partial (~%.0f%%) sample of movement rows, not the full "
-        "movement history.",
-        n_edges, n_paired_groups, n_groups, n_rows_in_paired_groups, len(tran),
-        100 * n_rows_in_paired_groups / len(tran) if len(tran) else 0,
-        100 * n_rows_in_paired_groups / len(tran) if len(tran) else 0,
-    )
-
-    rows = []
-    for w in all_warehouses:
-        o, i = out_count.get(w, 0), in_count.get(w, 0)
-        if o > 0 and i == 0:
-            role = "staging"
-        elif i > 0 and o == 0:
-            role = "holding"
-        else:
-            role = "unknown"
-        rows.append({"code": w, "out_count": o, "in_count": i, "role": role})
-    result = pd.DataFrame(rows)
-    logger.info("Warehouse role classification:\n%s", result.to_string(index=False))
-    return result
-
-
 # --------------------------------------------------------------------------------------------
 # STEP 4 -- write data/inventory.json
 # --------------------------------------------------------------------------------------------
 
-def build_json(classified: pd.DataFrame, by_warehouse: dict, warehouse_roles: pd.DataFrame,
+def build_json(classified: pd.DataFrame, by_warehouse: dict, all_warehouses: list,
                snapshot_meta: dict, source_table: str, backlog_meta: dict,
                backlog_rows: dict, sellable_split: dict, sellable_totals: dict,
                sellable_warehouse_codes_by_division: dict, generated_at: str = None) -> dict:
     """`generated_at` (UTC, ...Z) is the moment the data was pulled when the build runs from saved pulls (--from-pulls);
     left empty, it is now, as before (a live build pulls and builds in the same minute)."""
-    warehouses = [{"code": r["code"], "role": r["role"]} for _, r in warehouse_roles.iterrows()]
+    warehouses = [{"code": w} for w in all_warehouses]
 
     known = classified[classified["available"].notna()]
     totals = {
@@ -880,17 +734,16 @@ def report_movement(previous: dict, new_totals: dict, new_on_hand: float,
           f"{new_on_hand:>14,.0f}{_delta(new_on_hand, previous['on_hand_total']):>14}")
 
 
-PULL_NAMES = ("inventory", "backlog_cube", "backlog_ces", "transfer_pairs")
+PULL_NAMES = ("inventory", "backlog_ces")
 PULL_META = "pull_meta.json"
 
 
 def save_pulls(pull_dir: str, item_codes: list) -> dict:
-    """The only part of this script that touches the database when run with --save-pulls: the four pulls, written
+    """The only part of this script that touches the database when run with --save-pulls: the two pulls, written
     as they came back (pickles keep every dtype) with the time they were pulled (C-fix Part 1)."""
     os.makedirs(pull_dir, exist_ok=True)
     started = datetime.now(timezone.utc)
-    frames = {"inventory": query_inventory_exact(item_codes), "backlog_cube": query_backlog(item_codes),
-              "backlog_ces": query_backlog_ces(item_codes), "transfer_pairs": query_transfer_pairs(item_codes)}
+    frames = {"inventory": query_inventory_exact(item_codes), "backlog_ces": query_backlog_ces(item_codes)}
     pulled = datetime.now(timezone.utc)
     for name, df in frames.items():
         df.to_pickle(os.path.join(pull_dir, f"{name}.pkl"))
@@ -920,7 +773,7 @@ def _parse_args(argv=None):
     import argparse
     ap = argparse.ArgumentParser(description="Builds data/inventory.json (live pull by default).")
     g = ap.add_mutually_exclusive_group()
-    g.add_argument("--save-pulls", metavar="DIR", help="pull the four tables from the database into DIR and stop")
+    g.add_argument("--save-pulls", metavar="DIR", help="pull the two tables from the database into DIR and stop")
     g.add_argument("--from-pulls", metavar="DIR", help="build from the pulls saved in DIR; makes no database connection")
     ap.add_argument("--out", metavar="PATH", default=None, help="write the JSON here instead of data/inventory.json "
                                                                 "(for tests and dry runs; only with --from-pulls)")
@@ -981,50 +834,23 @@ if __name__ == "__main__":
           f"{'single date' if snapshot_meta['single_date'] else 'MULTIPLE DATES'}: {snapshot_meta['distinct_dates']})")
 
     print("\n" + "=" * 78)
-    print("BACKLOG STEP 1 — RESERVED, SWITCHED FROM Cube_Backlog TO Cube_CES Status='Backlog'")
+    print("BACKLOG STEP 1 — RESERVED FROM Cube_CES Status='Backlog'")
     print("(task 2a, Part 5; DATA_MAP.md Trap 23; METRICS.md Sec.14)")
     print("=" * 78)
 
-    # ---- BEFORE: the old Cube_Backlog-based figure, for a direct, cited before/after comparison
-    # (never written to the JSON -- comparison only). ----
-    old_backlog_rows = saved["backlog_cube"] if saved else query_backlog(item_codes)
-    old_backlog_per_code = aggregate_backlog(old_backlog_rows)
-    old_total = float(old_backlog_per_code["backlog"].sum()) if len(old_backlog_per_code) else 0.0
-    old_by_code = dict(zip(old_backlog_per_code["code"], old_backlog_per_code["backlog"]))
-    print(f"1-before (Cube_Backlog, as-is, no dedup, sale_company filtered): "
-          f"{len(old_backlog_per_code)} codes, {old_total:,.0f} units total")
-
-    # ---- AFTER: Cube_CES Status='Backlog', deduplicated on (contract, item) per METRICS.md
-    # Sec.14's literal text -- the new, adopted Reserved source. ----
+    # Cube_CES Status='Backlog', deduplicated on (contract, item) per METRICS.md Sec.14's literal
+    # text -- the Reserved source. ----
     ces_backlog_raw = saved["backlog_ces"] if saved else query_backlog_ces(item_codes)
     backlog_per_code, backlog_detail = dedup_and_aggregate_ces_backlog(ces_backlog_raw)
     classified = add_backlog_and_available(classified, backlog_per_code)
 
     new_total = float(backlog_per_code["backlog"].sum()) if len(backlog_per_code) else 0.0
-    new_by_code = dict(zip(backlog_per_code["code"], backlog_per_code["backlog"]))
     n_backlog_codes = int((classified["backlog"] > 0).sum())
-    print(f"1-after  (Cube_CES Status='Backlog', deduped on contract+item): "
+    print(f"1  (Cube_CES Status='Backlog', deduped on contract+item): "
           f"{len(backlog_per_code)} codes, {new_total:,.0f} units total")
-    print(f"1-delta  TOTAL RESERVED: {old_total:,.0f} -> {new_total:,.0f} units "
-          f"({new_total - old_total:+,.0f}, {((new_total - old_total) / old_total * 100) if old_total else float('nan'):+.1f}%)")
-    print(f"         codes with Reserved > 0: {(old_backlog_per_code['backlog'] > 0).sum() if len(old_backlog_per_code) else 0} "
-          f"-> {n_backlog_codes}")
-
-    all_codes_touched = sorted(set(old_by_code) | set(new_by_code))
-    changed = [{"code": c, "old": old_by_code.get(c, 0.0), "new": new_by_code.get(c, 0.0)}
-               for c in all_codes_touched if abs(old_by_code.get(c, 0.0) - new_by_code.get(c, 0.0)) > 1e-6]
-    print(f"1-items  {len(changed)}/{len(all_codes_touched)} touched codes changed value "
-          f"(old Cube_Backlog vs new Cube_CES):")
-    for r in sorted(changed, key=lambda r: -abs(r["new"] - r["old"]))[:30]:
-        print(f"    {r['code']:<28}{r['old']:>12,.0f} -> {r['new']:>12,.0f}   ({r['new'] - r['old']:+,.0f})")
-    if len(changed) > 30:
-        print(f"    ... and {len(changed) - 30} more changed codes.")
     reserved_change_report = {
-        "old_total_cube_backlog": old_total, "new_total_cube_ces_backlog": new_total,
-        "old_codes_with_reserved": int((old_backlog_per_code["backlog"] > 0).sum()) if len(old_backlog_per_code) else 0,
+        "new_total_cube_ces_backlog": new_total,
         "new_codes_with_reserved": n_backlog_codes,
-        "n_codes_changed": len(changed),
-        "changed_codes_sample": changed[:50],
     }
 
     n_detail_rows = sum(len(v) for v in backlog_detail.values())
@@ -1085,29 +911,10 @@ if __name__ == "__main__":
     print("=" * 78)
     by_warehouse = build_by_warehouse(inv)
     all_warehouses = sorted(inv["warehouse"].dropna().unique().tolist())
-    tran = saved["transfer_pairs"] if saved else query_transfer_pairs(item_codes)
-    warehouse_roles = classify_warehouse_roles(tran, all_warehouses)
 
     stock_by_wh = inv.groupby("warehouse", as_index=False)["stock"].sum()
     nonzero_wh = stock_by_wh[stock_by_wh["stock"] > 0]["warehouse"].tolist()
-    staging_with_stock = warehouse_roles[(warehouse_roles["role"] == "staging") &
-                                          (warehouse_roles["code"].isin(nonzero_wh))]
     print(f"Warehouses holding non-zero stock for this item set: {sorted(nonzero_wh)}")
-    print(f"Role counts: {warehouse_roles['role'].value_counts().to_dict()}")
-    if len(staging_with_stock):
-        print(f"WARNING: {len(staging_with_stock)} staging-flagged warehouse(s) hold non-zero stock: "
-              f"{staging_with_stock['code'].tolist()} — the 'sum all warehouses' total DOES include "
-              f"some non-sellable stock for these codes.")
-    else:
-        print("No staging-flagged warehouse holds non-zero stock for this item set — the 'sum all "
-              "warehouses' total does not currently include any warehouse flagged non-sellable by "
-              "movement evidence. (Warehouses with role 'unknown' were not evidenced either way; "
-              "if any hold stock, that stock's sellability cannot be confirmed from data.)")
-    unknown_with_stock = warehouse_roles[(warehouse_roles["role"] == "unknown") &
-                                          (warehouse_roles["code"].isin(nonzero_wh))]
-    if len(unknown_with_stock):
-        print(f"NOTE: {len(unknown_with_stock)} 'unknown'-role warehouse(s) also hold non-zero stock: "
-              f"{unknown_with_stock['code'].tolist()} — sellability not evidenced either way.")
 
     print("\n" + "=" * 78)
     print("STEP 4 — WRITE data/inventory.json")
@@ -1147,7 +954,7 @@ if __name__ == "__main__":
         print(f"  {div:<8}sellable={t['sellable_total']:>10,.0f}  staging={t['staging_total']:>10,.0f}  "
               f"elsewhere={t['elsewhere_total']:>10,.0f}")
 
-    payload = build_json(classified, by_warehouse, warehouse_roles, snapshot_meta, SOURCE_TABLE,
+    payload = build_json(classified, by_warehouse, all_warehouses, snapshot_meta, SOURCE_TABLE,
                          backlog_meta, backlog_detail, sellable_split, sellable_totals, sellable_by_division,
                          generated_at=pull_generated_at)
     os.makedirs(os.path.dirname(OUTPUT_PATH), exist_ok=True)

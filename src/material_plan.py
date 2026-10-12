@@ -652,17 +652,15 @@ def pull_material_inputs(root_codes: list, since: str, max_levels: int = 25) -> 
 
 
 ITEM_ATTRIBUTE_SQL = {
-    # the item master (one row per item and company), the item's stock record by warehouse with its type, status and general-ledger account, and the item's stock movements (count and dates) -- read only
+    # the item master (one row per item and company), the item's stock record by warehouse with its type, status and general-ledger account -- read only
     "master": "SELECT Company, ItemCode, [Condition], MainWarehouse, ItemGroup, Assortment1, Assortment2, Assortment6, Assortment9, Assortment10 FROM Cube_ItemList WHERE ItemCode IN ('{codes}')",
     "aging": "SELECT Warehouse, ItemCode, Type, ItemStatus, Unit, GLAccount, GLDescription, Stock FROM Cube_Inventory_Aging WHERE ItemCode IN ('{codes}')",
-    "category": "SELECT warehouse, itemcode, product_category, product_type, unit FROM Cube_Inventory_Exact WHERE itemcode IN ('{codes}')",
-    "movements": "SELECT itemcode, COUNT(*) AS n_movements, MIN(trans_date) AS first_movement, MAX(trans_date) AS last_movement, SUM(CASE WHEN QtyIn > 0 THEN 1 ELSE 0 END) AS n_receipts FROM cube_inventory_tran WHERE itemcode IN ('{codes}') GROUP BY itemcode",
 }
 
 
 def pull_item_attributes(codes: list) -> dict:
     """Reads, through the open database session (db.run_query; the caller owns the session; read-only, SELECT only), the item master attributes of `codes` used to tell materials that are stocked from
-    services (labor, subcontract charges) that are bought by purchase order: {master, aging, category, movements} frames (ITEM_ATTRIBUTE_SQL). METRICS.md Sec.54."""
+    services (labor, subcontract charges) that are bought by purchase order: {master, aging} frames (ITEM_ATTRIBUTE_SQL). METRICS.md Sec.54."""
     from db import run_query
     codes = sorted({str(c).strip() for c in codes if str(c).strip()})
     return {name: pd.concat([run_query(sql.format(codes=_in_list(ch))) for ch in _chunks(codes)], ignore_index=True) for name, sql in ITEM_ATTRIBUTE_SQL.items()}

@@ -570,10 +570,10 @@ def _exec_visible(block: str) -> list:
 
 
 def _fixed_exec_data():
-    """A small fixed data set: two forecast divisions, one without a target, and every watch-out condition off."""
-    rows = [{"division": "AAA", "ytd": 100e6, "last_ytd": 80e6, "change": 0.25, "forecast_remaining": 50e6, "projection": 150e6, "target": 200e6, "to_target": 0.75, "relative_mae": 0.6},
-            {"division": "BBB", "ytd": 30e6, "last_ytd": 40e6, "change": -0.25, "forecast_remaining": 10e6, "projection": 40e6, "target": None, "to_target": None, "relative_mae": 1.2}]
-    tot = {"ytd": 130e6, "last_ytd": 120e6, "forecast_remaining": 60e6, "projection": 190e6, "target": None, "change": 130 / 120 - 1, "to_target": None}
+    """A small fixed data set: two forecast divisions and every watch-out condition off."""
+    rows = [{"division": "AAA", "ytd": 100e6, "last_ytd": 80e6, "change": 0.25, "forecast_remaining": 50e6, "projection": 150e6, "relative_mae": 0.6},
+            {"division": "BBB", "ytd": 30e6, "last_ytd": 40e6, "change": -0.25, "forecast_remaining": 10e6, "projection": 40e6, "relative_mae": 1.2}]
+    tot = {"ytd": 130e6, "last_ytd": 120e6, "forecast_remaining": 60e6, "projection": 190e6, "change": 130 / 120 - 1}
     return {"data_month": "2026-08", "data_month_label": "ส.ค. 69", "year": 2026, "year_be": 69, "remaining_months": ["2026-09"], "rows": rows, "total": tot, "n_forecast_divisions": 2,
             "n_beat_naive": 1, "thresholds": {"good": 0.7, "pass": 1.0, "limit": 4.0}, "watch": [], "pending": [{"topic": "หัวข้อ", "to_decide": "ต้องตัดสินอะไร"}]}
 
@@ -603,23 +603,20 @@ def test_the_exec_tab_texts_cards_table_and_remarks_are_verbatim_from_fixed_data
     lines = _exec_visible(bt.exec_render(d, cfg))
     assert lines[0].startswith("ยอดขาย ม.ค.–ส.ค. 69 | ") or "ยอดขาย ม.ค.–ส.ค. 69" in lines
     joined = "\n".join(lines)
-    for text in ["ยอดขาย ม.ค.–ส.ค. 69", "130.0 ล้านบาท", "เทียบช่วงเดียวกันปีก่อน +8.3%", "คาดการณ์ทั้งปี 69 (สินค้าใน Price List)", "190.0 ล้านบาท", "ถึงเป้า – · เป้ารวมสินค้า Omni ทุกตัว % นี้จึงน่าจะต่ำกว่าจริง",
+    for text in ["ยอดขาย ม.ค.–ส.ค. 69", "130.0 ล้านบาท", "เทียบช่วงเดียวกันปีก่อน +8.3%", "คาดการณ์ทั้งปี 69 (สินค้าใน Price List)", "190.0 ล้านบาท",
                  "ความแม่นของยอดทาย", "1 จาก 2 ฝ่าย", "Relative MAE ต่ำกว่าวิธีเทียบ Naive (ใช้ยอดเดือนก่อนเป็นค่าทาย) ตามเกณฑ์ร่าง · ฝ่ายที่พิสูจน์แล้วว่าดีกว่าจริงดูในหน้ายอดขาย · ยืนยันเกณฑ์หลังรอบ " + DECISION_DATE_TH, "เรื่องที่ต้องระวัง", "0 เรื่อง", "ดูรายการด้านล่าง", "เรื่องที่รอผู้บริหารตัดสิน", "หัวข้อ · ต้องตัดสินอะไร",
-                 "ฝ่าย | ยอดขาย YTD | ปีก่อน YTD | เปลี่ยน | คาดการณ์ทั้งปี | เป้า (Revenue) | ถึงเป้า | Relative MAE | หมายเหตุ",
-                 "AAA | 100.0 | 80.0 | +25.0% | 150.0 | 200.0 | 75.0% | 0.60 |",
-                 "BBB | 30.0 | 40.0 | -25.0% | 40.0 | – | – | 1.20 | ไม่พบเป้าของฝ่ายนี้ในระบบเป้า",
-                 "รวม | 130.0 | 120.0 | +8.3% | 190.0 | – | – | – |",
-                 "PEM104 | – | – | – | – | – | – | – | PEM104 ผลิตตามสั่งทั้งหมด จึงไม่ได้ทายยอดขาย",
-                 "PEMC | – | – | – | – | – | – | – | PEMC อยู่นอกขอบเขตสินค้าของ Omni Channel ในโปรเจกต์นี้",
-                 "ยอดขายนับตามเดือนที่ต้องส่งของ รวม PO ที่รับแล้วแต่ยังไม่ส่ง (MPS) · ไม่รวม VAT · คาดการณ์ = ยอดจริงถึง ส.ค. 69 + เดือนที่เหลือใช้ค่าที่มากกว่าระหว่างยอดทายกับออเดอร์ที่รับแล้ว × ราคาขายเฉลี่ยจริง · "
-                 "เป้ามาจากระบบเป้าของบริษัท (Revenue) · ยังไม่ได้ยืนยันว่าเป้านับจากวันส่งของหรือวันออก invoice · ยอดขายและคาดการณ์นับเฉพาะสินค้าใน Price List แต่เป้ารวมสินค้า Omni ทุกตัว"]:
+                 "ฝ่าย | ยอดขาย YTD | ปีก่อน YTD | เปลี่ยน | คาดการณ์ทั้งปี | Relative MAE | หมายเหตุ",
+                 "AAA | 100.0 | 80.0 | +25.0% | 150.0 | 0.60 |",
+                 "BBB | 30.0 | 40.0 | -25.0% | 40.0 | 1.20 |",
+                 "รวม | 130.0 | 120.0 | +8.3% | 190.0 | – |",
+                 "PEM104 | – | – | – | – | – | PEM104 ผลิตตามสั่งทั้งหมด จึงไม่ได้ทายยอดขาย",
+                 "ยอดขายนับตามเดือนที่ต้องส่งของ รวม PO ที่รับแล้วแต่ยังไม่ส่ง (MPS) · ไม่รวม VAT · คาดการณ์ = ยอดจริงถึง ส.ค. 69 + เดือนที่เหลือใช้ค่าที่มากกว่าระหว่างยอดทายกับออเดอร์ที่รับแล้ว × ราคาขายเฉลี่ยจริง · ยอดขายและคาดการณ์นับเฉพาะสินค้าใน Price List"]:
         assert text in joined, text
     assert "{" not in joined and "}" not in joined
-    # a division with a target and the total with every target: a percent to target in the total row and in card 2
-    d["rows"][1].update(target=50e6, to_target=0.8)
-    d["total"].update(target=250e6, to_target=190 / 250)
-    again = "\n".join(_exec_visible(bt.exec_render(d, cfg)))
-    assert "ถึงเป้า 76.0% · เป้ารวมสินค้า Omni ทุกตัว % นี้จึงน่าจะต่ำกว่าจริง" in again and "ไม่พบเป้าของฝ่ายนี้ในระบบเป้า" not in again.split("PEM104")[0]
+    # no revenue target anywhere in the tab (Prompt 27: the pilot scope is Price List items only): no target column, no attainment text, no PEMC row, no card-2 subtitle
+    for gone in ("ถึงเป้า", "เป้า (Revenue)", "เป้ารวมสินค้า Omni", "ไม่พบเป้า", "PEMC", "เป้ามาจากระบบเป้า"):
+        assert gone not in joined, gone
+    assert 'id="execCard2"' in bt.exec_render(d, cfg) and bt.exec_render(d, cfg).count('class="s"') == 3        # card 2 has no subtitle line any more
 
 
 def test_each_watch_out_line_appears_only_when_its_condition_holds():
@@ -710,44 +707,21 @@ def test_the_remaining_months_take_the_larger_of_the_forecast_and_the_orders_on_
     assert bt.exec_booked_units(raw, {"A"}, ["2026-09", "2026-10"]) == {("A", "2026-09"): 7.0, ("A", "2026-10"): 6.0}
 
 
-def test_the_targets_are_split_by_category_and_a_division_without_a_row_has_no_target(tmp_path):
-    import json as _json
+def test_the_tab_holds_no_customer_or_person_identifier_and_no_revenue_target():
     import build_trend_tab as bt
     cfg = bt.load_config()
-    pl = pd.DataFrame([{"code": "A", "division": "PEM103", "category": "Cat Transformer"}, {"code": "B", "division": "PEM107", "category": "Cat Instrument"}])
-    d = tmp_path / "output" / "data" / "exec_pull"
-    d.mkdir(parents=True)
-    pd.DataFrame([
-        {"yr": 2026, "division": "PEM101", "revenue_type": "Omni Channel", "category": "x", "product_type": "t", "amount": 100.0, "n_rows": 1, "n_null": 0},
-        {"yr": 2026, "division": "PEM103", "revenue_type": "Omni Channel", "category": "Cat Transformer", "product_type": "t", "amount": 30.0, "n_rows": 1, "n_null": 0},
-        {"yr": 2026, "division": "PEM103", "revenue_type": "Omni Channel", "category": "Cat Instrument", "product_type": "t", "amount": 20.0, "n_rows": 1, "n_null": 0},
-        {"yr": 2026, "division": "PEM103", "revenue_type": "Omni Channel", "category": "Cat Unknown", "product_type": "t", "amount": 5.0, "n_rows": 1, "n_null": 0},
-        {"yr": 2026, "division": "PEM103", "revenue_type": "Tendering", "category": "Cat Instrument", "product_type": "t", "amount": 999.0, "n_rows": 1, "n_null": 0},
-        {"yr": 2026, "division": "PXX", "revenue_type": "Omni Channel", "category": "x", "product_type": "t", "amount": 7.0, "n_rows": 1, "n_null": 0}]).to_csv(d / "targets.csv", index=False)
-    (d / "targets_meta.json").write_text(_json.dumps({"pulled_at": "2026-10-09T09:00:00", "year": 2026}), encoding="utf-8")
-    by, rep = bt.exec_targets(str(tmp_path), cfg, pl, 2026)
-    assert by["PEM101"] == 100.0 and by["PEM103"] == 30.0 and by["PEM107"] == 20.0                          # Omni only; PEM103's rows split by category
-    assert by["PEM102"] is None and by["CI101"] is None and by["PEM104"] is None                           # no row at all: no target, not a target of 0
-    assert rep["unallocated"] == 5.0 and rep["other_divisions"] == {"PXX": 7.0} and rep["omni_total"] == 162.0
-    with pytest.raises(bt.ExecSummaryError, match="another year|is for"):
-        bt.exec_targets(str(tmp_path), cfg, pl, 2027)
-
-
-def test_pemc_has_no_price_list_item_and_the_tab_holds_no_customer_or_person_identifier():
-    import build_trend_tab as bt
-    cfg = bt.load_config()
-    pl = bt.pricelist_rows(PROJECT_ROOT, cfg)
-    assert "PEMC" not in set(pl["division"]) and "PEMC" not in set(pl["sheet"]) and "PEMC" not in set(cfg["sheet_to_division"].values())     # the VERIFY of the PEMC remark
+    assert not any(k.startswith("target") for k in cfg["exec_summary"]) and set(cfg["exec_summary"]["text"]).isdisjoint({"card2_sub", "remark_PEMC", "remark_no_target"})
+    assert "เป้า (Revenue)" not in cfg["exec_summary"]["text"]["columns"] and "ถึงเป้า" not in cfg["exec_summary"]["text"]["columns"]
     block = _exec_block(open(INDEX, encoding="utf-8").read())
     assert not re.search(r"CS\d{4,}|CTR-\d{4}|Co\.,|Ltd|บริษัท .* จำกัด|@", block)
     assert "{" not in block and "}" not in block
+    for gone in ("ถึงเป้า", "เป้า (Revenue)", "เป้ารวมสินค้า Omni", "ไม่พบเป้า", "PEMC", "106.3", "924.4"):
+        assert gone not in block, gone
 
 
 def test_the_executive_tab_in_index_html_is_what_the_builder_makes_from_the_saved_pulls():
     import build_trend_tab as bt
     cfg = bt.load_config()
-    if not os.path.exists(os.path.join(PROJECT_ROOT, *cfg["exec_summary"]["target_pull_dir"].split("/"), "targets.csv")):
-        pytest.skip("SKIPPED, not passed: the saved revenue-target pull (untracked output) is not on this machine")
     data = bt.exec_data(PROJECT_ROOT)
     assert "\n" + bt.exec_render(data, cfg) + "\n" == _exec_block(open(INDEX, encoding="utf-8").read())
     # the identities on the real figures: the total row is the sum of its rows, each projection is YTD plus the remaining months' baht of the forecast page

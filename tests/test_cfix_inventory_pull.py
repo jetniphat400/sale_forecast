@@ -41,13 +41,8 @@ def _fixture_pull(pull_dir):
     inv = pd.DataFrame({"company": "PEM", "warehouse": snap["warehouse"], "itemcode": snap["itemcode"], "unit": "PCS",
                         "stock": snap["stock"], "reserve_bywa": snap["reserve_bywa"], "timestamp": snap["load_timestamp"]})
     inv.to_pickle(os.path.join(pull_dir, "inventory.pkl"))
-    pd.DataFrame(columns=["id", "docID", "job", "customer", "itemcode", "quantity", "status", "viewType", "sale_company",
-                          "sale_division", "deliverydate", "plan_deliverydate", "receivedate", "backlog_from",
-                          "timestamp"]).to_pickle(os.path.join(pull_dir, "backlog_cube.pkl"))
     pd.DataFrame(columns=["ContractID", "ItemCode", "CustomerID", "ForecastDelDate", "PlanDelDate", "ActualQty",
                           "BacklogQty", "Timestamp"]).to_pickle(os.path.join(pull_dir, "backlog_ces.pkl"))
-    pd.DataFrame(columns=["itemcode", "ourref", "trans_date", "warehouse", "QtyIn", "QtyOut"]).to_pickle(
-        os.path.join(pull_dir, "transfer_pairs.pkl"))
     with open(os.path.join(pull_dir, "pull_meta.json"), "w", encoding="utf-8") as f:
         json.dump({"pulled_at_utc": PULLED_UTC, "pulled_at_local": "2026-10-02 08:12:31"}, f)
 
@@ -65,14 +60,17 @@ def test_inventory_json_is_built_from_a_saved_pull_with_its_pull_time_and_no_con
     payload = json.load(open(out, encoding="utf-8"))
     assert payload["snapshot"]["generated_at"] == PULLED_UTC, "generated_at must be the pull time, not the build time"
     assert os.path.getmtime(real_json) == before, "the tracked data/inventory.json was touched"
+    # the schema without the retired Cube_Backlog comparison and the warehouse roles (scope pilot, Prompt 27)
+    assert set(payload["backlog"]["reserved_change_report"]) == {"new_total_cube_ces_backlog", "new_codes_with_reserved"}
+    assert "old_total_cube_backlog" not in json.dumps(payload) and all(set(w) == {"code"} for w in payload["warehouses"])
 
 
 def test_an_incomplete_saved_pull_is_refused(tmp_path):
     import build_inventory_dataset as b
     pull_dir = str(tmp_path / "pull")
     _fixture_pull(pull_dir)
-    os.remove(os.path.join(pull_dir, "transfer_pairs.pkl"))
-    with pytest.raises(FileNotFoundError, match="transfer_pairs"):
+    os.remove(os.path.join(pull_dir, "backlog_ces.pkl"))
+    with pytest.raises(FileNotFoundError, match="backlog_ces"):
         b.load_pulls(pull_dir)
 
 

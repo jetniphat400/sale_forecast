@@ -227,7 +227,7 @@ def commit_size(root: str) -> dict:
 
 # ----------------------------------------------------------------------------------------------- stages
 def pull_stage(root: str, pull_dir: str) -> dict:
-    """The database part: the four pulls build_inventory_dataset needs, saved with their pull time. Uses the caller's
+    """The database part: the two pulls build_inventory_dataset needs, saved with their pull time. Uses the caller's
     open session (src/db.py session()) so it adds no connection."""
     import build_inventory_dataset as bid
     bconfig = bid.load_config()

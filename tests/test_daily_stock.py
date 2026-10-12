@@ -255,15 +255,13 @@ def test_a_dry_run_writes_only_its_log_and_stages_nothing(repo, tmp_path, monkey
     assert [p.name for p in _log_files(repo)] == ["daily_stock_t7.json"]
 
 
-def test_snapshot_main_keeps_the_measurement_and_exits_non_zero_when_the_job_fails(monkeypatch):
+def test_snapshot_main_keeps_the_stock_snapshot_and_exits_non_zero_when_the_job_fails(monkeypatch):
     import contextlib
     import db
     import snapshot_daily as sdy
     calls = []
     monkeypatch.setattr(db, "session", contextlib.nullcontext)
-    monkeypatch.setattr(sdy, "take_snapshot", lambda c: {"run_date": "x"})
     monkeypatch.setattr(sdy, "take_inventory_snapshot", lambda: "inv")
-    monkeypatch.setattr(sdy, "append_snapshot", lambda s: calls.append("append"))
     monkeypatch.setattr(sdy, "write_inventory_snapshot", lambda i: calls.append("write"))
     monkeypatch.setattr(djob, "load_base", lambda root, cfg: None)
     monkeypatch.setattr(djob, "successful_run_today", lambda root, cfg, today=None: None)          # a real success of today in the shared logs must not skip this run
@@ -274,7 +272,7 @@ def test_snapshot_main_keeps_the_measurement_and_exits_non_zero_when_the_job_fai
     monkeypatch.setattr(djob, "run", fail)
     with pytest.raises(SystemExit) as exc:
         sdy.main()
-    assert exc.value.code == 1 and calls == ["append", "write"], "the posting-delay snapshot must be written before the job runs"
+    assert exc.value.code == 1 and calls == ["write"], "the stock snapshot must be written before the job runs"
 
 
 def test_snapshot_main_from_the_main_working_copy_stops_before_any_database_session(monkeypatch, tmp_path):
@@ -291,13 +289,13 @@ def test_snapshot_main_from_the_main_working_copy_stops_before_any_database_sess
     assert exc.value.code == 1 and opened == [("logged", "publishing clone")]
 
 
-def test_the_posting_delay_measurement_is_unchanged():
-    """snapshot_daily.take_snapshot, append_snapshot and the snapshot columns are what they were before the daily job."""
+def test_the_posting_delay_measurement_is_removed_and_the_stock_snapshot_columns_are_unchanged():
+    """The all-Omni posting-delay query and the cube_final row count are gone from the daily job (Prompt 27, outside the Price List scope); the snapshot columns are what they were."""
     import inspect
     import snapshot_daily as sdy
-    src = inspect.getsource(sdy.take_snapshot)
-    for needle in ("counts_by_createdate_json", "max_createDate", "cube_final_total_row_count", "LOOKBACK_DAYS"):
-        assert needle in src
+    for gone in ("take_snapshot", "append_snapshot", "SNAPSHOT_CSV", "CUBE_FINAL_TABLE", "SALE_TABLE", "LOOKBACK_DAYS"):
+        assert not hasattr(sdy, gone), gone
+    assert "cube_final" not in inspect.getsource(sdy).split('"""', 2)[2] and "cube_Sale_APD" not in inspect.getsource(sdy).split('"""', 2)[2]
     assert '["itemcode", "warehouse", "stock", "minimum", "maximum", "reserve_bywa"]' in inspect.getsource(sdy)
 
 
@@ -311,7 +309,7 @@ def _synthetic_pull(tmp_path):
     ces = pd.DataFrame({"ContractID": ["C1"], "ItemCode": ["AA-1"], "CustomerID": ["X"], "ForecastDelDate": pd.to_datetime(["2026-10-01"]),
                         "PlanDelDate": pd.to_datetime(["2026-10-01"]), "ActualQty": [0.0], "BacklogQty": [3.0],
                         "Timestamp": pd.to_datetime(["2026-10-05 07:35:30"])})
-    for name, df in (("inventory", inv), ("backlog_ces", ces), ("backlog_cube", pd.DataFrame({"x": []})), ("transfer_pairs", pd.DataFrame({"x": []}))):
+    for name, df in (("inventory", inv), ("backlog_ces", ces)):
         df.to_pickle(d / f"{name}.pkl")
     meta = {"pulled_at_utc": "2026-10-06T01:00:00Z", "pulled_at_local": "2026-10-06 08:00:05"}
     (d / "pull_meta.json").write_text(json.dumps(meta), encoding="utf-8")

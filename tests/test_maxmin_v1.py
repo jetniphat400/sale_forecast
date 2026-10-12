@@ -311,8 +311,6 @@ PENDING_ROWS = [
     ["เป้าการส่งทัน (not-late คือ ส่งไม่ช้ากว่าวันนัด)", "บริษัทต้องการกี่ %", "ให้เลือกเองบนหน้าแผนสต็อก", "ผู้บริหาร", "ยังไม่กำหนด"],
     ["Min/Max ที่จำลอง", "การส่งทันที่จำลองห่างจากผลจริงได้แค่ไหน", "ยังไม่กำหนด", "ฝ่ายวางแผน", "หลังรอบ {decision_date}"],
     ["แผนวัตถุดิบ", "ตรงกับใบสั่งซื้อจริงแค่ไหนถึงใช้สั่งของได้", "ยังไม่กำหนด หน้าขึ้นว่ายังอยู่ระหว่างตรวจสอบ", "ฝ่ายจัดซื้อ", "ยังไม่กำหนด"],
-    ["เป้ารายได้", "นับจากวันออก invoice (Invoice date) หรือวันส่งตามสัญญา (Contract delivery date)", "ใช้วันส่งตามสัญญาไปก่อน", "เจ้าของเป้า", "ยังไม่กำหนด"],
-    ["จับคู่ประเภทสินค้ากับเป้า", "ยืนยันการจับคู่ที่จับจากชื่อ เช่น MV/HV Surge Arrester", "แสดงพร้อมป้ายยังไม่ยืนยัน", "ฝ่ายขาย", "ยังไม่กำหนด"],
 ]
 PENDING_HEADS = ["เรื่อง", "ต้องกำหนดอะไร", "ตอนนี้ใช้", "ใครกำหนด", "ตัดสินเมื่อ"]
 
@@ -325,7 +323,7 @@ def _pending_expected():
     return [[c.format(**values) for c in row] for row in PENDING_ROWS], values
 
 
-def test_the_criteria_table_is_in_the_file_with_the_eight_approved_rows_and_values_from_config():
+def test_the_criteria_table_is_in_the_file_with_the_six_approved_rows_and_values_from_config():
     payload = json.load(open(TRACKED_ASSUMPTIONS, encoding="utf-8"))
     expected, values = _pending_expected()
     assert payload["schema_version"] == mm.ASSUMPTIONS_SCHEMA_VERSION == 2

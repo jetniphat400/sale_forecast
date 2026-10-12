@@ -97,9 +97,9 @@ def pull_raw_sales(config: dict, scope: pd.DataFrame) -> pd.DataFrame:
     """
     df = run_query(sql)
     logger.info(
-        "Pulled %d raw rows: %d items across %d divisions, channel_scope=%s (revenue_type in %s), "
+        "Pulled %d raw rows: %d items across %d divisions (revenue_type in %s), "
         "status in %s, createDate >= %s (no division filter — division attached from pricelist below).",
-        len(df), len(item_codes), scope["division"].nunique(), config.get("channel_scope", "omni"),
+        len(df), len(item_codes), scope["division"].nunique(),
         revenue_types, statuses, start_date,
     )
     division_by_code = dict(zip(scope["code"], scope["division"]))

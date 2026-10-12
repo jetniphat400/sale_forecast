@@ -80,7 +80,7 @@ def _page(items_by_division, grid=None):
 def _save_pull(root, rel, pulled, inventory, backlog):
     d = os.path.join(root, *rel.split("/"))
     os.makedirs(d, exist_ok=True)
-    frames = {"inventory": inventory, "backlog_cube": pd.DataFrame(), "backlog_ces": backlog, "transfer_pairs": pd.DataFrame()}
+    frames = {"inventory": inventory, "backlog_ces": backlog}
     for k, v in frames.items():
         v.to_pickle(os.path.join(d, f"{k}.pkl"))
     with open(os.path.join(d, "pull_meta.json"), "w", encoding="utf-8") as f:
