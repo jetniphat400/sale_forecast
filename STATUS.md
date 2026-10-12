@@ -144,6 +144,10 @@ Code: `src/investigations/task2b_part2_fulfilment_segmentation.py` (`run_from_pu
 - Reader text: see SENTENCES NEEDING THAI TEXT of this task (demand column header on the material page, a label for the list of divisions covered, a line for the six PEM101 codes never sold, the approved heading for six divisions) (the user's assistant).
 - Category-level view of the two product categories and the three items' settings (brief item "settings"), storms and the other external factors, utility budgets, sales insight and EGP bids: not done (brief table).
 
+### Week 4, prompt 26 -- scope audit (read only), 28 findings listed, nothing removed -- DONE, 2026-10-12
+
+**Report:** `docs/reports/summary/prompt5_g2_vintage_target_map.md`, heading "Prompt 26". Full suite 796 passed (closes the open check of Prompt 25). Awaiting the user's choice of rows to remove.
+
 ### Week 4, prompt 25 -- the confirmed lead time, one year format site-wide, one term for on-time delivery -- DONE, 2026-10-12 (no database; the test suite made none)
 
 **Report:** `docs/reports/summary/prompt5_g2_vintage_target_map.md`, heading "Prompt 25".

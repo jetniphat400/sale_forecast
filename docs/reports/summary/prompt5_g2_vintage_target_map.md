@@ -1519,3 +1519,63 @@ Date and time of the work: 2026-10-12, started 13:23 (`git pull origin main`: no
 **Browser check** (headless Edge on a temporary profile, own PID closed, profile deleted; every tab of index.html except the original S&OP tab, the stock panel and the four pages): 0 script errors (the one console line is a 404 for favicon.ico); no four-digit year and no ISO date in the shown text; samples: "8 ต.ค. 69" (manual data-through date and Trend note), "5 ต.ค. 69 07:41:11" (data-date table), "12 ต.ค. 69 15:03 ICT (UTC+7)" (Min-Max header), "ก่อน 1 พ.ค. 69: 87.1% (n=41,495 ชิ้น, ตั้งแต่ 1 ม.ค. 67)" (PEM107 alert), "ม.ค. 67" (Trend tooltip), "หลังรอบ 7 ธ.ค. 69" (assumptions), "คาดการณ์ทั้งปี 69" (executive card); the manual shows "สั่งวัตถุดิบใช้ 45-60 วัน"; the executive tab shows 533 late materials; 02-00-R-7048 shows "รอตรวจ · ชื่อเป็นชิ้นส่วน".
 
 **Found, not done.** (1) The plan name "Chase S&OP Plan 2026" and the file name of the legacy S&OP page (a tracked file, `forecast/Chase S&OP Plan 2026 - PEM Group.html`) keep the Gregorian year: names, and the S&OP tab is not to be touched (small, user). (2) The headings of older reports under docs/reports keep their old formats by the rule (no change). (3) Product names and codes that contain a year (a specification number, a version) are names, not dates, and are unchanged. (4) The system date "9999-99-99" in the stock panel's backlog list is kept as the data holds it (small, user).
+
+
+## Prompt 26
+
+Scope audit, read only. Date and time: 2026-10-12, 15:45 +07:00 (`git pull origin main`: nothing new). No database session, no npm, no code, config, page or data change. Items by code only. Four page and pull audits ran as parallel read-only subagents (index.html; sales report and Min-Max page; operation and material plan; database pulls, config, tests, docs). A fifth, the Validator, re-checked 15 claims against the code.
+
+**Step 0 (open check from Prompt 25).** Full suite: 796 passed, 0 failed, 0 skipped (1111 s). Document-scanning tests (`tests/test_guards.py`, `test_reader_text.py`, `test_manual_notes_sync.py`, `test_manual_tab.py`): 56 passed. Database connection attempts in the run: 0.
+
+**Scope rule used.** IN = Price List item codes under revenue_type 'Omni Channel', or derived from them (BOM components of Price List finished goods, their stock and orders). MIXED = Price List data beside or compared with wider data, or a Price List pull without the Omni filter. OUT = wider and not derived. All six divisions come from Price List sheets, so they count as IN.
+
+### Counts by class
+| class | page rows | pull rows |
+|---|---|---|
+| IN | 86 (index 30, sales report 28, Min-Max 16, operation plan 5 sections and material plan 7 sections: 12) | 22 of 31 monthly pulls, daily D3 |
+| MIXED | 18 (index 10, Min-Max 5, operation plan 3) | M2, M6, M10, M28 |
+| OUT | 1 (executive row "PEMC") and the dormant `omni_tendering` branch | D1, D2 |
+| USER-OWNED | 2 (original S&OP tab in index.html; standalone copy in forecast/) | — |
+| undetermined | 4 (index 2, operation plan 2) | the original tab's actuals scope |
+
+### Recommendation table (MIXED, OUT, unused, undetermined)
+| # | location | what | class | evidence | recommendation | removal touches | size |
+|---|---|---|---|---|---|---|---|
+| 1 | index.html executive tab, card 2 subtitle | "ถึงเป้า 106.3% · เป้ารวมสินค้า Omni ทุกตัว": Price List projection divided by the all-Omni target | MIXED | config.yaml:1204; build_trend_tab.py `exec_render`, `exec_targets` 416-460 (Cube_Target_PMIS, no Price List filter); Validator AGREE | remove | config exec_summary keys 1188-1227, build_trend_tab.py, test_index_w3.py 596-620, 713-754 | M |
+| 2 | executive table columns "เป้า (Revenue)", "ถึงเป้า", total row 924.4 / 106.3% | per-division target and attainment; target covers every Omni product; PEM103 target split by category | MIXED | `exec_targets`, `exec_gate` (checks sums only); config.yaml:1204 | remove with row 1 | as row 1, plus METRICS Sec.49 | M |
+| 3 | executive remark "ไม่พบเป้าของฝ่ายนี้ในระบบเป้า", footer target sentences | text for rows 1-2 | MIXED | config.yaml:1218, 1227 | remove with rows 1-2 | config, tests | S |
+| 4 | executive row "PEMC" | no numbers; says outside Omni scope | OUT | build_trend_tab.py:620-621; config.yaml:1217; test_index_w3.py:736-740; Validator AGREE | remove | config, test | S |
+| 5 | assumptions tab pending rows "เป้ารายได้", "จับคู่ประเภทสินค้ากับเป้า" | open criteria about the target | MIXED | config.yaml:1796-1797; data/assumptions.json:139, 146 | remove with row 1 | json, config | S |
+| 6 | monthly step 1 `exec_targets_pull`, `pull_targets` | pulls Cube_Target_PMIS for all revenue types and divisions, filters in pandas | MIXED, over-broad | monthly_refresh.py:344-346; build_trend_tab.py:230-233, 430-453; Validator AGREE | remove with row 1 (feeds only rows 1-3) | monthly_refresh.py, build_trend_tab.py, tests | M |
+| 7 | stock panel "Reserved", "Available", backlog KPI, backlog modal | Cube_CES Backlog for Price List codes, no revenue filter | MIXED | build_inventory_dataset.py:291-300 `query_backlog_ces`; Validator AGREE. Share of non-Omni rows: undetermined (no data read) | keep, add the Omni filter, then re-check (a data change, not a removal) | build_inventory_dataset.py, inventory.json, stock_daily.json, tests | S |
+| 8 | Min-Max page, PEM101 "choose a delivery target": 98.34% "today" and the calibration target | observed not-late from Cube_CES, no RevenueType filter | MIXED | week1_recalibration.py:52-56; Validator AGREE; ces_92.csv: 52 Tendering and 1 other of 29,029 Actual rows (all years; window share undetermined) | keep, add the filter | week1_recalibration.py, lead-time inputs, page | S |
+| 9 | Min-Max page, Policy / Label / S2 / S3 columns and class table | S2, S3 signals from Cube_CES, all channels | MIXED | task2b_part2_fulfilment_segmentation.py:177, 516-523; cube_ces_pull.py:34-53; saved pull: 253 of 34,836 rows (0.7%) not Omni (lower bound, inferred) | keep, add the filter | same, tests | S |
+| 10 | operation plan division tables (6), "PEM107 backlog above forecast" note, item-table month values | demand = max(forecast, backlog); Omni limit on backlog only for PEM103 | MIXED | operation_plan.py:282-311, 352-360; config.yaml:1884; saved material pull: 23 of 873 backlog rows not Omni or blank; Validator AGREE | keep, extend the limit to the other divisions | config, operation_plan.py, test_operation_plan.py 118, 365-390 | S |
+| 11 | material plan quantities | inherit row 10 | MIXED (inherited) | demand comes from the operation plan; Validator: effect not verified | follows row 10 | none | — |
+| 12 | operation plan "share of historical peak" and above-capacity flag; executive watch lines on production above peak and raw materials past order date | cube_final output has no revenue-type column | undetermined | operation_plan.py:224-255; the daily backlog pull has no RevenueType column | keep; needs a data check | — | — |
+| 13 | `channel_scope: omni_tendering` branch | dormant Tendering scope; no job sets it | OUT | channel_scope.py:21-22; config.yaml:106-121; Validator AGREE (tests not searched for a setter) | remove branch and test | channel_scope.py, load_data_*.py, test_channel_scope.py, METRICS Sec.21, PROJECT_GRAPH Q23 | M |
+| 14 | config `cross_division_excluded_value_thb`, `cross_division_excluded_pct` | read by no src or test | OUT (dead) | config.yaml:272-273; Validator grep AGREE | remove | config | S |
+| 15 | daily D1: all-Omni posting-delay query; D2: COUNT(*) of the whole cube_final | no Price List filter; `posting_delay.csv` read only by an investigation script and a test | OUT, unused | snapshot_daily.py:106-117; Validator AGREE | remove | snapshot_daily.py, test_daily_stock.py:294-299, investigation script | S |
+| 16 | M5 Cube_Backlog (retired table) | feeds only a console print and `old_total_cube_backlog` | unused | build_inventory_dataset.py:236-249; inventory.json:16 | remove (monthly and daily) | build_inventory_dataset.py, json key, tests | S |
+| 17 | M7 cube_inventory_tran | warehouse "role" read by no page | unused | build_inventory_dataset.py:573-582, 644, 660 | remove | same | S |
+| 18 | M8 `query_backlog_unfiltered` | never called | unused | build_inventory_dataset.py:424 | remove | same | S |
+| 19 | M23 "category", M24 "movements" in the material plan pull | saved to pickle only | unused | material_plan.py:658-659; only "master" and "aging" are read | remove | material_plan.py | S |
+| 20 | M2 `load_data_full.py:106` | all channels and years, only for a has_any_history flag | MIXED, over-broad | Validator AGREE | keep and narrow | load_data_full.py, part1 file | S |
+| 21 | M10 Cube_CES in the class-evidence script | all channels and years | MIXED, over-broad | as row 9 | narrow with row 9 | — | S |
+| 22 | M3 against M1 | same rows pulled twice (M3 is a subset of M1) | over-broad | load_data_full.py:127-135; load_data_all_divisions.py:90-98 | keep for now (consumer build_report.py:614); merge later | — | M |
+| 23 | Cube_Inventory_Exact pulled 4+ times per monthly run and twice daily; M13 pulls BOM lines only to count them | repeated or over-wide | over-broad | audit D | optional | — | M |
+| 24 | M29, M30 add a DB division = PEM101 filter on top of the Price List | narrower than Price List; page text reads as all items | label mismatch | order_leadtime.py:65-71; delivery_performance.py:56-64; build_report.py:1005. Validator did not confirm the constant equals PEM101 | keep and fix the label, or widen | build_report.py text, tests | S |
+| 25 | lead-time inputs `prodorder_all.csv`, `cube_final_all.csv` | 2,034 of 2,175 production-order codes are not Price List; read later for listed goods only | over-broad (local files) | lead_time_v1.py:112-125 | keep (filtered before use) | — | — |
+| 26 | `forecast/Chase S&OP Plan 2026 - PEM Group.html` and index.html `div#origTab` | original S&OP tab and a standalone copy dated Aug 24; no script, test or config references the copy | USER-OWNED | index.html:255-7440; Validator grep AGREE. Whether its actuals were Omni-only: undetermined | none recommended; the user decides | — | — |
+| 27 | METRICS Sec.42 | still says scope is PEM101 and PEM107 only, backlog without channel filter | stale doc | METRICS.md:1110 | correct, not remove | METRICS.md | S |
+| 28 | DATA_MAP.md | no Cube_Target_PMIS entry | doc gap | audit D | add, or drop with row 6 | — | S |
+
+**Config, tests and docs that exist only for MIXED or OUT features (rows 1-6, 13, 15).** Config: config.yaml:106-121, 262-275, 1188-1227, 1796-1797, 1884. Tests: test_channel_scope.py (whole file); test_index_w3.py:596-620, 713-754; test_monthly_refresh.py:261-282; test_operation_plan.py:118, 365-390; test_daily_stock.py:294-299; test_maxmin_v1.py:314-315. Docs: METRICS.md Sec.21 (385-409), Sec.45 (1248-1261), Sec.49 (1343-1377); PROJECT_GRAPH.md Q23 (63-76, 166, 254, 265); DATA_MAP.md 390, 495-501, 777-783, 1107, 1158, 1201-1260, 2005-2009, 2048-2052; STATUS.md week 4 prompts 7, 13, 14; docs/user_manual.md:57.
+
+**Not scope problems.** Sales report: 28 rows, all IN; no figure uses a Tendering row. Trend tab: Omni, Price List only (`scope_where`, build_trend_tab.py:166-176). Material plan: no pull of all items; labor, outsource and service lines are BOM lines of Price List finished goods and stay IN (derived). Backtest, transferability, model selection, task2a, report data, reconciliation, comparator and significance scripts open no database.
+
+**Validator.** 15 claims re-checked against the code: 15 AGREE, 0 DISAGREE. Limits it stated: tests not searched for an `omni_tendering` setter; the PEM101 constants in row 24 not confirmed; the effect of row 10 on material quantities not verified. Not classified by it: `phaseE1_common.py:310` `query_backlog` (used by an investigation script).
+
+**Limits.** Consumers traced by grep of src and tests, so dynamic keys could be missed. monthly_refresh.py lines 836-2108 and part of config.yaml were read by grep. Script-rendered parts were read from code and data JSON; no Edge was started (no PID, no profile).
+
+**Found, not done.** Row 24 label mismatch; row 12 needs a data check; whether the original S&OP tab's actuals are Omni-only. Nothing removed.
