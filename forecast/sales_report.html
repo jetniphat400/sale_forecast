@@ -67,11 +67,11 @@
   
     <details class="note-box" style="margin:10px 0" id="page-data-line">
       <summary style="cursor:pointer"><!-- round = run month of vintage 2 of the forward-test log; fit_last = that vintage's last fit month; built_at = page_built_at; oldest data_pulled_at of the page: 2026-10-05 07:41 ICT (UTC+7), per section below
-        --><span id="freshness-line">Forecast (ยอดทาย) รันเมื่อ ต.ค. 69 · ใช้ยอดขายถึง ส.ค. 69 · หน้าสร้างเมื่อ 12 ต.ค. 69 11:31</span><!-- source: src/build_report.py rv.vintage_facts()/datetime.now(), this build run --></summary>
+        --><span id="freshness-line">Forecast (ยอดทาย) รันเมื่อ ต.ค. 69 · ใช้ยอดขายถึง ส.ค. 69 · หน้าสร้างเมื่อ 12 ต.ค. 69 15:03</span><!-- source: src/build_report.py rv.vintage_facts()/datetime.now(), this build run --></summary>
       <h3 style="margin-top:10px">ข้อมูลแต่ละส่วนดึงเมื่อ</h3>
       <table class="report-table" style="margin-top:8px">
         <thead><tr><th>ส่วน</th><th>ดึงเมื่อ</th><th>สถานะ</th></tr></thead>
-        <tbody><tr><td><!-- source: output/data/processed_full_category_sales_monthly_forecastDate.csv (forecast/actual, scope, usable range), column snapshot_pull_date -->ช่วงข้อมูลหลัก</td><td>2026-10-05 07:41:11</td><td>ใหม่ (Fresh)</td></tr><tr><td><!-- source: phaseC_step2_transferability_per_division.csv / phaseC_step2_per_division_summary_qty.csv, column snapshot_pull_date -->ผลทดสอบต่อฝ่าย</td><td>2026-10-05 07:41</td><td>ใหม่ (Fresh)</td></tr><tr><td><!-- source: phaseC_step2_rolling_origin_qty.csv, column snapshot_pull_date -->กราฟ Rolling-origin</td><td>2026-10-05 07:41</td><td>ใหม่ (Fresh)</td></tr><tr><td><!-- source: leadtime_notice_buckets_overall.csv, column snapshot_pull_date -->กราฟระยะเวลาแจ้งล่วงหน้า</td><td>2026-10-05 07:41</td><td>ใหม่ (Fresh)</td></tr><tr><td><!-- source: focus_items_test_all.csv, column snapshot_pull_date -->กราฟ MAE โมเดลพื้นฐาน</td><td>2026-10-05 07:41</td><td>ใหม่ (Fresh)</td></tr><tr><td><!-- source: delivery_by_year.csv, column snapshot_pull_date -->กราฟส่งตรงวันพอดี</td><td>2026-10-05 07:42</td><td>ใหม่ (Fresh)</td></tr><tr><td><!-- source: delivery_not_late_by_year.csv, column snapshot_pull_date, itself read forward from the same Cube_CES pull as the on-time chart (no new DB call) -->กราฟส่งไม่ช้า</td><td>2026-10-05 07:42</td><td>ใหม่ (Fresh)</td></tr></tbody>
+        <tbody><tr><td><!-- source: output/data/processed_full_category_sales_monthly_forecastDate.csv (forecast/actual, scope, usable range), column snapshot_pull_date -->ช่วงข้อมูลหลัก</td><td>5 ต.ค. 69 07:41:11</td><td>ใหม่ (Fresh)</td></tr><tr><td><!-- source: phaseC_step2_transferability_per_division.csv / phaseC_step2_per_division_summary_qty.csv, column snapshot_pull_date -->ผลทดสอบต่อฝ่าย</td><td>5 ต.ค. 69 07:41</td><td>ใหม่ (Fresh)</td></tr><tr><td><!-- source: phaseC_step2_rolling_origin_qty.csv, column snapshot_pull_date -->กราฟ Rolling-origin</td><td>5 ต.ค. 69 07:41</td><td>ใหม่ (Fresh)</td></tr><tr><td><!-- source: leadtime_notice_buckets_overall.csv, column snapshot_pull_date -->กราฟระยะเวลาแจ้งล่วงหน้า</td><td>5 ต.ค. 69 07:41</td><td>ใหม่ (Fresh)</td></tr><tr><td><!-- source: focus_items_test_all.csv, column snapshot_pull_date -->กราฟ MAE โมเดลพื้นฐาน</td><td>5 ต.ค. 69 07:41</td><td>ใหม่ (Fresh)</td></tr><tr><td><!-- source: delivery_by_year.csv, column snapshot_pull_date -->กราฟส่งตรงวันพอดี</td><td>5 ต.ค. 69 07:42</td><td>ใหม่ (Fresh)</td></tr><tr><td><!-- source: delivery_not_late_by_year.csv, column snapshot_pull_date, itself read forward from the same Cube_CES pull as the on-time chart (no new DB call) -->กราฟส่งทัน</td><td>5 ต.ค. 69 07:42</td><td>ใหม่ (Fresh)</td></tr></tbody>
       </table>
     </details>
     
@@ -89,8 +89,8 @@
         ลูกค้าให้เวลาแจ้งล่วงหน้าก่อนส่งมอบเพียง <b>6</b> วัน
         (median) ซึ่งสั้นกว่าระยะเวลาจัดหาวัตถุดิบมาก
         <!-- source: output/summary/delivery_by_year.csv, column pct_on_time -->
-        สัดส่วนส่งตรงวันพอดี (exact-day delivery: ส่งวันนัดเป๊ะ ไม่นับส่งก่อน) ปรับตัวขึ้นจาก 57.8% (2023) เป็น
-        <b>73.2%</b> ในปี 2026 (ข้อมูลบางส่วน)
+        สัดส่วนส่งตรงวันพอดี (exact-day delivery: ส่งวันนัดเป๊ะ ไม่นับส่งก่อน) ปรับตัวขึ้นจาก 57.8% (ปี 66) เป็น
+        <b>73.2%</b> ในปี 69 (ข้อมูลบางส่วน)
       </p>
     </section>
     <section id="forward-forecast">
@@ -129,20 +129,20 @@
         <!-- source: output/summary/leadtime_notice_buckets_overall.csv, column pct_of_orders -->
         สัดส่วนออเดอร์ที่แจ้งล่วงหน้า &ge; 1 เดือน: <b>5.80%</b> &nbsp;|&nbsp;
         <!-- source: config.yaml, field phase_e1_assumptions.procurement_lead_time_days_grid -->
-        ระยะเวลาสั่งวัตถุดิบถึงได้ของ (Procurement lead time ไม่ใช่ระยะแจ้งล่วงหน้าของลูกค้า): <b>45-75</b> วัน
-        (ค่าที่ใช้ 60 วัน)
+        ระยะเวลาสั่งวัตถุดิบถึงได้ของ (Procurement lead time ไม่ใช่ระยะแจ้งล่วงหน้าของลูกค้า): <b>45-60</b> วัน
+        (ช่วงที่ธุรกิจยืนยัน ค่าที่ใช้ 60 วัน · ช่วงทดสอบความไวเพิ่มถึง 75 วัน)
       </p>
       <h3>การกระจายของระยะเวลาแจ้งล่วงหน้า (Notice period)</h3>
       <!-- source: output/summary/leadtime_notice_buckets_overall.csv, column min_notice_days / pct_of_orders -->
       <div id="chart-notice" class="plotly-chart"></div>
       <p class="hint">▸ ลูกค้าสั่งของล่วงหน้านานแค่ไหนก่อนวันที่ต้องส่ง<br>▸ แกน X = ระยะแจ้งล่วงหน้าขั้นต่ำ (≥30 วัน, ≥60 วัน … ≥180 วัน) · แกน Y = % ของออเดอร์ทั้งหมด<br>▸ ตัวอย่าง: แท่ง ≥30 วันสูง 6% หมายถึงออเดอร์ 100 ใบ มีแค่ 6 ใบที่แจ้งล่วงหน้าเกิน 30 วัน</p>
-      <h3>สัดส่วนส่งมอบตรงวันครบกำหนดเป๊ะ vs. ส่งไม่ล่าช้า (2023-2026)</h3>
+      <h3>สัดส่วนส่งมอบตรงวันครบกำหนดเป๊ะ vs. ส่งทัน (ส่งไม่ช้ากว่าวันนัด) (ปี 66-69)</h3>
       <!-- Previous wording, kept off screen: on_time_exact = delivered exactly on the due date (PlanDelDate), counted by number of orders (row-weighted), PEM101 128 items -- src/investigations/delivery_performance.py:71-75 (classify_delay) and lines 155-161 (by_year aggregation, column pct_on_time); METRICS.md §19 forbids using this figure alone as a fill-rate benchmark (the earlier 73.2% incident), so not_late is shown alongside. not_late = delivered on or before ForecastDelDate, unit-weighted (ActualQty), not by order count; unit-weighted because METRICS.md §10 (fill_rate) is defined as unit-based, not order-based, and the figure is read alongside fill_rate/service level (src/investigations/task2a_delivery_notlate_by_year.py, computed from the same Cube_CES data as on_time_exact, no new pull). -->
-      <p class="hint">เส้นส่งไม่ช้านับเป็นชิ้น เพราะสิ่งที่ลูกค้าสนใจคือได้ของครบทันไหม ไม่ใช่จำนวนใบสั่ง</p>
+      <p class="hint">เส้นส่งทันนับเป็นชิ้น เพราะสิ่งที่ลูกค้าสนใจคือได้ของครบทันไหม ไม่ใช่จำนวนใบสั่ง</p>
       <!-- source: output/summary/delivery_by_year.csv, column year / pct_on_time -->
       <!-- source: output/summary/delivery_not_late_by_year.csv, column year / not_late_pct_unit_weighted -->
       <div id="chart-ontime" class="plotly-chart"></div>
-      <p class="hint">▸ ส่งของให้ลูกค้าทันวันนัดกี่ % ต่อปี<br>▸ แกน X = ปี · แกน Y = % (0-100)<br>▸ 2 เส้น ส่งไม่ช้า (ทันหรือก่อนวันนัด) กับ ส่งตรงวันพอดี ใช้เส้นส่งไม่ช้าถ้าจะตอบว่าลูกค้าได้ของทันไหม<br>▸ เส้นส่งตรงวันพอดีต่ำกว่าเสมอเพราะไม่นับที่ส่งก่อน อย่าเอาไปรายงานเป็นอัตราส่งทัน</p>
+      <p class="hint">▸ ส่งของให้ลูกค้าทันวันนัดกี่ % ต่อปี<br>▸ แกน X = ปี · แกน Y = % (0-100)<br>▸ 2 เส้น ส่งทัน (ส่งไม่ช้ากว่าวันนัด คือทันหรือก่อนวันนัด) กับ ส่งตรงวันพอดี ใช้เส้นส่งทันถ้าจะตอบว่าลูกค้าได้ของทันไหม<br>▸ เส้นส่งตรงวันพอดีต่ำกว่าเสมอเพราะไม่นับที่ส่งก่อน อย่าเอาไปรายงานเป็นอัตราส่งทัน</p>
     </section>
     <section id="data">
       <h2>5. ข้อมูลที่ใช้ (Data)</h2>
@@ -179,7 +179,7 @@
       <h2>7. ผลลัพธ์ (Results)</h2>
       <!-- source: output/summary/phaseC_step2_transferability_per_division.csv, column first_test_month / last_test_month -->
       <!-- rolling-origin backtest window, 7 origins; METRICS.md §39 -->
-      <p class="hint">ตัวเลขทุกตัวด้านล่างมาจากการทดสอบช่วง 2025-03 ถึง 2026-08</p>
+      <p class="hint">ตัวเลขทุกตัวด้านล่างมาจากการทดสอบช่วง มี.ค. 68 ถึง ส.ค. 69</p>
       <div class="controls">
         <label>ฝ่าย (Division): <select id="filterDivision"><option value="__all__">ทั้งหมด</option><option value="CI101">CI101</option><option value="PEM101">PEM101</option><option value="PEM102">PEM102</option><option value="PEM103">PEM103</option><option value="PEM107">PEM107</option></select></label>
         <span class="hint">(มีผลกับตารางหลัก ตารางรอง และกราฟ Rolling-origin · ไม่มีผลกับกราฟ Forecast vs Actual)</span>
@@ -260,6 +260,25 @@
 const REPORT_DATA = JSON.parse(document.getElementById('report-data').textContent);
 const MODEL_COLORS = {"Naive": "#898781", "MA3": "#eda100", "MA6": "#c98400", "MA12": "#a56c00", "Croston": "#eb6834", "SBA": "#c94e1f", "Combination": "#2a78d6", "Top-down": "#1baf7a"};
 const PLOT_CONFIG = {responsive: true, displaylogo: false};
+/*TH-DATES-BEGIN*/
+const THAI_MONTHS = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+function thaiYearShort(y) { return String(Number(y) + 543).slice(-2); }
+function thaiMonthShort(ym) {
+  const m = /^(\d{4})-(\d{2})/.exec(String(ym));
+  return m ? THAI_MONTHS[Number(m[2]) - 1] + ' ' + thaiYearShort(m[1]) : String(ym);
+}
+function thaiDateShort(iso) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso));
+  return m ? Number(m[3]) + ' ' + THAI_MONTHS[Number(m[2]) - 1] + ' ' + thaiYearShort(m[1]) : String(iso);
+}
+function thaiDateTime(s, seconds) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}))?/.exec(s || '');
+  if (!m) return 'ไม่ทราบ';
+  return Number(m[3]) + ' ' + THAI_MONTHS[Number(m[2]) - 1] + ' ' + thaiYearShort(m[1]) + ' ' + m[4] + ':' + m[5] + (seconds && m[6] ? ':' + m[6] : '');
+}
+function thaiQuarter(label) { return String(label).replace(/Q(\d)'?(\d{4})/g, function (m, q, y) { return 'Q' + q + ' ' + thaiYearShort(y); }); }
+/*TH-DATES-END*/
+const yearLabel = y => 'ปี ' + thaiYearShort(y);
 const CHART_FAIL_MSG = 'กราฟโหลดไม่ได้ เครือข่ายอาจบล็อกไลบรารีกราฟ · ตัวเลขและตารางยังใช้ได้ตามปกติ';
 // Text, tables and the data-date table never depend on the charting library: when it did not load, each chart
 // area shows the message instead and the rest of the page carries on.
@@ -292,14 +311,14 @@ function drawOntime() {
   if (!chartLibraryOk('chart-ontime')) return;
   Plotly.newPlot('chart-ontime', [
     {
-      x: REPORT_DATA.ontime.years, y: REPORT_DATA.ontime.values, type: 'scatter', mode: 'lines+markers',
+      x: REPORT_DATA.ontime.years.map(yearLabel), y: REPORT_DATA.ontime.values, type: 'scatter', mode: 'lines+markers',
       name: 'ส่งตรงวันพอดี (นับเป็นรายการ)', line: {color: '#2a78d6'},
       hovertemplate: '%{x}: %{y:.1f}%<extra>ส่งตรงวันพอดี (นับเป็นรายการ)</extra>'
     },
     {
-      x: REPORT_DATA.notlate.years, y: REPORT_DATA.notlate.values, type: 'scatter', mode: 'lines+markers',
-      name: 'ส่งไม่ช้า (นับเป็นชิ้น)', line: {color: '#1baf7a'},
-      hovertemplate: '%{x}: %{y:.1f}%<extra>ส่งไม่ช้า (นับเป็นชิ้น)</extra>'
+      x: REPORT_DATA.notlate.years.map(yearLabel), y: REPORT_DATA.notlate.values, type: 'scatter', mode: 'lines+markers',
+      name: 'ส่งทัน (นับเป็นชิ้น)', line: {color: '#1baf7a'},
+      hovertemplate: '%{x}: %{y:.1f}%<extra>ส่งทัน (นับเป็นชิ้น)</extra>'
     }
   ], Object.assign({}, LAYOUT_BASE, {xaxis: {title: {text: 'ปี'}}, yaxis: {title: {text: '%'}}}), PLOT_CONFIG);
 }

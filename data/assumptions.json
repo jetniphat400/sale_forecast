@@ -86,7 +86,7 @@
    "id": "calibration_window",
    "topic": "ช่วงข้อมูลที่ใช้ปรับ Min/Max",
    "unknown": "ถ้าใช้ช่วงสั้นลง lead time ที่ได้จะแคบลง",
-   "used_now": "มกราคม 2567 ถึง ธันวาคม 2568",
+   "used_now": "ม.ค. 67 ถึง ธ.ค. 68",
    "affects": "Min/Max ของ PEM101",
    "value_source": "config maxmin_v1.calibration_window (decision D4, 2026-10-06; the J3 window); the shorter window is the sensitivity in docs/reports/summary/week1_leadtime_calibration.md",
    "updated_date": "2026-10-12"
@@ -115,7 +115,7 @@
    "when": "หลังรอบ 7 ธ.ค. 69"
   },
   {
-   "topic": "เป้าการส่งไม่ช้า (not-late)",
+   "topic": "เป้าการส่งทัน (not-late คือ ส่งไม่ช้ากว่าวันนัด)",
    "to_decide": "บริษัทต้องการกี่ %",
    "now_used": "ให้เลือกเองบนหน้าแผนสต็อก",
    "who": "ผู้บริหาร",
@@ -123,7 +123,7 @@
   },
   {
    "topic": "Min/Max ที่จำลอง",
-   "to_decide": "การส่งไม่ช้าที่จำลองห่างจากผลจริงได้แค่ไหน",
+   "to_decide": "การส่งทันที่จำลองห่างจากผลจริงได้แค่ไหน",
    "now_used": "ยังไม่กำหนด",
    "who": "ฝ่ายวางแผน",
    "when": "หลังรอบ 7 ธ.ค. 69"
@@ -158,13 +158,13 @@
   "notice_bucket_first": "30",
   "notice_bucket_second": "60",
   "notice_bucket_last": "180",
-  "trend_data_through": "8 ต.ค. 2569",
-  "trend_first_month": "ม.ค. 2567",
-  "trend_last_month": "ต.ค. 2569",
+  "trend_data_through": "8 ต.ค. 69",
+  "trend_first_month": "ม.ค. 67",
+  "trend_last_month": "ต.ค. 69",
   "n_codes_trend": "445",
   "n_codes_pages": "445",
-  "lead_grid_first": "45",
-  "lead_grid_last": "75",
+  "lead_confirmed_first": "45",
+  "lead_confirmed_last": "60",
   "ctl_lead_time": "60",
   "ctl_assembly": "3",
   "ctl_review": "30",

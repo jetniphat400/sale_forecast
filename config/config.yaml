@@ -875,10 +875,14 @@ warehouse_roles:
 phase_e1_assumptions:
 
   # --- Procurement lead time (business figure, STATUS.md Section 8.1: "45-60 days ... reaffirmed
-  # 2026-09-04 ... configurable per item"). No per-item override exists in this codebase, so the
-  # SAME grid is applied to every item -- that uniform application is itself a stated
-  # simplification (owner: Modeler default), not a business-confirmed per-item schedule. 75 days
-  # extends one point beyond the confirmed 45-60 range as a sensitivity/stress point.
+  # 2026-09-04 ... configurable per item"). THE CONFIRMED RANGE IS 45-60 DAYS (45 and 60 are the
+  # business's figures; 60 is the default). 75 IS ONLY A STRESS POINT: the Modeler added it to the
+  # sensitivity grid beyond the confirmed range, and no page or manual text may present it as the lead
+  # time of the business (src/reader_values.py confirmed_lead_time_range reads the confirmed range as
+  # the smallest grid value and the default; a test checks that 75 never appears as the actual range).
+  # No per-item override exists in this codebase, so the SAME grid is applied to every item -- that
+  # uniform application is itself a stated simplification (owner: Modeler default), not a
+  # business-confirmed per-item schedule.
   # ROBUST DEFAULT (Phase J Part 4, 2026-09-23): set to the UPPER BOUND of the business-confirmed
   # 45-60 day range, not the middle -- under-provisioning costs more than over-provisioning when
   # customer orders arrive with a median 6 days' notice (STATUS.md Business Findings), and Phase I
@@ -889,7 +893,7 @@ phase_e1_assumptions:
   # not the number) -- corrected here for a robust-defaults reason, not a robust-defaults change.
   procurement_lead_time_days_grid: [45, 60, 75]
   procurement_lead_time_days_owner: "business (45 and 60 confirmed, STATUS.md Section 8.1); 75 is a Modeler-added sensitivity point beyond the confirmed range, owner Modeler default"
-  procurement_lead_time_days_default: 60   # upper end of the confirmed 45-60 day range (robust default, Phase J Part 4 -- see comment above)
+  procurement_lead_time_days_default: 60   # upper end of the CONFIRMED 45-60 day range (robust default, Phase J Part 4 -- see comment above); 75 in the grid is a stress point only
 
   # --- Assembly time: STATUS.md confirms this is a genuine, UNRESOLVED business gap -- no field
   # in any table links a raw-material consumption event to the resulting assembled item becoming
@@ -1217,7 +1221,7 @@ exec_summary:
     watch_high: "{group} ทายสูงกว่าจริงต่อเนื่อง (Tracking Signal {value}) คาดการณ์ทั้งปีของกลุ่มนี้อาจสูงกว่าที่จะเกิดจริง"
     watch_plan: "แผนผลิต {division} เดือน {month} สูงกว่ายอดผลิตสูงสุดรายเดือนในอดีต (Historical peak ไม่ใช่ขีดความสามารถผลิต) ({pct})"
     watch_material: "วัตถุดิบ {n} รายการเลยกำหนดสั่ง (Late to order) สั่งวันนี้ของมาไม่ทันแผน"
-    watch_pem107: "PEM107 ส่งของช่องทาง Omni ทันน้อยลงตั้งแต่ {since} ({pct} ส่งไม่ช้า)"
+    watch_pem107: "PEM107 ส่งของช่องทาง Omni ทันน้อยลงตั้งแต่ {since} ({pct} ส่งทัน คือ ส่งไม่ช้ากว่าวันนัด)"
     decide_heading: "เรื่องที่รอผู้บริหารตัดสิน"
     decide_link: "สมมติฐานที่ใช้อยู่"
     footer: "ยอดขายนับตามเดือนที่ต้องส่งของ รวม PO ที่รับแล้วแต่ยังไม่ส่ง (MPS) · ไม่รวม VAT · คาดการณ์ = ยอดจริงถึง {data_month} + เดือนที่เหลือใช้ค่าที่มากกว่าระหว่างยอดทายกับออเดอร์ที่รับแล้ว × ราคาขายเฉลี่ยจริง · เป้ามาจากระบบเป้าของบริษัท (Revenue) · ยังไม่ได้ยืนยันว่าเป้านับจากวันส่งของหรือวันออก invoice · ยอดขายและคาดการณ์นับเฉพาะสินค้าใน Price List แต่เป้ารวมสินค้า Omni ทุกตัว"
@@ -1786,8 +1790,8 @@ maxmin_v1:
     - {topic: "ยอดทายดีกว่าวิธีง่ายไหม", to_decide: "Relative MAE ต่ำแค่ไหนถึงนับว่าถึงเกณฑ์ (MAE ของเรา ÷ MAE ของ Naive)", now_used: "ร่าง: ต่ำกว่า {relative_mae_pass} ถึงเกณฑ์ผ่าน, ต่ำกว่า {relative_mae_good} ถึงเกณฑ์ดี", who: "ผู้บริหาร", when: "หลังรอบ {decision_date}"}
     - {topic: "ยอดทายเอียงไปทางเดียวต่อเนื่อง (Bias)", to_decide: "Tracking Signal (ความคลาดสะสม ÷ ความคลาดเฉลี่ย) เกินเท่าไหร่ถึงเตือน", now_used: "ร่าง: ±{tracking_signal_limit} (ไม่มีหน่วย)", who: "ผู้บริหาร", when: "ทุกเดือน"}
     - {topic: "ฝ่ายที่ยอดทายไม่ชนะวิธีง่าย", to_decide: "ใช้วิธีง่ายแทนไหม", now_used: "ยังใช้วิธีเดิม และแสดงผลเทียบ", who: "ผู้บริหาร", when: "หลังรอบ {decision_date}"}
-    - {topic: "เป้าการส่งไม่ช้า (not-late)", to_decide: "บริษัทต้องการกี่ %", now_used: "ให้เลือกเองบนหน้าแผนสต็อก", who: "ผู้บริหาร", when: "ยังไม่กำหนด"}
-    - {topic: "Min/Max ที่จำลอง", to_decide: "การส่งไม่ช้าที่จำลองห่างจากผลจริงได้แค่ไหน", now_used: "ยังไม่กำหนด", who: "ฝ่ายวางแผน", when: "หลังรอบ {decision_date}"}
+    - {topic: "เป้าการส่งทัน (not-late คือ ส่งไม่ช้ากว่าวันนัด)", to_decide: "บริษัทต้องการกี่ %", now_used: "ให้เลือกเองบนหน้าแผนสต็อก", who: "ผู้บริหาร", when: "ยังไม่กำหนด"}
+    - {topic: "Min/Max ที่จำลอง", to_decide: "การส่งทันที่จำลองห่างจากผลจริงได้แค่ไหน", now_used: "ยังไม่กำหนด", who: "ฝ่ายวางแผน", when: "หลังรอบ {decision_date}"}
     - {topic: "แผนวัตถุดิบ", to_decide: "ตรงกับใบสั่งซื้อจริงแค่ไหนถึงใช้สั่งของได้", now_used: "ยังไม่กำหนด หน้าขึ้นว่ายังอยู่ระหว่างตรวจสอบ", who: "ฝ่ายจัดซื้อ", when: "ยังไม่กำหนด"}
     - {topic: "เป้ารายได้", to_decide: "นับจากวันออก invoice (Invoice date) หรือวันส่งตามสัญญา (Contract delivery date)", now_used: "ใช้วันส่งตามสัญญาไปก่อน", who: "เจ้าของเป้า", when: "ยังไม่กำหนด"}
     - {topic: "จับคู่ประเภทสินค้ากับเป้า", to_decide: "ยืนยันการจับคู่ที่จับจากชื่อ เช่น MV/HV Surge Arrester", now_used: "แสดงพร้อมป้ายยังไม่ยืนยัน", who: "ฝ่ายขาย", when: "ยังไม่กำหนด"}

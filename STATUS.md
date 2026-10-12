@@ -144,6 +144,12 @@ Code: `src/investigations/task2b_part2_fulfilment_segmentation.py` (`run_from_pu
 - Reader text: see SENTENCES NEEDING THAI TEXT of this task (demand column header on the material page, a label for the list of divisions covered, a line for the six PEM101 codes never sold, the approved heading for six divisions) (the user's assistant).
 - Category-level view of the two product categories and the three items' settings (brief item "settings"), storms and the other external factors, utility budgets, sales insight and EGP bids: not done (brief table).
 
+### Week 4, prompt 25 -- the confirmed lead time, one year format site-wide, one term for on-time delivery -- DONE, 2026-10-12 (no database; the test suite made none)
+
+**Report:** `docs/reports/summary/prompt5_g2_vintage_target_map.md`, heading "Prompt 25".
+
+**Lead time.** The confirmed procurement lead time is 45-60 days (config `phase_e1_assumptions`, the grid's smallest value and the default); 75 is only a stress point of the sensitivity grid. The manual's line 121 (wrongly 45-75 since Prompt 24) now reads 45-60 from `manual_values.lead_confirmed_first/last`; the sales report names 75 only as the test range; the config comments say so plainly (no value changed). **Year format:** one format everywhere (Thai short month and the Buddhist year as two digits, "ต.ค. 69", "7 ธ.ค. 69"), one Python formatter (`reader_values`) and one script text (`JS_THAI_DATES`) that every page carries once; the original S&OP tab is untouched; no data file, log or config date changed. **Wording:** "ส่งทัน" is the one term (explained as "ส่งไม่ช้ากว่าวันนัด" at its first use); "มักสูงกว่า" in the manual; the manual's load-failure message has no file name; the "+n" of the order tables is explained. Numeric gate (year-normalised) and data gate: unchanged except the lead-time line and `data/assumptions.json`.
+
 ### Week 4, prompt 24 -- remaining confusing words, computed numbers in the manual, backup comparison, one remark change -- DONE, 2026-10-12 (no database; the test suite made none)
 
 **Report:** `docs/reports/summary/prompt5_g2_vintage_target_map.md`, heading "Prompt 24" (with the before to after table). Method: METRICS.md Sec.54 (one line added), DATA_MAP.md (`manual_values`).

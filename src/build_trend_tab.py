@@ -573,7 +573,7 @@ def exec_data(root: str = PROJECT_ROOT, plan_dir: str = None) -> dict:
     watch = exec_watch([{"group": r["label"], "value": r["tracking_signal"]} for r in acc["rows"]], th["limit"], plan_above, n_late,
                        None if alert.get("not_late_from_may_2026_pct") is None else {"since": rv.thai_month_year(alert["split_date"]), "pct": f"{float(alert['not_late_from_may_2026_pct']):.1f}%"})
     pending = [r for r in maxmin_v1.pending_criteria_rows() if r["who"] == "ผู้บริหาร"]
-    return {"data_month": data_month, "data_month_label": rv.thai_month_short(data_month), "year": year, "year_be": year + 543, "remaining_months": remaining, "booked_baht": booked_baht, "rows": rows, "total": tot,
+    return {"data_month": data_month, "data_month_label": rv.thai_month_short(data_month), "year": year, "year_be": int(rv.thai_year_short(year)), "remaining_months": remaining, "booked_baht": booked_baht, "rows": rows, "total": tot,
             "n_forecast_divisions": len(rows), "n_beat_naive": sum(1 for r in rows if r["relative_mae"] is not None and r["relative_mae"] < th["pass"]), "thresholds": th,
             "watch": watch, "pending": pending, "target_report": target_report, "vintage_id": vf["vintage_id"]}
 

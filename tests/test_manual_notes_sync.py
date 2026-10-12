@@ -129,3 +129,65 @@ def test_no_manual_number_that_describes_the_data_or_the_schedule_is_typed():
         assert typed not in text, f"the manual types {typed!r}: use a placeholder filled from data/assumptions.json"
     assert "วันธรรมดา (จันทร์ถึงศุกร์) วันแรกตั้งแต่วันที่ {run_day_base}" in text
 
+
+# ---------------------------------------------------------------------------------------------------------------------------------------------------------------
+# The confirmed procurement lead time: 45-60 days (config phase_e1_assumptions); 75 is a stress point of the sensitivity grid and is never shown as the lead time of the business.
+# ---------------------------------------------------------------------------------------------------------------------------------------------------------------
+def _config() -> dict:
+    with open(os.path.join(PROJECT_ROOT, "config", "config.yaml"), "r", encoding="utf-8") as f:
+        return yaml.safe_load(f)
+
+
+def test_the_confirmed_lead_time_chain_config_to_manual_value_to_pages():
+    import json
+    e1 = _config()["phase_e1_assumptions"]
+    grid, default = e1["procurement_lead_time_days_grid"], e1["procurement_lead_time_days_default"]
+    assert min(grid) == 45 and default == 60 and max(grid) == 75 > default           # the confirmed range 45-60 and the stress point 75 as they stand in config
+    with open(ASSUMPTIONS_JSON, "r", encoding="utf-8") as f:
+        values = json.load(f)["manual_values"]
+    assert (values["lead_confirmed_first"], values["lead_confirmed_last"]) == (str(min(grid)), str(default))     # read from config, not typed
+    assert not any(k.startswith("lead_grid") for k in values)
+    with open(USER_MANUAL, "r", encoding="utf-8") as f:
+        manual = f.read()
+    assert "แต่สั่งวัตถุดิบใช้ {lead_confirmed_first}-{lead_confirmed_last} วัน" in manual
+    with open(SALES_REPORT_HTML, "r", encoding="utf-8") as f:
+        sales = f.read()
+    assert f"<b>{min(grid)}-{default}</b> วัน" in sales and f"ช่วงทดสอบความไวเพิ่มถึง {max(grid)} วัน" in sales
+    for rel in ("docs/user_manual.md", "index.html", "forecast/sales_report.html", "forecast/inventory.html", "forecast/operation_plan.html", "forecast/material_plan.html"):
+        with open(os.path.join(PROJECT_ROOT, rel), "r", encoding="utf-8") as f:
+            text = f.read()
+        text = re.sub(r'<td class="name">.*?</td>', " ", text)                          # product names of the tables are not text of the page
+        assert not re.search(r"45\s*[-–]\s*75", text), f"{rel} presents 45-75 as a lead time"
+
+
+def test_one_term_for_on_time_delivery_and_its_explanation_at_the_first_use():
+    explanation = "ส่งไม่ช้ากว่าวันนัด"
+    old = re.compile(r"ส่งไม่ช้า(?!กว่าวันนัด)|ส่งไม่ล่าช้า|ไม่สาย")
+    for rel in ("docs/user_manual.md", "config/manual_notes.yaml", "forecast/sales_report.html", "forecast/inventory.html", "forecast/operation_plan.html", "forecast/material_plan.html"):
+        with open(os.path.join(PROJECT_ROOT, rel), "r", encoding="utf-8") as f:
+            text = f.read()
+        assert not old.search(text), f"{rel} still uses another word than ส่งทัน for on-time delivery: {old.search(text).group(0)!r}"
+    with open(INDEX_HTML, "r", encoding="utf-8") as f:
+        index = f.read()
+    start = index.index('<div id="origTab"')
+    depth, end = 0, start
+    for m in re.finditer(r"<div\b|</div>", index[start:]):
+        depth += 1 if m.group(0).startswith("<div") else -1
+        if depth == 0:
+            end = start + m.end()
+            break
+    assert end > start and not old.search(index[:start] + index[end:])                  # the original S&OP tab is not touched and not checked
+    # the manual: every heading block that uses the term explains it
+    with open(USER_MANUAL, "r", encoding="utf-8") as f:
+        blocks = re.split(r"(?m)^#{2,3} ", f.read())
+    for block in blocks:
+        if "ส่งทัน" in block:
+            assert explanation in block, f"a manual section uses ส่งทัน without explaining it: {block[:50]!r}"
+    # the pages: the first use outside the closed data-date table is followed by the explanation
+    for rel in ("forecast/sales_report.html", "forecast/inventory.html"):
+        with open(os.path.join(PROJECT_ROOT, rel), "r", encoding="utf-8") as f:
+            page = f.read()
+        page = re.sub(r"<details.*?</details>", " ", page, flags=re.S)
+        page = re.sub(r"<(script|style)\b.*?</\1>|<!--.*?-->", " ", page, flags=re.S)
+        first = page.index("ส่งทัน")
+        assert explanation in page[first: first + 60], f"{rel}: the first ส่งทัน is not followed by its explanation: {page[first - 20: first + 60]!r}"

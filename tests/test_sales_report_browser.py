@@ -41,7 +41,7 @@ def test_without_the_charting_library_text_and_tables_render_and_charts_show_the
     assert edge.ev("document.querySelectorAll('#primary-results-table tbody tr').length") > 0
     assert edge.ev("document.querySelectorAll('#div-results-table tbody tr').length") > 0
     freshness = edge.ev("document.querySelector('details table').textContent")
-    assert "ช่วงข้อมูลหลัก" in freshness and "กราฟส่งไม่ช้า" in freshness
+    assert "ช่วงข้อมูลหลัก" in freshness and "กราฟส่งทัน" in freshness
     assert edge.ev("document.querySelectorAll('details table tbody tr').length") == 7
     # the selectors still work and the type list is filled
     edge.ev("document.getElementById('filterDivision').value='PEM101'; "

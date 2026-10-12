@@ -310,14 +310,11 @@ def _fmt_days(x: float) -> str:
     return str(int(round(x))) if float(x).is_integer() else f"{x:g}"
 
 
-THAI_MONTH_NAMES = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"]
-
 
 def thai_window(start: str, end: str) -> str:
-    """'2024-01', '2025-12' -> 'มกราคม 2567 ถึง ธันวาคม 2568' (Thai month name and Buddhist year, both ends)."""
-    def one(ym):
-        return f"{THAI_MONTH_NAMES[int(ym[5:7]) - 1]} {int(ym[:4]) + 543}"
-    return f"{one(start)} ถึง {one(end)}"
+    """'2024-01', '2025-12' -> 'ม.ค. 67 ถึง ธ.ค. 68' (the shared short month and two-digit Buddhist year, both ends)."""
+    import reader_values as rv
+    return f"{rv.thai_month_short(start)} ถึง {rv.thai_month_short(end)}"
 
 
 def assumption_values(cfg: dict = None) -> dict:

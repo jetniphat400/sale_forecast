@@ -477,7 +477,7 @@ def test_the_page_text_is_the_approved_text_and_every_braced_value_comes_from_th
 
 def test_the_two_order_lists_split_by_the_latest_order_date_with_the_approved_columns_and_source_labels(project):
     page, v = _page(project)
-    heads_expected = ["รหัสวัตถุดิบ", "ชื่อ", "ใช้ในสินค้า (รหัส)", "ต้องสั่งเพิ่ม (Order qty)", "สั่งภายในวันที่ (Order-by date)", "lead time (วัน)", "ที่มา lead time"]
+    heads_expected = ["รหัสวัตถุดิบ", "ชื่อ", "ใช้ในสินค้า (รหัส · +n คือมีอีก n รหัส)", "ต้องสั่งเพิ่ม (Order qty)", "สั่งภายในวันที่ (Order-by date)", "lead time (วัน)", "ที่มา lead time"]
     for table in ("within-table", "late-table"):
         assert re.findall(r"<th(?:\s[^>]*)?>(.*?)</th>", page.split('id="%s"' % table)[1].split("</table>")[0]) == heads_expected
     _, sm, meta = mp.read_outputs(project)

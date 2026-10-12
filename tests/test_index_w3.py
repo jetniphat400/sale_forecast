@@ -224,8 +224,9 @@ def test_w3b_sop_texts_are_in_place(page):
 def test_w3b_trend_numbers_are_computed_from_the_tab_data(page):
     text = open(INDEX, encoding="utf-8").read()
     omni = json.loads(_embedded_lines(text)["OMNI"][len("const OMNI = "):].rstrip(";"))
-    assert page["trend_pl_label"] == omni["meta"]["pricelist"] and re.fullmatch(r"Q[1-4]'20\d\d", page["trend_pl_label"])
-    assert set(page["trend_yrs"]) == {f"{omni['meta']['first_year']}-{omni['meta']['last_year']}"}
+    q = re.fullmatch(r"Q([1-4])'(20\d\d)", omni["meta"]["pricelist"])
+    assert q and page["trend_pl_label"] == f"Q{q.group(1)} {str(int(q.group(2)) + 543)[-2:]}"          # the quarter label is written with the Buddhist year as two digits
+    assert set(page["trend_yrs"]) == {f"{str(omni['meta']['first_year'] + 543)[-2:]}-{str(omni['meta']['last_year'] + 543)[-2:]}"}
     assert omni["months"][0] == f"{omni['meta']['first_year']}-01" and omni["n31"] == len(omni["months"]) - 1
     assert page["trend_head_count"] == str(len(omni["items"]))
     assert "(" + str(len(omni["items"])) + " รหัส)" in page["trend_head"] and "01.06.69" not in page["trend_head"]
@@ -271,6 +272,10 @@ def test_manual_states_the_gap_without_a_typed_percentage(page):
     assert "[ค่าไม่พบ" not in page["manual"] and not _re.search(r"\{[a-z_0-9]+\}", page["manual"]) and "5 ธ.ค." not in page["manual"]
     assert f"ข้อมูลถึง {manual_values['trend_data_through']}" in page["manual"] and "วันธรรมดา (จันทร์ถึงศุกร์) วันแรกตั้งแต่วันที่ " + manual_values["run_day_base"] in page["manual"]
     assert f"ต้องรอ {manual_values['guard_days']} วันหลังสิ้นเดือน" in page["manual"]
+    # the confirmed lead time (45-60 days, read from config), never the stress point 75; the one term for on-time delivery; the data date in the one year format
+    assert "แต่สั่งวัตถุดิบใช้ 45-60 วัน" in page["manual"] and "45-75" not in page["manual"]
+    assert "ฝ่ายที่ขายเยอะ MAE มักสูงกว่า" in page["manual"] and "สูงกว่าเสมอ" not in page["manual"].split("ฝ่ายที่ขายเยอะ")[1][:30]
+    assert re.search(r"ข้อมูลถึง \d{1,2} \S+ \d{2}\b", page["manual"]) and not re.search(r"\b(20[2-3]\d|25[6-7]\d)\b", page["manual"])
 
 
 # ------------------------------------------------------------------ embedded data untouched
@@ -329,7 +334,7 @@ def test_limitations_hold_no_significance_claim_the_block_replaced():
 
 
 # ====================================================================================================== 2026-10-09: the original tabs and links restored, only แผนวัตถุดิบ added
-LABELS = ["S&OP Plan (เดิม)", "สรุปผู้บริหาร", "Trend Pricelist Omni 2024–2026", "แผนการผลิต (จากยอดทาย)", "แผนวัตถุดิบ", "สมมติฐานที่ใช้อยู่", "คู่มือการใช้งาน"]
+LABELS = ["S&OP Plan (เดิม)", "สรุปผู้บริหาร", "Trend Pricelist Omni ปี 67–69", "แผนการผลิต (จากยอดทาย)", "แผนวัตถุดิบ", "สมมติฐานที่ใช้อยู่", "คู่มือการใช้งาน"]
 PAGE_FILES = {"sales": "sales_report.html", "inventory": "inventory.html", "operation": "operation_plan.html", "material": "material_plan.html"}
 
 
@@ -569,7 +574,7 @@ def _fixed_exec_data():
     rows = [{"division": "AAA", "ytd": 100e6, "last_ytd": 80e6, "change": 0.25, "forecast_remaining": 50e6, "projection": 150e6, "target": 200e6, "to_target": 0.75, "relative_mae": 0.6},
             {"division": "BBB", "ytd": 30e6, "last_ytd": 40e6, "change": -0.25, "forecast_remaining": 10e6, "projection": 40e6, "target": None, "to_target": None, "relative_mae": 1.2}]
     tot = {"ytd": 130e6, "last_ytd": 120e6, "forecast_remaining": 60e6, "projection": 190e6, "target": None, "change": 130 / 120 - 1, "to_target": None}
-    return {"data_month": "2026-08", "data_month_label": "ส.ค. 69", "year": 2026, "year_be": 2569, "remaining_months": ["2026-09"], "rows": rows, "total": tot, "n_forecast_divisions": 2,
+    return {"data_month": "2026-08", "data_month_label": "ส.ค. 69", "year": 2026, "year_be": 69, "remaining_months": ["2026-09"], "rows": rows, "total": tot, "n_forecast_divisions": 2,
             "n_beat_naive": 1, "thresholds": {"good": 0.7, "pass": 1.0, "limit": 4.0}, "watch": [], "pending": [{"topic": "หัวข้อ", "to_decide": "ต้องตัดสินอะไร"}]}
 
 
@@ -598,7 +603,7 @@ def test_the_exec_tab_texts_cards_table_and_remarks_are_verbatim_from_fixed_data
     lines = _exec_visible(bt.exec_render(d, cfg))
     assert lines[0].startswith("ยอดขาย ม.ค.–ส.ค. 69 | ") or "ยอดขาย ม.ค.–ส.ค. 69" in lines
     joined = "\n".join(lines)
-    for text in ["ยอดขาย ม.ค.–ส.ค. 69", "130.0 ล้านบาท", "เทียบช่วงเดียวกันปีก่อน +8.3%", "คาดการณ์ทั้งปี 2569 (สินค้าใน Price List)", "190.0 ล้านบาท", "ถึงเป้า – · เป้ารวมสินค้า Omni ทุกตัว % นี้จึงน่าจะต่ำกว่าจริง",
+    for text in ["ยอดขาย ม.ค.–ส.ค. 69", "130.0 ล้านบาท", "เทียบช่วงเดียวกันปีก่อน +8.3%", "คาดการณ์ทั้งปี 69 (สินค้าใน Price List)", "190.0 ล้านบาท", "ถึงเป้า – · เป้ารวมสินค้า Omni ทุกตัว % นี้จึงน่าจะต่ำกว่าจริง",
                  "ความแม่นของยอดทาย", "1 จาก 2 ฝ่าย", "Relative MAE ต่ำกว่าวิธีเทียบ Naive (ใช้ยอดเดือนก่อนเป็นค่าทาย) ตามเกณฑ์ร่าง · ฝ่ายที่พิสูจน์แล้วว่าดีกว่าจริงดูในหน้ายอดขาย · ยืนยันเกณฑ์หลังรอบ " + DECISION_DATE_TH, "เรื่องที่ต้องระวัง", "0 เรื่อง", "ดูรายการด้านล่าง", "เรื่องที่รอผู้บริหารตัดสิน", "หัวข้อ · ต้องตัดสินอะไร",
                  "ฝ่าย | ยอดขาย YTD | ปีก่อน YTD | เปลี่ยน | คาดการณ์ทั้งปี | เป้า (Revenue) | ถึงเป้า | Relative MAE | หมายเหตุ",
                  "AAA | 100.0 | 80.0 | +25.0% | 150.0 | 200.0 | 75.0% | 0.60 |",
@@ -626,7 +631,7 @@ def test_each_watch_out_line_appears_only_when_its_condition_holds():
     high = bt.exec_watch([{"group": "H", "value": 6.7}], 4.0, [], 0, None)
     plan = bt.exec_watch([], 4.0, [{"division": "D1", "month": "ต.ค. 69", "pct": "119.9%"}], 0, None)
     mat = bt.exec_watch([], 4.0, [], 584, None)
-    alert = bt.exec_watch([], 4.0, [], 0, {"since": "พ.ค. 2569", "pct": "57.7%"})
+    alert = bt.exec_watch([], 4.0, [], 0, {"since": "พ.ค. 69", "pct": "57.7%"})
     assert [w["kind"] for w in low + high + plan + mat + alert] == ["low", "high", "plan", "material", "pem107"]
     d = _fixed_exec_data()
     d["watch"] = low + high + plan + mat + alert
@@ -635,7 +640,7 @@ def test_each_watch_out_line_appears_only_when_its_condition_holds():
     assert "H ทายสูงกว่าจริงต่อเนื่อง (Tracking Signal 6.7) คาดการณ์ทั้งปีของกลุ่มนี้อาจสูงกว่าที่จะเกิดจริง" in lines
     assert "แผนผลิต D1 เดือน ต.ค. 69 สูงกว่ายอดผลิตสูงสุดรายเดือนในอดีต (Historical peak ไม่ใช่ขีดความสามารถผลิต) (119.9%)" in lines
     assert "วัตถุดิบ 584 รายการเลยกำหนดสั่ง (Late to order) สั่งวันนี้ของมาไม่ทันแผน" in lines
-    assert "PEM107 ส่งของช่องทาง Omni ทันน้อยลงตั้งแต่ พ.ค. 2569 (57.7% ส่งไม่ช้า)" in lines
+    assert "PEM107 ส่งของช่องทาง Omni ทันน้อยลงตั้งแต่ พ.ค. 69 (57.7% ส่งทัน คือ ส่งไม่ช้ากว่าวันนัด)" in lines
     assert "5 เรื่อง" in "\n".join(lines)                                                                 # card 4 counts the lines shown
     assert not any("ทายต่ำกว่าจริง" in x for x in _exec_visible(bt.exec_render(dict(d, watch=high), cfg)))
 
@@ -749,3 +754,64 @@ def test_the_executive_tab_in_index_html_is_what_the_builder_makes_from_the_save
     assert bt.exec_gate(data, os.path.join(PROJECT_ROOT, "forecast", "sales_report.html"))["passed"]
     assert data["rows"][0]["division"] == "PEM101" and [r["division"] for r in data["rows"]] == ["PEM101", "PEM103", "PEM107", "PEM102", "CI101"]
     assert data["n_forecast_divisions"] == 5
+
+
+def test_the_scripts_of_the_page_write_dates_like_the_python_formatter(edge, tmp_path_factory):
+    import reader_values as rv
+    site = _site(tmp_path_factory, "w3_formatter")
+    server, url = _serve(site)
+    try:
+        edge.open(url)
+        got = edge.ev("[thaiMonthShort('2026-10'), thaiMonthShort('2027-01'), thaiDateShort('2026-12-07'), thaiDateShort('2027-01-05'), thaiDateTime('2026-10-05 07:41:06'), "
+                      "thaiDateTime('2026-10-05 07:41:06', true), thaiYearShort(2026), thaiQuarter(\"Q3'2026\"), thaiDateTime('')]")
+    finally:
+        server.shutdown()
+    assert got == [rv.thai_month_short("2026-10"), rv.thai_month_short("2027-01"), rv.thai_date_short("2026-12-07"), rv.thai_date_short("2027-01-05"),
+                   rv.thai_datetime_short("2026-10-05 07:41:06"), rv.thai_datetime_short("2026-10-05 07:41:06", seconds=True), rv.thai_year_short(2026), "Q3 69", "ไม่ทราบ"]
+    assert got[:4] == ["ต.ค. 69", "ม.ค. 70", "7 ธ.ค. 69", "5 ม.ค. 70"]
+
+
+def test_no_four_digit_year_and_no_iso_date_is_shown_outside_the_sop_tab(edge, tmp_path_factory):
+    site = tmp_path_factory.mktemp("w3_all_pages")
+    (site / "docs").mkdir()
+    (site / "data").mkdir()
+    (site / "forecast").mkdir()
+    shutil.copy(INDEX, site / "index.html")
+    shutil.copy(os.path.join(PROJECT_ROOT, "docs", "user_manual.md"), site / "docs" / "user_manual.md")
+    for name in ("assumptions.json", "inventory.json", "stock_daily.json"):
+        shutil.copy(os.path.join(PROJECT_ROOT, "data", name), site / "data" / name)
+    for name in ("sales_report", "inventory", "operation_plan", "material_plan"):
+        shutil.copy(os.path.join(PROJECT_ROOT, "forecast", name + ".html"), site / "forecast" / (name + ".html"))
+    year4 = re.compile(r"(?<![A-Za-z0-9.,/<-])(20[2-3]\d|25[6-7]\d)(?![\d])")
+    iso = re.compile(r"\b20[2-3]\d-\d\d(-\d\d)?\b")
+    js = """(function(){var c=document.body.cloneNode(true);c.querySelectorAll('script,style,td.name,td.mono,td.code,#skuTbl').forEach(function(e){e.remove();});
+      var s=c.querySelector('#origTab'); if(s)s.remove(); var w=document.createTreeWalker(c,NodeFilter.SHOW_TEXT),o=[],n; while(n=w.nextNode()){o.push(n.nodeValue);}
+      var t=[]; document.querySelectorAll('[title]').forEach(function(e){ if(!(document.getElementById('origTab') && document.getElementById('origTab').contains(e))) t.push(e.getAttribute('title')); });
+      return o.join(' ') + ' ' + t.join(' ');})()"""
+    server, url = _serve(site)
+    base = url.rsplit("/", 1)[0] + "/"
+    seen = {}
+    try:
+        edge.open(base + "index.html")
+        time.sleep(1.5)
+        n = edge.ev("document.querySelectorAll('#tabBar > button').length")
+        for i in range(1, n):                                                           # every tab but the original S&OP tab
+            edge.ev(f"document.querySelectorAll('#tabBar > button')[{i}].click(); 1")
+            time.sleep(1.2)
+            seen[f"index tab {i}"] = edge.ev(js)
+        assert _wait(edge, "document.getElementById('manualTabContent').innerText.indexOf('กำลังโหลด') < 0")
+        for page_name in ("sales_report", "inventory", "operation_plan", "material_plan"):
+            edge.open(base + f"forecast/{page_name}.html")
+            time.sleep(2.5)
+            seen[page_name] = edge.ev(js)
+            if page_name == "inventory":
+                for division in ("PEM103", "PEM107"):
+                    edge.ev(f"var s=document.getElementById('division-select'); s.value='{division}'; s.dispatchEvent(new Event('change')); 1")
+                    time.sleep(1.5)
+                    seen[f"inventory {division}"] = edge.ev(js)
+    finally:
+        server.shutdown()
+    for where, text in seen.items():
+        assert text and len(text) > 200, f"{where} showed no text"
+        assert not year4.search(text), f"{where} shows a four-digit year: {text[max(0, year4.search(text).start() - 40): year4.search(text).end() + 20]!r}"
+        assert not iso.search(text), f"{where} shows an ISO date: {text[max(0, iso.search(text).start() - 40): iso.search(text).end() + 20]!r}"

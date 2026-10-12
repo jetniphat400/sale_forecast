@@ -90,6 +90,16 @@ def fulfilment_signal_count() -> int:
     return len([c for c in df.columns if re.fullmatch(r"S\d+", c)])
 
 
+def confirmed_lead_time_range(config: dict) -> tuple:
+    """(first, last) days of the procurement lead time the business confirmed (STATUS.md Section 8.1): the smallest value of the grid and the default, which config marks as the upper end of the
+    confirmed range. The last grid value (75) is a stress point only and is never part of it; a grid that does not extend beyond the default raises."""
+    e1 = config["phase_e1_assumptions"]
+    grid, default = e1["procurement_lead_time_days_grid"], e1["procurement_lead_time_days_default"]
+    if not (min(grid) <= default < max(grid)):
+        raise ReaderValueError("procurement_lead_time_days: the default must lie inside the grid and below its stress point")
+    return min(grid), default
+
+
 def staleness_threshold_days(config: dict) -> int:
     """config.yaml page_timestamps.staleness_threshold_days (METRICS.md Sec.26)."""
     return int(config["page_timestamps"]["staleness_threshold_days"])
@@ -119,9 +129,8 @@ THAI_MONTH_ABBR = {1: "ม.ค.", 2: "ก.พ.", 3: "มี.ค.", 4: "เม.�
 
 
 def thai_month_year(iso_date: str) -> str:
-    """'2026-05-01' -> 'พ.ค. 2569' (Buddhist year = Gregorian + 543)."""
-    y, m = int(iso_date[:4]), int(iso_date[5:7])
-    return f"{THAI_MONTH_ABBR[m]} {y + 543}"
+    """'2026-05-01' -> 'พ.ค. 69': the one year format of the site (decision of the user, 2026-10-12): Thai short month and the Buddhist year as two digits. Same as thai_month_short."""
+    return thai_month_short(iso_date)
 
 
 def intermittent_lumpy_share_pct() -> float:
@@ -177,10 +186,37 @@ def thai_month_short(ym: str) -> str:
     return f"{THAI_MONTH_ABBR[m]} {str(y + 543)[-2:]}"
 
 
-def thai_datetime_short(s) -> str:
-    """'2026-10-06 08:00:40' -> '6 ต.ค. 69 08:00' (d MMM yy HH:mm, this machine's own clock, Buddhist year)."""
+def thai_datetime_short(s, seconds: bool = False) -> str:
+    """'2026-10-06 08:00:40' -> '6 ต.ค. 69 08:00' (d MMM yy HH:mm, this machine's own clock, Buddhist year); seconds=True keeps the seconds where a page already shows them ('6 ต.ค. 69 08:00:40')."""
     t = pd.Timestamp(str(s)[:19])
-    return f"{t.day} {THAI_MONTH_ABBR[t.month]} {str(t.year + 543)[-2:]} {t.strftime('%H:%M')}"
+    return f"{t.day} {THAI_MONTH_ABBR[t.month]} {str(t.year + 543)[-2:]} {t.strftime('%H:%M:%S' if seconds else '%H:%M')}"
+
+
+def thai_year_short(year) -> str:
+    """2026 -> '69' (the Buddhist year as two digits); a text writes it as 'ปี 69'."""
+    return str(int(year) + 543)[-2:]
+
+
+# The same formatter for the scripts of the pages: the Python builders put this text into their pages and index.html carries an identical copy between its two marker comments
+# (tests/test_reader_text.py checks the copy and the output of both agree). No page has its own month list or year arithmetic.
+JS_THAI_DATES = r"""/*TH-DATES-BEGIN*/
+const THAI_MONTHS = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+function thaiYearShort(y) { return String(Number(y) + 543).slice(-2); }
+function thaiMonthShort(ym) {
+  const m = /^(\d{4})-(\d{2})/.exec(String(ym));
+  return m ? THAI_MONTHS[Number(m[2]) - 1] + ' ' + thaiYearShort(m[1]) : String(ym);
+}
+function thaiDateShort(iso) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso));
+  return m ? Number(m[3]) + ' ' + THAI_MONTHS[Number(m[2]) - 1] + ' ' + thaiYearShort(m[1]) : String(iso);
+}
+function thaiDateTime(s, seconds) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}))?/.exec(s || '');
+  if (!m) return 'ไม่ทราบ';
+  return Number(m[3]) + ' ' + THAI_MONTHS[Number(m[2]) - 1] + ' ' + thaiYearShort(m[1]) + ' ' + m[4] + ':' + m[5] + (seconds && m[6] ? ':' + m[6] : '');
+}
+function thaiQuarter(label) { return String(label).replace(/Q(\d)'?(\d{4})/g, function (m, q, y) { return 'Q' + q + ' ' + thaiYearShort(y); }); }
+/*TH-DATES-END*/"""
 
 
 def criteria_decision_date(values: dict) -> str:
@@ -341,18 +377,6 @@ def fulfilment_min_signals() -> int:
     return int(m.group(1))
 
 
-def thai_date_long(iso_date) -> str:
-    """'25 ส.ค. 2569': day, Thai month abbreviation, four-digit Buddhist-era year (the way the manual writes dates)."""
-    d = pd.Timestamp(iso_date)
-    return f"{d.day} {THAI_MONTH_ABBR[d.month]} {d.year + 543}"
-
-
-def thai_month_long(iso_date) -> str:
-    """'ส.ค. 2569': Thai month abbreviation and four-digit Buddhist-era year."""
-    d = pd.Timestamp(iso_date)
-    return f"{THAI_MONTH_ABBR[d.month]} {d.year + 543}"
-
-
 def months_of_lag(guard_days: int, base_day: int, reference: str = "2026-10") -> int:
     """How many months the newest usable month trails the month of the run: the latest month whose end is at least `guard_days` before that month's run day (monthly_refresh.run_day)."""
     import monthly_refresh
@@ -369,7 +393,7 @@ def months_of_lag(guard_days: int, base_day: int, reference: str = "2026-10") ->
 def manual_values(config: dict = None, root: str = PROJECT_ROOT) -> dict:
     """{name: text} for every {braced} name in docs/user_manual.md. Sources: config.yaml (page_timestamps, backtest, leakage_guard, shadow, phase_e1_assumptions, inventory_page), the Trend
     pull's completeness.json (what the Trend tab was built from), data/inventory.json (the codes the stock panel and the other pages cover), the notice-bucket recorded output and the
-    segmentation script. Dates are Buddhist-era with a four-digit year, as the manual writes them."""
+    segmentation script. Dates use the one site format: Thai short month and the Buddhist year as two digits."""
     import json
     import yaml
     if config is None:
@@ -381,7 +405,6 @@ def manual_values(config: dict = None, root: str = PROJECT_ROOT) -> dict:
         pages_codes = json.load(f)["totals"]["codes"]
     import backtest_all_divisions
     buckets = sorted(int(d) for d in _read_csv("leadtime_notice_buckets_overall.csv")["min_notice_days"])
-    grid = config["phase_e1_assumptions"]["procurement_lead_time_days_grid"]
     scenario = config["phase_e1_assumptions"]["default_scenario"]
     ranges = config["inventory_page"]["tier_a_ranges"]
     guard = int(config["leakage_guard"]["min_margin_days"])
@@ -391,9 +414,9 @@ def manual_values(config: dict = None, root: str = PROJECT_ROOT) -> dict:
         "n_rounds": str(backtest_rounds(config)), "holdout_months": str(config["backtest"]["holdout_months"]),
         "n_focus_items": str(len(backtest_all_divisions.FOCUS_ITEMS)),
         "notice_bucket_first": str(buckets[0]), "notice_bucket_second": str(buckets[1]), "notice_bucket_last": str(buckets[-1]),
-        "trend_data_through": thai_date_long(trend["last_date"]), "trend_first_month": thai_month_long(trend["first_date"]), "trend_last_month": thai_month_long(trend["last_date"]),
+        "trend_data_through": thai_date_short(trend["last_date"]), "trend_first_month": thai_month_short(trend["first_date"]), "trend_last_month": thai_month_short(trend["last_date"]),
         "n_codes_trend": str(trend["n_codes_in_scope"]), "n_codes_pages": str(pages_codes),
-        "lead_grid_first": str(grid[0]), "lead_grid_last": str(grid[-1]),
+        "lead_confirmed_first": str(confirmed_lead_time_range(config)[0]), "lead_confirmed_last": str(confirmed_lead_time_range(config)[1]),
         "ctl_lead_time": str(scenario["procurement_lead_time_days"]), "ctl_assembly": str(scenario["assembly_time_days"]),
         "ctl_review": str(config["phase_e1_assumptions"]["review_interval_days_default"]), "ctl_service_level": f"{scenario['cycle_service_level']:.2f}",
         "ctl_holding_cost": f"{config['phase_e1_assumptions']['holding_cost_rate_annual']:.2f}",

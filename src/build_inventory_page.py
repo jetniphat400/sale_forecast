@@ -394,7 +394,7 @@ def build_page(**data_sources) -> str:
       <p>เลือกคลังที่นับเป็นของขายได้ · Min/Max ไม่เปลี่ยน เพราะคำนวณจากยอดขาย ไม่ได้ใช้ stock ปัจจุบัน</p>
       <div class="item-check-list" id="warehouse-checklist"></div>
       {render_notes_html('inventory.html', 'warehouse-checklist', values=note_values)}
-      <p class="hint" id="control-scope">ตัวควบคุมชุดนี้มีผลกับ Min/Max ผลรวม ตาราง และกราฟด้านขวา · ไม่มีผลกับกราฟเป้าการส่งทันของ PEM101</p>
+      <p class="hint" id="control-scope">ตัวควบคุมชุดนี้มีผลกับ Min/Max ผลรวม ตาราง และกราฟด้านขวา · ไม่มีผลกับกราฟเป้าการส่งทัน (ส่งไม่ช้ากว่าวันนัด) ของ PEM101</p>
       <!-- previously: ผลรวม (Totals) heading and stat boxes in the page body, recomputed every time a control or the division changes -->
       <div class="summary-box" id="summary-box">
         <div class="summary-title">ผลจากตัวควบคุม</div>
@@ -421,8 +421,8 @@ def build_page(**data_sources) -> str:
     <div class="table-scroll"><table class="report-table" id="pem107-alert-table">
       <thead><tr>
         <th>Product Type</th><th>Product Description</th><th>Product Code</th>
-        <th>Units ordered (from May 2026)</th><th>Units late</th>
-        <th>ส่งไม่ช้า (not-late) ตั้งแต่ May 2026</th><th>ส่งไม่ช้า (not-late) ก่อน May 2026</th><th>Share of all late units</th>
+        <th>Units ordered (ตั้งแต่ {split_label})</th><th>Units late</th>
+        <th>ส่งทัน (not-late) ตั้งแต่ {split_label}</th><th>ส่งทัน (not-late) ก่อน {split_label}</th><th>Share of all late units</th>
       </tr></thead>
       <tbody id="pem107-alert-table-body"></tbody>
     </table></div>
@@ -512,7 +512,7 @@ def build_page(**data_sources) -> str:
       <button type="button" id="preset-stretch" class="preset-btn"></button>
     </div>
     <div class="slider-control" style="margin:10px 0;">
-      <label for="notlate-slider">เป้าส่งไม่ช้า (not-late target): <b id="notlate-slider-value"></b></label><br>
+      <label for="notlate-slider">เป้าส่งทัน (not-late target): <b id="notlate-slider-value"></b></label><br>
       <input type="range" id="notlate-slider" step="0.01" style="width:100%;">
     </div>
     <div class="totals-box" id="curve-target-totals"></div>
@@ -875,7 +875,7 @@ function applyCurveTarget(targetNotLate) {{
   const diff = result.stock_value_median - ct.today_point.stock_value_thb;
   const diffPct = 100 * diff / ct.today_point.stock_value_thb;
   document.getElementById('curve-target-totals').innerHTML = `
-    <div class="stat">เป้าส่งไม่ช้า (not-late target)<b>${{result.not_late_median_pct.toFixed(2)}}%</b></div>
+    <div class="stat">เป้าส่งทัน (not-late target)<b>${{result.not_late_median_pct.toFixed(2)}}%</b></div>
     <div class="stat">Stock value (median)<b>${{fmtTHB(result.stock_value_median)}}</b></div>
     <div class="stat">Stock value band (min–max)<b>${{fmtTHB(result.stock_value_min)}} – ${{fmtTHB(result.stock_value_max)}}</b></div>
     <div class="stat">Change vs today's on-hand<b style="color:${{diff>=0?'#c0392b':'#1baf7a'}}">${{diff>=0?'+':''}}${{fmtTHB(diff)}} (${{diffPct>=0?'+':''}}${{diffPct.toFixed(1)}}%)</b></div>
@@ -905,8 +905,8 @@ function applyCurveTarget(targetNotLate) {{
     const today = state.rsc.today_not_late_pct, target = result.not_late_median_pct.toFixed(2);
     // Two approved sentences, chosen by the sign of the median ratio.
     const sentence = pct(ratio.median) >= 0
-      ? `ต้องเพิ่ม stock +${{magnitude(ratio.median)}}% (ช่วง ${{signed(ratio.min)}}% ถึง ${{signed(ratio.max)}}%) เพื่อขยับการส่งไม่ช้าจาก ${{today}}% เป็น ${{target}}%`
-      : `ลด stock ได้ ${{magnitude(ratio.median)}}% (ช่วง ${{signed(ratio.min)}}% ถึง ${{signed(ratio.max)}}%) ถ้ายอมให้การส่งไม่ช้าลดจาก ${{today}}% เป็น ${{target}}%`;
+      ? `ต้องเพิ่ม stock +${{magnitude(ratio.median)}}% (ช่วง ${{signed(ratio.min)}}% ถึง ${{signed(ratio.max)}}%) เพื่อขยับการส่งทันจาก ${{today}}% เป็น ${{target}}%`
+      : `ลด stock ได้ ${{magnitude(ratio.median)}}% (ช่วง ${{signed(ratio.min)}}% ถึง ${{signed(ratio.max)}}%) ถ้ายอมให้การส่งทันลดจาก ${{today}}% เป็น ${{target}}%`;
     rscNote.innerHTML = htmlComment('METRICS.md §24 relative_service_cost') + sentence + bandNote;
   }}
 
@@ -929,7 +929,7 @@ function applyCurveTarget(targetNotLate) {{
       mode: 'markers', marker: {{color:'#eb6834', size:12, symbol:'star'}} }},
     {{ x: [result.not_late_median_pct], y: [result.stock_value_median], name: 'selected target',
       mode: 'markers', marker: {{color:'#1baf7a', size:11, symbol:'diamond'}} }},
-  ], {{ margin: {{t:40, l:90}}, xaxis: {{title: {{text: 'ส่งไม่ช้า (not-late) %'}}}}, yaxis: {{title: {{text: 'Stock value (THB), median curve + band'}}}} }},
+  ], {{ margin: {{t:40, l:90}}, xaxis: {{title: {{text: 'ส่งทัน (not-late) %'}}}}, yaxis: {{title: {{text: 'Stock value (THB), median curve + band'}}}} }},
   {{responsive: true}}));
 }}
 
@@ -941,7 +941,7 @@ function renderCurveTarget(divisionData) {{
   curCurveTarget = {{ ct, grid: ct.grid, rsc: ct.relative_service_cost }};
 
   document.getElementById('curve-target-summary').innerHTML =
-    `ใช้ชุดค่าที่เป็นไปได้ ${{ct.n_distinct_members}} ชุด · วันนี้ ส่งไม่ช้า ${{ct.today_point.not_late_pct}}% ` +
+    `ใช้ชุดค่าที่เป็นไปได้ ${{ct.n_distinct_members}} ชุด · วันนี้ ส่งทัน ${{ct.today_point.not_late_pct}}% ` +
     `มูลค่า stock ${{Math.round(ct.today_point.stock_value_thb).toLocaleString()}} บาท` +
     htmlComment('previous English wording: N distinct ensemble members (deduplicated on reorder level, order-up-to level, review interval and replenishment lead time). Today point: not_late, stock value THB. Sources: METRICS.md Sec.22, ' + ct.source_report + '; today point: ' + ct.today_point.source) +
     `<br><span style="color:#b45309;">${{ct.item_set_note}}</span>` + htmlComment(ct.item_set_ref || '');
@@ -991,9 +991,9 @@ function renderPageTimestamps() {{
   const builtShown = String(DATA.page_built_at).split(' -- ')[0];
   document.getElementById('page-timestamps-note').innerHTML =
     htmlComment('page_built_at; ' + String(DATA.page_built_at).slice(builtShown.length)) +
-    '<b>หน้าสร้างเมื่อ:</b> ' + builtShown +
-    ' &nbsp;|&nbsp; ' + htmlComment('model_calibrated_at') + '<b>ปรับให้ตรงกับผลจริงเมื่อ:</b> ' + mc.run_date + ' ICT (UTC+7), ' +
-    'ข้อมูลถึงเดือน ' + mc.last_month_of_data + ' ' + htmlComment('source: ' + mc.source);
+    '<b>หน้าสร้างเมื่อ:</b> ' + thaiDateTime(builtShown) + ' ICT (UTC+7)' +
+    ' &nbsp;|&nbsp; ' + htmlComment('model_calibrated_at') + '<b>ปรับให้ตรงกับผลจริงเมื่อ:</b> ' + thaiDateShort(mc.run_date) + ' ICT (UTC+7), ' +
+    'ข้อมูลถึงเดือน ' + thaiMonthShort(mc.last_month_of_data) + ' ' + htmlComment('source: ' + mc.source);
 }}
 
 function renderPem107Alert(division) {{
@@ -1007,9 +1007,9 @@ function renderPem107Alert(division) {{
 
   const fmtPct = v => (v === null || v === undefined) ? 'n/a' : v.toFixed(1) + '%';
   document.getElementById('pem107-alert-headline').innerHTML =
-    `<b>not_late (unit-weighted, Omni Channel) ก่อน ${{a.split_date}}: ${{fmtPct(a.not_late_before_may_2026_pct)}}</b> ` +
-    `(n=${{a.units_before_may_2026.toLocaleString()}} ชิ้น, ตั้งแต่ ${{a.before_window_start}}) ` +
-    `&rarr; <b>ตั้งแต่ ${{a.split_date}}: ${{fmtPct(a.not_late_from_may_2026_pct)}}</b> ` +
+    `<b>not_late (unit-weighted, Omni Channel) ก่อน ${{thaiDateShort(a.split_date)}}: ${{fmtPct(a.not_late_before_may_2026_pct)}}</b> ` +
+    `(n=${{a.units_before_may_2026.toLocaleString()}} ชิ้น, ตั้งแต่ ${{thaiDateShort(a.before_window_start)}}) ` +
+    `&rarr; <b>ตั้งแต่ ${{thaiDateShort(a.split_date)}}: ${{fmtPct(a.not_late_from_may_2026_pct)}}</b> ` +
     `(n=${{a.units_from_may_2026.toLocaleString()}} ชิ้น)`;
 
   const tbody = document.getElementById('pem107-alert-table-body');
@@ -1037,12 +1037,12 @@ function renderPem107Alert(division) {{
   }}
 
   document.getElementById('pem107-alert-source').innerHTML =
-    `ข้อมูลดึงเมื่อ ${{a.data_pulled_at}}` +
+    `ข้อมูลดึงเมื่อ ${{thaiDateTime(a.data_pulled_at, true)}}` +
     htmlComment('source: ' + a.source.pricelist + ' · ' + a.source.delivery + ' · ' + a.source.metric);
   const lbl = a.split_label;
   document.getElementById('pem107-alert-limitations').innerHTML =
     'ข้อจำกัด: ' + [
-      `ก่อน ${{lbl}} ส่งไม่ช้า ${{a.not_late_before_may_2026_pct.toFixed(1)}}% จาก ${{a.units_before_may_2026.toLocaleString()}} ชิ้น`,
+      `ก่อน ${{lbl}} ส่งทัน ${{a.not_late_before_may_2026_pct.toFixed(1)}}% จาก ${{a.units_before_may_2026.toLocaleString()}} ชิ้น`,
       `หลัง ${{lbl}} จำนวนยังน้อย (${{a.units_from_may_2026.toLocaleString()}} ชิ้น) ตัวเลขรายเดือนจึงแกว่งมาก`,
       'ยังไม่รู้สาเหตุที่ส่งทันลดลง',
       `ยังไม่ยืนยันว่า ${{lbl}} แยกอะไรออกจากกัน stock หรือสายการผลิต`,
@@ -1073,7 +1073,7 @@ function onDivisionChange() {{
   const pullShown = String(divisionData.snapshot_pull_date).split(' (')[0];
   const pullNote = String(divisionData.snapshot_pull_date).slice(pullShown.length).trim();
   document.getElementById('snapshot-note').innerHTML =
-    htmlComment('data_pulled_at') + '<b>ข้อมูลดึงเมื่อ:</b> ' + pullShown + ' ICT (UTC+7)' + (pullNote ? htmlComment(pullNote) : '') + staleNote;
+    htmlComment('data_pulled_at') + '<b>ข้อมูลดึงเมื่อ:</b> ' + thaiDateTime(pullShown, true) + ' ICT (UTC+7)' + (pullNote ? htmlComment(pullNote) : '') + staleNote;
   renderWarehouseChecklist(divisionData);
   renderNoPolicyTable(divisionData);
   renderCurveTarget(divisionData);
@@ -1111,15 +1111,8 @@ function onControlChange(noFlash) {{
 const STOCK_JSON_URL = {stock_json_url_js};
 const STOCK_FAIL_MSG = 'โหลดข้อมูล stock ไม่ได้ · ตัวเลขอื่นในหน้านี้ยังใช้ได้ตามปกติ';
 const STOCK_UNKNOWN = '–';
-const THAI_MONTHS = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+{rv.JS_THAI_DATES}
 let STOCK = null, STOCK_OK = false;
-
-function thaiDateTime(s) {{
-  // 'YYYY-MM-DD HH:MM[:SS]' (this machine's own clock, ICT) as d MMM yy HH:mm with the Buddhist year.
-  const m = /^(\\d{{4}})-(\\d{{2}})-(\\d{{2}})[ T](\\d{{2}}):(\\d{{2}})/.exec(s || '');
-  if (!m) return 'ไม่ทราบ';
-  return Number(m[3]) + ' ' + THAI_MONTHS[Number(m[2]) - 1] + ' ' + String(Number(m[1]) + 543).slice(-2) + ' ' + m[4] + ':' + m[5];
-}}
 
 function loadStock(done) {{
   let finished = false;

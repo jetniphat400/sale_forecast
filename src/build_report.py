@@ -204,6 +204,7 @@ def gather_business_findings(config: dict) -> dict:
         "ontime_by_year": ontime,
         "lead_grid": lead_grid,
         "lead_default": lead_default,
+        "lead_confirmed": rv.confirmed_lead_time_range(config),
     }
 
 
@@ -622,7 +623,7 @@ def gather_freshness() -> dict:
         "กราฟระยะเวลาแจ้งล่วงหน้า": _source_pull_date("leadtime_notice_buckets_overall.csv"),
         "กราฟ MAE โมเดลพื้นฐาน": _source_pull_date("focus_items_test_all.csv"),
         "กราฟส่งตรงวันพอดี": _source_pull_date("delivery_by_year.csv"),
-        "กราฟส่งไม่ช้า": _source_pull_date("delivery_not_late_by_year.csv"),
+        "กราฟส่งทัน": _source_pull_date("delivery_not_late_by_year.csv"),
     }
     section_sources = {
         "ช่วงข้อมูลหลัก": "output/data/processed_full_category_sales_monthly_forecastDate.csv (forecast/actual, scope, usable range), column snapshot_pull_date",
@@ -631,7 +632,7 @@ def gather_freshness() -> dict:
         "กราฟระยะเวลาแจ้งล่วงหน้า": "leadtime_notice_buckets_overall.csv, column snapshot_pull_date",
         "กราฟ MAE โมเดลพื้นฐาน": "focus_items_test_all.csv, column snapshot_pull_date",
         "กราฟส่งตรงวันพอดี": "delivery_by_year.csv, column snapshot_pull_date",
-        "กราฟส่งไม่ช้า": "delivery_not_late_by_year.csv, column snapshot_pull_date, itself read forward from the same Cube_CES pull as the on-time chart (no new DB call)",
+        "กราฟส่งทัน": "delivery_not_late_by_year.csv, column snapshot_pull_date, itself read forward from the same Cube_CES pull as the on-time chart (no new DB call)",
     }
     data_pulled_at_min = min(sections.values())
     return {"sections": sections, "section_sources": section_sources, "data_pulled_at_min": data_pulled_at_min}
@@ -791,7 +792,7 @@ def render_page(config: dict) -> str:
     stale_sections = [label for label, age in section_ages.items() if age > STALENESS_THRESHOLD_DAYS]
 
     freshness_rows = "".join(
-        f"<tr><td><!-- source: {freshness['section_sources'][label]} -->{html.escape(label)}</td><td>{value}</td>"
+        f"<tr><td><!-- source: {freshness['section_sources'][label]} -->{html.escape(label)}</td><td>{rv.thai_datetime_short(value, seconds=len(str(value).strip()) >= 19)}</td>"
         f"<td>{f'เก่ากว่า {STALENESS_THRESHOLD_DAYS} วัน (Stale)' if label in stale_sections else 'ใหม่ (Fresh)'}</td></tr>"
         for label, value in freshness["sections"].items()
     )
@@ -876,8 +877,8 @@ def render_page(config: dict) -> str:
         ลูกค้าให้เวลาแจ้งล่วงหน้าก่อนส่งมอบเพียง <b>{fmt_num(biz['median_notice'], 0)}</b> วัน
         (median) ซึ่งสั้นกว่าระยะเวลาจัดหาวัตถุดิบมาก
         {cite('delivery_by_year.csv', 'pct_on_time')}
-        สัดส่วนส่งตรงวันพอดี (exact-day delivery: ส่งวันนัดเป๊ะ ไม่นับส่งก่อน) ปรับตัวขึ้นจาก {fmt_num(ontime_2023_val, 1)}% ({ontime_first_year}) เป็น
-        <b>{fmt_num(ontime_2026_val, 1)}%</b> ในปี {ontime_last_year} (ข้อมูลบางส่วน)
+        สัดส่วนส่งตรงวันพอดี (exact-day delivery: ส่งวันนัดเป๊ะ ไม่นับส่งก่อน) ปรับตัวขึ้นจาก {fmt_num(ontime_2023_val, 1)}% (ปี {rv.thai_year_short(ontime_first_year)}) เป็น
+        <b>{fmt_num(ontime_2026_val, 1)}%</b> ในปี {rv.thai_year_short(ontime_last_year)} (ข้อมูลบางส่วน)
       </p>
     </section>"""
 
@@ -993,16 +994,16 @@ def render_page(config: dict) -> str:
         {cite('leadtime_notice_buckets_overall.csv', 'pct_of_orders')}
         สัดส่วนออเดอร์ที่แจ้งล่วงหน้า &ge; 1 เดือน: <b>{fmt_num(biz['pct_one_month'], 2)}%</b> &nbsp;|&nbsp;
         {cite_config('phase_e1_assumptions.procurement_lead_time_days_grid')}
-        ระยะเวลาสั่งวัตถุดิบถึงได้ของ (Procurement lead time ไม่ใช่ระยะแจ้งล่วงหน้าของลูกค้า): <b>{biz['lead_grid'][0]}-{biz['lead_grid'][-1]}</b> วัน
-        (ค่าที่ใช้ {biz['lead_default']} วัน)
+        ระยะเวลาสั่งวัตถุดิบถึงได้ของ (Procurement lead time ไม่ใช่ระยะแจ้งล่วงหน้าของลูกค้า): <b>{biz['lead_confirmed'][0]}-{biz['lead_confirmed'][1]}</b> วัน
+        (ช่วงที่ธุรกิจยืนยัน ค่าที่ใช้ {biz['lead_default']} วัน · ช่วงทดสอบความไวเพิ่มถึง {biz['lead_grid'][-1]} วัน)
       </p>
       <h3>การกระจายของระยะเวลาแจ้งล่วงหน้า (Notice period)</h3>
       {cite('leadtime_notice_buckets_overall.csv', 'min_notice_days / pct_of_orders')}
       <div id="chart-notice" class="plotly-chart"></div>
       {render_notes_html('sales_report.html', 'chart-notice', values=note_values)}
-      <h3>สัดส่วนส่งมอบตรงวันครบกำหนดเป๊ะ vs. ส่งไม่ล่าช้า ({ontime_first_year}-{ontime_last_year})</h3>
+      <h3>สัดส่วนส่งมอบตรงวันครบกำหนดเป๊ะ vs. ส่งทัน (ส่งไม่ช้ากว่าวันนัด) (ปี {rv.thai_year_short(ontime_first_year)}-{rv.thai_year_short(ontime_last_year)})</h3>
       <!-- Previous wording, kept off screen: on_time_exact = delivered exactly on the due date (PlanDelDate), counted by number of orders (row-weighted), PEM101 128 items -- src/investigations/delivery_performance.py:71-75 (classify_delay) and lines 155-161 (by_year aggregation, column pct_on_time); METRICS.md §19 forbids using this figure alone as a fill-rate benchmark (the earlier 73.2% incident), so not_late is shown alongside. not_late = delivered on or before ForecastDelDate, unit-weighted (ActualQty), not by order count; unit-weighted because METRICS.md §10 (fill_rate) is defined as unit-based, not order-based, and the figure is read alongside fill_rate/service level (src/investigations/task2a_delivery_notlate_by_year.py, computed from the same Cube_CES data as on_time_exact, no new pull). -->
-      <p class="hint">เส้นส่งไม่ช้านับเป็นชิ้น เพราะสิ่งที่ลูกค้าสนใจคือได้ของครบทันไหม ไม่ใช่จำนวนใบสั่ง</p>
+      <p class="hint">เส้นส่งทันนับเป็นชิ้น เพราะสิ่งที่ลูกค้าสนใจคือได้ของครบทันไหม ไม่ใช่จำนวนใบสั่ง</p>
       {cite('delivery_by_year.csv', 'year / pct_on_time')}
       {cite('delivery_not_late_by_year.csv', 'year / not_late_pct_unit_weighted')}
       <div id="chart-ontime" class="plotly-chart"></div>
@@ -1102,7 +1103,7 @@ def render_page(config: dict) -> str:
       <h2>7. ผลลัพธ์ (Results)</h2>
       {cite('phaseC_step2_transferability_per_division.csv', 'first_test_month / last_test_month')}
       <!-- rolling-origin backtest window, {backtest_window['n_origins']} origins; METRICS.md §39 -->
-      <p class="hint">ตัวเลขทุกตัวด้านล่างมาจากการทดสอบช่วง {backtest_window['first_test_month']} ถึง {backtest_window['last_test_month']}</p>
+      <p class="hint">ตัวเลขทุกตัวด้านล่างมาจากการทดสอบช่วง {rv.thai_month_short(backtest_window['first_test_month'])} ถึง {rv.thai_month_short(backtest_window['last_test_month'])}</p>
       <div class="controls">
         <label>ฝ่าย (Division): <select id="filterDivision"><option value="__all__">ทั้งหมด</option>{div_options}</select></label>
         <span class="hint">(มีผลกับตารางหลัก ตารางรอง และกราฟ Rolling-origin · ไม่มีผลกับกราฟ Forecast vs Actual)</span>
@@ -1299,6 +1300,8 @@ def render_client_js() -> str:
 const REPORT_DATA = JSON.parse(document.getElementById('report-data').textContent);
 const MODEL_COLORS = """ + json.dumps(MODEL_COLORS) + """;
 const PLOT_CONFIG = {responsive: true, displaylogo: false};
+""" + rv.JS_THAI_DATES + """
+const yearLabel = y => 'ปี ' + thaiYearShort(y);
 const CHART_FAIL_MSG = 'กราฟโหลดไม่ได้ เครือข่ายอาจบล็อกไลบรารีกราฟ · ตัวเลขและตารางยังใช้ได้ตามปกติ';
 // Text, tables and the data-date table never depend on the charting library: when it did not load, each chart
 // area shows the message instead and the rest of the page carries on.
@@ -1331,14 +1334,14 @@ function drawOntime() {
   if (!chartLibraryOk('chart-ontime')) return;
   Plotly.newPlot('chart-ontime', [
     {
-      x: REPORT_DATA.ontime.years, y: REPORT_DATA.ontime.values, type: 'scatter', mode: 'lines+markers',
+      x: REPORT_DATA.ontime.years.map(yearLabel), y: REPORT_DATA.ontime.values, type: 'scatter', mode: 'lines+markers',
       name: 'ส่งตรงวันพอดี (นับเป็นรายการ)', line: {color: '#2a78d6'},
       hovertemplate: '%{x}: %{y:.1f}%<extra>ส่งตรงวันพอดี (นับเป็นรายการ)</extra>'
     },
     {
-      x: REPORT_DATA.notlate.years, y: REPORT_DATA.notlate.values, type: 'scatter', mode: 'lines+markers',
-      name: 'ส่งไม่ช้า (นับเป็นชิ้น)', line: {color: '#1baf7a'},
-      hovertemplate: '%{x}: %{y:.1f}%<extra>ส่งไม่ช้า (นับเป็นชิ้น)</extra>'
+      x: REPORT_DATA.notlate.years.map(yearLabel), y: REPORT_DATA.notlate.values, type: 'scatter', mode: 'lines+markers',
+      name: 'ส่งทัน (นับเป็นชิ้น)', line: {color: '#1baf7a'},
+      hovertemplate: '%{x}: %{y:.1f}%<extra>ส่งทัน (นับเป็นชิ้น)</extra>'
     }
   ], Object.assign({}, LAYOUT_BASE, {xaxis: {title: {text: 'ปี'}}, yaxis: {title: {text: '%'}}}), PLOT_CONFIG);
 }

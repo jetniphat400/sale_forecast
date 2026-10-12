@@ -114,7 +114,7 @@ def test_totals_tables_and_summary_are_filled_on_load(desktop):
     assert len(s["minmax"]) > 0, "item table is empty on load"
     assert desktop.ev("document.querySelector('#summary-box .summary-title').textContent") == "ผลจากตัวควบคุม"
     assert desktop.ev("document.getElementById('control-scope').textContent") == (
-        "ตัวควบคุมชุดนี้มีผลกับ Min/Max ผลรวม ตาราง และกราฟด้านขวา · ไม่มีผลกับกราฟเป้าการส่งทันของ PEM101")
+        "ตัวควบคุมชุดนี้มีผลกับ Min/Max ผลรวม ตาราง และกราฟด้านขวา · ไม่มีผลกับกราฟเป้าการส่งทัน (ส่งไม่ช้ากว่าวันนัด) ของ PEM101")
     assert not desktop.errors, desktop.errors
 
 
@@ -306,14 +306,14 @@ def test_relative_cost_sentence_follows_the_sign_of_the_median(desktop):
     e.pump(0.3)
     today_pct = e.ev("document.getElementById('preset-today-lowest').textContent")
     up = _target_sentence(e)
-    m = re.match(r"ต้องเพิ่ม stock \+(\d+\.\d)% " + range_re + r" เพื่อขยับการส่งไม่ช้าจาก (\d+\.\d+)% เป็น (\d+\.\d+)%", up)
+    m = re.match(r"ต้องเพิ่ม stock \+(\d+\.\d)% " + range_re + r" เพื่อขยับการส่งทันจาก (\d+\.\d+)% เป็น (\d+\.\d+)%", up)
     assert m, f"sentence above today is not the increase sentence: {up}"
     assert float(m.group(1)) > 0 and m.group(2) == "+" and m.group(4) == "+", up
     assert float(m.group(7)) > float(m.group(6))
     # below today: the reduction sentence, range bounds carry minus signs
     _set_target(e, (lo + hi) / 2)
     down = _target_sentence(e)
-    m = re.match(r"ลด stock ได้ (\d+\.\d)% " + range_re + r" ถ้ายอมให้การส่งไม่ช้าลดจาก (\d+\.\d+)% เป็น (\d+\.\d+)%", down)
+    m = re.match(r"ลด stock ได้ (\d+\.\d)% " + range_re + r" ถ้ายอมให้การส่งทันลดจาก (\d+\.\d+)% เป็น (\d+\.\d+)%", down)
     assert m, f"sentence below today is not the reduction sentence: {down}"
     assert m.group(2) == minus and m.group(4) == minus, f"a reduction range must carry minus signs: {down}"
     assert float(m.group(7)) < float(m.group(6))

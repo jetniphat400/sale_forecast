@@ -338,7 +338,7 @@ def test_sales_report_numbers_follow_their_sources(two_builds):
     fb, fp = float(_first(r"กระทบประมาณ ([\d.]+)% ของรายการ", b)), float(_first(r"กระทบประมาณ ([\d.]+)% ของรายการ", p))
     assert fp == pytest.approx(2 * fb, abs=0.11), (fb, fp)
     # on-time 2023 value in the executive summary
-    assert _first(r"ปรับตัวขึ้นจาก [\d.]+% \((\d{4})\)", b) == "2023" and _first(r"ปรับตัวขึ้นจาก [\d.]+% \((\d{4})\)", p) == "2024"
+    assert _first(r"ปรับตัวขึ้นจาก [\d.]+% \(ปี (\d{2})\)", b) == "66" and _first(r"ปรับตัวขึ้นจาก [\d.]+% \(ปี (\d{2})\)", p) == "67"
     # staleness threshold from config
     assert "เก่ากว่า 1 วัน" in p and "เก่ากว่า 1 วัน" not in b
     # the "does Top-down beat the others" block: percentages and verdicts come from topdown_significance.csv
@@ -370,7 +370,7 @@ def test_pilot_data_age_drives_the_staleness_notice_in_both_directions(tmp_path,
     path = build_report.build_report(output_path=str(tmp_path / "sales.html"))
     with open(path, encoding="utf-8") as f:
         shown, status = _pilot_row(f.read())
-    assert shown == stamp, "the page must show the data date the test set"
+    assert shown == rv.thai_datetime_short(stamp, seconds=True), "the page must show the data date the test set"
     assert status == ("เก่ากว่า 1 วัน (Stale)" if expect_notice else "ใหม่ (Fresh)")
 
 
@@ -396,8 +396,8 @@ def test_inventory_page_numbers_follow_their_sources(two_builds):
 
 
 def test_thai_month_names_cover_every_month():
-    assert rv.thai_month_year("2026-05-01") == "พ.ค. 2569"
-    assert rv.thai_month_year("2026-10-01") == "ต.ค. 2569"
+    assert rv.thai_month_year("2026-05-01") == "พ.ค. 69"
+    assert rv.thai_month_year("2026-10-01") == "ต.ค. 69"
     assert len({rv.thai_month_year(f"2026-{m:02d}-01") for m in range(1, 13)}) == 12
 
 
@@ -424,18 +424,18 @@ def test_numbers_from_the_remaining_typed_list_follow_their_sources(two_builds):
     # the report only states them in an HTML comment read from that file
     assert "|t| &gt;= 2" in b and "Wilcoxon p &lt; 0.05" in b
     # year range in the delivery section follows the years present
-    assert "(2023-2026)" in b and "(2024-2026)" in p and "(2023-2026)" not in p
+    assert "(ปี 66-69)" in b and "(ปี 67-69)" in p and "(ปี 66-69)" not in p
     # numbers inside the manual notes that describe the data or a control
     assert "≥30 วัน, ≥60 วัน … ≥180 วัน" in b and "≥30 วัน, ≥60 วัน … ≥240 วัน" in p
     assert "รหัสสินค้า 3 ตัว" in b and "รหัสสินค้า 2 ตัว" in p
     assert "รอบทดสอบที่ 1-7 " in b and "รอบทดสอบที่ 1-7 " not in p
     assert "เดือนที่ 1-6 หลังจุด" in b and "เดือนที่ 1-5 หลังจุด" in p
-    assert "▸ 2 เส้น ส่งไม่ช้า" in b and "▸ 1 เส้น ส่งไม่ช้า" in p
+    assert "▸ 2 เส้น ส่งทัน" in b and "▸ 1 เส้น ส่งทัน" in p
     ib, ip = base.inventory_html, pert.inventory_html
     assert "cycle service level (0.80-0.99)" in ib and "cycle service level (0.85-0.97)" in ip
     assert "ใช้ปุ่มเป้าสำเร็จรูป 3 ปุ่ม" in ib and "ใช้ปุ่มเป้าสำเร็จรูป 4 ปุ่ม" in ip
-    assert "ก่อนและหลัง พ.ค. 2569 พร้อม" in ib and "ก่อนและหลัง มิ.ย. 2569 พร้อม" in ip
-    assert "ตั้งแต่ พ.ค. 2569</div>" in ib and "ตั้งแต่ มิ.ย. 2569</div>" in ip
+    assert "ก่อนและหลัง พ.ค. 69 พร้อม" in ib and "ก่อนและหลัง มิ.ย. 69 พร้อม" in ip
+    assert "ตั้งแต่ พ.ค. 69</div>" in ib and "ตั้งแต่ มิ.ย. 69</div>" in ip
     # the chart axis of the trade-off follows the configured range
     assert base.data["tier_a_ranges"]["cycle_service_level"] == [0.8, 0.99] and pert.data["tier_a_ranges"]["cycle_service_level"] == [0.85, 0.97]
 
@@ -467,7 +467,7 @@ def test_script_filled_lines_follow_their_sources(two_builds):
         grid_b = base.data["divisions"]["PEM101"]["curve_target"]
         grid_p = pert.data["divisions"]["PEM101"]["curve_target"]
         assert f"{grid_p['n_distinct_members']} ชุด" in sp and f"{grid_b['n_distinct_members']} ชุด" in sb and sb != sp
-        assert "ส่งไม่ช้า 91.37%" in sp and "ส่งไม่ช้า 91.37%" not in sb
+        assert "ส่งทัน 91.37%" in sp and "ส่งทัน 91.37%" not in sb
         assert f"{round(grid_p['today_point']['stock_value_thb']):,} บาท" in sp
         assert "จาก 90.11% เป็น" in rp and "จาก 90.11% เป็น" not in rb
         assert "12.3%" in ap and "987,654 ชิ้น" in ap and "4,321 ชิ้น" in ap
@@ -605,3 +605,32 @@ def test_new_inventory_page_values_follow_their_sources(two_builds):
     assert nb != np_ and "{" not in nb and "}" not in np_
     mb, mp_ = re.search(r"ย้อนหลัง (\S+ \d\d) ถึง (\S+ \d\d) ", nb), re.search(r"ย้อนหลัง (\S+ \d\d) ถึง (\S+ \d\d) ", np_)
     assert mb.group(1) == mp_.group(1) and mb.group(2) != mp_.group(2) and mp_.group(2) == "พ.ย. 69"        # the end of the sales history moved two months, the start did not
+
+
+# ------------------------------------------------------------------ the one year format of the site (decision of the user, 2026-10-12): Thai short month and the Buddhist year as two digits
+
+def test_the_one_date_format_month_date_year_and_time():
+    assert rv.thai_month_short("2026-10") == "ต.ค. 69" and rv.thai_month_year("2026-10-01") == "ต.ค. 69"
+    assert rv.thai_date_short("2026-12-07") == "7 ธ.ค. 69" and rv.thai_date_short("2027-01-05") == "5 ม.ค. 70"
+    assert rv.thai_month_short("2027-01") == "ม.ค. 70"
+    assert rv.thai_datetime_short("2026-10-05 07:41:06") == "5 ต.ค. 69 07:41"                         # a time only where one is shown: minutes by default
+    assert rv.thai_datetime_short("2026-10-05 07:41:06", seconds=True) == "5 ต.ค. 69 07:41:06"        # ... and the seconds where the page already shows them
+    assert rv.thai_year_short(2026) == "69" and rv.thai_year_short(2027) == "70"
+
+
+def test_the_calibration_window_and_the_manual_values_use_the_same_format():
+    import maxmin_v1 as mm
+    assert mm.thai_window("2024-01", "2025-12") == "ม.ค. 67 ถึง ธ.ค. 68"
+    values = rv.manual_values()
+    assert re.fullmatch(r"\d{1,2} \S+ \d{2}", values["trend_data_through"]) and re.fullmatch(r"\S+ \d{2}", values["trend_first_month"]) and re.fullmatch(r"\S+ \d{2}", values["trend_last_month"])
+
+
+def test_the_script_text_of_the_formatter_is_one_text_in_every_page():
+    for rel in ("index.html", "forecast/inventory.html", "forecast/sales_report.html"):
+        with open(os.path.join(rv.PROJECT_ROOT, rel), encoding="utf-8") as f:
+            text = f.read()
+        assert text.count(rv.JS_THAI_DATES) == 1, f"{rel} does not carry the shared date formatter exactly once"
+    for rel in ("index.html", "forecast/inventory.html", "forecast/sales_report.html", "forecast/operation_plan.html", "forecast/material_plan.html"):
+        with open(os.path.join(rv.PROJECT_ROOT, rel), encoding="utf-8") as f:
+            text = f.read()
+        assert text.count("const THAI_MONTHS") <= 1 and "beLabel" not in text and "INV_THAI_MONTHS" not in text and "+ 543" not in text.replace("Number(y) + 543", ""), rel

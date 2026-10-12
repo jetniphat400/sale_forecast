@@ -382,7 +382,7 @@ def test_the_assumption_records_are_built_with_the_approved_text_and_the_window_
     for rid, topic, unknown, used, affects in NEW_ASSUMPTIONS:
         r = recs[rid]
         assert (r["topic"], r["unknown"], r["used_now"], r["affects"]) == (topic, unknown, used.format(window=window), affects)
-    assert window == "มกราคม 2567 ถึง ธันวาคม 2568"
+    assert window == "ม.ค. 67 ถึง ธ.ค. 68"
 
 
 def test_the_calibration_window_in_config_equals_the_engines_constants():
@@ -394,7 +394,7 @@ def test_the_calibration_window_in_config_equals_the_engines_constants():
 
 
 def test_the_window_follows_config_and_the_thai_year_is_buddhist():
-    assert mm.thai_window("2024-07", "2026-02") == "กรกฎาคม 2567 ถึง กุมภาพันธ์ 2569"
+    assert mm.thai_window("2024-07", "2026-02") == "ก.ค. 67 ถึง ก.พ. 69"
 
 
 def test_the_tracked_assumptions_file_is_what_the_builder_writes(tmp_path):
@@ -622,7 +622,7 @@ def test_the_material_plan_page_shows_its_approved_text_sections_and_tables(edge
     assert edge.ev("document.getElementById('late-title').compareDocumentPosition(document.getElementById('material-table')) & 4") == 4      # both sections sit above the main table
     for key, table in (("within", "within-table"), ("late", "late-table")):
         assert edge.ev("[...document.querySelectorAll('#%s thead th')].map(t=>t.innerText.trim())" % table) == \
-            ["รหัสวัตถุดิบ", "ชื่อ", "ใช้ในสินค้า (รหัส)", "ต้องสั่งเพิ่ม (Order qty)", "สั่งภายในวันที่ (Order-by date)", "lead time (วัน)", "ที่มา lead time"]
+            ["รหัสวัตถุดิบ", "ชื่อ", "ใช้ในสินค้า (รหัส · +n คือมีอีก n รหัส)", "ต้องสั่งเพิ่ม (Order qty)", "สั่งภายในวันที่ (Order-by date)", "lead time (วัน)", "ที่มา lead time"]
         rows = edge.ev("[...document.querySelectorAll('#%s tbody tr')].map(r=>[...r.children].map(c=>c.innerText.trim()))" % table)
         assert len(rows) == v["n_" + key + "_all"] and {r[6] for r in rows} <= {"จากใบสั่งซื้อที่ผ่านมา", "ผู้ขายแจ้งเวลา", "ประมาณการ (ไม่มีข้อมูลจริง)"}
         lst = v[key].reset_index(drop=True)
