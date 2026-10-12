@@ -1502,9 +1502,12 @@ evaluation run and the run at which a target month is scoreable are derived from
                    description, else in the code (a code starting with LABOR- or LABOR_ in any case, with an ordinary description, is ค่าแรง). Evidence shown: จากชื่อ or จากรหัส.
                    รอตรวจ: no keyword, and any of: item group 2000, 400 or 4012 (the groups the ERP item master gives to labor and processing charges; the evidence is จากกลุ่มสินค้า), no item-master record
                    (ไม่มีข้อมูลในระบบ), a unit of measure that names work (HOUR, JOB, LOT; หน่วยนับ). A line matching both gets the paid remark (the overlap is counted).
-                   Prompt 23 (2026-10-12, the user's answers, business facts): (1) ไม่ใช่สินค้า · ผู้ใช้ยืนยัน = the keywords SLIT COST and COST OF PAPER in the name or code, plus five codes the user confirmed
+                   Prompt 23 (2026-10-12, the user's answers, business facts): (1) ไม่ใช่สินค้า · ผู้ใช้ยืนยัน = the keywords SLIT COST and COST OF PAPER in the name or code, plus four codes the user confirmed
                    (config user_confirmed); (2) a code starting with LABOR- or LABOR_ is labor cost and is never รอตรวจ: ค่าจ้าง or ค่าบริการ when the name says so, else ค่าแรง · จากรหัส; (3) OUTSOURCE lines are
-                   ค่าจ้าง · จากชื่อ; the five name-review exceptions are removed (config exceptions is empty). ไม่ใช่สินค้า lines are left out of the counts like the other paid remarks.
+                   ค่าจ้าง · จากชื่อ; the five name-review exceptions are removed. ไม่ใช่สินค้า lines are left out of the counts like the other paid remarks.
+                   Prompt 24 (2026-10-12, user): one code, 02-00-R-7048, is "probably goods": it leaves the confirmed not-goods list and is moved to รอตรวจ · ชื่อเป็นชิ้นส่วน (counted) by an explicit config exception
+                   (config exceptions, reason "user 2026-10-12: probably goods"). Effect on the page counts (plan date 2026-10-08): the all-lines list 2109 counted, 135 not counted becomes 2110 and 134 with 1 รอตรวจ; the
+                   30-day and late lists and the executive watch-out (533) do not contain the code and do not change.
     effect       = the recorded plan files are unchanged by the remarks (every line, every quantity, every date). The remarks are in the plan's meta; the page shows the remark beside the code in every table and, under each
                    list (30-day, late, all lines), one line: all lines, lines counted, lines left out (paid remarks) and the lines waiting for a check (counted). The executive tab's late-materials watch-out is the counted late
                    lines. A paid-remark line is in no summary count; a รอตรวจ line is in every count.

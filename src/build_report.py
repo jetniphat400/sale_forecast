@@ -250,7 +250,7 @@ def significance_line(rows: pd.DataFrame, other: str) -> str:
     for verdict, word in (("better", "น้อยกว่า"), ("worse", "มากกว่า")):
         for _, r in rows[rows["verdict"] == verdict].iterrows():
             small = " แม้จะเล็ก" if abs(float(r["rel_diff_pct"])) < SMALL_DIFFERENCE_PCT else ""
-            phrases.append(f"{r['division']} ทายพลาด{word}ประมาณ {significance_pct_text(r['rel_diff_pct'])}% ทดสอบแล้วความต่างนี้เกิดจริง{small}")
+            phrases.append(f"{r['division']} ทายพลาด{word}ประมาณ {significance_pct_text(r['rel_diff_pct'])}% (วัดจาก MAE) ทดสอบทางสถิติแล้วว่าต่างกันอย่างมีนัยสำคัญ (statistically significant ไม่น่าเกิดจากความบังเอิญ){small}")
     unclear = list(rows[rows["verdict"] == "unclear"]["division"])
     if unclear:
         phrases.append(", ".join(unclear) + " ใกล้เคียงกันจนบอกไม่ได้ว่าวิธีไหนดีกว่า")
@@ -792,7 +792,7 @@ def render_page(config: dict) -> str:
 
     freshness_rows = "".join(
         f"<tr><td><!-- source: {freshness['section_sources'][label]} -->{html.escape(label)}</td><td>{value}</td>"
-        f"<td>{f'เก่ากว่า {STALENESS_THRESHOLD_DAYS} วัน' if label in stale_sections else 'ใหม่'}</td></tr>"
+        f"<td>{f'เก่ากว่า {STALENESS_THRESHOLD_DAYS} วัน (Stale)' if label in stale_sections else 'ใหม่ (Fresh)'}</td></tr>"
         for label, value in freshness["sections"].items()
     )
     staleness_html = (
@@ -868,10 +868,10 @@ def render_page(config: dict) -> str:
       <p>{html.escape(report['model_description'].format(**report_values))}</p>
       <p>
         {cite('phaseC_step1revised_item_status_445.csv', 'status_category')}
-        โครงการนี้ครอบคลุมสินค้าทั้งหมด <b>{total_codes}</b> รหัส ใน Omni Channel ทุกฝ่าย
+        โครงการนี้ครอบคลุมสินค้าทั้งหมด <b>{total_codes}</b> รหัส ใน Omni Channel (ประเภทรายได้ที่ไม่รวม Tendering หรืองานประมูล) ทุกฝ่าย
         (PEM101/PEM102/PEM103/PEM104/PEM107/CI101) โดย <b>{forecast_total}</b> รหัสมีประวัติขาย
-        เพียงพอสำหรับการพยากรณ์ <b>{placeholder_total}</b> รหัสไม่มีประวัติเพียงพอและใช้ค่า
-        Placeholder แทน และ <b>{excluded_total}</b> รหัสถูกตัดออกจากการพยากรณ์
+        เพียงพอสำหรับการพยากรณ์ <b>{placeholder_total}</b> รหัสไม่มีประวัติเพียงพอและใช้ค่าประมาณ
+        (Placeholder) แทน และ <b>{excluded_total}</b> รหัสถูกตัดออกจากการพยากรณ์
         {cite('leadtime_overall_distribution.csv', 'median')}
         ลูกค้าให้เวลาแจ้งล่วงหน้าก่อนส่งมอบเพียง <b>{fmt_num(biz['median_notice'], 0)}</b> วัน
         (median) ซึ่งสั้นกว่าระยะเวลาจัดหาวัตถุดิบมาก
@@ -976,7 +976,7 @@ def render_page(config: dict) -> str:
       <h2>3. ขอบเขตข้อมูล (Scope)</h2>
       <p>ขอบเขต Omni Channel ครอบคลุมสินค้าทุกฝ่ายตาม Price List รวม {total_codes} รหัส</p>
       <table class="report-table">
-        <thead><tr><th>ฝ่าย (Division)</th><th>พยากรณ์ (Forecast)</th><th>Placeholder</th><th>ตัดออก (Excluded)</th><th>รวม</th></tr></thead>
+        <thead><tr><th>ฝ่าย (Division)</th><th>พยากรณ์ (Forecast)</th><th>Placeholder (ใช้ค่าประมาณ)</th><th>ตัดออก (Excluded)</th><th>รวม</th></tr></thead>
         <tbody>{scope_rows}
         <tr class="total-row"><td>รวมทั้งหมด</td><td>{forecast_total}</td><td>{placeholder_total}</td><td>{excluded_total}</td><td>{total_codes}</td></tr>
         </tbody>
@@ -989,12 +989,12 @@ def render_page(config: dict) -> str:
       <h2>4. ข้อค้นพบทางธุรกิจ (Business Findings)</h2>
       <p>
         {cite('leadtime_overall_distribution.csv', 'median')}
-        Median customer notice: <b>{fmt_num(biz['median_notice'], 0)}</b> วัน &nbsp;|&nbsp;
+        ระยะแจ้งล่วงหน้าของลูกค้า (Customer notice) ค่ากลาง (median): <b>{fmt_num(biz['median_notice'], 0)}</b> วัน &nbsp;|&nbsp;
         {cite('leadtime_notice_buckets_overall.csv', 'pct_of_orders')}
         สัดส่วนออเดอร์ที่แจ้งล่วงหน้า &ge; 1 เดือน: <b>{fmt_num(biz['pct_one_month'], 2)}%</b> &nbsp;|&nbsp;
         {cite_config('phase_e1_assumptions.procurement_lead_time_days_grid')}
-        ระยะเวลาจัดหาวัตถุดิบ (Procurement lead time): <b>{biz['lead_grid'][0]}-{biz['lead_grid'][-1]}</b> วัน
-        (ค่ากลาง {biz['lead_default']} วัน)
+        ระยะเวลาสั่งวัตถุดิบถึงได้ของ (Procurement lead time ไม่ใช่ระยะแจ้งล่วงหน้าของลูกค้า): <b>{biz['lead_grid'][0]}-{biz['lead_grid'][-1]}</b> วัน
+        (ค่าที่ใช้ {biz['lead_default']} วัน)
       </p>
       <h3>การกระจายของระยะเวลาแจ้งล่วงหน้า (Notice period)</h3>
       {cite('leadtime_notice_buckets_overall.csv', 'min_notice_days / pct_of_orders')}
@@ -1037,7 +1037,7 @@ def render_page(config: dict) -> str:
       <p>{html.escape(report['model_description'].format(**report_values))}</p>
       <p>{html.escape(report['why_not_single_model'].format(**report_values))}</p>
       <p>{html.escape(report['why_not_ml'].format(**report_values))}</p>
-      <h3>MAE ของโมเดลพื้นฐาน {len(BASE_MODELS)} แบบ เทียบกับ Combination และ Top-down ({len(FOCUS_ITEMS)} focus codes)</h3>
+      <h3>MAE ของโมเดลพื้นฐาน {len(BASE_MODELS)} แบบ เทียบกับ Combination และ Top-down (สินค้าหลัก {len(FOCUS_ITEMS)} รหัส)</h3>
       <p class="hint">คลิกที่ legend เพื่อซ่อน/แสดงแต่ละโมเดล</p>
       {cite('focus_items_test_all.csv', 'model / MAE')}
       <div id="chart-model" class="plotly-chart"></div>
@@ -1111,11 +1111,11 @@ def render_page(config: dict) -> str:
       </div>
       <h3>ตารางหลัก — ความแม่นของวิธี Top-down (วิธีที่ใช้จริง) ต่อฝ่าย</h3>
       <!-- Previous wording, kept off screen: this is the Top-down method the project adopted (STATUS.md Locked Decisions, "Final forecasting method"): forecast at Type level, then allocate to items by trailing sales share, recomputed at every rolling origin (not a one-time fixed allocation), scored at item level across the project's standard 7 origins -- src/transferability_all_divisions.py, summary in output/summary/phaseC_step2_transferability_per_division.csv (method detail in docs/reports/summary/phaseC_step2_report.md Part 3). -->
-      <p class="hint">ทายยอดรวมระดับประเภทสินค้าก่อน แล้วแบ่งให้แต่ละรหัสตามสัดส่วนที่เคยขาย ทดสอบย้อนหลัง {n_rounds} รอบ</p>
+      <p class="hint">ทายยอดรวมระดับประเภทสินค้าก่อน แล้วแบ่งให้แต่ละรหัสตามสัดส่วนที่เคยขาย ทดสอบย้อนหลัง {n_rounds} รอบ · MAE เทียบข้ามฝ่ายตรงๆ ไม่ได้ เพราะฝ่ายที่ขายเป็นจำนวนมากมักมี MAE สูงกว่า</p>
       {cite('phaseC_step2_transferability_per_division.csv', 'MAE / RMSE / Bias / MASE / n_scored')}
       <!-- filtered to rows where approach == 'Top-down' -->
       <table class="report-table" id="primary-results-table">
-        <thead><tr><th>ฝ่าย</th><th>MAE</th><th>RMSE</th><th>Bias</th><th>MASE</th><th>n_scored (item × origin)</th></tr></thead>
+        <thead><tr><th>ฝ่าย</th><th>MAE</th><th>RMSE</th><th>Bias</th><th>MASE (เทียบกับวิธีเดาง่าย ยิ่งต่ำยิ่งดี)</th><th>จำนวนที่ใช้คำนวณ (สินค้า × รอบทดสอบ)</th></tr></thead>
         <tbody></tbody>
       </table>
       <h3>ตารางรอง — วิธี Combination ระดับประเภทสินค้า</h3>
@@ -1128,7 +1128,7 @@ def render_page(config: dict) -> str:
       </table>
       {pilot_html}
       {criteria_html}
-      <h3>Rolling-origin MAE (Type level) — คลิก legend เพื่อซ่อน/แสดงแต่ละโมเดล</h3>
+      <h3>Rolling-origin MAE ระดับ Type (ทดสอบย้อนหลังทีละรอบ: ตัดข้อมูลที่เดือนหนึ่ง แล้วทายเดือนถัดไปเทียบกับของจริง) — คลิก legend เพื่อซ่อน/แสดงแต่ละโมเดล</h3>
       {cite('phaseC_step2_rolling_origin_qty.csv', 'origin / model / MAE')}
       <div id="chart-rolling" class="plotly-chart"></div>
       {render_notes_html('sales_report.html', 'chart-rolling', values=note_values)}

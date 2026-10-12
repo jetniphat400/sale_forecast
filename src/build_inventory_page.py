@@ -250,25 +250,25 @@ def build_page(**data_sources) -> str:
     defaults = data["tier_a_defaults"]
     ranges = data["tier_a_ranges"]
 
-    def slider(key, label, step, suffix=""):
+    def slider(key, label, step, suffix="", tip=""):
         lo, hi = ranges[key]
         val = defaults[key]
         return f"""
         <div class="ctrl-row">
-          <label for="ctrl-{key}">{label}: <span id="val-{key}">{val}{suffix}</span></label>
+          <label for="ctrl-{key}" title="{tip}">{label}: <span id="val-{key}">{val}{suffix}</span></label>
           <input type="range" id="ctrl-{key}" min="{lo}" max="{hi}" step="{step}" value="{val}"
                  oninput="onControlChange()">
         </div>"""
 
     controls_html = "".join([
-        slider("procurement_lead_time_days", "Procurement lead time (days)", 1, "d"),
-        slider("assembly_time_days", "Assembly time (days)", 1, "d"),
-        slider("review_interval_days", "Review interval (days)", 1, "d"),
-        slider("cycle_service_level", "Cycle service level", 0.01),
-        slider("holding_cost_rate_annual", "Annual holding cost rate", 0.01),
+        slider("procurement_lead_time_days", "Procurement lead time (วัน)", 1, "d", tip="สั่งวัตถุดิบถึงได้ของกี่วัน"),
+        slider("assembly_time_days", "Assembly time (วัน)", 1, "d", tip="ประกอบกี่วัน"),
+        slider("review_interval_days", "Review interval (วัน)", 1, "d", tip="ทบทวน stock ทุกกี่วัน"),
+        slider("cycle_service_level", "Cycle service level", 0.01, tip="โอกาสที่แต่ละรอบเติมไม่ขาดของ"),
+        slider("holding_cost_rate_annual", "Annual holding cost rate", 0.01, tip="ต้นทุนถือของต่อปี เป็นสัดส่วนของมูลค่า stock"),
         # RE-ENABLED, task 2b Part 1 (METRICS.md Sec.40, excess_stock_flag): now drives the
         # item table's Excess column and the totals box's excess count, recomputed live.
-        slider("obsolescence_threshold_months", "Obsolescence threshold (months)", 1, "mo"),
+        slider("obsolescence_threshold_months", "Excess stock threshold (เดือน)", 1, "mo", tip="เกณฑ์ของค้าง: stock พอขายเกินกี่เดือนถือว่าค้าง"),
     ])
 
     division_options = "".join(
@@ -401,7 +401,7 @@ def build_page(**data_sources) -> str:
         <div class="totals-box">
           <div class="stat">Value of Min level (มูลค่าตาม Min จำลอง = Min × ต้นทุนต่อชิ้น รวมทุกรหัส)<b id="tot-stock-value">-</b></div>
           <div class="stat">Holding cost (annual)<b id="tot-holding-cost">-</b></div>
-          <div class="stat">Items with a Min/Max<b id="tot-n-items">-</b></div>
+          <div class="stat">สินค้าที่มี Min/Max<b id="tot-n-items">-</b></div>
           <!-- previously: Excess stock items (METRICS.md §40) -->
           <div class="stat">สินค้าที่มีของค้าง<b id="tot-excess-count">-</b></div>
         </div>
@@ -422,7 +422,7 @@ def build_page(**data_sources) -> str:
       <thead><tr>
         <th>Product Type</th><th>Product Description</th><th>Product Code</th>
         <th>Units ordered (from May 2026)</th><th>Units late</th>
-        <th>not_late (from May 2026)</th><th>not_late (before May 2026)</th><th>Share of all late units</th>
+        <th>ส่งไม่ช้า (not-late) ตั้งแต่ May 2026</th><th>ส่งไม่ช้า (not-late) ก่อน May 2026</th><th>Share of all late units</th>
       </tr></thead>
       <tbody id="pem107-alert-table-body"></tbody>
     </table></div>
@@ -431,22 +431,22 @@ def build_page(**data_sources) -> str:
     {render_notes_html('inventory.html', 'pem107-alert', values=note_values)}
   </div>
   <!-- Previous wording, kept off screen: changing the controls below changes only what is displayed, not the forecasting model (Tier A); structural changes (Tier B, e.g. segment_policy) need an edit to config.yaml and a pipeline re-run. The sellable-warehouse list of every division (PEM101 included) is a business assumption, not a fact confirmed from data: the sales rows carry no warehouse field, so the reverse direction cannot be checked (STATUS.md, Phase E2 Part 1). -->
-  <p class="note-box"><b>หมายเหตุสำคัญ:</b> ตัวเลขในหน้านี้เป็น <b>ค่าสถานการณ์ (scenario values) ภายใต้สมมติฐานที่ระบุไว้เท่านั้น
+  <p class="note-box"><b>หมายเหตุสำคัญ:</b> ตัวเลขในหน้านี้เป็น <b>ผลจำลอง (scenario values) ภายใต้สมมติฐานที่ระบุไว้เท่านั้น
     ไม่ใช่คำแนะนำการสั่งซื้อ (purchase recommendation)</b> ตัวควบคุมด้านล่างเปลี่ยนแค่ตัวเลขบนหน้านี้ ไม่ได้เปลี่ยนการทายยอดขาย
     รายการ placeholder/excluded จะไม่มี Min/Max และไม่มีปริมาณสั่งซื้อ (purchase quantity) ใดๆ ทั้งสิ้น
     รายชื่อคลังที่ขายได้เป็นสมมติฐาน ระบบไม่ได้บันทึกว่าของที่ส่งออกไปมาจากคลังไหน จึงตรวจจากข้อมูลไม่ได้</p>
   <!-- Previous wording, kept off screen: figures on this page are computed from the MONTHLY history embedded in the page (monthly proration, METRICS.md Sec.4's explicit fallback), not the DAILY window the server-side pipeline uses. The percentage is computed at build time: src/reader_values.py pipeline_gap_pct, page monthly-prorated stock value against output/summary/phaseE1fix_2_minmax_stockvalue.csv (stock_value_contribution) over the same PEM101 items at the default scenario; the earlier typed figure was 3.3% from a run on the older 128-item pilot set (STATUS.md Phase E1-fix-2). -->
-  <p class="note-box" id="proration-note">ตัวเลขบนหน้านี้คำนวณจากยอดขายรายเดือนเพื่อให้หน้าโหลดเร็ว จึงต่างจากที่ระบบคำนวณเต็มจากข้อมูลรายวันประมาณ {gap_pct}% (PEM101)</p>
+  <p class="note-box" id="proration-note">ตัวเลขบนหน้านี้คำนวณจากยอดขายรายเดือนเพื่อให้หน้าโหลดเร็ว จึงต่างจากค่าเต็มที่คำนวณจากข้อมูลรายวัน (ค่าอ้างอิง) ประมาณ {gap_pct}% ของค่าเต็ม (PEM101)</p>
 
   <h2>ตารางรายรายการ (เรียงตาม Value at Risk ได้)</h2>
   <!-- Stock figures (Months of cover, ของค้าง, the stock-with-no-forecast table, the count in the summary box) come from the stock file loaded when the page opens; the three dates below describe that file. -->
   <p class="note-box" id="stock-labels" style="display:none"></p>
   <!-- Formula: Value at risk = max(0, current_min − scenario_min) × unit_cost, the earlier on-screen hint described the opposite direction (current stock below the scenario) although the formula measures a system Min above the simulated one. Excess = months of cover above the obsolescence threshold set above (METRICS.md §40), recomputed whenever the ticked warehouses or the threshold change. -->
-  <p class="hint">Excess Min value (มูลค่า Min ส่วนเกิน) = ถ้า Min ในระบบสูงกว่าที่จำลอง ส่วนเกินคิดเป็นเงินเท่าไหร่<br>ของค้าง = stock พอขายเกินจำนวนเดือนที่ตั้งไว้ด้านบน</p>
+  <p class="hint">Excess Min value (มูลค่า Min ส่วนเกิน) = ถ้า Min ในระบบสูงกว่าที่จำลอง ส่วนเกินคิดเป็นเงินเท่าไหร่<br>ของค้าง (Excess stock) = stock พอขายเกินจำนวนเดือนที่ตั้งไว้ด้านบน ไม่ใช่ออเดอร์ค้างส่ง (open orders)<br>Min = ระดับที่ต้องสั่งเติม · Max = ระดับที่สั่งเติมให้ถึง</p>
   {render_notes_html('inventory.html', 'excess-threshold', values=note_values)}
   <!-- Previous wording of the class caption, kept off screen: Policy = METRICS.md §23 class (stock_policy/confirmed_to_order/conflict) for PEM101/PEM107, supersedes section 15. Only stock_policy items receive a Min/Max here; confirmed_to_order and conflict items are listed with no Min/Max in the separate table below. Label = dominant manufacturing_type (MTS/MTO/ETO/mixed). Signals = S1 (on-hand stock) / S2 (batch-before-PO share) / S3 (median notice, days), check/cross/dash (dash = S2 could not be computed, S1+S3 both required instead). The number of signals and the notice threshold below are read at build time: src/reader_values.py fulfilment_signal_count (task2b_part2_item_level.csv) and fulfilment_notice_threshold_days (S3_THRESHOLD_DAYS in src/investigations/task2b_part2_fulfilment_segmentation.py). -->
   <div id="policy-class-notes" style="display:none">
-    <p class="hint" id="segmentation-note">ประเภทสินค้า: เก็บ stock / ผลิตตามสั่ง / ยังไม่ชัด · ดูจากป้ายในระบบ (MTS / MTO / ETO) คู่กับพฤติกรรมจริง {signal_count} อย่าง: มีของในคลัง · ผลิตเป็น batch ก่อนลูกค้าสั่ง · ส่งได้ภายใน {notice_days} วัน · ✓ ตรง ✗ ไม่ตรง – คำนวณไม่ได้</p>
+    <p class="hint" id="segmentation-note">นโยบายการผลิต (ไม่ใช่ Product Type): เก็บ stock (MTS) / ผลิตตามสั่ง (MTO) / ยังไม่ชัด · ดูจากป้ายในระบบ (MTS / MTO / ETO) คู่กับพฤติกรรมจริง {signal_count} อย่าง: มีของในคลัง · ผลิตเป็น batch ก่อนลูกค้าสั่ง · ส่งได้ภายใน {notice_days} วัน · ✓ ตรง ✗ ไม่ตรง – คำนวณไม่ได้</p>
     {render_notes_html('inventory.html', 'item-policy-classes', values=note_values)}
   </div>
   <div class="table-scroll"><table class="report-table" id="item-table">
@@ -454,7 +454,7 @@ def build_page(**data_sources) -> str:
       <th onclick="sortTable(0)">Item</th><th onclick="sortTable(1)">Policy</th>
       <th onclick="sortTable(2)">Label</th><th onclick="sortTable(3)">Signals (S1/S2/S3)</th>
       <th onclick="sortTable(4)">Min</th><th onclick="sortTable(5)">Max</th>
-      <th onclick="sortTable(6)">Min (ค่าที่ตั้งในระบบ)</th><th onclick="sortTable(7)">Max (ค่าที่ตั้งในระบบ)</th>
+      <th onclick="sortTable(6)">Min (ที่ตั้งในระบบคลัง)</th><th onclick="sortTable(7)">Max (ที่ตั้งในระบบคลัง)</th>
       <th onclick="sortTable(8)">Months of cover</th>
       <th onclick="sortTable(9)">Excess Min value (THB)</th><th onclick="sortTable(10)">ของค้าง</th>
     </tr></thead>
@@ -486,7 +486,7 @@ def build_page(**data_sources) -> str:
   <tbody id="no-policy-table-body"></tbody></table></div>
 
   <h2>Trade-off: Stock value vs. Cycle Service Level</h2>
-  <p class="hint">เส้นแสดง stock_value ที่ระดับ service level ต่างๆ (ค่าควบคุมอื่นคงที่ตามที่ตั้งไว้ด้านบน) สำหรับ division ที่เลือก</p>
+  <p class="hint">เส้นแสดงมูลค่า stock ที่ระดับ service level ต่างๆ (ค่าควบคุมอื่นคงที่ตามที่ตั้งไว้ด้านบน) สำหรับฝ่ายที่เลือก</p>
   <div id="chart-tradeoff" class="plotly-chart"></div>
   {render_notes_html('inventory.html', 'chart-tradeoff', values=note_values)}
 
@@ -498,7 +498,7 @@ def build_page(**data_sources) -> str:
 
   <div id="curve-target-section" style="display:none;">
     <!-- Previous heading: PEM101 — Trade-off Curve Target (METRICS.md Sec.22) — PARTIALLY CALIBRATED. Previous note: the data cannot identify the correct reorder level on its own (every item gives the same range ratio, no item-level information); choosing the not_late target is what fixes the reorder level (METRICS.md Sec.22). -->
-    <h2>PEM101 — เลือกเป้าการส่งทัน แล้วดูว่าต้องถือของเท่าไหร่ (ค่าแนะนำ)</h2>
+    <h2>PEM101 — เลือกเป้าการส่งทัน แล้วดูว่าต้องถือของเท่าไหร่ (ผลจำลอง)</h2>
     <p class="note-box" id="curve-demand-note"></p>
     <p class="hint" id="curve-own-controls">ส่วนนี้ปรับได้ด้วยปุ่มเป้าและ slider ในส่วนนี้เท่านั้น</p>
     <p class="note-box" id="curve-target-summary"></p>
@@ -512,7 +512,7 @@ def build_page(**data_sources) -> str:
       <button type="button" id="preset-stretch" class="preset-btn"></button>
     </div>
     <div class="slider-control" style="margin:10px 0;">
-      <label for="notlate-slider">not_late target: <b id="notlate-slider-value"></b></label><br>
+      <label for="notlate-slider">เป้าส่งไม่ช้า (not-late target): <b id="notlate-slider-value"></b></label><br>
       <input type="range" id="notlate-slider" step="0.01" style="width:100%;">
     </div>
     <div class="totals-box" id="curve-target-totals"></div>
@@ -875,7 +875,7 @@ function applyCurveTarget(targetNotLate) {{
   const diff = result.stock_value_median - ct.today_point.stock_value_thb;
   const diffPct = 100 * diff / ct.today_point.stock_value_thb;
   document.getElementById('curve-target-totals').innerHTML = `
-    <div class="stat">not_late target<b>${{result.not_late_median_pct.toFixed(2)}}%</b></div>
+    <div class="stat">เป้าส่งไม่ช้า (not-late target)<b>${{result.not_late_median_pct.toFixed(2)}}%</b></div>
     <div class="stat">Stock value (median)<b>${{fmtTHB(result.stock_value_median)}}</b></div>
     <div class="stat">Stock value band (min–max)<b>${{fmtTHB(result.stock_value_min)}} – ${{fmtTHB(result.stock_value_max)}}</b></div>
     <div class="stat">Change vs today's on-hand<b style="color:${{diff>=0?'#c0392b':'#1baf7a'}}">${{diff>=0?'+':''}}${{fmtTHB(diff)}} (${{diffPct>=0?'+':''}}${{diffPct.toFixed(1)}}%)</b></div>
@@ -929,7 +929,7 @@ function applyCurveTarget(targetNotLate) {{
       mode: 'markers', marker: {{color:'#eb6834', size:12, symbol:'star'}} }},
     {{ x: [result.not_late_median_pct], y: [result.stock_value_median], name: 'selected target',
       mode: 'markers', marker: {{color:'#1baf7a', size:11, symbol:'diamond'}} }},
-  ], {{ margin: {{t:40, l:90}}, xaxis: {{title: {{text: 'not_late (%)'}}}}, yaxis: {{title: {{text: 'Stock value (THB), median curve + band'}}}} }},
+  ], {{ margin: {{t:40, l:90}}, xaxis: {{title: {{text: 'ส่งไม่ช้า (not-late) %'}}}}, yaxis: {{title: {{text: 'Stock value (THB), median curve + band'}}}} }},
   {{responsive: true}}));
 }}
 
@@ -951,7 +951,7 @@ function renderCurveTarget(divisionData) {{
   const ll = ct.lead_time_lines;
   document.getElementById('curve-lead-lines').innerHTML =
     `Min/Max คำนวณจาก lead time ที่ทำให้การจำลองส่งของทันและถือ stock ใกล้เคียงของจริงที่สุด อยู่ระหว่าง ${{ll.lead_min}} ถึง ${{ll.lead_max}} วัน<br>` +
-    `lead time วัตถุดิบจากใบสั่งซื้อจริง ค่ากลาง ${{fmtLeadDays(ll.material_lead_median_observed)}} วัน (มีข้อมูล ${{ll.n_observed}} จาก ${{ll.n_items}} รายการ) ใช้สำหรับวางแผนสั่งวัตถุดิบ ไม่ได้ใช้คำนวณ Min/Max ของสินค้า` +
+    `lead time วัตถุดิบจากใบสั่งซื้อที่ผ่านมา ค่ากลาง ${{fmtLeadDays(ll.material_lead_median_observed)}} วัน (มีข้อมูล ${{ll.n_observed}} จาก ${{ll.n_items}} รายการ) ใช้สำหรับวางแผนสั่งวัตถุดิบ ไม่ได้ใช้คำนวณ Min/Max ของสินค้า` +
     htmlComment(ct.lead_time_ref || '');
 
   const slider = document.getElementById('notlate-slider');

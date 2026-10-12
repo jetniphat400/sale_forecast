@@ -27,7 +27,7 @@ THAI = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "ม�
 # rebuilds that tab from the database. The exception holds only while the tab carries the notice below.
 SOP_NOTICE = ("ตัวเลขในแท็บนี้มาจากไฟล์ที่ทำไว้ครั้งเดียวเพื่อแสดงโครงแผน S&OP ไม่อัปเดต และตรวจกับระบบแล้วยืนยันไม่ได้ "
               "ห้ามใช้ตัดสินใจ · ม.ค.-ก.ค. = ช่วงที่ผ่านมา · ส.ค.-ธ.ค. = แผน")
-AVAILABLE_NOTE = "ของที่หยิบส่งได้จริง ≈ Sellable − Reserved (Available ยังนับคลัง QA ด้วย)"
+AVAILABLE_NOTE = "Available ยังนับคลัง QA ด้วย จึงอาจสูงกว่าของที่หยิบส่งได้จริง ให้ดู Sellable − Reserved"
 
 # The two embedded data lines of the Trend tab (const MATCH = ..., const OMNI = ...) are written by src/build_trend_tab.py between two markers (decision of the user,
 # 2026-10-08); the test below rebuilds them from the saved pull and compares.
@@ -62,6 +62,7 @@ def _site(tmp_path_factory, name, index_text=None, inventory=None):
     else:
         (site / "index.html").write_text(index_text, encoding="utf-8", newline="")
     shutil.copy(os.path.join(PROJECT_ROOT, "docs", "user_manual.md"), site / "docs" / "user_manual.md")
+    shutil.copy(os.path.join(PROJECT_ROOT, "data", "assumptions.json"), site / "data" / "assumptions.json")     # the manual's {braced} numbers are filled from its manual_values
     if inventory is None:
         shutil.copy(os.path.join(PROJECT_ROOT, "data", "inventory.json"), site / "data" / "inventory.json")
     else:
@@ -264,9 +265,42 @@ def test_w3b_stock_status_names_are_reader_words(page):
 def test_manual_states_the_gap_without_a_typed_percentage(page):
     assert "ตัวเลขบนหน้านี้ต่างเล็กน้อย ดูตัวเลขบนหน้า Min-Max" in page["manual"]
     assert "ประมาณ 3%" not in page["manual"]
+    # the manual's numbers and dates come from data/assumptions.json at runtime: none is left unresolved or blank, the schedule reads "first weekday from the 5th", no typed December date
+    import re as _re
+    manual_values = json.load(open(os.path.join(PROJECT_ROOT, "data", "assumptions.json"), encoding="utf-8"))["manual_values"]
+    assert "[ค่าไม่พบ" not in page["manual"] and not _re.search(r"\{[a-z_0-9]+\}", page["manual"]) and "5 ธ.ค." not in page["manual"]
+    assert f"ข้อมูลถึง {manual_values['trend_data_through']}" in page["manual"] and "วันธรรมดา (จันทร์ถึงศุกร์) วันแรกตั้งแต่วันที่ " + manual_values["run_day_base"] in page["manual"]
+    assert f"ต้องรอ {manual_values['guard_days']} วันหลังสิ้นเดือน" in page["manual"]
 
 
 # ------------------------------------------------------------------ embedded data untouched
+def _manual_text(edge, site):
+    server, url = _serve(site)
+    try:
+        edge.open(url)
+        edge.ev("omniShowTab(3); 1")
+        assert _wait(edge, "document.getElementById('manualTabContent').innerText.indexOf('กำลังโหลด') < 0"), "the manual did not load"
+        return edge.ev("document.getElementById('manualTab').innerText")
+    finally:
+        server.shutdown()
+
+
+def test_the_manual_shows_an_unresolved_placeholder_visibly_never_blank(edge, tmp_path_factory):
+    # one value missing from manual_values: that name is shown as [ค่าไม่พบ: name], the others are still filled
+    site = _site(tmp_path_factory, "w3_manual_one_missing")
+    path = site / "data" / "assumptions.json"
+    data = json.loads(path.read_text(encoding="utf-8"))
+    del data["manual_values"]["trend_data_through"]
+    path.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+    text = _manual_text(edge, site)
+    assert "[ค่าไม่พบ: trend_data_through]" in text and "[ค่าไม่พบ: stale_days]" not in text
+    # the file cannot be read at all: every name stays visible as unresolved
+    site2 = _site(tmp_path_factory, "w3_manual_no_values")
+    os.remove(site2 / "data" / "assumptions.json")
+    text2 = _manual_text(edge, site2)
+    assert "[ค่าไม่พบ: stale_days]" in text2 and "[ค่าไม่พบ: run_day_base]" in text2
+
+
 def test_trend_embedded_data_is_what_the_builder_makes_from_the_saved_pull():
     import build_trend_tab as bt
     cfg = bt.load_config()
@@ -599,9 +633,9 @@ def test_each_watch_out_line_appears_only_when_its_condition_holds():
     lines = _exec_visible(bt.exec_render(d, cfg))
     assert "G ทายต่ำกว่าจริงต่อเนื่อง (Tracking Signal -4.1) คาดการณ์ทั้งปีของกลุ่มนี้อาจต่ำกว่าที่จะเกิดจริง" in lines
     assert "H ทายสูงกว่าจริงต่อเนื่อง (Tracking Signal 6.7) คาดการณ์ทั้งปีของกลุ่มนี้อาจสูงกว่าที่จะเกิดจริง" in lines
-    assert "แผนผลิต D1 เดือน ต.ค. 69 สูงกว่ายอดผลิตสูงสุดที่เคยทำ (119.9%)" in lines
+    assert "แผนผลิต D1 เดือน ต.ค. 69 สูงกว่ายอดผลิตสูงสุดรายเดือนในอดีต (Historical peak ไม่ใช่ขีดความสามารถผลิต) (119.9%)" in lines
     assert "วัตถุดิบ 584 รายการเลยกำหนดสั่ง (Late to order) สั่งวันนี้ของมาไม่ทันแผน" in lines
-    assert "PEM107 ส่งของช่องทาง Omni ทันน้อยลงตั้งแต่ พ.ค. 2569 (57.7% ไม่สาย)" in lines
+    assert "PEM107 ส่งของช่องทาง Omni ทันน้อยลงตั้งแต่ พ.ค. 2569 (57.7% ส่งไม่ช้า)" in lines
     assert "5 เรื่อง" in "\n".join(lines)                                                                 # card 4 counts the lines shown
     assert not any("ทายต่ำกว่าจริง" in x for x in _exec_visible(bt.exec_render(dict(d, watch=high), cfg)))
 

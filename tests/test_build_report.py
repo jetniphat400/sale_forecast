@@ -98,7 +98,7 @@ def test_median_notice_matches_source_csv_exactly():
     out_path = os.path.join(PROJECT_ROOT, "forecast", "sales_report.html")
     with open(out_path, "r", encoding="utf-8") as f:
         html_text = f.read()
-    m = re.search(r"Median customer notice: <b>([\d.,]+)</b>", html_text)
+    m = re.search(r"ค่ากลาง \(median\): <b>([\d.,]+)</b>", html_text)
     assert m, "Median notice figure not found in rendered report"
     rendered_value = float(m.group(1).replace(",", ""))
 
@@ -288,11 +288,11 @@ def test_every_approved_note_line_is_on_the_page_verbatim_and_no_brace_is_left()
     h = _tracked_sales_html()
     text = _visible(h)
     for line in ["▸ เดือนข้างหน้าสินค้าแต่ละประเภทน่าจะขายกี่ชิ้น", "▸ แถว = ประเภทสินค้า · คอลัมน์ = เดือน · ตัวเลข = จำนวนชิ้น", "▸ คลิกประเภทเพื่อดูรายรหัส",
-                 "▸ เป็นค่ากลางค่าเดียว ยังไม่มีช่วงสูงต่ำ ดูว่าพลาดได้แค่ไหนจากส่วนผลลัพธ์",
+                 "▸ เป็นตัวเลขค่าเดียว (point forecast) ยังไม่มีช่วงสูงต่ำ ดูว่าพลาดได้แค่ไหนจากส่วนผลลัพธ์",
                  "▸ สองกลุ่มนำร่องทายแม่นแค่ไหน", "▸ MAE = พลาดเฉลี่ยกี่ชิ้นต่อเดือน · Bias ติดลบ = ทายต่ำกว่าจริง",
                  "▸ ถ้าใช้ยอดทายของสองกลุ่มนี้วางแผน ให้ระวังว่ามักทายต่ำ", "Surge Arrester ในตารางนี้นับเฉพาะ Medium Voltage",
                  "▸ ยอดที่ทายไว้ล่วงหน้า พอถึงเดือนจริงพลาดแค่ไหน", "▸ MAE เดือนจริงสูงกว่าผลทดสอบย้อนหลังมาก = ช่วงนี้ทายยากกว่าปกติ",
-                 "กลุ่มนำร่อง: Fuse Cutout และ Surge Arrester", "ยอดทายเทียบยอดขายจริง"]:
+                 "กลุ่มนำร่อง (Pilot group): ประเภทสินค้า Fuse Cutout และ Surge Arrester", "ยอดทายเทียบยอดขายจริง"]:
         assert line in text, line
     assert "{" not in text and "}" not in text, "a placeholder or a brace is left in the visible text of the sales report"
 
@@ -450,7 +450,7 @@ def test_the_unit_switch_and_the_baht_texts_are_on_the_page_verbatim_and_default
     vf, info = _page_prices()
     first, last = rv.thai_month_short(info["recent"][0]), rv.thai_month_short(info["recent"][-1])
     n_market = sum(1 for p in info["prices"].values() if p["source"] == "market_price")
-    label = f"มูลค่าคิดจากราคาขายเฉลี่ยจริงของแต่ละรหัส {first} ถึง {last}" + (f" · {n_market} รหัสที่ไม่เคยขายใช้ราคาตั้งใน Price List" if n_market else "")
+    label = f"มูลค่าคิดจากราคาขายเฉลี่ยต่อชิ้นของแต่ละรหัส (Average selling price) {first} ถึง {last}" + (f" · {n_market} รหัสที่ไม่เคยขายใช้ราคาตั้ง (List price) ใน Price List แทน" if n_market else "")
     assert f'id="baht-label">{label}</p>' in sec
     assert ("▸ ยอดทายคิดเป็นเงินเท่าไหร่ต่อเดือน ▸ ตัวเลข = ยอดทาย (ชิ้น) × ราคาขายเฉลี่ยของรหัสนั้น หน่วยบาท ▸ ถ้าราคาขายข้างหน้าต่างจากช่วงที่ใช้เฉลี่ย ยอดเงินจะคลาดตาม "
             "▸ ยังไม่ได้ตรวจว่านับแบบเดียวกับเป้ารายได้ อย่าเพิ่งเทียบกับเป้าตรงๆ") in text
@@ -617,7 +617,7 @@ def test_the_back_check_of_the_unit_prices_is_inside_its_limits_and_a_value_outs
 
 def test_the_flat_forecast_line_is_on_the_page_only_when_every_item_has_one_value_for_all_months(tmp_path, monkeypatch):
     import reader_values as rv
-    line = "ยอดทายทุกเดือนเท่ากัน เพราะวิธีทายตอนนี้ให้ค่าระดับเดียวกับทุกเดือนข้างหน้า ยังไม่คิดช่วงขายดีขายน้อยตามฤดูกาล"
+    line = "ยอดทายทุกเดือนเท่ากัน (flat forecast) เพราะวิธีทายตอนนี้ให้ค่าเดียวกับทุกเดือนข้างหน้า ยังไม่คิดช่วงขายดีขายน้อยตามฤดูกาล (seasonality)"
     vf = rv.vintage_facts()
     rows = vf["item_rows"]
     assert (rows.groupby("itemcode")["forecast_qty"].nunique() == 1).all()                               # the VERIFY, from the log itself

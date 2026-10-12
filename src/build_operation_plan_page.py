@@ -30,7 +30,7 @@ PAGE_RELATIVE = "forecast/operation_plan.html"
 MATERIAL_PAGE_RELATIVE = "material_plan.html"        # linked from this page; both pages sit in forecast/
 THAI_MONTHS = [rv.THAI_MONTH_ABBR[m] for m in range(1, 13)]   # the abbreviations the Min-Max page uses
 CLASS_LABELS = {"stock_policy": "เก็บ stock", "confirmed_to_order": "ผลิตตามสั่ง", "conflict": "ยังไม่ชัด", "mixed": "ผสม (เก็บ stock บางส่วน)",
-                "no_production_in_system": "ไม่พบการผลิตในระบบ", "too_little_data": "ข้อมูลไม่พอจัดประเภท"}
+                "no_production_in_system": "ไม่มีบันทึกผลิตในระบบ", "too_little_data": "ข้อมูลไม่พอจัดประเภท"}
 CLASS_ORDER = ["stock_policy", "confirmed_to_order", "conflict", "mixed", "too_little_data", "no_production_in_system"]
 SHARE_OF_BACKLOG_ITEMS = 0.80          # the items shown reach this share of the sum (approved text of 2026-10-06)
 MAX_BACKLOG_ITEMS = 3
@@ -46,19 +46,19 @@ TEXT = {
     "line_backlog": "{first_month} PEM107 มีออเดอร์ที่รับแล้วสูงกว่ายอดทาย {backlog_above_forecast} หน่วย ส่วนใหญ่จาก {top_backlog_items}",
     "line_capacity": "ยอดผลิตสูงสุดที่เคยทำ คือยอดผลิตเสร็จต่อเดือนสูงสุดในอดีต นับทุกสินค้ารวมกันโดยไม่แยกขนาด ใช้ดูทิศทาง ไม่ได้แปลว่าเป็นกำลังผลิตเต็มที่",
     "line_no_stock": "{division} ไม่มีสินค้าที่เข้าเกณฑ์เก็บ stock แผนจึงเป็นการผลิตตามยอดทาย + ออเดอร์ทั้งหมด",
-    "line_no_forecast": "{n} รหัสยังไม่มียอดทาย แผนนับเฉพาะออเดอร์ที่รับแล้ว ตอนนี้มีออเดอร์ค้าง {k} รหัส",
-    "line_no_forecast_no_orders": "{n} รหัสยังไม่มียอดทาย แผนนับเฉพาะออเดอร์ที่รับแล้ว ตอนนี้ไม่มีออเดอร์ค้างในกลุ่มนี้",
-    "line_no_production": "{n} รหัสไม่พบการผลิตในระบบ ไม่นับเป็นภาระผลิต",
+    "line_no_forecast": "{n} รหัสยังไม่มียอดทาย (ประวัติขายไม่พอ) แผนนับเฉพาะออเดอร์ที่รับแล้วแต่ยังไม่ส่ง (open orders) ตอนนี้มีออเดอร์ที่รับแล้วยังไม่ส่ง {k} รหัส",
+    "line_no_forecast_no_orders": "{n} รหัสยังไม่มียอดทาย (ประวัติขายไม่พอ) แผนนับเฉพาะออเดอร์ที่รับแล้วแต่ยังไม่ส่ง (open orders) ตอนนี้ไม่มีออเดอร์ที่รับแล้วยังไม่ส่งในกลุ่มนี้",
+    "line_no_production": "{n} รหัสไม่มีบันทึกผลิตในระบบ (ไม่ได้แปลว่ายกเลิกผลิต) ไม่นับรวมในยอดผลิตตามแผน",
     "line_never_sold": "{division} {n} รหัสอยู่ใน Price List แต่ไม่เคยขาย ไม่อยู่ในแผน",
     "line_pem103": "PEM103 นับเฉพาะยอด Omni Channel งานประมูลไม่อยู่ในแผนนี้",
     "units": "หน่วย", "and": " และ ",
-    "item_cols": ["รหัส", "ชื่อสินค้า", "ประเภท", "stock ตอนนี้", "Min", "Max"],
+    "item_cols": ["รหัส", "ชื่อสินค้า", "นโยบายการผลิต", "stock ตอนนี้", "Min", "Max"],
     "filter_division": "ฝ่าย", "filter_all": "ทั้งหมด",
-    "stock_note": "stock ตอนนี้ แสดงเฉพาะสินค้าเก็บ stock",
-    "flag_inconsistent": "ข้อมูลไม่สอดคล้อง",
-    "flag_inconsistent_tip": "ประเภทที่บันทึกในระบบขัดกับวิธีส่งจริง ใช้วิธีส่งจริงตัดสิน",
+    "stock_note": "stock ตอนนี้ แสดงเฉพาะสินค้าเก็บ stock · คอลัมน์เดือน = จำนวนที่แผนให้ผลิตในเดือนนั้น (สินค้าที่ไม่เก็บ stock = ยอดที่ต้องผลิตตามความต้องการ) แถวที่ไม่มีบันทึกผลิตในระบบแสดงยอดความต้องการ ไม่ใช่ยอดผลิต",
+    "flag_inconsistent": "ป้ายไม่ตรงกับพฤติกรรมจริง (Conflict)",
+    "flag_inconsistent_tip": "ป้าย MTS/MTO ที่บันทึกในระบบไม่ตรงกับพฤติกรรมจริงของสินค้า ใช้พฤติกรรมจริงตัดสิน และให้ฝ่ายยืนยัน",
     "material_link": "แผนวัตถุดิบ",
-    "no_production_note": "แถวที่ขึ้นว่า ไม่พบการผลิตในระบบ ไม่ได้รวมในยอดผลิตของฝ่าย",
+    "no_production_note": "แถวที่ขึ้นว่า ไม่มีบันทึกผลิตในระบบ ไม่ได้รวมในยอดผลิตของฝ่าย",
     "line_made_to_order": "{division} ผลิตตามสั่งทั้งหมด จึงไม่ได้ทายยอดขาย",
     "back_link": "← กลับไปหน้าหลัก (Dashboard)",       # wording of the same link on the Min-Max page
 }

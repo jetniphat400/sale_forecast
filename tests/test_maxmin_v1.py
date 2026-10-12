@@ -202,7 +202,7 @@ TRACKED_ASSUMPTIONS = os.path.join(PROJECT_ROOT, "data", "assumptions.json")
 
 def test_the_assumptions_file_has_the_contract_schema():
     payload = json.load(open(TRACKED_ASSUMPTIONS, encoding="utf-8"))
-    assert set(payload) == {"schema_version", "assumptions", "pending_criteria"} and payload["schema_version"] == mm.ASSUMPTIONS_SCHEMA_VERSION
+    assert set(payload) == {"schema_version", "assumptions", "pending_criteria", "manual_values"} and payload["schema_version"] == mm.ASSUMPTIONS_SCHEMA_VERSION
     rows = payload["assumptions"]
     assert len(rows) == 10 and len({r["id"] for r in rows}) == 10
     for r in rows:
@@ -216,15 +216,15 @@ def test_the_assumptions_file_holds_the_approved_texts_and_the_computed_values(r
     rows = {r["id"]: r for r in json.load(open(TRACKED_ASSUMPTIONS, encoding="utf-8"))["assumptions"]}
     v = mm.assumption_values(CFG)
     expected = {
-        "minmax_lead_time": ("lead time ที่ใช้คำนวณ Min/Max", "ได้จากการจำลองให้ตรงผลจริง ไม่ได้วัดตรง", f"{v['lead_min']}-{v['lead_max']} วัน", "Min/Max ของ PEM101"),
+        "minmax_lead_time": ("lead time ที่ใช้คำนวณ Min/Max", "ได้จากการปรับค่า (calibration) ให้ตรงผลจริง ไม่ได้วัดตรง", f"{v['lead_min']}-{v['lead_max']} วัน", "Min/Max ของ PEM101"),
         "production_time": ("เวลาผลิตสินค้า", "ระบบไม่บันทึกวันเริ่มผลิตจริง", f"{v['assumed_production_days']} วัน ({v['n_assumed_production']} รายการ)", "แผนสั่งวัตถุดิบ"),
         "material_without_purchase_history": ("วัตถุดิบที่ไม่มีประวัติสั่งซื้อ", "ไม่มีใบสั่งซื้อในระบบ", "เวลาที่ผู้ขายแจ้ง หรือค่าสูงของวัตถุดิบอื่น", "แผนสั่งวัตถุดิบ"),
         "sellable_warehouses": ("คลังที่นับว่าขายได้", "ประวัติการเคลื่อนไหวของคลังไม่พอ", v["sellable_warehouses"], "stock ที่ใช้เทียบกับ Min"),
         "pem101_undetermined_items": (f"สินค้า PEM101 {v['n_undetermined']} รหัส", "ยังไม่ชัดว่าเก็บ stock หรือผลิตตามสั่ง", "ไม่มี Min/Max", "Min/Max"),
-        "production_capacity": ("กำลังผลิต", "ข้อมูลบอกได้แค่ยอดผลิตสูงสุดที่เคยทำ", "ใช้ยอดนั้นเป็นค่าต่ำสุด", "แผนการผลิต"),
-        "open_production_orders": ("ใบสั่งผลิตที่กำลังทำ", "วันกำหนดเสร็จในระบบไม่ตรงกับวันเสร็จจริง", "ไม่นับในแผน", "แผนการผลิต"),
+        "production_capacity": ("กำลังผลิต", "ข้อมูลบอกได้แค่ยอดผลิตสูงสุดที่เคยทำ", "ใช้ยอดนั้นเป็นค่าต่ำสุดที่กำลังผลิตน่าจะทำได้ (Lower bound ไม่ใช่ขีดความสามารถจริง)", "แผนการผลิต"),
+        "open_production_orders": ("ใบสั่งผลิตที่กำลังทำ", "วันกำหนดเสร็จในระบบไม่ตรงกับวันเสร็จจริง", "ไม่นำมาหักจากแผน (Open production orders ยังไม่ถูกนับ)", "แผนการผลิต"),
         "fmto_fmts_warehouses": ("คลัง FMTO และ FMTS", "ยังไม่รู้ว่าเป็นของพร้อมขายไหม", "ไม่นับ", "stock ที่ใช้เทียบกับ Min และแผนการผลิต"),
-        "forecast_range": ("ยอดทาย", "ยังไม่มีช่วงสูง-ต่ำ", "ใช้ค่ากลาง", "แผนการผลิต"),
+        "forecast_range": ("ยอดทาย", "ยังไม่มีช่วงสูง-ต่ำ", "ใช้ค่าเดียวต่อเดือน (point forecast)", "แผนการผลิต"),
         "calibration_window": ("ช่วงข้อมูลที่ใช้ปรับ Min/Max", "ถ้าใช้ช่วงสั้นลง lead time ที่ได้จะแคบลง", v["calibration_window"], "Min/Max ของ PEM101"),
     }
     assert set(rows) == set(expected)
@@ -306,12 +306,12 @@ def test_an_unknown_mixed_item_stops_the_computation():
 # The approved rows, verbatim; {braces} are the draft values of config (pending_criteria_values) and the decision date as 'd MMM yy'.
 PENDING_ROWS = [
     ["ยอดทายดีกว่าวิธีง่ายไหม", "Relative MAE ต่ำแค่ไหนถึงนับว่าถึงเกณฑ์ (MAE ของเรา ÷ MAE ของ Naive)", "ร่าง: ต่ำกว่า {relative_mae_pass} ถึงเกณฑ์ผ่าน, ต่ำกว่า {relative_mae_good} ถึงเกณฑ์ดี", "ผู้บริหาร", "หลังรอบ {decision_date}"],
-    ["ยอดทายเอียงต่อเนื่อง", "tracking signal เกินเท่าไหร่ถึงเตือน", "ร่าง: ±{tracking_signal_limit}", "ผู้บริหาร", "ทุกเดือน"],
+    ["ยอดทายเอียงไปทางเดียวต่อเนื่อง (Bias)", "Tracking Signal (ความคลาดสะสม ÷ ความคลาดเฉลี่ย) เกินเท่าไหร่ถึงเตือน", "ร่าง: ±{tracking_signal_limit} (ไม่มีหน่วย)", "ผู้บริหาร", "ทุกเดือน"],
     ["ฝ่ายที่ยอดทายไม่ชนะวิธีง่าย", "ใช้วิธีง่ายแทนไหม", "ยังใช้วิธีเดิม และแสดงผลเทียบ", "ผู้บริหาร", "หลังรอบ {decision_date}"],
-    ["เป้าการส่งไม่สาย", "บริษัทต้องการกี่ %", "ให้เลือกเองบนหน้าแผนสต็อก", "ผู้บริหาร", "ยังไม่กำหนด"],
-    ["Min/Max ที่จำลอง", "การส่งไม่สายจำลองห่างจากผลจริงได้แค่ไหน", "ยังไม่กำหนด", "ฝ่ายวางแผน", "หลังรอบ {decision_date}"],
+    ["เป้าการส่งไม่ช้า (not-late)", "บริษัทต้องการกี่ %", "ให้เลือกเองบนหน้าแผนสต็อก", "ผู้บริหาร", "ยังไม่กำหนด"],
+    ["Min/Max ที่จำลอง", "การส่งไม่ช้าที่จำลองห่างจากผลจริงได้แค่ไหน", "ยังไม่กำหนด", "ฝ่ายวางแผน", "หลังรอบ {decision_date}"],
     ["แผนวัตถุดิบ", "ตรงกับใบสั่งซื้อจริงแค่ไหนถึงใช้สั่งของได้", "ยังไม่กำหนด หน้าขึ้นว่ายังอยู่ระหว่างตรวจสอบ", "ฝ่ายจัดซื้อ", "ยังไม่กำหนด"],
-    ["เป้ารายได้", "นับจากวันออก invoice หรือวันส่งของ", "ใช้วันส่งของไปก่อน", "เจ้าของเป้า", "ยังไม่กำหนด"],
+    ["เป้ารายได้", "นับจากวันออก invoice (Invoice date) หรือวันส่งตามสัญญา (Contract delivery date)", "ใช้วันส่งตามสัญญาไปก่อน", "เจ้าของเป้า", "ยังไม่กำหนด"],
     ["จับคู่ประเภทสินค้ากับเป้า", "ยืนยันการจับคู่ที่จับจากชื่อ เช่น MV/HV Surge Arrester", "แสดงพร้อมป้ายยังไม่ยืนยัน", "ฝ่ายขาย", "ยังไม่กำหนด"],
 ]
 PENDING_HEADS = ["เรื่อง", "ต้องกำหนดอะไร", "ตอนนี้ใช้", "ใครกำหนด", "ตัดสินเมื่อ"]
@@ -335,14 +335,14 @@ def test_the_criteria_table_is_in_the_file_with_the_eight_approved_rows_and_valu
     # the draft values and the date are config's: the rendered row text carries them
     cfg = mm.load_config()["pending_criteria_values"]
     assert values == {"relative_mae_pass": "1", "relative_mae_good": "0.7", "tracking_signal_limit": "4", "decision_date": "7 ธ.ค. 69"} and cfg["decision_month"] == "2026-12"
-    assert payload["pending_criteria"][0]["now_used"] == "ร่าง: ต่ำกว่า 1 ถึงเกณฑ์ผ่าน, ต่ำกว่า 0.7 ถึงเกณฑ์ดี" and payload["pending_criteria"][1]["now_used"] == "ร่าง: ±4"
+    assert payload["pending_criteria"][0]["now_used"] == "ร่าง: ต่ำกว่า 1 ถึงเกณฑ์ผ่าน, ต่ำกว่า 0.7 ถึงเกณฑ์ดี" and payload["pending_criteria"][1]["now_used"] == "ร่าง: ±4 (ไม่มีหน่วย)"
 
 
 def test_the_criteria_rows_follow_config_values_and_only_the_sales_report_scores_against_them():
     cfg = copy.deepcopy(mm.load_config())
     cfg["pending_criteria_values"] = {"relative_mae_pass": 2, "relative_mae_good": 0.5, "tracking_signal_limit": 3.5, "decision_month": "2027-01"}
     rows = mm.pending_criteria_rows(cfg)
-    assert rows[0]["now_used"] == "ร่าง: ต่ำกว่า 2 ถึงเกณฑ์ผ่าน, ต่ำกว่า 0.5 ถึงเกณฑ์ดี" and rows[1]["now_used"] == "ร่าง: ±3.5"
+    assert rows[0]["now_used"] == "ร่าง: ต่ำกว่า 2 ถึงเกณฑ์ผ่าน, ต่ำกว่า 0.5 ถึงเกณฑ์ดี" and rows[1]["now_used"] == "ร่าง: ±3.5 (ไม่มีหน่วย)"
     assert rows[0]["when"] == rows[2]["when"] == rows[4]["when"] == "หลังรอบ 5 ม.ค. 70"
     # the values are drafts: no source file other than the builder and the sales report's "เทียบกับร่างเกณฑ์" block (labelled as a draft) reads them
     hits = [f for f in os.listdir(os.path.join(PROJECT_ROOT, "src")) if f.endswith(".py")

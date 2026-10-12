@@ -22,9 +22,9 @@ import maxmin_v1 as mm  # noqa: E402
 
 CFG = mm.load_config()
 LINE_1 = "Min/Max คำนวณจาก lead time ที่ทำให้การจำลองส่งของทันและถือ stock ใกล้เคียงของจริงที่สุด อยู่ระหว่าง {lead_min} ถึง {lead_max} วัน"
-LINE_2 = "lead time วัตถุดิบจากใบสั่งซื้อจริง ค่ากลาง {median_observed} วัน (มีข้อมูล {n_observed} จาก {n_items} รายการ) ใช้สำหรับวางแผนสั่งวัตถุดิบ ไม่ได้ใช้คำนวณ Min/Max ของสินค้า"
+LINE_2 = "lead time วัตถุดิบจากใบสั่งซื้อที่ผ่านมา ค่ากลาง {median_observed} วัน (มีข้อมูล {n_observed} จาก {n_items} รายการ) ใช้สำหรับวางแผนสั่งวัตถุดิบ ไม่ได้ใช้คำนวณ Min/Max ของสินค้า"
 HEADERS = ["lead time วัตถุดิบ (วัน)", "ที่มา"]
-LABELS = {"ใบสั่งซื้อจริง", "ผู้ขายแจ้ง", "ค่าประมาณ"}
+LABELS = {"จากใบสั่งซื้อที่ผ่านมา", "ผู้ขายแจ้งเวลา", "ประมาณการ (ไม่มีข้อมูลจริง)"}
 INTRO = "ตัวเลขบางส่วนในระบบใช้ค่าแทนเพราะข้อมูลยังบอกไม่ได้ ตารางนี้บอกว่าใช้อะไรแทน และกระทบตัวเลขไหน"
 FAIL = "โหลดรายการสมมติฐานไม่ได้"
 TRACKED_ASSUMPTIONS = os.path.join(PROJECT_ROOT, "data", "assumptions.json")
@@ -116,7 +116,7 @@ def test_the_item_table_has_the_two_columns_with_each_items_value_and_source(edg
         assert days == _fmt(lead.loc[code, "bottleneck_days"]), code
         assert source == labels[lead.loc[code, "bottleneck_source"]], code
         if bool(lead.loc[code, "no_bom"]):
-            assert source == "ค่าประมาณ", f"{code} has no walkable BOM"
+            assert source == "ประมาณการ (ไม่มีข้อมูลจริง)", f"{code} has no walkable BOM"
         shown[source] = shown.get(source, 0) + 1
     assert shown == {labels[k]: int(v) for k, v in lead["bottleneck_source"].value_counts().items()}
     assert set(shown) <= LABELS
@@ -127,15 +127,15 @@ def test_all_three_source_labels_render_when_each_occurs(edge, tmp_path_factory)
     def mutate(data):
         m = data["divisions"]["PEM101"]["curve_target"]["item_material_lead"]
         a, b = sorted(m)[:2]
-        m[a] = {"days": 12.5, "source": "ผู้ขายแจ้ง"}
-        m[b] = {"days": 40.0, "source": "ใบสั่งซื้อจริง"}
-        m[sorted(m)[2]] = {"days": 63.0, "source": "ค่าประมาณ"}
+        m[a] = {"days": 12.5, "source": "ผู้ขายแจ้งเวลา"}
+        m[b] = {"days": 40.0, "source": "จากใบสั่งซื้อที่ผ่านมา"}
+        m[sorted(m)[2]] = {"days": 63.0, "source": "ประมาณการ (ไม่มีข้อมูลจริง)"}
     path, data = _build(tmp_path_factory, "inv_three", mutate)
     _open_inventory(edge, path)
     rows = edge.ev("[...document.querySelectorAll('#curve-item-table-body tr')].map(r=>[r.children[0].textContent.trim(), r.children[4].textContent.trim(), r.children[5].textContent.trim()])")
     by = {r[0]: r for r in rows}
     codes = sorted(by)[:3]
-    assert by[codes[0]][1:] == ["12.5", "ผู้ขายแจ้ง"] and by[codes[1]][1:] == ["40", "ใบสั่งซื้อจริง"] and by[codes[2]][1:] == ["63", "ค่าประมาณ"]
+    assert by[codes[0]][1:] == ["12.5", "ผู้ขายแจ้งเวลา"] and by[codes[1]][1:] == ["40", "จากใบสั่งซื้อที่ผ่านมา"] and by[codes[2]][1:] == ["63", "ประมาณการ (ไม่มีข้อมูลจริง)"]
     assert {r[2] for r in rows} >= LABELS
 
 
@@ -197,7 +197,7 @@ def test_the_assumptions_tab_shows_the_ten_records_from_the_json(edge, tmp_path_
         assert edge.ev("document.getElementById('origTab').style.display") == "none"
         assert edge.ev("document.querySelector('#assumptionsTab .assump-intro').textContent.trim()") == INTRO
         heads = edge.ev("[...document.querySelectorAll('#assumptionsTable thead th')].map(t=>t.textContent.trim())")
-        assert heads == ["เรื่อง", "ยังไม่รู้อะไร", "ตอนนี้ใช้", "กระทบ"]
+        assert heads == ["เรื่อง", "ยังไม่รู้อะไร (Unknown)", "ตอนนี้ใช้ (Used now)", "กระทบอะไร (Affects)"]
         rows = edge.ev("[...document.querySelectorAll('#assumptionsTable tbody tr')].map(r=>[...r.children].map(c=>c.textContent.trim()))")
         payload = json.load(open(site / "data" / "assumptions.json", encoding="utf-8"))["assumptions"]
         assert rows == [[r["topic"], r["unknown"], r["used_now"], r["affects"]] for r in payload] and len(rows) == 10

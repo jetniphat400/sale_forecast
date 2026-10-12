@@ -130,17 +130,17 @@ def test_line_for_each_verdict_combination():
         heading + " A, B ใกล้เคียงกันจนบอกไม่ได้ว่าวิธีไหนดีกว่า"
     # better only, large and small
     assert br.significance_line(_rows(A=("better", -20.0)), "Direct") == \
-        heading + " A ทายพลาดน้อยกว่าประมาณ 20% ทดสอบแล้วความต่างนี้เกิดจริง"
+        heading + " A ทายพลาดน้อยกว่าประมาณ 20% (วัดจาก MAE) ทดสอบทางสถิติแล้วว่าต่างกันอย่างมีนัยสำคัญ (statistically significant ไม่น่าเกิดจากความบังเอิญ)"
     assert br.significance_line(_rows(A=("better", -1.38)), "Direct") == \
-        heading + " A ทายพลาดน้อยกว่าประมาณ 1.4% ทดสอบแล้วความต่างนี้เกิดจริง แม้จะเล็ก"
+        heading + " A ทายพลาดน้อยกว่าประมาณ 1.4% (วัดจาก MAE) ทดสอบทางสถิติแล้วว่าต่างกันอย่างมีนัยสำคัญ (statistically significant ไม่น่าเกิดจากความบังเอิญ) แม้จะเล็ก"
     # worse only
     assert br.significance_line(_rows(A=("worse", 12.4)), "Direct") == \
-        heading + " A ทายพลาดมากกว่าประมาณ 12% ทดสอบแล้วความต่างนี้เกิดจริง"
+        heading + " A ทายพลาดมากกว่าประมาณ 12% (วัดจาก MAE) ทดสอบทางสถิติแล้วว่าต่างกันอย่างมีนัยสำคัญ (statistically significant ไม่น่าเกิดจากความบังเอิญ)"
     # everything: better first (one per division, data order), then worse, then the unclear group, joined by " · "
     mixed = br.significance_line(_rows(Z=("unclear", 0.5), A=("worse", 7.26), B=("better", -4.9), C=("better", -30.0), D=("unclear", 9.0)), "Direct")
-    assert mixed == (heading + " B ทายพลาดน้อยกว่าประมาณ 4.9% ทดสอบแล้วความต่างนี้เกิดจริง แม้จะเล็ก"
-                     " · C ทายพลาดน้อยกว่าประมาณ 30% ทดสอบแล้วความต่างนี้เกิดจริง"
-                     " · A ทายพลาดมากกว่าประมาณ 7.3% ทดสอบแล้วความต่างนี้เกิดจริง"
+    assert mixed == (heading + " B ทายพลาดน้อยกว่าประมาณ 4.9% (วัดจาก MAE) ทดสอบทางสถิติแล้วว่าต่างกันอย่างมีนัยสำคัญ (statistically significant ไม่น่าเกิดจากความบังเอิญ) แม้จะเล็ก"
+                     " · C ทายพลาดน้อยกว่าประมาณ 30% (วัดจาก MAE) ทดสอบทางสถิติแล้วว่าต่างกันอย่างมีนัยสำคัญ (statistically significant ไม่น่าเกิดจากความบังเอิญ)"
+                     " · A ทายพลาดมากกว่าประมาณ 7.3% (วัดจาก MAE) ทดสอบทางสถิติแล้วว่าต่างกันอย่างมีนัยสำคัญ (statistically significant ไม่น่าเกิดจากความบังเอิญ)"
                      " · Z, D ใกล้เคียงกันจนบอกไม่ได้ว่าวิธีไหนดีกว่า")
 
 

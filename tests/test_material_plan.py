@@ -477,7 +477,7 @@ def test_the_page_text_is_the_approved_text_and_every_braced_value_comes_from_th
 
 def test_the_two_order_lists_split_by_the_latest_order_date_with_the_approved_columns_and_source_labels(project):
     page, v = _page(project)
-    heads_expected = ["รหัสวัตถุดิบ", "ชื่อ", "ใช้ในสินค้า (รหัส)", "ต้องสั่งเพิ่ม", "ต้องสั่งภายใน", "lead time (วัน)", "ที่มา lead time"]
+    heads_expected = ["รหัสวัตถุดิบ", "ชื่อ", "ใช้ในสินค้า (รหัส)", "ต้องสั่งเพิ่ม (Order qty)", "สั่งภายในวันที่ (Order-by date)", "lead time (วัน)", "ที่มา lead time"]
     for table in ("within-table", "late-table"):
         assert re.findall(r"<th(?:\s[^>]*)?>(.*?)</th>", page.split('id="%s"' % table)[1].split("</table>")[0]) == heads_expected
     _, sm, meta = mp.read_outputs(project)
@@ -489,7 +489,7 @@ def test_the_two_order_lists_split_by_the_latest_order_date_with_the_approved_co
     within = re.findall(r'<tr data-material="([^"]+)">', page.split('id="within-table"')[1].split("</table>")[0])
     assert sorted(within) == sorted(dates[(dates >= today) & (dates <= today + pd.Timedelta(days=30))].index)
     cells = re.findall(r"<td[^>]*>(.*?)</td>", dict(rows)["RM-A"])          # the fixture holds no purchase unit for RM-A: its own flag, dashes for quantity and date, the rest as before
-    assert cells[0] == 'RM-A<span class="flag unit">ไม่มีหน่วยซื้อในระบบ</span>' and cells[1] == "Alpha part" and cells[2] == "FG1, FG2" and cells[3] == "-" and cells[4] == "-" and cells[5] == "20" and cells[6] == "ใบสั่งซื้อจริง"
+    assert cells[0] == 'RM-A<span class="flag unit">ไม่มีหน่วยซื้อในระบบ</span>' and cells[1] == "Alpha part" and cells[2] == "FG1, FG2" and cells[3] == "-" and cells[4] == "-" and cells[5] == "20" and cells[6] == "จากใบสั่งซื้อที่ผ่านมา"
 
 
 def test_the_main_table_has_stock_open_orders_and_the_demand_and_net_columns_per_month(project):
@@ -593,7 +593,7 @@ def test_the_config_warehouses_equal_the_proof_on_the_saved_pulls_and_no_materia
 def test_the_page_opens_with_the_visually_distinct_notice_above_everything_else(project):
     page, v = _page(project)
     body = page.split('<div class="wrap">')[1]
-    assert body.lstrip().startswith('<div class="notice" id="verification-notice">แผนนี้ยังอยู่ระหว่างตรวจสอบ ตัวเลขต้องสั่งยังใช้สั่งซื้อจริงไม่ได้</div>')
+    assert body.lstrip().startswith('<div class="notice" id="verification-notice">แผนนี้เป็นร่าง (Draft) ยังอยู่ระหว่างตรวจสอบ ตัวเลขต้องสั่งยังใช้สั่งซื้อจริงไม่ได้ จนกว่าจะกำหนดเกณฑ์ว่าตรงกับใบสั่งซื้อจริงแค่ไหนถึงใช้ได้ (ดูแท็บสมมติฐานที่ใช้อยู่)</div>')
     assert ".notice {" in page and "border: 2px solid" in page
 
 
@@ -838,14 +838,14 @@ def test_the_page_says_how_many_plan_items_are_exploded_and_why_the_others_are_n
     mm_, sm_, meta = mp.read_outputs(project)
     assert (c["n_items"], c["n_exploded"], c["n_no_production"], c["n_no_demand"], c["n_no_bom"]) == (3, 2, 1, 0, 0)
     assert c["n_exploded"] + c["n_no_bom"] == meta["n_items_exploded"]
-    line = "สินค้าในแผนการผลิต 3 รหัส คิดวัตถุดิบ 2 รหัส ไม่ได้คิด 1 รหัส: ไม่มียอดผลิตใน 3 เดือนนี้ 0 รหัส · ไม่พบการผลิตในระบบ 1 รหัส · ไม่มี BOM ในระบบ 0 รหัส"
+    line = "สินค้าในแผนการผลิต 3 รหัส คิดวัตถุดิบ 2 รหัส ไม่ได้คิด 1 รหัส: ไม่มียอดผลิตใน 3 เดือนนี้ 0 รหัส · ไม่มีบันทึกผลิตในระบบ 1 รหัส · ไม่มี BOM ในระบบ 0 รหัส"
     assert f'<summary class="note-line" id="coverage-line">{line}</summary>' in page
     assert '<details id="coverage-details">' in page and '<details id="coverage-details" open' not in page            # closed until opened
     head = re.findall(r'<th class="name">(.*?)</th>', page.split('id="coverage-table"')[1].split("</thead>")[0])
     assert head == ["รหัส", "ชื่อ", "ฝ่าย", "เหตุผล"]
     rows = re.findall(r'<tr data-item="([^"]+)"><td class="code">.*?</td><td class="name">(.*?)</td><td class="name">(.*?)</td><td class="name">(.*?)</td></tr>',
                       page.split('id="coverage-table"')[1])
-    assert [(r[0], r[2], r[3]) for r in rows] == [("FG9", "PEM103", "ไม่พบการผลิตในระบบ")]
+    assert [(r[0], r[2], r[3]) for r in rows] == [("FG9", "PEM103", "ไม่มีบันทึกผลิตในระบบ")]
     assert page.index('id="divisions-covered"') < page.index('id="coverage-details"') < page.index('id="within-title"')
     assert "{" not in re.sub(r"<style.*?</style>", "", page, flags=re.S)
 
@@ -868,7 +868,7 @@ def test_the_counts_on_the_page_follow_the_plan_and_the_three_reasons_add_up_to_
     if not os.path.exists(tracked) or not os.path.exists(p):
         pytest.skip("SKIPPED, not passed: the built material plan page or the saved week 3 pulls are not on this machine")
     page = open(tracked, encoding="utf-8").read()
-    m = re.search(r"สินค้าในแผนการผลิต (\d+) รหัส คิดวัตถุดิบ (\d+) รหัส ไม่ได้คิด (\d+) รหัส: ไม่มียอดผลิตใน (\d+) เดือนนี้ (\d+) รหัส · ไม่พบการผลิตในระบบ (\d+) รหัส · ไม่มี BOM ในระบบ (\d+) รหัส", page)
+    m = re.search(r"สินค้าในแผนการผลิต (\d+) รหัส คิดวัตถุดิบ (\d+) รหัส ไม่ได้คิด (\d+) รหัส: ไม่มียอดผลิตใน (\d+) เดือนนี้ (\d+) รหัส · ไม่มีบันทึกผลิตในระบบ (\d+) รหัส · ไม่มี BOM ในระบบ (\d+) รหัส", page)
     assert m, "the coverage line is not on the built page"
     n, mexp, k, months, a, b, c = map(int, m.groups())
     im, _dm, opmeta = op.read_outputs(PROJECT_ROOT, cfg["operation_plan"])
@@ -880,7 +880,7 @@ def test_the_counts_on_the_page_follow_the_plan_and_the_three_reasons_add_up_to_
     listed = re.findall(r'<tr data-item="([^"]+)"><td class="code">.*?</td><td class="name">.*?</td><td class="name">(\w+)</td><td class="name">(.*?)</td></tr>',
                         page.split('id="coverage-table"')[1])
     assert len(listed) == k == len({x[0] for x in listed})
-    label = {"no_demand": "ไม่มียอดผลิต", "no_production": "ไม่พบการผลิตในระบบ", "no_bom": "ไม่มี BOM ในระบบ"}
+    label = {"no_demand": "ไม่มียอดผลิต", "no_production": "ไม่มีบันทึกผลิตในระบบ", "no_bom": "ไม่มี BOM ในระบบ"}
     assert {x[0]: x[2] for x in listed} == {i: label[r] for i, r in zip(cov["item"], cov["reason"]) if r != "exploded"}
     assert mexp + c == mp.read_outputs(PROJECT_ROOT, cfg)[2]["n_items_exploded"]
 
@@ -898,8 +898,8 @@ def test_the_coverage_line_and_the_divisions_follow_the_plan_items_given_to_the_
     l1, l2 = (bm.TEXT["coverage_line"].format(n_items=v["coverage"]["n_items"], n_exploded=v["coverage"]["n_exploded"], n_not=v["coverage"]["n_not"],
                                               n_months=v["coverage"]["n_months"], n_no_demand=v["coverage"]["n_no_demand"],
                                               n_no_production=v["coverage"]["n_no_production"], n_no_bom=v["coverage"]["n_no_bom"]) for v in (one, two))
-    assert l1 == "สินค้าในแผนการผลิต 3 รหัส คิดวัตถุดิบ 1 รหัส ไม่ได้คิด 2 รหัส: ไม่มียอดผลิตใน 2 เดือนนี้ 1 รหัส · ไม่พบการผลิตในระบบ 1 รหัส · ไม่มี BOM ในระบบ 0 รหัส"
-    assert l2 == "สินค้าในแผนการผลิต 6 รหัส คิดวัตถุดิบ 3 รหัส ไม่ได้คิด 3 รหัส: ไม่มียอดผลิตใน 2 เดือนนี้ 2 รหัส · ไม่พบการผลิตในระบบ 0 รหัส · ไม่มี BOM ในระบบ 1 รหัส"
+    assert l1 == "สินค้าในแผนการผลิต 3 รหัส คิดวัตถุดิบ 1 รหัส ไม่ได้คิด 2 รหัส: ไม่มียอดผลิตใน 2 เดือนนี้ 1 รหัส · ไม่มีบันทึกผลิตในระบบ 1 รหัส · ไม่มี BOM ในระบบ 0 รหัส"
+    assert l2 == "สินค้าในแผนการผลิต 6 รหัส คิดวัตถุดิบ 3 รหัส ไม่ได้คิด 3 รหัส: ไม่มียอดผลิตใน 2 เดือนนี้ 2 รหัส · ไม่มีบันทึกผลิตในระบบ 0 รหัส · ไม่มี BOM ในระบบ 1 รหัส"
     assert one["divisions"] == "PEM101" and one["coverage"]["divisions_without_production"] == ["PEM104"]
     assert two["divisions"] == "PEM101, PEM104" and two["coverage"]["divisions_without_production"] == []
     with pytest.raises(mp.MaterialPlanError):                    # a count that does not match the plan's own count of exploded items stops the page
@@ -946,7 +946,7 @@ def test_remarks_on_fixed_examples_paid_pending_none_and_a_config_exception():
     assert (c.loc["NOM-1", "remark"], c.loc["NOM-1", "evidence"]) == ("รอตรวจ", "ไม่มีข้อมูลในระบบ")     # no item-master record
     assert (c.loc["WRK-1", "remark"], c.loc["WRK-1", "evidence"]) == ("รอตรวจ", "หน่วยนับ")             # a unit that names work
     assert c.loc["RAW-1", "remark"] == "" and not bool(c.loc["RAW-1", "paid"])                          # a normal raw material: no remark
-    assert (c.loc["EXC-1", "remark"], c.loc["EXC-1", "evidence"]) == ("รอตรวจ", "จากการตรวจชื่อ")        # a (non-LABOR) code moved to รอตรวจ by an explicit config exception
+    assert (c.loc["EXC-1", "remark"], c.loc["EXC-1", "evidence"]) == ("รอตรวจ", "ชื่อเป็นชิ้นส่วน")        # a (non-LABOR) code moved to รอตรวจ by an explicit config exception
     assert (c.loc["LABOR-9", "remark"], c.loc["LABOR-9", "evidence"]) == ("ค่าแรง", "จากรหัส")           # a LABOR- code is labor, never รอตรวจ, and no config exception moves it
     assert (c.loc["labor_x", "remark"], c.loc["labor_x", "evidence"]) == ("ค่าแรง", "จากรหัส")          # a code starting with labor_ , any case, with an ordinary name
     # a line matching both the paid keywords and a รอตรวจ condition gets the paid remark, and the overlap is recorded
@@ -972,11 +972,18 @@ def test_the_answers_of_the_user_labor_codes_outsource_slit_cost_and_the_confirm
     for code in ("SLIT COST-7", "COST OF PAPER", "CONF-1"):                                              # the keywords SLIT COST and COST OF PAPER, and the confirmed code list
         assert (c.loc[code, "remark"], c.loc[code, "evidence"]) == ("ไม่ใช่สินค้า", "ผู้ใช้ยืนยัน") and bool(c.loc[code, "paid"])
     assert c.loc["ODD-1", "remark"] == "" or c.loc["ODD-1", "remark"] == "รอตรวจ"                       # an unconfirmed item is still handled by the รอตรวจ rules
-    assert rule["user_confirmed"]["codes"]["02-00-R-7048"] == "confirmed by user 2026-10-12" and set(rule["user_confirmed"]["codes"]) >= {"TF-R-01-0077", "TF-R-05-0216", "TF-R-08-0223TF", "TF-R-08-0224TF"}
-    assert rule["exceptions"] == {}                                                                      # the five name-review exceptions are gone
+    assert set(rule["user_confirmed"]["codes"]) >= {"TF-R-01-0077", "TF-R-05-0216", "TF-R-08-0223TF", "TF-R-08-0224TF"} and "02-00-R-7048" not in rule["user_confirmed"]["codes"]
+    assert rule["exceptions"] == {"02-00-R-7048": "user 2026-10-12: probably goods"}                    # the one code the user says is probably goods (the five name-review exceptions of Prompt 22 are gone)
 
 
-def test_on_the_saved_pulls_no_line_is_left_waiting_for_a_check():
+def test_the_code_the_user_called_probably_goods_is_pending_and_counted_not_a_paid_remark():
+    rule = _rule()
+    c = _remarks(["02-00-R-7048", "TF-R-01-0077"], _attrs([("02-00-R-7048", "100"), ("TF-R-01-0077", "100")], aging_rows=[("02-00-R-7048", "Raw materials")]), {}, rule)
+    assert (c.loc["02-00-R-7048", "remark"], c.loc["02-00-R-7048", "evidence"], bool(c.loc["02-00-R-7048", "paid"])) == ("รอตรวจ", "ชื่อเป็นชิ้นส่วน", False)      # pending, so counted
+    assert (c.loc["TF-R-01-0077", "remark"], bool(c.loc["TF-R-01-0077", "paid"])) == ("ไม่ใช่สินค้า", True)                                                       # the other confirmed codes stay not-goods
+
+
+def test_on_the_saved_pulls_only_the_code_the_user_called_probably_goods_waits_for_a_check():
     root = PROJECT_ROOT
     attr_path = os.path.join(root, "output", "data", "material_pull", "item_attributes.pkl")
     inputs_path = os.path.join(root, "output", "data", "material_pull", "material_inputs.pkl")
@@ -989,7 +996,7 @@ def test_on_the_saved_pulls_no_line_is_left_waiting_for_a_check():
     units = mp.bom_component_lines(b["bom_tree"]).groupby("comp")["unit"].first().to_dict()
     codes = pd.read_csv(summary_path)["material"].map(mp.key).tolist()
     r = mp.remark_lines(codes, attrs, names, units, rule)
-    assert len(r) == len(codes) and int((r["remark"] == "รอตรวจ").sum()) == 0                          # the answers of the user leave nothing waiting
+    assert len(r) == len(codes) and r[r["remark"] == "รอตรวจ"]["material"].tolist() == ["02-00-R-7048"]    # the answers of the user leave one line waiting: the explicit exception
     assert r[r["material"].str.upper().str.startswith(("LABOR-", "LABOR_"))]["paid"].all()               # every LABOR code is labor
 
 

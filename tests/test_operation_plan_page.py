@@ -18,7 +18,7 @@ from page_helpers import Edge, PROJECT_ROOT, fresh_inventory_data, load_stock_pa
 import operation_plan as op  # noqa: E402
 import maxmin_v1 as mm  # noqa: E402
 
-D3_LINE = "lead time วัตถุดิบจากใบสั่งซื้อจริง ค่ากลาง {median} วัน (มีข้อมูล {n_observed} จาก {n_items} รายการ) ใช้สำหรับวางแผนสั่งวัตถุดิบ ไม่ได้ใช้คำนวณ Min/Max ของสินค้า"
+D3_LINE = "lead time วัตถุดิบจากใบสั่งซื้อที่ผ่านมา ค่ากลาง {median} วัน (มีข้อมูล {n_observed} จาก {n_items} รายการ) ใช้สำหรับวางแผนสั่งวัตถุดิบ ไม่ได้ใช้คำนวณ Min/Max ของสินค้า"
 
 
 @pytest.fixture(scope="module")

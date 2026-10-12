@@ -144,6 +144,12 @@ Code: `src/investigations/task2b_part2_fulfilment_segmentation.py` (`run_from_pu
 - Reader text: see SENTENCES NEEDING THAI TEXT of this task (demand column header on the material page, a label for the list of divisions covered, a line for the six PEM101 codes never sold, the approved heading for six divisions) (the user's assistant).
 - Category-level view of the two product categories and the three items' settings (brief item "settings"), storms and the other external factors, utility budgets, sales insight and EGP bids: not done (brief table).
 
+### Week 4, prompt 24 -- remaining confusing words, computed numbers in the manual, backup comparison, one remark change -- DONE, 2026-10-12 (no database; the test suite made none)
+
+**Report:** `docs/reports/summary/prompt5_g2_vintage_target_map.md`, heading "Prompt 24" (with the before to after table). Method: METRICS.md Sec.54 (one line added), DATA_MAP.md (`manual_values`).
+
+**Texts.** Of the 58 items of Part 7: 8 fixed earlier, 6 on the original S&OP tab (untouched), 44 still present, 43 fixed now at their generators (item 33, the year formats, left: it would change the numbers shown). The manual's numbers and dates are 27 placeholders filled at runtime from `manual_values` in data/assumptions.json (unresolved ones show on the page and fail a test); stale typed values corrected (Trend data through 8 ต.ค. 2569, 445 codes, lead time 45-75), the stock panel and Trend schedule statements corrected. **Backup:** the 7 files of the latest dated backup match the current files. **Remark:** 02-00-R-7048 is รอตรวจ · ชื่อเป็นชิ้นส่วน (counted): all-lines list 2110 counted, 134 not counted, 1 รอตรวจ; the 30-day and late lists and the executive watch-out (533) are unchanged. Every number on every page is unchanged except these counts and time stamps.
+
 ### Week 4, prompt 23 -- weekday-only scheduling, database-login safety round 2, material-plan remarks from the user's answers -- DONE, 2026-10-12 (no database, no network; the test suite made none)
 
 **Report:** `docs/reports/summary/prompt5_g2_vintage_target_map.md`, heading "Prompt 23". Method: METRICS.md Sec.51 (dated note only), Sec.53, Sec.54.

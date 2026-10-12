@@ -36,7 +36,7 @@ def test_user_manual_source_file_exists_and_matches_approved_heading():
     # (get_origins() + enumerate(origins, start=1): origin 1 = smallest train_size = earliest
     # window_end_month) means the manual's [ตรวจ] marker was REMOVED, not rewritten -- confirm
     # the corrected sentence is present and the marker is gone.
-    assert "แกน X = รอบทดสอบที่ 1-7 เรียงตามเวลา · แกน Y" in text
+    assert "แกน X = รอบทดสอบที่ 1-{n_rounds} เรียงตามเวลา · แกน Y" in text
     assert "[ตรวจ]" not in text
 
 

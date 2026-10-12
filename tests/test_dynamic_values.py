@@ -348,9 +348,9 @@ def test_sales_report_numbers_follow_their_sources(two_builds):
     expected_base = build_report.significance_line(direct, "Direct")
     assert expected_base in b, "the Direct line of the block does not follow topdown_significance.csv"
     assert expected_base not in p
-    assert "PEM101 ทายพลาดน้อยกว่าประมาณ 7.7% ทดสอบแล้วความต่างนี้เกิดจริง" in p
-    assert "PEM101 ทายพลาดน้อยกว่าประมาณ 7.7% ทดสอบแล้วความต่างนี้เกิดจริง แม้จะเล็ก" not in p      # 7.7 is not below 5
-    assert "PEM103 ทายพลาดมากกว่าประมาณ 3.0% ทดสอบแล้วความต่างนี้เกิดจริง แม้จะเล็ก" in p
+    assert "PEM101 ทายพลาดน้อยกว่าประมาณ 7.7% (วัดจาก MAE) ทดสอบทางสถิติแล้วว่าต่างกันอย่างมีนัยสำคัญ (statistically significant ไม่น่าเกิดจากความบังเอิญ)" in p
+    assert "PEM101 ทายพลาดน้อยกว่าประมาณ 7.7% (วัดจาก MAE) ทดสอบทางสถิติแล้วว่าต่างกันอย่างมีนัยสำคัญ (statistically significant ไม่น่าเกิดจากความบังเอิญ) แม้จะเล็ก" not in p      # 7.7 is not below 5
+    assert "PEM103 ทายพลาดมากกว่าประมาณ 3.0% (วัดจาก MAE) ทดสอบทางสถิติแล้วว่าต่างกันอย่างมีนัยสำคัญ (statistically significant ไม่น่าเกิดจากความบังเอิญ) แม้จะเล็ก" in p
 
 
 def _pilot_row(html_text):
@@ -371,7 +371,7 @@ def test_pilot_data_age_drives_the_staleness_notice_in_both_directions(tmp_path,
     with open(path, encoding="utf-8") as f:
         shown, status = _pilot_row(f.read())
     assert shown == stamp, "the page must show the data date the test set"
-    assert status == ("เก่ากว่า 1 วัน" if expect_notice else "ใหม่")
+    assert status == ("เก่ากว่า 1 วัน (Stale)" if expect_notice else "ใหม่ (Fresh)")
 
 
 # ------------------------------------------------------------------ inventory page (static text and data)
@@ -379,7 +379,7 @@ def test_pilot_data_age_drives_the_staleness_notice_in_both_directions(tmp_path,
 def test_inventory_page_numbers_follow_their_sources(two_builds):
     base, pert = two_builds
     b, p = base.inventory_html, pert.inventory_html
-    gb, gp = float(_first(r"ประมาณ (\d+)% \(PEM101\)", b)), float(_first(r"ประมาณ (\d+)% \(PEM101\)", p))
+    gb, gp = float(_first(r"ประมาณ (\d+)% ของค่าเต็ม \(PEM101\)", b)), float(_first(r"ประมาณ (\d+)% ของค่าเต็ม \(PEM101\)", p))
     assert gb != gp, "the monthly-versus-daily gap is typed, not computed"
     assert _first(r"ส่งได้ภายใน (\d+) วัน", b) == "14" and _first(r"ส่งได้ภายใน (\d+) วัน", p) == "21"
     assert _first(r"พฤติกรรมจริง (\d+) อย่าง", b) == "3" and _first(r"พฤติกรรมจริง (\d+) อย่าง", p) == "4"
@@ -517,8 +517,8 @@ def test_operation_plan_division_lines_follow_the_counts_of_the_plan():
     meta2["counts"]["no_production_items_by_division"]["PEM103"] = 17
     meta2["counts"]["stock_items_by_division"]["PEM102"] = 3          # a division that has stock items no longer says it has none
     pert = bp.render(bp.compute_values(im, dm, meta2, {}, "2026-10-02", SIX))
-    assert "1 รหัสยังไม่มียอดทาย แผนนับเฉพาะออเดอร์ที่รับแล้ว ตอนนี้มีออเดอร์ค้าง 1 รหัส" in base and "41 รหัสยังไม่มียอดทาย แผนนับเฉพาะออเดอร์ที่รับแล้ว ตอนนี้มีออเดอร์ค้าง 1 รหัส" in pert and "41 รหัส" not in base
-    assert "1 รหัสไม่พบการผลิตในระบบ ไม่นับเป็นภาระผลิต" in base and "17 รหัสไม่พบการผลิตในระบบ ไม่นับเป็นภาระผลิต" in pert
+    assert "1 รหัสยังไม่มียอดทาย (ประวัติขายไม่พอ) แผนนับเฉพาะออเดอร์ที่รับแล้วแต่ยังไม่ส่ง (open orders) ตอนนี้มีออเดอร์ที่รับแล้วยังไม่ส่ง 1 รหัส" in base and "41 รหัสยังไม่มียอดทาย (ประวัติขายไม่พอ) แผนนับเฉพาะออเดอร์ที่รับแล้วแต่ยังไม่ส่ง (open orders) ตอนนี้มีออเดอร์ที่รับแล้วยังไม่ส่ง 1 รหัส" in pert and "41 รหัส" not in base
+    assert "1 รหัสไม่มีบันทึกผลิตในระบบ (ไม่ได้แปลว่ายกเลิกผลิต) ไม่นับรวมในยอดผลิตตามแผน" in base and "17 รหัสไม่มีบันทึกผลิตในระบบ (ไม่ได้แปลว่ายกเลิกผลิต) ไม่นับรวมในยอดผลิตตามแผน" in pert
     assert "PEM102 ไม่มีสินค้าที่เข้าเกณฑ์เก็บ stock" in base and "PEM102 ไม่มีสินค้าที่เข้าเกณฑ์เก็บ stock" not in pert
 
 
@@ -545,7 +545,7 @@ def test_material_plan_page_text_values_follow_their_sources():
     assert "นับของที่สั่งแล้วรอรับตามวันที่คาดว่าจะได้" in a and "ยังไม่นับของที่สั่งแล้วรอรับ" in b
     cells = lambda page, table: re.findall(r"<td[^>]*>(.*?)</td>", page.split('id="%s"' % table)[1].split("</table>")[0])
     ca, cb = cells(a, "late-table"), cells(b, "within-table")           # a: order date before the plan's day; b: 16 days after it, inside the 45-day window
-    assert ca[3:6] == ["250", "11 ก.ย. 69", "20"] and cb[3:6] == ["231", "20 ม.ค. 70", "33"] and ca[6] == "ใบสั่งซื้อจริง"      # the quantity sums the months whose order date is in the list's span
+    assert ca[3:6] == ["250", "11 ก.ย. 69", "20"] and cb[3:6] == ["231", "20 ม.ค. 70", "33"] and ca[6] == "จากใบสั่งซื้อที่ผ่านมา"      # the quantity sums the months whose order date is in the list's span
     assert "ต้องสั่งภายใน 30 วัน</h2>" in a and "ต้องสั่งภายใน 45 วัน</h2>" in b
     assert "วัตถุดิบที่ต้องสั่งภายใน 30 วันข้างหน้า ถึงจะได้ของทันตามแผน" in a and "วัตถุดิบที่ต้องสั่งภายใน 45 วันข้างหน้า ถึงจะได้ของทันตามแผน" in b
 

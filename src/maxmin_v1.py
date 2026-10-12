@@ -341,7 +341,8 @@ def assumption_values(cfg: dict = None) -> dict:
 
 def build_assumptions(cfg: dict = None, today: str = None) -> dict:
     """The payload of data/assumptions.json: {"schema_version", "assumptions": [{id, topic, unknown, used_now, affects, value_source,
-    updated_date}, ...], "pending_criteria": [{topic, to_decide, now_used, who, when}, ...]} in config order. updated_date is the build date (`today`, or the clock)."""
+    updated_date}, ...], "pending_criteria": [{topic, to_decide, now_used, who, when}, ...], "manual_values": {name: text}} in config order. manual_values fills the {braced} names of
+    docs/user_manual.md at runtime (reader_values.manual_values). updated_date is the build date (`today`, or the clock)."""
     cfg = cfg or load_config()
     values = assumption_values(cfg)
     stamp = today or datetime.now().strftime("%Y-%m-%d")
@@ -350,7 +351,8 @@ def build_assumptions(cfg: dict = None, today: str = None) -> dict:
         rec = {k: a[k].format(**values) for k in ("id", "topic", "unknown", "used_now", "affects", "value_source")}
         rec["updated_date"] = stamp
         records.append(rec)
-    return {"schema_version": ASSUMPTIONS_SCHEMA_VERSION, "assumptions": records, "pending_criteria": pending_criteria_rows(cfg)}
+    import reader_values as rv
+    return {"schema_version": ASSUMPTIONS_SCHEMA_VERSION, "assumptions": records, "pending_criteria": pending_criteria_rows(cfg), "manual_values": rv.manual_values(load_full_config())}
 
 
 def pending_criteria_rows(cfg: dict = None) -> list:

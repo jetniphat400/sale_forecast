@@ -148,7 +148,7 @@ CONFIG_PATH = os.path.join(PROJECT_ROOT, "config", "config.yaml")
 PILOT_DIVISIONS = ["PEM101", "PEM103", "PEM107"]
 # Short option label per disabled division. Reasons are built by disabled_division_reasons() so the
 # "n of total" counts come from the data at build time, not from typed numbers.
-DISABLED_DIVISION_LABELS = {"CI101": "ยังไม่เปิด", "PEM102": "ยังไม่เปิด", "PEM104": "ผลิตตามสั่ง"}
+DISABLED_DIVISION_LABELS = {"CI101": "ยังไม่ประเมิน", "PEM102": "ยังไม่ประเมิน", "PEM104": "ผลิตตามสั่ง"}
 # Source of the stocked-item counts: output/summary/phaseE2_1_item_to_warehouse_reverse.csv
 # (column has_stock_anywhere, one row per item; see output/summary/phaseE2_readiness_report.md).
 # Earlier English reasons cited: CI101's small stock co-locates in PEM101's own FG01, not a
@@ -198,8 +198,8 @@ def disabled_division_reasons() -> dict:
     n_ci, t_ci = _stocked_item_counts("CI101")
     n_102, t_102 = _stocked_item_counts("PEM102")
     reasons = {
-        "CI101": f"ยังไม่เปิด มีของในคลังแค่ {n_ci} จาก {t_ci} รหัส และอยู่ในคลังเดียวกับ PEM101 ยังกำหนดคลังของฝ่ายนี้ไม่ได้",
-        "PEM102": f"ยังไม่เปิด มีของในคลังแค่ {n_102} จาก {t_102} รหัส น้อยเกินกว่าจะกำหนดคลังได้",
+        "CI101": f"ยังไม่ประเมิน (Not assessed) มีของในคลังแค่ {n_ci} จาก {t_ci} รหัส และอยู่ในคลังเดียวกับ PEM101 ยังกำหนดคลังของฝ่ายนี้ไม่ได้",
+        "PEM102": f"ยังไม่ประเมิน (Not assessed) มีของในคลังแค่ {n_102} จาก {t_102} รหัส น้อยเกินกว่าจะกำหนดคลังได้",
         "PEM104": "ไม่มีนโยบาย stock ฝ่ายนี้ผลิตตามสั่งทั้งหมด",
     }
     return {d: reason + NO_MIN_MAX_SEPARATOR + no_min_max_line(d) for d, reason in reasons.items()}

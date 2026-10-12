@@ -4,7 +4,7 @@
   {
    "id": "minmax_lead_time",
    "topic": "lead time ที่ใช้คำนวณ Min/Max",
-   "unknown": "ได้จากการจำลองให้ตรงผลจริง ไม่ได้วัดตรง",
+   "unknown": "ได้จากการปรับค่า (calibration) ให้ตรงผลจริง ไม่ได้วัดตรง",
    "used_now": "1-30 วัน",
    "affects": "Min/Max ของ PEM101",
    "value_source": "lead_time_days over the distinct members of the lead-time-free calibration, minimum and maximum (output/summary/week1_recal_control_members_PEM101_92.csv)",
@@ -50,7 +50,7 @@
    "id": "production_capacity",
    "topic": "กำลังผลิต",
    "unknown": "ข้อมูลบอกได้แค่ยอดผลิตสูงสุดที่เคยทำ",
-   "used_now": "ใช้ยอดนั้นเป็นค่าต่ำสุด",
+   "used_now": "ใช้ยอดนั้นเป็นค่าต่ำสุดที่กำลังผลิตน่าจะทำได้ (Lower bound ไม่ใช่ขีดความสามารถจริง)",
    "affects": "แผนการผลิต",
    "value_source": "STATUS.md, Q20: the highest sustained monthly output per division and Type, a lower bound",
    "updated_date": "2026-10-12"
@@ -59,7 +59,7 @@
    "id": "open_production_orders",
    "topic": "ใบสั่งผลิตที่กำลังทำ",
    "unknown": "วันกำหนดเสร็จในระบบไม่ตรงกับวันเสร็จจริง",
-   "used_now": "ไม่นับในแผน",
+   "used_now": "ไม่นำมาหักจากแผน (Open production orders ยังไม่ถูกนับ)",
    "affects": "แผนการผลิต",
    "value_source": "config operation_plan.open_orders_usable (false) and output/summary/week2_open_orders_test.json: the planned finish does not hold and no way of telling an open order passed",
    "updated_date": "2026-10-12"
@@ -77,7 +77,7 @@
    "id": "forecast_range",
    "topic": "ยอดทาย",
    "unknown": "ยังไม่มีช่วงสูง-ต่ำ",
-   "used_now": "ใช้ค่ากลาง",
+   "used_now": "ใช้ค่าเดียวต่อเดือน (point forecast)",
    "affects": "แผนการผลิต",
    "value_source": "the forward-test log holds one forecast per item and month (METRICS.md Sec.27), no interval",
    "updated_date": "2026-10-12"
@@ -101,9 +101,9 @@
    "when": "หลังรอบ 7 ธ.ค. 69"
   },
   {
-   "topic": "ยอดทายเอียงต่อเนื่อง",
-   "to_decide": "tracking signal เกินเท่าไหร่ถึงเตือน",
-   "now_used": "ร่าง: ±4",
+   "topic": "ยอดทายเอียงไปทางเดียวต่อเนื่อง (Bias)",
+   "to_decide": "Tracking Signal (ความคลาดสะสม ÷ ความคลาดเฉลี่ย) เกินเท่าไหร่ถึงเตือน",
+   "now_used": "ร่าง: ±4 (ไม่มีหน่วย)",
    "who": "ผู้บริหาร",
    "when": "ทุกเดือน"
   },
@@ -115,7 +115,7 @@
    "when": "หลังรอบ 7 ธ.ค. 69"
   },
   {
-   "topic": "เป้าการส่งไม่สาย",
+   "topic": "เป้าการส่งไม่ช้า (not-late)",
    "to_decide": "บริษัทต้องการกี่ %",
    "now_used": "ให้เลือกเองบนหน้าแผนสต็อก",
    "who": "ผู้บริหาร",
@@ -123,7 +123,7 @@
   },
   {
    "topic": "Min/Max ที่จำลอง",
-   "to_decide": "การส่งไม่สายจำลองห่างจากผลจริงได้แค่ไหน",
+   "to_decide": "การส่งไม่ช้าที่จำลองห่างจากผลจริงได้แค่ไหน",
    "now_used": "ยังไม่กำหนด",
    "who": "ฝ่ายวางแผน",
    "when": "หลังรอบ 7 ธ.ค. 69"
@@ -137,8 +137,8 @@
   },
   {
    "topic": "เป้ารายได้",
-   "to_decide": "นับจากวันออก invoice หรือวันส่งของ",
-   "now_used": "ใช้วันส่งของไปก่อน",
+   "to_decide": "นับจากวันออก invoice (Invoice date) หรือวันส่งตามสัญญา (Contract delivery date)",
+   "now_used": "ใช้วันส่งตามสัญญาไปก่อน",
    "who": "เจ้าของเป้า",
    "when": "ยังไม่กำหนด"
   },
@@ -149,5 +149,34 @@
    "who": "ฝ่ายขาย",
    "when": "ยังไม่กำหนด"
   }
- ]
+ ],
+ "manual_values": {
+  "stale_days": "7",
+  "n_rounds": "7",
+  "holdout_months": "6",
+  "n_focus_items": "3",
+  "notice_bucket_first": "30",
+  "notice_bucket_second": "60",
+  "notice_bucket_last": "180",
+  "trend_data_through": "8 ต.ค. 2569",
+  "trend_first_month": "ม.ค. 2567",
+  "trend_last_month": "ต.ค. 2569",
+  "n_codes_trend": "445",
+  "n_codes_pages": "445",
+  "lead_grid_first": "45",
+  "lead_grid_last": "75",
+  "ctl_lead_time": "60",
+  "ctl_assembly": "3",
+  "ctl_review": "30",
+  "ctl_service_level": "0.95",
+  "ctl_holding_cost": "0.20",
+  "csl_min": "0.80",
+  "csl_max": "0.99",
+  "notice_days": "14",
+  "signal_count": "3",
+  "min_signals": "2",
+  "run_day_base": "5",
+  "guard_days": "30",
+  "lag_months": "2"
+ }
 }

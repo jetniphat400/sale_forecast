@@ -327,3 +327,78 @@ def price_back_check(price_info: dict, basis: dict, root: str = PROJECT_ROOT) ->
         if not basis["back_check_low"] <= ratio <= basis["back_check_high"]:
             outside.append((div, year, ratio))
     return {"ratios": out, "outside": outside}
+
+# ---------------------------------------------------------------------------------------------------------------------------------------------------------------
+# The numbers and dates of the user manual (docs/user_manual.md). The manual keeps {braced} names; the manual tab fills them at runtime from the key `manual_values` of
+# data/assumptions.json (written with the assumptions by src/maxmin_v1.py). Each value below names its source; a missing source raises, nothing is typed.
+# ---------------------------------------------------------------------------------------------------------------------------------------------------------------
+def fulfilment_min_signals() -> int:
+    """The number of signals that must hold for stock_policy (`n_hold >= N`), read from the segmentation script that produced the item classes (METRICS.md Sec.23)."""
+    with open(SEGMENTATION_SCRIPT, encoding="utf-8") as f:
+        m = re.search(r'"stock_policy" if n_hold >= (\d+)', f.read())
+    if not m:
+        raise ReaderValueError("the stock_policy signal rule (n_hold >= N) was not found in the segmentation script")
+    return int(m.group(1))
+
+
+def thai_date_long(iso_date) -> str:
+    """'25 ส.ค. 2569': day, Thai month abbreviation, four-digit Buddhist-era year (the way the manual writes dates)."""
+    d = pd.Timestamp(iso_date)
+    return f"{d.day} {THAI_MONTH_ABBR[d.month]} {d.year + 543}"
+
+
+def thai_month_long(iso_date) -> str:
+    """'ส.ค. 2569': Thai month abbreviation and four-digit Buddhist-era year."""
+    d = pd.Timestamp(iso_date)
+    return f"{THAI_MONTH_ABBR[d.month]} {d.year + 543}"
+
+
+def months_of_lag(guard_days: int, base_day: int, reference: str = "2026-10") -> int:
+    """How many months the newest usable month trails the month of the run: the latest month whose end is at least `guard_days` before that month's run day (monthly_refresh.run_day)."""
+    import monthly_refresh
+    y, m = (int(x) for x in reference.split("-"))
+    run = monthly_refresh.run_day(y, m, base_day)
+    lag = 1
+    while True:
+        py, pm = (y, m - lag) if m - lag >= 1 else (y - 1, m - lag + 12)
+        if (run - pd.Period(f"{py}-{pm:02d}", freq="M").end_time.date()).days >= guard_days:
+            return lag
+        lag += 1
+
+
+def manual_values(config: dict = None, root: str = PROJECT_ROOT) -> dict:
+    """{name: text} for every {braced} name in docs/user_manual.md. Sources: config.yaml (page_timestamps, backtest, leakage_guard, shadow, phase_e1_assumptions, inventory_page), the Trend
+    pull's completeness.json (what the Trend tab was built from), data/inventory.json (the codes the stock panel and the other pages cover), the notice-bucket recorded output and the
+    segmentation script. Dates are Buddhist-era with a four-digit year, as the manual writes them."""
+    import json
+    import yaml
+    if config is None:
+        with open(os.path.join(root, "config", "config.yaml"), encoding="utf-8") as f:
+            config = yaml.safe_load(f)
+    with open(os.path.join(root, *config["trend_tab"]["pull_dir"].split("/"), "completeness.json"), encoding="utf-8") as f:
+        trend = json.load(f)
+    with open(os.path.join(root, "data", "inventory.json"), encoding="utf-8") as f:
+        pages_codes = json.load(f)["totals"]["codes"]
+    import backtest_all_divisions
+    buckets = sorted(int(d) for d in _read_csv("leadtime_notice_buckets_overall.csv")["min_notice_days"])
+    grid = config["phase_e1_assumptions"]["procurement_lead_time_days_grid"]
+    scenario = config["phase_e1_assumptions"]["default_scenario"]
+    ranges = config["inventory_page"]["tier_a_ranges"]
+    guard = int(config["leakage_guard"]["min_margin_days"])
+    base = int(config["shadow"]["monthly_run_day_of_month"])
+    return {
+        "stale_days": str(staleness_threshold_days(config)),
+        "n_rounds": str(backtest_rounds(config)), "holdout_months": str(config["backtest"]["holdout_months"]),
+        "n_focus_items": str(len(backtest_all_divisions.FOCUS_ITEMS)),
+        "notice_bucket_first": str(buckets[0]), "notice_bucket_second": str(buckets[1]), "notice_bucket_last": str(buckets[-1]),
+        "trend_data_through": thai_date_long(trend["last_date"]), "trend_first_month": thai_month_long(trend["first_date"]), "trend_last_month": thai_month_long(trend["last_date"]),
+        "n_codes_trend": str(trend["n_codes_in_scope"]), "n_codes_pages": str(pages_codes),
+        "lead_grid_first": str(grid[0]), "lead_grid_last": str(grid[-1]),
+        "ctl_lead_time": str(scenario["procurement_lead_time_days"]), "ctl_assembly": str(scenario["assembly_time_days"]),
+        "ctl_review": str(config["phase_e1_assumptions"]["review_interval_days_default"]), "ctl_service_level": f"{scenario['cycle_service_level']:.2f}",
+        "ctl_holding_cost": f"{config['phase_e1_assumptions']['holding_cost_rate_annual']:.2f}",
+        "csl_min": f"{ranges['cycle_service_level'][0]:.2f}", "csl_max": f"{ranges['cycle_service_level'][1]:.2f}",
+        "notice_days": str(fulfilment_notice_threshold_days()), "signal_count": str(fulfilment_signal_count()), "min_signals": str(fulfilment_min_signals()),
+        "run_day_base": str(base), "guard_days": str(guard), "lag_months": str(months_of_lag(guard, base)),
+    }
+

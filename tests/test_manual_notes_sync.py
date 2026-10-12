@@ -79,3 +79,53 @@ def test_index_html_hand_copied_notes_match_manual_notes_yaml():
                 f"{chart_id!r}: {line!r} -- config/manual_notes.yaml is the source of truth; "
                 f"update index.html to match it exactly."
             )
+
+
+# ---------------------------------------------------------------------------------------------------------------------------------------------------------------
+# The manual's numbers and dates are {braced} names filled at runtime from data/assumptions.json (key manual_values): none may be left unresolved.
+# ---------------------------------------------------------------------------------------------------------------------------------------------------------------
+USER_MANUAL = os.path.join(PROJECT_ROOT, "docs", "user_manual.md")
+ASSUMPTIONS_JSON = os.path.join(PROJECT_ROOT, "data", "assumptions.json")
+
+
+def _manual_names() -> set:
+    with open(USER_MANUAL, "r", encoding="utf-8") as f:
+        return set(re.findall(r"\{([a-z][a-z0-9_]*)\}", f.read()))
+
+
+def test_every_manual_placeholder_has_a_value_in_the_published_json():
+    import json
+    names = _manual_names()
+    assert names, "the manual has no placeholder at all: its numbers are typed again"
+    with open(ASSUMPTIONS_JSON, "r", encoding="utf-8") as f:
+        values = json.load(f)["manual_values"]
+    unresolved = sorted(n for n in names if not str(values.get(n, "")).strip())
+    assert unresolved == [], f"manual placeholders with no value in data/assumptions.json manual_values: {unresolved}"
+    assert sorted(set(values) - names) == [], "manual_values holds a name the manual does not use"
+
+
+def test_an_unresolved_manual_placeholder_is_detected():
+    import json
+    with open(ASSUMPTIONS_JSON, "r", encoding="utf-8") as f:
+        values = dict(json.load(f)["manual_values"])
+    values.pop("stale_days")
+    assert [n for n in sorted(_manual_names()) if not str(values.get(n, "")).strip()] == ["stale_days"]
+
+
+def test_the_published_manual_values_are_what_the_sources_compute_now():
+    import json
+    import sys
+    sys.path.insert(0, os.path.join(PROJECT_ROOT, "src"))
+    import reader_values as rv
+    with open(ASSUMPTIONS_JSON, "r", encoding="utf-8") as f:
+        published = json.load(f)["manual_values"]
+    assert published == rv.manual_values(), "data/assumptions.json manual_values is out of date: rebuild it with src/maxmin_v1.py write_assumptions"
+
+
+def test_no_manual_number_that_describes_the_data_or_the_schedule_is_typed():
+    with open(USER_MANUAL, "r", encoding="utf-8") as f:
+        text = f.read()
+    for typed in ("ข้อมูลถึง 25 ส.ค. 2569", "448 รหัส", "วันที่ 5", "5 ธ.ค.", "ต้องรอ 30 วัน", "45-60 วัน"):
+        assert typed not in text, f"the manual types {typed!r}: use a placeholder filled from data/assumptions.json"
+    assert "วันธรรมดา (จันทร์ถึงศุกร์) วันแรกตั้งแต่วันที่ {run_day_base}" in text
+
