@@ -133,13 +133,17 @@ SHADOW_SCOPE = "shadow_group"
 SHADOW_DEFINITION = "shadow_group_series_v1"
 
 
-def scoreable_run_date(target_month: str, margin_days: int, run_day: int):
-    """The first monthly run (the run_day of a month) whose date is at least `margin_days` after the end of `target_month`: the run at which the leakage guard lets the month be scored.
-    Derived, never typed; check_window_closed agrees with it (tested)."""
-    d = pd.Period(target_month, freq="M").end_time.date() + timedelta(days=int(margin_days))
-    while d.day != int(run_day):
-        d += timedelta(days=1)
-    return d
+def scoreable_run_date(target_month: str, margin_days: int, run_day_base: int):
+    """The first monthly run (the run day of a month: the first weekday on or after `run_day_base`, monthly_refresh.run_day) whose date is at least `margin_days` after the end of `target_month`: the run at
+    which the leakage guard lets the month be scored. Derived, never typed; check_window_closed agrees with it (tested)."""
+    import monthly_refresh
+    need = pd.Period(target_month, freq="M").end_time.date() + timedelta(days=int(margin_days))
+    year, month = need.year, need.month
+    while True:
+        d = monthly_refresh.run_day(year, month, base_day=int(run_day_base))
+        if d >= need:
+            return d
+        year, month = (year + 1, 1) if month == 12 else (year, month + 1)
 
 
 def decide_rule(holt_mae: list, current_mae: list, rule: dict) -> dict:

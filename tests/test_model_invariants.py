@@ -356,16 +356,17 @@ def test_the_scoreable_run_of_each_month_is_derived_from_the_guard_and_agrees_wi
     cfg = _full_cfg()
     margin, day = cfg["leakage_guard"]["min_margin_days"], cfg["shadow"]["monthly_run_day_of_month"]
     runs = {m: fts.scoreable_run_date(m, margin, day) for m in cfg["shadow"]["rule"]["target_months"]}
-    assert [str(runs[m]) for m in ("2026-09", "2026-10", "2026-11")] == ["2026-11-05", "2026-12-05", "2027-01-05"]
+    assert [str(runs[m]) for m in ("2026-09", "2026-10", "2026-11")] == ["2026-11-05", "2026-12-07", "2027-01-05"]
     for m, d in runs.items():
         check_window_closed(m, pd.Timestamp(d), margin)                                   # the guard lets the run on that date score the month
-        assert d.day == day
+        import monthly_refresh as mr
+        assert d == mr.run_day(d.year, d.month) and d.weekday() < 5 and d.day >= day            # a run day: the first weekday on or after the base day
         prev = pd.Timestamp(d) - pd.DateOffset(months=1)                                  # the run a month earlier is refused
         with pytest.raises(LeakageGuardError):
             check_window_closed(m, prev, margin)
     # the boundary: a margin that ends exactly on a run day scores that day, one day more waits for the next month's run (2026-09-30 plus 36 days is 2026-11-05)
     assert str(fts.scoreable_run_date("2026-09", 36, 5)) == "2026-11-05"
-    assert str(fts.scoreable_run_date("2026-09", 37, 5)) == "2026-12-05"
+    assert str(fts.scoreable_run_date("2026-09", 37, 5)) == "2026-12-07"       # 5 December 2026 is a Saturday
     assert str(max(runs.values())) == "2027-01-05"
 
 
@@ -399,7 +400,7 @@ def test_rule_status_is_pending_partial_then_evaluated_and_counts_vintage_2_only
         return fts.shadow_rule_status(cfg, path)["surge_arrester"]
     s0 = status([])
     assert s0["state"] == "pending" and s0["n_scored"] == 0 and s0["outcome"] is None and s0["evaluation_run"] == "2027-01-05"
-    assert [m["scoreable_run"] for m in s0["months"]] == ["2026-11-05", "2026-12-05", "2027-01-05"] and s0["tracking_signal"] is None
+    assert [m["scoreable_run"] for m in s0["months"]] == ["2026-11-05", "2026-12-07", "2027-01-05"] and s0["tracking_signal"] is None
     r1 = _score_rows(label, 2, "2026-09", 1.0, 2.0)
     s1 = status(r1)
     assert s1["state"] == "pending" and s1["n_scored"] == 1 and s1["months"][0]["scored"] and not s1["months"][1]["scored"]

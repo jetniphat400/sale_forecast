@@ -361,7 +361,7 @@ def pending_criteria_rows(cfg: dict = None) -> list:
     cfg = cfg or load_config()
     v = cfg["pending_criteria_values"]
     values = {"relative_mae_pass": f"{v['relative_mae_pass']:g}", "relative_mae_good": f"{v['relative_mae_good']:g}", "tracking_signal_limit": f"{v['tracking_signal_limit']:g}",
-              "decision_date": rv.thai_date_short(v["decision_date"])}
+              "decision_date": rv.thai_date_short(rv.criteria_decision_date(v))}
     return [{k: r[k].format(**values) for k in ("topic", "to_decide", "now_used", "who", "when")} for r in cfg["pending_criteria_rows"]]
 
 

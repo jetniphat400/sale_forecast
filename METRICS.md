@@ -1373,7 +1373,7 @@ pipeline — no new section is needed for this; it is already covered by section
   (items) are summed over the lines in the window; no contract or customer identifier is written to any file.
 - Scope labels (decision D1, 2026-10-09): card 2 and the footer say that sales and forecast count only Price List items while the target covers every Omni product, so the percent to
   target is probably below the true figure; the all-Omni comparison (every Omni item, a Naive run-rate for items outside the Price List) is a later task (2026-10-21 to 10-23).
-- The footer states that the target's basis (delivery date or invoice date) is unconfirmed; the projection is a flat-forecast extrapolation without seasonality (STATUS.md plan).
+- The footer states that the target's basis (delivery date or invoice date) is unconfirmed; the projection is a flat-forecast extrapolation without seasonality (STATUS.md plan).
 
 ## 50. model_experiment_2026_10
 
@@ -1409,7 +1409,7 @@ pipeline — no new section is needed for this; it is already covered by section
 
 - Known limitation, disclosed before the run: the test windows of origins 1-5 and 6-7 overlap in four target months (6-month windows, step 2), so the confirmation subset is not
   independent of the selection months. The rule is the user's; it is not changed.
-- The current candidate's Relative MAE on all 7 origins must equal the forecast page's "เทียบกับร่างเกณฑ์" value (METRICS.md Sec.48) for every division and group.
+- The current candidate's Relative MAE on all 7 origins must equal the forecast page's "เทียบกับร่างเกณฑ์" value (METRICS.md Sec.48) for every division and group.
 
 ## 51. shadow_forecast
 
@@ -1444,6 +1444,10 @@ Implementation (added with the code, after the rule above; the rule text is unch
     shown           = Relative MAE against Naive (sum of the shadow MAE over the sum of Naive's, all scored shadow points) and Tracking Signal (sum of signed errors over the mean absolute error), the latter
                       only from `shadow.min_points_tracking_signal` points (3; added after the rule, not part of it: the rule uses MAE only).
 
+Note, 2026-10-12 (Prompt 23; the rule text above is unchanged): the monthly job now runs on the first weekday (Monday to Friday) on or after the 5th of the month (monthly_refresh.run_day), so the
+evaluation run and the run at which a target month is scoreable are derived from that run day with the same leakage guard: the targets 2026-09, 2026-10 and 2026-11 become scoreable on the runs of
+2026-11-05, 2026-12-07 and 2027-01-05; the evaluation run is 2027-01-05. The criteria decision date is the run day of the decision month (2026-12: 2026-12-07), no longer a typed date.
+
 ## 52. forward_test_backup
 
     What the forward test stands on is git-ignored (output/), so the monthly run keeps a second copy. Prompt 18, 2026-10-09.
@@ -1475,6 +1479,18 @@ Implementation (added with the code, after the rule above; the rule text is unch
     not covered  = the ODBC driver's own connection-resiliency default (not verified; no connection allowed in the task); the scheduled tasks themselves (RestartOnFailure 0 on both; the daily task's 12:00 trigger is the decided
                    second start).
 
+    Prompt 23 (2026-10-12), round 2:
+    run day      = the monthly job runs only on a weekday that is on or after the run day of the month (the first Monday to Friday on or after the 5th) and only when no successful monthly run is recorded for
+                   the month (output/state/monthly_run_state.json, written only when the run ends with exit code 0); a missed run day is made up on the next weekday, once. Any other start exits 0 with a log line
+                   before the lock check, the preflight and any login. The daily job exits 0 on Saturday and Sunday at the same point.
+    LoginRefused = db.py raises it when the server refuses the login (SQLSTATE 28000 first; the driver's native codes 18456, 18452, 18451; the message text only as a fallback). It is not an Exception subclass, so no
+                   `except Exception` swallows it; db.py's excepthook turns it into exit code 3 in every child script.
+    exit codes   = 0 done or nothing to do, 1 aborted, 2 partial (an auxiliary pull failed for another reason: the previous file is kept, a WARN line goes to the run log, the run goes on), 3 login refused (every
+                   later database stage and the run stop).
+    lock         = output/state/db_login_refused.lock (time and job name only), written at a refused login and checked by every job before its preflight and before any login (db.preflight, db._login, the
+                   monthly and daily entry points); while it exists every start exits 3 with the message to fix the credentials and delete it. The code never deletes it.
+    host         = the DB host is in no tracked file (STATUS.md used a placeholder); tests/test_guards.py also scans tracked files for the DB host read from .env, without connecting.
+
 ## 54. non_stock_items
 
     The material plan lists every component of the planned production. Some components are not goods: labor, subcontract (hire) and service charges bought by purchase order are not stocked and have no meaning as a
@@ -1485,8 +1501,10 @@ Implementation (added with the code, after the rule above; the rule text is unch
                    paid remark (ค่าแรง, ค่าจ้าง or ค่าบริการ, in that order of priority): a keyword of the remark (ค่าแรง, LABOR | ค่าจ้าง, จ้าง | ค่าบริการ, ค่า บริการ, ค่าขนส่ง, LOGISTICS COST, SERVICE) is found in the
                    description, else in the code (a code starting with LABOR- or LABOR_ in any case, with an ordinary description, is ค่าแรง). Evidence shown: จากชื่อ or จากรหัส.
                    รอตรวจ: no keyword, and any of: item group 2000, 400 or 4012 (the groups the ERP item master gives to labor and processing charges; the evidence is จากกลุ่มสินค้า), no item-master record
-                   (ไม่มีข้อมูลในระบบ), a unit of measure that names work (HOUR, JOB, LOT; หน่วยนับ). A line matching both gets the paid remark (the overlap is counted). A person's review of names can move a code
-                   to รอตรวจ through config exceptions (code and a one-line reason; evidence จากการตรวจชื่อ).
+                   (ไม่มีข้อมูลในระบบ), a unit of measure that names work (HOUR, JOB, LOT; หน่วยนับ). A line matching both gets the paid remark (the overlap is counted).
+                   Prompt 23 (2026-10-12, the user's answers, business facts): (1) ไม่ใช่สินค้า · ผู้ใช้ยืนยัน = the keywords SLIT COST and COST OF PAPER in the name or code, plus five codes the user confirmed
+                   (config user_confirmed); (2) a code starting with LABOR- or LABOR_ is labor cost and is never รอตรวจ: ค่าจ้าง or ค่าบริการ when the name says so, else ค่าแรง · จากรหัส; (3) OUTSOURCE lines are
+                   ค่าจ้าง · จากชื่อ; the five name-review exceptions are removed (config exceptions is empty). ไม่ใช่สินค้า lines are left out of the counts like the other paid remarks.
     effect       = the recorded plan files are unchanged by the remarks (every line, every quantity, every date). The remarks are in the plan's meta; the page shows the remark beside the code in every table and, under each
                    list (30-day, late, all lines), one line: all lines, lines counted, lines left out (paid remarks) and the lines waiting for a check (counted). The executive tab's late-materials watch-out is the counted late
                    lines. A paid-remark line is in no summary count; a รอตรวจ line is in every count.

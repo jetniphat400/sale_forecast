@@ -298,13 +298,20 @@ def load_item_attributes(root: str, rule: dict):
 
 
 def remark_lines(materials: list, attrs, names: dict, bom_units: dict, rule: dict) -> pd.DataFrame:
-    """One row per material with its remark (METRICS.md Sec.54): a PAID remark (ค่าแรง, ค่าจ้าง, ค่าบริการ: not goods, not counted in the page's summary counts) when the description (then the code)
-    holds a keyword of rule.paid_remarks; else รอตรวจ (counted) when the item group is one of rule.pending_review.item_group, or the item has no master record, or its unit names work;
-    else none. A line matching both gets the paid remark (`also_pending` records it). A code in rule.exceptions is moved to รอตรวจ with the evidence 'reviewed'. Without attributes only the
-    keywords and the unit can apply. Columns: material, remark, evidence, paid, also_pending, item_group."""
+    """One row per material with its remark (METRICS.md Sec.54), in this order: (1) confirmed by the user (a code of rule.user_confirmed.codes, or a keyword of rule.user_confirmed.keywords in the name
+    or the code): ไม่ใช่สินค้า · ผู้ใช้ยืนยัน; (2) a code starting with a rule.labor_code_prefixes entry (any case): labor, with the label of the name when the name states one of
+    rule.labor_code_name_labels, else ค่าแรง · จากรหัส, and never รอตรวจ; (3) a keyword of rule.paid_remarks in the description, then in the code: ค่าแรง, ค่าจ้าง or ค่าบริการ; (4) else รอตรวจ when the item
+    group is one of rule.pending_review.item_group, or the item has no master record, or its unit names work; (5) else none. Remarks 1 to 3 are PAID (not goods, not counted); a code in
+    rule.exceptions is moved to รอตรวจ unless a rule above named it. `also_pending` records a paid line that also met a รอตรวจ condition. Columns: material, remark, evidence, paid, also_pending, item_group."""
     ev = rule["evidence_labels"]
     pending = rule["pending_review"]
+    conf = rule.get("user_confirmed", {"keywords": [], "codes": {}, "remark": "", "evidence": ""})
+    paid_labels = set(rule["paid_remarks"]) | ({conf["remark"]} if conf.get("remark") else set())
     groups, units = {str(g) for g in pending["item_group"]}, {str(u).upper() for u in pending["service_units"]}
+    prefixes = tuple(p.upper() for p in rule.get("labor_code_prefixes", []))
+
+    def has(text, words):
+        return any((w.isascii() and w.lower() in text.lower()) or (not w.isascii() and w in text) for w in words)
     by_group, has_record = {}, set()
     if attrs is not None:
         master = attrs["master"].assign(m=attrs["master"]["ItemCode"].map(key))
@@ -313,24 +320,32 @@ def remark_lines(materials: list, attrs, names: dict, bom_units: dict, rule: dic
     rows = []
     for m in materials:
         desc, code = names.get(m, ""), m
-        remark, evidence = "", ""
-        for where, text in (("name", desc), ("code", code)):                  # the description first, then the code
-            for label in rule["paid_remark_order"]:
-                words = rule["paid_remarks"][label]
-                if any((w.isascii() and w.lower() in text.lower()) or (not w.isascii() and w in text) for w in words):
-                    remark, evidence = label, ev[where]
+        remark, evidence, named = "", "", False
+        if m in conf.get("codes", {}) or has(desc, conf.get("keywords", [])) or has(code, conf.get("keywords", [])):
+            remark, evidence, named = conf["remark"], conf["evidence"], True
+        elif prefixes and code.upper().startswith(prefixes):
+            remark, evidence, named = rule["labor_code_default"]["remark"], ev[rule["labor_code_default"]["evidence"]], True
+            for label, words in rule["labor_code_name_labels"].items():
+                if has(desc, words):
+                    remark, evidence = label, ev["name"]
                     break
-            if remark:
-                break
+        else:
+            for where, text in (("name", desc), ("code", code)):                  # the description first, then the code
+                for label in rule["paid_remark_order"]:
+                    if has(text, rule["paid_remarks"][label]):
+                        remark, evidence = label, ev[where]
+                        break
+                if remark:
+                    break
         grp = by_group.get(m, set())
-        why = ev["item_group"] if grp & groups else (ev["no_master"] if (attrs is not None and rule["pending_review"]["no_master_record"] and m not in has_record) else
+        why = ev["item_group"] if grp & groups else (ev["no_master"] if (attrs is not None and pending["no_master_record"] and m not in has_record) else
                                                   (ev["unit"] if norm_unit(bom_units.get(m, "")) in units else ""))
         also = bool(remark and why)
         if not remark and why:
             remark, evidence = rule["pending_label"], why
-        if m in rule.get("exceptions", {}):
+        if m in rule.get("exceptions", {}) and not named:
             remark, evidence = rule["pending_label"], ev["reviewed"]
-        rows.append({"material": m, "remark": remark, "evidence": evidence, "paid": remark in rule["paid_remarks"], "also_pending": also, "item_group": "|".join(sorted(grp))})
+        rows.append({"material": m, "remark": remark, "evidence": evidence, "paid": remark in paid_labels, "also_pending": also, "item_group": "|".join(sorted(grp))})
     return pd.DataFrame(rows, columns=["material", "remark", "evidence", "paid", "also_pending", "item_group"])
 
 
@@ -400,7 +415,7 @@ def build(root: str = PROJECT_ROOT, today: pd.Timestamp = None, op_out_dir: str 
             "levels": ex["levels"], "n_in_house_expanded": len(ex["in_house_expanded"]), "subassembly_stock_netted": True, "items_without_bom": sorted(ex["no_bom"]),
             "n_items_exploded": len(demand), "n_materials": len(materials),
             "non_stock": {"applied": remarks is not None, "attributes_available": attrs is not None, "attributes_pulled_at_local": str(attrs.get("pulled_at_local", "")) if attrs is not None else "",
-                          "paid_remarks": list(rule.get("paid_remarks", {})), "pending_label": rule.get("pending_label", ""),
+                          "paid_remarks": list(rule.get("paid_remarks", {})) + ([rule["user_confirmed"]["remark"]] if rule.get("user_confirmed") else []), "pending_label": rule.get("pending_label", ""),
                           "remarks": ([{"material": r.material, "remark": r.remark, "evidence": r.evidence, "paid": bool(r.paid)} for r in tagged.itertuples()] if tagged is not None else []),
                           "n_paid": int(tagged["paid"].sum()) if tagged is not None else 0, "n_pending": int((~tagged["paid"]).sum()) if tagged is not None else 0,
                           "n_paid_also_pending": int(remarks["also_pending"].sum()) if remarks is not None else 0},

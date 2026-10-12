@@ -1,8 +1,12 @@
 """Database connection helper. Loads credentials from .env — never hardcode them here."""
 import contextlib
+import json
 import os
+import re
 import socket
+import sys
 import urllib.parse
+from datetime import datetime
 
 import pandas as pd
 from dotenv import load_dotenv
@@ -38,6 +42,72 @@ def refuse_if_blocked(where: str) -> None:
         with open(log, "a", encoding="utf-8") as f:
             f.write("|".join([os.environ.get("SALE_FORECAST_DB_EXPECTED", "0"), os.environ.get("PYTEST_CURRENT_TEST", "-").replace("|", "/"), where]) + chr(10))
     raise DatabaseBlockedError(f"database connection refused ({where}): the test suite must not connect to the database; run it from tracked data or a fixture")
+
+
+# The server REFUSED the login (SQLSTATE 28000). Repeated refused logins lock the account, so this is the one failure that stops every job: it derives from BaseException so that no `except Exception`
+# can swallow it, it writes a shared lock file that every job checks before its preflight and before any login, and an entry point that does not catch it ends with exit code 3.
+STATE_DIR = os.path.join(PROJECT_ROOT, "output", "state")
+REFUSED_LOCK_PATH = os.path.join(STATE_DIR, "db_login_refused.lock")
+LOGIN_REFUSED_SQLSTATES = {"28000"}
+LOGIN_REFUSED_NATIVE_CODES = ("18456", "18452", "18451")       # the SQL Server driver's own codes for a refused login
+EXIT_LOGIN_REFUSED = 3
+
+
+class LoginRefused(BaseException):
+    """The server refused the database login, or an earlier refusal left the lock file. No message here ever names the login."""
+
+
+def lock_message() -> str:
+    return "DB login was refused earlier; fix the credentials, then delete output/state/db_login_refused.lock"
+
+
+def refused_lock_exists() -> bool:
+    return os.path.exists(REFUSED_LOCK_PATH)
+
+
+def check_refused_lock() -> None:
+    """Raises LoginRefused when the lock file exists: called by every job before its preflight and before any login. The lock is never deleted automatically."""
+    if refused_lock_exists():
+        raise LoginRefused(lock_message())
+
+
+def write_refused_lock(job: str = None) -> None:
+    """Writes the lock (timestamp and job name only); an existing lock is kept as it is."""
+    if refused_lock_exists():
+        return
+    os.makedirs(os.path.dirname(REFUSED_LOCK_PATH), exist_ok=True)
+    with open(REFUSED_LOCK_PATH, "w", encoding="utf-8") as f:
+        json.dump({"refused_at": datetime.now().isoformat(timespec="seconds"), "job": job or os.path.basename(sys.argv[0] or "unknown")}, f)
+
+
+def is_login_refused(exc: BaseException) -> bool:
+    """True when `exc` is the server refusing the login: by SQLSTATE 28000 (the first argument of the driver's error, also on the wrapped original), then by the driver's native codes, and only as a
+    last fallback by the message text."""
+    errors = [exc, getattr(exc, "orig", None), exc.__cause__, exc.__context__]
+    for e in [x for x in errors if x is not None]:
+        args = getattr(e, "args", ())
+        if args and str(args[0]).strip() in LOGIN_REFUSED_SQLSTATES:
+            return True
+    for e in [x for x in errors if x is not None]:
+        text = " ".join(str(a) for a in getattr(e, "args", ()))
+        if any(re.search(rf"\b{c}\b", text) for c in LOGIN_REFUSED_NATIVE_CODES):
+            return True
+    return any("login failed" in str(x).lower() for x in errors if x is not None)
+
+
+def _hook_for_login_refused(exc_type, exc, tb, _original=sys.excepthook):
+    """An uncaught LoginRefused ends the process with exit code 3 (the lock is already written), whatever script it happened in."""
+    if issubclass(exc_type, LoginRefused):
+        try:
+            write_refused_lock()
+            sys.stderr.write(f"DB LOGIN REFUSED: {exc}\n")
+            sys.stderr.flush()
+        finally:
+            os._exit(EXIT_LOGIN_REFUSED)
+    _original(exc_type, exc, tb)
+
+
+sys.excepthook = _hook_for_login_refused
 
 
 class DatabaseUnreachableError(RuntimeError):
@@ -78,6 +148,7 @@ def split_server(server: str) -> tuple:
 
 def preflight(timeout: float = 5.0) -> dict:
     """A plain TCP connect to the DB host and port with a short timeout and NO authentication: no login is attempted. Returns {reachable, host, port, error}."""
+    check_refused_lock()
     server = os.getenv("DB_SERVER", "")
     host, port = split_server(server)
     if not host:
@@ -93,20 +164,24 @@ def require_reachable(timeout: float = 5.0) -> dict:
     """preflight(), raising DatabaseUnreachableError (message UNREACHABLE_MESSAGE) when the host does not answer; never logs in."""
     result = preflight(timeout)
     if not result["reachable"]:
-        raise DatabaseUnreachableError(f"{UNREACHABLE_MESSAGE}: {result['host']}:{result['port']} ({result['error']})")
+        raise DatabaseUnreachableError(f"{UNREACHABLE_MESSAGE} ({result['error']})")      # the host is never written into a message
     return result
 
 
 def _login(engine):
     """The ONE place a login happens: one attempt per call, never retried. After a failed login every later call in this process raises at once without connecting."""
     global _LOGIN_ATTEMPTS, _LOGIN_FAILURE
+    check_refused_lock()
     if _LOGIN_FAILURE is not None:
         raise DatabaseLoginAlreadyFailedError(f"a database login already failed in this process ({_LOGIN_FAILURE}); no further login attempt is made")
     _LOGIN_ATTEMPTS += 1
     try:
         return engine.connect()
-    except Exception as e:      # noqa: BLE001 -- remember it, then raise the original
+    except Exception as e:      # noqa: BLE001 -- remember it, then raise the original (a refusal by the server becomes LoginRefused and writes the lock)
         _LOGIN_FAILURE = type(e).__name__
+        if is_login_refused(e):
+            write_refused_lock()
+            raise LoginRefused("DB login was refused by the server (SQLSTATE 28000); the lock file was written, no further login is made") from None
         raise
 
 

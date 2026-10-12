@@ -600,7 +600,7 @@ def exec_render(data: dict, config: dict) -> str:
         (T["card2_label"].format(year=d["year_be"]), T["million_value"].format(value=_money(tot["projection"])),
          T["card2_sub"].format(pct=dash if tot["to_target"] is None else f"{100 * tot['to_target']:.1f}%")),
         (T["card3_label"], T["card3_value"].format(n=d["n_beat_naive"], N=d["n_forecast_divisions"]),
-         T["card3_sub"].format(n_rounds=rv.backtest_rounds(config), decision_date=rv.thai_date_short(config["maxmin_v1"]["pending_criteria_values"]["decision_date"]))),
+         T["card3_sub"].format(n_rounds=rv.backtest_rounds(config), decision_date=rv.thai_date_short(rv.criteria_decision_date(config["maxmin_v1"]["pending_criteria_values"])))),
         (T["card4_label"], T["card4_value"].format(n=n_watch), T["card4_sub"]),
     ]
     cards_html = "".join(f'<div class="kpi" id="execCard{i}"><div class="k">{esc(a)}</div><div class="v">{esc(b)}</div><div class="s">{esc(c)}</div></div>' for i, (a, b, c) in enumerate(cards, 1))

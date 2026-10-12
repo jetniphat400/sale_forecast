@@ -924,7 +924,9 @@ def _rule():
 
 
 NAMES_22 = {"LAB-1": "ค่าแรงจ้างขึ้นรูป ชิ้นงาน X", "SUB-1": "ค่าจ้างฉีด ชิ้นงาน W", "RAW-1": "COPPER ROD 8 MM", "ODD-1": "SLIT SILICON STEEL BPS", "NOM-1": "BRACKET PLAIN",
-            "FRT-1": "ค่าขนส่งวัตถุดิบ", "WRK-1": "UNIT OF WORK", "EXC-1": "STEEL PLATE", "LABOR-9": "STEEL PLATE 5 MM", "labor_x": "SPACER", "GRP-1": "ค่าจ้างผลิต ชิ้นงาน Z"}
+            "FRT-1": "ค่าขนส่งวัตถุดิบ", "WRK-1": "UNIT OF WORK", "EXC-1": "STEEL PLATE", "LABOR-9": "STEEL PLATE 5 MM", "labor_x": "SPACER", "GRP-1": "ค่าจ้างผลิต ชิ้นงาน Z",
+            "LABOR-J": "ค่าจ้างผลิต ชิ้นงาน V", "LABOR-S": "ค่าบริการ ชิ้นงาน U", "LABOR-W": "ค่าแรงจ้างขึ้นรูป ชิ้นงาน T", "LABOR-N": "", "OS-1": "OUTSOURCE ชิ้นงาน S", "SLIT COST-7": "SLIT SILICON STEEL", "COST OF PAPER": "",
+            "CONF-1": "ชิ้นส่วน R"}
 
 
 def _remarks(codes, attrs, units=None, rule=None):
@@ -935,7 +937,7 @@ def test_remarks_on_fixed_examples_paid_pending_none_and_a_config_exception():
     attrs = _attrs([("LAB-1", "2000"), ("SUB-1", "100"), ("RAW-1", "100"), ("ODD-1", "2000"), ("FRT-1", "100"), ("WRK-1", "100"), ("EXC-1", "100"), ("LABOR-9", "100"), ("labor_x", "100"),
                     ("GRP-1", "100")], aging_rows=[("RAW-1", "Raw materials")])
     rule = _rule()
-    rule["exceptions"] = {"LABOR-9": "the name reads like a physical plate"}
+    rule["exceptions"] = {"LABOR-9": "the name reads like a physical plate", "EXC-1": "the name reads like a physical plate"}
     c = _remarks(["LAB-1", "SUB-1", "RAW-1", "ODD-1", "NOM-1", "FRT-1", "WRK-1", "EXC-1", "LABOR-9", "labor_x", "GRP-1"], attrs, {"WRK-1": "HOUR"}, rule)
     assert (c.loc["LAB-1", "remark"], c.loc["LAB-1", "evidence"]) == ("ค่าแรง", "จากชื่อ") and bool(c.loc["LAB-1", "paid"])        # a labor description
     assert (c.loc["SUB-1", "remark"], c.loc["SUB-1", "evidence"]) == ("ค่าจ้าง", "จากชื่อ")             # a ค่าจ้าง name with no LABOR in the code
@@ -944,7 +946,8 @@ def test_remarks_on_fixed_examples_paid_pending_none_and_a_config_exception():
     assert (c.loc["NOM-1", "remark"], c.loc["NOM-1", "evidence"]) == ("รอตรวจ", "ไม่มีข้อมูลในระบบ")     # no item-master record
     assert (c.loc["WRK-1", "remark"], c.loc["WRK-1", "evidence"]) == ("รอตรวจ", "หน่วยนับ")             # a unit that names work
     assert c.loc["RAW-1", "remark"] == "" and not bool(c.loc["RAW-1", "paid"])                          # a normal raw material: no remark
-    assert (c.loc["LABOR-9", "remark"], c.loc["LABOR-9", "evidence"]) == ("รอตรวจ", "จากการตรวจชื่อ")    # a LABOR- code moved to รอตรวจ by an explicit exception
+    assert (c.loc["EXC-1", "remark"], c.loc["EXC-1", "evidence"]) == ("รอตรวจ", "จากการตรวจชื่อ")        # a (non-LABOR) code moved to รอตรวจ by an explicit config exception
+    assert (c.loc["LABOR-9", "remark"], c.loc["LABOR-9", "evidence"]) == ("ค่าแรง", "จากรหัส")           # a LABOR- code is labor, never รอตรวจ, and no config exception moves it
     assert (c.loc["labor_x", "remark"], c.loc["labor_x", "evidence"]) == ("ค่าแรง", "จากรหัส")          # a code starting with labor_ , any case, with an ordinary name
     # a line matching both the paid keywords and a รอตรวจ condition gets the paid remark, and the overlap is recorded
     assert (c.loc["GRP-1", "remark"], c.loc["GRP-1", "also_pending"]) == ("ค่าจ้าง", False)
@@ -954,6 +957,40 @@ def test_remarks_on_fixed_examples_paid_pending_none_and_a_config_exception():
     assert _remarks(["RAW-1"], _attrs([("RAW-1", "100")])).loc["RAW-1", "remark"] == ""
     # the rule is keywords and attribute values in config, not a list of codes
     assert set(rule["pending_review"]) == {"item_group", "no_master_record", "service_units"} and set(rule["paid_remarks"]) == {"ค่าแรง", "ค่าจ้าง", "ค่าบริการ"} and rule["paid_remark_order"] == ["ค่าแรง", "ค่าจ้าง", "ค่าบริการ"]
+
+
+def test_the_answers_of_the_user_labor_codes_outsource_slit_cost_and_the_confirmed_codes():
+    rule = _rule()
+    rule["user_confirmed"]["codes"]["CONF-1"] = "confirmed by user 2026-10-12"
+    attrs = _attrs([("LABOR-J", "2000"), ("LABOR-S", "100"), ("LABOR-W", "400"), ("LABOR-N", "4012"), ("OS-1", "100"), ("SLIT COST-7", "2000"), ("CONF-1", "2000")])     # LABOR-N and COST OF PAPER: no master / group 4012
+    c = _remarks(["LABOR-J", "LABOR-S", "LABOR-W", "LABOR-N", "OS-1", "SLIT COST-7", "COST OF PAPER", "CONF-1", "ODD-1"], attrs, {"LABOR-N": "HOUR"}, rule)
+    assert (c.loc["LABOR-J", "remark"], c.loc["LABOR-J", "evidence"]) == ("ค่าจ้าง", "จากชื่อ")           # a LABOR code whose name states ค่าจ้าง: the label of the name
+    assert (c.loc["LABOR-S", "remark"], c.loc["LABOR-S", "evidence"]) == ("ค่าบริการ", "จากชื่อ")         # ... or ค่าบริการ
+    assert (c.loc["LABOR-W", "remark"], c.loc["LABOR-W", "evidence"]) == ("ค่าแรง", "จากรหัส")           # otherwise ค่าแรง from the code, also with group 400
+    assert (c.loc["LABOR-N", "remark"], c.loc["LABOR-N", "evidence"]) == ("ค่าแรง", "จากรหัส")           # never รอตรวจ, even with a work unit, group 4012 and no name
+    assert (c.loc["OS-1", "remark"], c.loc["OS-1", "evidence"]) == ("ค่าจ้าง", "จากชื่อ")                # OUTSOURCE is hire work
+    for code in ("SLIT COST-7", "COST OF PAPER", "CONF-1"):                                              # the keywords SLIT COST and COST OF PAPER, and the confirmed code list
+        assert (c.loc[code, "remark"], c.loc[code, "evidence"]) == ("ไม่ใช่สินค้า", "ผู้ใช้ยืนยัน") and bool(c.loc[code, "paid"])
+    assert c.loc["ODD-1", "remark"] == "" or c.loc["ODD-1", "remark"] == "รอตรวจ"                       # an unconfirmed item is still handled by the รอตรวจ rules
+    assert rule["user_confirmed"]["codes"]["02-00-R-7048"] == "confirmed by user 2026-10-12" and set(rule["user_confirmed"]["codes"]) >= {"TF-R-01-0077", "TF-R-05-0216", "TF-R-08-0223TF", "TF-R-08-0224TF"}
+    assert rule["exceptions"] == {}                                                                      # the five name-review exceptions are gone
+
+
+def test_on_the_saved_pulls_no_line_is_left_waiting_for_a_check():
+    root = PROJECT_ROOT
+    attr_path = os.path.join(root, "output", "data", "material_pull", "item_attributes.pkl")
+    inputs_path = os.path.join(root, "output", "data", "material_pull", "material_inputs.pkl")
+    summary_path = os.path.join(root, "output", "summary", "material_plan_v1_material_summary.csv")
+    if not all(os.path.exists(x) for x in (attr_path, inputs_path, summary_path)):
+        pytest.skip("SKIPPED, not passed: the saved item pulls are not on this machine")
+    rule = _rule()
+    attrs, b = pd.read_pickle(attr_path), pd.read_pickle(inputs_path)
+    names = {mp.key(c): " ".join(str(n).split()) for c, n in zip(b["item_names"]["ItemCode"], b["item_names"]["Description"]) if pd.notna(n)}
+    units = mp.bom_component_lines(b["bom_tree"]).groupby("comp")["unit"].first().to_dict()
+    codes = pd.read_csv(summary_path)["material"].map(mp.key).tolist()
+    r = mp.remark_lines(codes, attrs, names, units, rule)
+    assert len(r) == len(codes) and int((r["remark"] == "รอตรวจ").sum()) == 0                          # the answers of the user leave nothing waiting
+    assert r[r["material"].str.upper().str.startswith(("LABOR-", "LABOR_"))]["paid"].all()               # every LABOR code is labor
 
 
 def _with_labor(project, attrs=True):
@@ -996,7 +1033,7 @@ def test_paid_remark_lines_are_left_out_of_every_summary_count_and_pending_lines
     assert len(v["within"]) == s["within"]["all"] and len(v["late"]) == s["late"]["all"] and len(v["main"]) == s["main"]["all"] == 3    # the tables hold every line
     assert v["n_late"] == s["late"]["counted"] and v["n_within"] == s["within"]["counted"]
     line = re.search(r'<p class="note-line summary-line" id="main-summary">(.*?)</p>', page, re.S).group(1)
-    assert line == f"ทั้งหมด 3 รายการ นับ 2 รายการ · ไม่นับค่าแรง/ค่าจ้าง/ค่าบริการ 1 รายการ (ไม่ใช่สินค้า ไม่ต้อง stock) · รอตรวจ 1 รายการ ยังนับรวมไว้จนกว่าจะมีคนยืนยันว่าเป็นสินค้าหรือไม่"
+    assert line == f"ทั้งหมด 3 รายการ นับ 2 รายการ · ไม่นับค่าแรง/ค่าจ้าง/ค่าบริการ/ไม่ใช่สินค้า 1 รายการ (ไม่ใช่สินค้า ไม่ต้อง stock) · รอตรวจ 1 รายการ ยังนับรวมไว้จนกว่าจะมีคนยืนยันว่าเป็นสินค้าหรือไม่"
     for key in ("within", "late"):
         assert f'id="{key}-summary"' in page
     # the remark sits beside the code in the table, with its evidence

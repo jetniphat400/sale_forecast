@@ -79,6 +79,7 @@ def _patch_main(monkeypatch, tmp_path, argv=None):
         raise Proceeded()
     monkeypatch.setattr(db, "session", no_session)
     monkeypatch.setattr(db, "require_reachable", lambda *x, **k: {"reachable": True})      # the preflight is a network call: never in a test
+    monkeypatch.setattr(sd, "is_weekday", lambda *x: True)                                  # these tests do not depend on the day they run
     real_load_config = djob.load_config
     monkeypatch.setattr(djob, "load_config", lambda *a, **k: {key: val for key, val in real_load_config(*a, **k).items() if key != "publishing"})      # a temporary folder is not the publishing clone
     monkeypatch.setattr(djob, "load_base", load_base)
@@ -112,30 +113,43 @@ def test_force_runs_even_when_a_success_exists_today(tmp_path, monkeypatch):
 
 
 # ---------------------------------------------------------------------------------------------------------------------------------------------
-# The daily job: one login attempt per run, a reachability preflight before it, and no second login the same day after a refused one (Prompt 20).
-# Fake connector and fake network only.
+# The daily job (Prompt 23): Monday to Friday only; a refused login (SQLSTATE 28000) writes the shared lock and ends with exit code 3; the lock blocks every later start before the preflight and
+# before any login; an unreachable host makes zero login attempts and does not block the next start. Fake connector and fake network only.
 # ---------------------------------------------------------------------------------------------------------------------------------------------
+class _DriverError(Exception):
+    """A stand-in for pyodbc.Error: args = (sqlstate, message)."""
+
+
 class _FakeEngine:
-    def __init__(self, fail):
-        self.fail, self.connects = fail, 0
+    def __init__(self, error=None):
+        self.error, self.connects = error, 0
 
     def connect(self):
         self.connects += 1
-        if self.fail:
-            raise RuntimeError("('28000', \"[28000] Login failed for user (fake)\")")
+        if self.error is not None:
+            raise self.error
         raise AssertionError("the success path is not exercised here")
 
     def dispose(self):
         pass
 
 
-def _daily_env(monkeypatch, tmp_path, reachable, fail=True):
+class _Sock:
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *a):
+        return False
+
+
+def _daily_env(monkeypatch, tmp_path, reachable, error=None, weekday=True):
     import db
     import snapshot_daily as sd
     db.reset_login_state()
     monkeypatch.setattr(sd, "PROJECT_ROOT", str(tmp_path))
     monkeypatch.setattr(sys, "argv", ["snapshot_daily.py"])
-    engine = _FakeEngine(fail)
+    monkeypatch.setattr(sd, "is_weekday", lambda *a: weekday)
+    engine = _FakeEngine(error)
     created = []
     monkeypatch.setattr(db, "get_connection", lambda: created.append(1) or engine)
     monkeypatch.setenv("DB_SERVER", "dbhost.invalid\\INSTANCE")
@@ -147,39 +161,46 @@ def _daily_env(monkeypatch, tmp_path, reachable, fail=True):
     return sd, engine, created
 
 
-class _Sock:
-    def __enter__(self):
-        return self
-
-    def __exit__(self, *a):
-        return False
-
-
 def _failure_logs(tmp_path):
     d = os.path.join(str(tmp_path), *LOG_DIR.split("/"))
     return [json.load(open(os.path.join(d, n), encoding="utf-8")) for n in sorted(os.listdir(d))] if os.path.isdir(d) else []
 
 
-def test_a_failed_login_makes_exactly_one_attempt_then_a_non_zero_exit_and_the_second_start_does_not_log_in_again(tmp_path, monkeypatch):
+def test_monday_to_friday_are_weekdays_and_the_weekend_is_not():
+    import datetime as dt
+    import snapshot_daily as sd
+    assert [sd.is_weekday(dt.datetime(2026, 12, d)) for d in range(7, 14)] == [True, True, True, True, True, False, False]       # Monday 7 December to Sunday 13 December
+
+
+def test_the_weekend_start_does_nothing_before_any_lock_check_preflight_or_login(tmp_path, monkeypatch):
     import db
-    sd, engine, created = _daily_env(monkeypatch, tmp_path, reachable=True)
-    with pytest.raises(RuntimeError, match="Login failed"):                              # the script ends with an uncaught error: a non-zero exit
-        sd.main()
-    assert engine.connects == 1 and db.login_attempts() == 1                             # one attempt, nothing after it
-    logs = _failure_logs(tmp_path)
-    assert len(logs) == 1 and logs[0]["status"] == "failed" and logs[0]["error"]["kind"] == "login_refused"
-    import time
-    time.sleep(1.1)                                                                      # the log file name is the run time to the second
-    # the 12:00 start of the same day: no connection object is even built, and it ends non-zero with its reason in a log
+    sd, engine, created = _daily_env(monkeypatch, tmp_path, reachable=True, weekday=False)
+    monkeypatch.setattr(db, "check_refused_lock", lambda: (_ for _ in ()).throw(AssertionError("the lock was checked")))
+    monkeypatch.setattr(db, "require_reachable", lambda *a, **k: (_ for _ in ()).throw(AssertionError("the preflight ran")))
+    monkeypatch.setattr(djob, "check_publishing_setup", lambda *a, **k: (_ for _ in ()).throw(AssertionError("the setup check ran")))
+    sd.main()                                                                                # returns (exit code 0), nothing else
+    assert engine.connects == 0 and created == [] and _failure_logs(tmp_path) == []
+
+
+def test_a_refused_login_makes_one_attempt_writes_the_lock_exits_3_and_the_next_start_is_blocked_before_the_preflight(tmp_path, monkeypatch):
+    import db
+    sd, engine, created = _daily_env(monkeypatch, tmp_path, reachable=True, error=_DriverError("28000", "[28000] [Driver][SQL Server]Login failed for user 'someone'. (18456)"))
     with pytest.raises(SystemExit) as stop:
         sd.main()
-    assert stop.value.code == 1 and engine.connects == 1 and len(created) == 1 and db.login_attempts() == 1
+    assert stop.value.code == 3 and engine.connects == 1 and db.login_attempts() == 1
+    assert os.path.exists(db.REFUSED_LOCK_PATH) and set(json.load(open(db.REFUSED_LOCK_PATH, encoding="utf-8"))) == {"refused_at", "job"}
     logs = _failure_logs(tmp_path)
-    assert len(logs) == 2 and logs[1]["failed_step"] == "login retry blocked" and "not logging in again" in logs[1]["error"]["message"]
+    assert len(logs) == 1 and logs[0]["status"] == "failed" and logs[0]["error"]["kind"] == "login_refused" and "someone" not in json.dumps(logs[0])
+    # the next start (the noon one, or any later day): the lock stops it before the preflight and before any login
+    monkeypatch.setattr(db, "require_reachable", lambda *a, **k: (_ for _ in ()).throw(AssertionError("the preflight ran")))
+    with pytest.raises(SystemExit) as again:
+        sd.main()
+    assert again.value.code == 3 and engine.connects == 1 and len(created) == 1 and db.login_attempts() == 1
+    assert os.path.exists(db.REFUSED_LOCK_PATH)                                              # the code never deletes it
     db.reset_login_state()
 
 
-def test_an_unreachable_host_makes_zero_login_attempts_and_a_non_zero_exit_and_does_not_block_the_next_start(tmp_path, monkeypatch):
+def test_an_unreachable_host_makes_zero_login_attempts_exits_1_and_does_not_block_the_next_start(tmp_path, monkeypatch):
     import db
     sd, engine, created = _daily_env(monkeypatch, tmp_path, reachable=False)
     with pytest.raises(SystemExit) as stop:
@@ -187,13 +208,13 @@ def test_an_unreachable_host_makes_zero_login_attempts_and_a_non_zero_exit_and_d
     assert stop.value.code == 1 and engine.connects == 0 and created == [] and db.login_attempts() == 0
     logs = _failure_logs(tmp_path)
     assert len(logs) == 1 and logs[0]["failed_step"] == "database host unreachable" and logs[0]["error"]["kind"] == "unreachable"
-    assert "DB host unreachable (off org network?)" in logs[0]["error"]["message"]
-    assert djob.login_refused_today(str(tmp_path), CONFIG) is None                         # no login was attempted, so the noon start may try again once the network is back
-    # back on the network: the next start gets as far as the (single) login attempt
-    monkeypatch.setattr(db.socket, "create_connection", lambda *a, **k: _Sock())
-    with pytest.raises(RuntimeError, match="Login failed"):
+    assert "DB host unreachable (off org network?)" in logs[0]["error"]["message"] and "dbhost" not in json.dumps(logs[0])
+    assert not os.path.exists(db.REFUSED_LOCK_PATH)                                          # no login was attempted: no lock
+    monkeypatch.setattr(db.socket, "create_connection", lambda *a, **k: _Sock())             # back on the network: the next start makes its one attempt
+    engine.error = _DriverError("28000", "[28000] Login failed")
+    with pytest.raises(SystemExit) as stop2:
         sd.main()
-    assert engine.connects == 1
+    assert stop2.value.code == 3 and engine.connects == 1
     db.reset_login_state()
 
 

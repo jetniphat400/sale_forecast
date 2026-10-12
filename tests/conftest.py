@@ -65,3 +65,10 @@ def pytest_sessionfinish(session, exitstatus):
     total, deliberate = _block_counts()
     if total - deliberate > 0 and session.exitstatus == 0:
         session.exitstatus = 1                                  # a refusal that code swallowed is still an attempt
+
+
+@pytest.fixture(autouse=True)
+def _db_refused_lock_in_a_temporary_folder(tmp_path_factory, monkeypatch):
+    """No test reads or writes the real shared lock output/state/db_login_refused.lock (a test that fakes a refused login must never stop the real jobs)."""
+    import db
+    monkeypatch.setattr(db, "REFUSED_LOCK_PATH", str(tmp_path_factory.mktemp("db_lock") / "db_login_refused.lock"))

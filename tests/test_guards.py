@@ -280,7 +280,9 @@ def _login_locations() -> dict:
     import subprocess
     from dotenv import dotenv_values
     values = {"Windows login": {os.environ.get("USERNAME", ""), os.path.basename(os.environ.get("USERPROFILE", ""))},
-              "DB login": {str(dotenv_values(os.path.join(PROJECT_ROOT, ".env")).get("DB_USER") or "")}}
+              "DB login": {str(dotenv_values(os.path.join(PROJECT_ROOT, ".env")).get("DB_USER") or "")},
+              "DB host": {x.strip() for x in (str(dotenv_values(os.path.join(PROJECT_ROOT, ".env")).get("DB_SERVER") or ""),
+                                                str(dotenv_values(os.path.join(PROJECT_ROOT, ".env")).get("DB_SERVER") or "").split(chr(92))[0].split(",")[0])}}
     values = {k: {v.lower() for v in vs if len(v) >= 4} for k, vs in values.items()}
     if os.path.isdir(os.path.join(PROJECT_ROOT, ".git")):
         files = [os.path.join(PROJECT_ROOT, f) for f in subprocess.run(["git", "ls-files"], cwd=PROJECT_ROOT, capture_output=True, text=True, encoding="utf-8", check=True).stdout.split("\n") if f]
@@ -307,10 +309,11 @@ def test_no_windows_login_or_db_login_appears_in_a_tracked_file():
     found = _login_locations()
     checked = found.pop("_checked")
     assert checked["Windows login"], "the Windows login could not be read from the environment, so nothing was checked"
-    if not checked["DB login"]:
-        warnings.warn("DB login not readable from the credential source (.env): this run checked the Windows login only", UserWarning)
-        print("login scan: checked the Windows login only (the DB login is not readable here)")
+    missing = [k for k in ("DB login", "DB host") if not checked[k]]
+    if missing:
+        warnings.warn(f"{' and '.join(missing)} not readable from the credential source (.env): this run did not check for them", UserWarning)
+        print(f"login scan: checked the Windows login only; not readable here: {', '.join(missing)}")
     for kind, locations in found.items():
-        if kind == "DB login" and not checked["DB login"]:
+        if kind in missing:
             continue
         assert not locations, f"a {kind} appears in: " + ", ".join(locations[:20])

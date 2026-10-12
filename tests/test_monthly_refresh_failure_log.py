@@ -173,10 +173,15 @@ def test_a_real_run_writes_the_vintage_with_a_hash_taken_from_the_read_back_rows
 
 
 # ---------------------------------------------------------------------------------------------------------------------------------------------
-# One login attempt per run at most, a reachability preflight before any login (Prompt 20). A fake connector only: nothing here touches the real
-# database or the network.
+# Login safety round 2 (Prompt 23): LoginRefused (SQLSTATE 28000) stops every job with exit code 3 and writes a shared lock; any other failure of an auxiliary pull is a WARN and a partial run
+# (exit code 2); one login attempt per failure; the preflight comes before any login; and the monthly run's weekday-only run day. Fakes only: the real database, the network, the real lock file
+# and the real state file are never touched.
 # ---------------------------------------------------------------------------------------------------------------------------------------------
+import contextlib as _contextlib  # noqa: E402
 import subprocess as _subprocess  # noqa: E402
+from datetime import date as _date  # noqa: E402
+
+import db as _db  # noqa: E402
 
 
 class _Proc:
@@ -185,9 +190,8 @@ class _Proc:
 
 
 def _step1_env(monkeypatch, run_rc):
-    """Step 1 with a reachable host, a fake run_script that returns run_rc[i] for the i-th call, and a stand-in monthly file. Returns the list of scripts started."""
-    import db
-    db.reset_login_state()
+    """Step 1 with a reachable host, a fake run_script that returns run_rc[i] for the i-th call (0 after the list), and a stand-in monthly file. Returns the list of scripts started."""
+    _db.reset_login_state()
     started = []
 
     def fake_run_script(script, args=None):
@@ -198,66 +202,179 @@ def _step1_env(monkeypatch, run_rc):
     monkeypatch.setattr(mr, "check_tcp_reachable", lambda *a, **k: (True, None))
     monkeypatch.setattr(mr, "run_script", fake_run_script)
     monkeypatch.setattr(mr, "_DB_STAGE_FAILURE", None)
+    mr._PARTIAL_WARNINGS.clear()
     monkeypatch.setattr(pd, "read_csv", lambda *a, **k: pd.DataFrame({"snapshot_pull_date": ["2026-10-05 07:00:01"], "itemcode": ["A"], "division": ["PEM101"]}))
     return started
 
 
+# ------------------------------------------------------------------ the run day
+@pytest.mark.parametrize("year,month,expected", [(2026, 11, "2026-11-05"), (2026, 12, "2026-12-07"), (2027, 6, "2027-06-07"), (2027, 9, "2027-09-06"), (2027, 2, "2027-02-05")])
+def test_the_run_day_is_the_first_weekday_on_or_after_the_5th(year, month, expected):
+    d = mr.run_day(year, month)
+    assert d.isoformat() == expected and d.weekday() < 5 and d.day >= 5
+
+
+def test_the_run_day_follows_the_configured_base_day():
+    assert mr.run_day(2026, 12, base_day=12).isoformat() == "2026-12-14"           # 12 Dec 2026 is a Saturday
+    assert mr.run_day(2026, 12, base_day=1).isoformat() == "2026-12-01"
+
+
+class _Today(_date):
+    fixed = _date(2026, 12, 7)
+
+    @classmethod
+    def today(cls):
+        return cls.fixed
+
+
+def _cli_env(monkeypatch, tmp_path, today, main_log=None, main_exc=None):
+    """The monthly command with a fixed day, a temporary state file, no lock file and no publishing check; returns the list of main() calls."""
+    _Today.fixed = today
+    monkeypatch.setattr(mr, "date", _Today)
+    monkeypatch.setattr(mr, "MONTHLY_STATE_PATH", str(tmp_path / "state" / "monthly_run_state.json"))
+    monkeypatch.setattr(mr, "_runner_lock", lambda real_run: _contextlib.nullcontext())
+    import daily_stock_job
+    monkeypatch.setattr(daily_stock_job, "check_publishing_setup", lambda *a, **k: {})
+    calls = []
+
+    def fake_main(**k):
+        calls.append(k)
+        if main_exc:
+            raise main_exc
+        return main_log if main_log is not None else {"run_id": "r1", "steps": {}}
+    monkeypatch.setattr(mr, "main", fake_main)
+    monkeypatch.setattr(_db, "preflight", lambda *a, **k: (_ for _ in ()).throw(AssertionError("the preflight ran")))
+    return calls
+
+
+def test_a_weekend_is_not_a_run_day_nothing_runs_and_no_lock_check_preflight_or_login_happens(monkeypatch, tmp_path):
+    for day in (_date(2026, 12, 5), _date(2026, 12, 6)):                                   # Saturday and Sunday
+        calls = _cli_env(monkeypatch, tmp_path, day)
+        monkeypatch.setattr(_db, "check_refused_lock", lambda: (_ for _ in ()).throw(AssertionError("the lock was checked")))
+        assert mr.cli([]) == 0 and calls == []
+    assert not os.path.exists(mr.MONTHLY_STATE_PATH)
+
+
+def test_the_run_day_runs_once_and_a_second_start_in_the_same_month_does_nothing(monkeypatch, tmp_path):
+    calls = _cli_env(monkeypatch, tmp_path, _date(2026, 12, 7))
+    assert mr.cli([]) == 0 and len(calls) == 1
+    assert mr.read_monthly_state()["last_success_month"] == "2026-12"
+    _cli_env(monkeypatch, tmp_path, _date(2026, 12, 8))
+    assert mr.cli([]) == 0                                                                   # already done this month: no second run
+    assert mr.monthly_run_due(_date(2026, 12, 9), mr.read_monthly_state())[1].startswith("already done")
+
+
+def test_before_the_run_day_nothing_runs_and_a_missed_run_day_is_made_up_on_the_next_weekday_once(monkeypatch, tmp_path):
+    calls = _cli_env(monkeypatch, tmp_path, _date(2026, 12, 4))                              # Friday before the run day (Monday 7 December)
+    assert mr.cli([]) == 0 and calls == []
+    calls = _cli_env(monkeypatch, tmp_path, _date(2026, 12, 9))                              # the run day was missed (machine off): Wednesday makes it up
+    assert mr.cli([]) == 0 and len(calls) == 1
+    calls = _cli_env(monkeypatch, tmp_path, _date(2026, 12, 10))                             # and only once
+    assert mr.cli([]) == 0 and calls == []
+    assert mr.monthly_run_due(_date(2026, 12, 9), {}) == (True, "run day made up (the run day was 2026-12-07)")
+
+
+def test_a_failed_or_partial_run_is_not_marked_done_and_runs_again_on_the_next_weekday(monkeypatch, tmp_path):
+    calls = _cli_env(monkeypatch, tmp_path, _date(2026, 12, 7), main_log={"run_id": "r1", "steps": {}, "aborted_at_step": "6_fill_and_score"})
+    assert mr.cli([]) == 1 and not os.path.exists(mr.MONTHLY_STATE_PATH)                    # a failed run
+    calls = _cli_env(monkeypatch, tmp_path, _date(2026, 12, 8), main_log={"run_id": "r2", "steps": {}, "partial": True, "warnings": ["WARN: x"]})
+    assert mr.cli([]) == 2 and len(calls) == 1 and not os.path.exists(mr.MONTHLY_STATE_PATH)   # a partial run: tried again, not marked
+    calls = _cli_env(monkeypatch, tmp_path, _date(2026, 12, 9))
+    assert mr.cli([]) == 0 and len(calls) == 1 and mr.read_monthly_state()["last_success_month"] == "2026-12"
+
+
+def test_a_manual_run_can_ignore_the_run_day(monkeypatch, tmp_path):
+    calls = _cli_env(monkeypatch, tmp_path, _date(2026, 12, 6))
+    assert mr.cli(["--ignore-run-day"]) == 0 and len(calls) == 1
+
+
+# ------------------------------------------------------------------ exit codes
+def test_exit_codes_login_refused_is_3_partial_is_2_failure_is_1_success_is_0(monkeypatch, tmp_path):
+    _cli_env(monkeypatch, tmp_path, _date(2026, 12, 7), main_exc=mr.MonthlyLoginRefused("a stage ended with code 3"))
+    assert mr.cli([]) == 3 and os.path.exists(_db.REFUSED_LOCK_PATH)                         # the lock is written
+    os.remove(_db.REFUSED_LOCK_PATH)
+    _cli_env(monkeypatch, tmp_path, _date(2026, 12, 7), main_exc=_db.LoginRefused("refused in step 6"))
+    assert mr.cli([]) == 3
+    os.remove(_db.REFUSED_LOCK_PATH)
+    _cli_env(monkeypatch, tmp_path, _date(2026, 12, 7), main_exc=RuntimeError("boom"))
+    assert mr.cli([]) == 1
+    _cli_env(monkeypatch, tmp_path, _date(2026, 12, 7), main_log={"run_id": "r", "steps": {}, "partial": True})
+    assert mr.cli([]) == 2
+    _cli_env(monkeypatch, tmp_path, _date(2026, 12, 7))
+    assert mr.cli([]) == 0
+
+
+def test_exit_code_3_from_a_stage_stops_every_later_database_stage_and_the_run(monkeypatch):
+    started = _step1_env(monkeypatch, run_rc=[0, 0, 3])                                      # the main pull and the pilot file work, the inventory pull is refused
+    with pytest.raises(mr.MonthlyLoginRefused, match="exit code 3"):
+        mr.step1_pull_data(False, offline=False)
+    assert started == ["load_data_all_divisions.py", "load_data_full.py", "build_inventory_dataset.py"]      # the later pulls were never started
+    assert mr._DB_STAGE_FAILURE == "inventory.json pulls"
+    started = _step1_env(monkeypatch, run_rc=[3])                                            # the main pull itself is refused
+    with pytest.raises(mr.MonthlyLoginRefused):
+        mr.step1_pull_data(False, offline=False)
+    assert started == ["load_data_all_divisions.py"]
+
+
+def test_any_other_failure_of_an_auxiliary_pull_keeps_the_previous_file_and_warns_and_the_step_goes_on(monkeypatch):
+    started = _step1_env(monkeypatch, run_rc=[0, 0, 1])                                      # the inventory pull fails, but not by a refused login
+    out = mr.step1_pull_data(False, offline=False)                                           # the step completes
+    assert started == ["load_data_all_divisions.py", "load_data_full.py", "build_inventory_dataset.py", "material_plan.py", "build_trend_tab.py", "build_trend_tab.py"]
+    assert out["inventory_pull"]["refreshed"] is False and "exited 1" in out["inventory_pull"]["not_refreshed_reason"]
+    assert len(mr._PARTIAL_WARNINGS) == 1 and mr._PARTIAL_WARNINGS[0].startswith("WARN:") and "inventory.json pulls" in mr._PARTIAL_WARNINGS[0]
+
+
+def test_a_warning_from_an_auxiliary_stage_is_in_the_run_log_and_the_run_is_partial(monkeypatch, tmp_path):
+    _stub_steps(monkeypatch)
+    monkeypatch.setattr(mr, "step1_pull_data", lambda *a, **k: mr._PARTIAL_WARNINGS.append("WARN: a stage failed") or {"snapshot_pull_date": "2026-10-02 07:45:57"})
+    log = _run(monkeypatch, tmp_path)
+    assert log["partial"] is True and log["warnings"] == ["WARN: a stage failed"] and "aborted_at_step" not in log
+
+
+def test_in_step_4_exit_code_3_stops_the_other_database_script_and_exit_code_1_only_warns(monkeypatch, tmp_path):
+    monkeypatch.setattr(mr, "_DB_STAGE_FAILURE", None)
+    mr._PARTIAL_WARNINGS.clear()
+    monkeypatch.setattr(mr, "SUMMARY_DIR", str(tmp_path))
+    started = []
+    monkeypatch.setattr(mr, "run_script", lambda script, args=None: started.append(script) or _Proc(3))
+    first = mr._run_regeneration_step("order notice", os.path.join("investigations", "order_leadtime.py"), "a.csv")
+    second = mr._run_regeneration_step("delivery", os.path.join("investigations", "delivery_performance.py"), "b.csv")
+    assert started == [os.path.join("investigations", "order_leadtime.py")] and first["returncode"] == 3
+    assert second["refreshed"] is False and "no further login attempt" in second["not_refreshed_reason"]
+    with pytest.raises(mr.MonthlyLoginRefused):
+        mr._abort_if_a_database_stage_failed("Step 4")
+    monkeypatch.setattr(mr, "_DB_STAGE_FAILURE", None)
+    started.clear()
+    monkeypatch.setattr(mr, "run_script", lambda script, args=None: started.append(script) or _Proc(1))
+    mr._run_regeneration_step("order notice", os.path.join("investigations", "order_leadtime.py"), "a.csv")
+    mr._run_regeneration_step("delivery", os.path.join("investigations", "delivery_performance.py"), "b.csv")
+    assert len(started) == 2 and len(mr._PARTIAL_WARNINGS) == 2                                 # both ran; two WARN lines; no abort
+    mr._abort_if_a_database_stage_failed("Step 4")
+
+
+# ------------------------------------------------------------------ the preflight, the lock and the login helper
 def test_an_unreachable_host_makes_zero_login_attempts_and_the_run_ends_non_zero(monkeypatch, tmp_path):
-    import db
-    db.reset_login_state()
+    _db.reset_login_state()
     started = []
     monkeypatch.setenv("DB_SERVER", "dbhost.invalid")
     monkeypatch.setattr(mr.socket, "create_connection", lambda *a, **k: (_ for _ in ()).throw(OSError("timed out")))     # the real preflight code, a fake network
     monkeypatch.setattr(mr, "run_script", lambda *a, **k: started.append(a) or _Proc(0))
     with pytest.raises(mr.MonthlyRefreshAbort, match=r"DB host unreachable \(off org network\?\)") as exc:
         mr.step1_pull_data(False, offline=False)
-    assert started == [] and db.login_attempts() == 0                                  # no script (so no login) was started
-    # as a whole run: step 1 fails, nothing after it runs, the run log holds the reason and the command exits non-zero
+    assert "dbhost" not in str(exc.value)                                                    # the host is never written into a message
+    assert started == [] and _db.login_attempts() == 0
     pushed = _stub_steps(monkeypatch, "1_pull_data", exc.value)
     with pytest.raises(mr.MonthlyRefreshAbort):
         _run(monkeypatch, tmp_path)
     log = json.loads((tmp_path / "logs" / "monthly_refresh_t1.json").read_text(encoding="utf-8"))
     assert log["failed_step"] == "1_pull_data" and "DB host unreachable" in log["error"]["message"] and not pushed
-    monkeypatch.setattr(mr, "main", lambda **k: (_ for _ in ()).throw(mr.MonthlyRefreshAbort("x")))
-    assert mr.cli(["--dry-run"]) == 1
 
 
-def test_a_failed_login_makes_exactly_one_attempt_in_the_main_pull_and_the_run_ends_non_zero(monkeypatch):
-    import db
-    started = _step1_env(monkeypatch, run_rc=[1])                                      # the first script (the main pull) cannot log in
-    with pytest.raises(mr.MonthlyRefreshAbort, match="Never retrying the database"):
+def test_a_main_pull_that_fails_for_another_reason_aborts_the_run_with_exit_1_not_3(monkeypatch):
+    started = _step1_env(monkeypatch, run_rc=[1])
+    with pytest.raises(mr.MonthlyRefreshAbort, match="Never retrying the database") as exc:
         mr.step1_pull_data(False, offline=False)
-    assert started == ["load_data_all_divisions.py"]                                   # exactly one script, so one login attempt, and nothing after it
-    assert db.login_attempts() == 0
-
-
-def test_after_the_first_failed_database_stage_no_later_stage_logs_in_and_the_step_aborts(monkeypatch):
-    started = _step1_env(monkeypatch, run_rc=[0, 0, 1])                                # main pull ok, pilot file ok, the inventory pull fails
-    with pytest.raises(mr.MonthlyRefreshAbort, match="no later stage of this run logs in again"):
-        mr.step1_pull_data(False, offline=False)
-    assert started == ["load_data_all_divisions.py", "load_data_full.py", "build_inventory_dataset.py"]      # the material, trend and targets pulls were never started
-    assert mr._DB_STAGE_FAILURE == "inventory.json pulls"
-
-
-def test_a_success_path_runs_every_stage_normally(monkeypatch):
-    started = _step1_env(monkeypatch, run_rc=[])
-    monkeypatch.setattr(mr, "_pull_stage", lambda label, script, out, args=None: started.append(script) or {"label": label, "refreshed": True})
-    out = mr.step1_pull_data(False, offline=False)
-    assert started == ["load_data_all_divisions.py", "load_data_full.py", "build_inventory_dataset.py", "material_plan.py", "build_trend_tab.py", "build_trend_tab.py"]
-    assert out["db_reachable"] is True and out["rows_pulled"] == 1
-
-
-def test_a_failed_database_analysis_script_in_step_4_stops_the_other_one_and_the_step(monkeypatch, tmp_path):
-    started = []
-    monkeypatch.setattr(mr, "_DB_STAGE_FAILURE", None)
-    monkeypatch.setattr(mr, "SUMMARY_DIR", str(tmp_path))
-    monkeypatch.setattr(mr, "run_script", lambda script, args=None: started.append(script) or _Proc(1))
-    first = mr._run_regeneration_step("order notice", os.path.join("investigations", "order_leadtime.py"), "a.csv")
-    second = mr._run_regeneration_step("delivery", os.path.join("investigations", "delivery_performance.py"), "b.csv")
-    assert started == [os.path.join("investigations", "order_leadtime.py")] and first["returncode"] == 1
-    assert second["refreshed"] is False and "no further login attempt" in second["not_refreshed_reason"]
-    with pytest.raises(mr.MonthlyRefreshAbort, match="one login attempt per run"):
-        mr._abort_if_a_database_stage_failed("Step 4")
+    assert not isinstance(exc.value, mr.MonthlyLoginRefused) and started == ["load_data_all_divisions.py"]
 
 
 class _FakeConn:
@@ -275,59 +392,128 @@ class _FakeConn:
 
 
 class _FakeEngine:
-    def __init__(self, fail):
-        self.fail, self.connects = fail, 0
+    def __init__(self, error=None):
+        self.error, self.connects = error, 0
 
     def connect(self):
         self.connects += 1
-        if self.fail:
-            raise RuntimeError("Login failed for user (fake)")
+        if self.error is not None:
+            raise self.error
         return _FakeConn()
 
     def dispose(self):
         pass
 
 
-def test_the_db_helper_makes_one_attempt_per_failed_login_and_refuses_every_later_one(monkeypatch):
-    import db
-    db.reset_login_state()
-    engine = _FakeEngine(fail=True)
-    monkeypatch.setattr(db, "get_connection", lambda: engine)
-    with pytest.raises(RuntimeError, match="Login failed"):
-        db.run_query("SELECT 1")
-    with pytest.raises(db.DatabaseLoginAlreadyFailedError):                            # a script that swallowed the first error and tries again
-        db.run_query("SELECT 2")
-    with pytest.raises(db.DatabaseLoginAlreadyFailedError):
-        with db.session():
+class _DriverError(Exception):
+    """A stand-in for pyodbc.Error: args = (sqlstate, message)."""
+
+
+def _refused():
+    return _DriverError("28000", "[28000] [Driver][SQL Server]Login failed for user 'someone'. (18456) (SQLDriverConnect)")
+
+
+def test_sqlstate_28000_is_detected_first_then_the_native_code_and_the_message_only_as_a_fallback():
+    assert _db.is_login_refused(_refused())
+    wrapped = RuntimeError("(pyodbc.Error) wrapped")
+    wrapped.orig = _DriverError("28000", "no useful text")                                   # SQLAlchemy keeps the driver's error in .orig
+    assert _db.is_login_refused(wrapped)
+    assert _db.is_login_refused(_DriverError("42000", "[Driver] error 18456 while connecting"))     # the driver's own native code
+    assert _db.is_login_refused(RuntimeError("Login failed for user"))                       # fallback: text only
+    assert not _db.is_login_refused(_DriverError("08001", "[08001] [Driver] Named Pipes Provider: Could not open a connection"))
+    assert not _db.is_login_refused(_DriverError("HYT00", "Login timeout expired"))
+    assert not _db.is_login_refused(ValueError("a query returned nothing"))
+
+
+def test_login_refused_is_not_an_exception_so_no_except_exception_can_swallow_it():
+    assert issubclass(_db.LoginRefused, BaseException) and not issubclass(_db.LoginRefused, Exception)
+    swallowed = False
+    try:
+        try:
+            raise _db.LoginRefused("x")
+        except Exception:      # noqa: BLE001
+            swallowed = True
+    except _db.LoginRefused:
+        pass
+    assert not swallowed
+
+
+def test_a_refused_login_makes_one_attempt_writes_the_lock_and_every_later_call_is_refused_at_once(monkeypatch):
+    _db.reset_login_state()
+    engine = _FakeEngine(_refused())
+    monkeypatch.setattr(_db, "get_connection", lambda: engine)
+    with pytest.raises(_db.LoginRefused) as exc:
+        _db.run_query("SELECT 1")
+    assert "someone" not in str(exc.value) and "someone" not in repr(exc.value.__cause__ or "")      # the login name is never in the message
+    assert engine.connects == 1 and _db.login_attempts() == 1
+    lock = json.loads(open(_db.REFUSED_LOCK_PATH, encoding="utf-8").read())
+    assert set(lock) == {"refused_at", "job"}                                                # the timestamp and the job name only
+    with pytest.raises(_db.LoginRefused, match="fix the credentials, then delete"):
+        _db.run_query("SELECT 2")
+    with pytest.raises(_db.LoginRefused):
+        with _db.session():
             pass
-    assert engine.connects == 1 and db.login_attempts() == 1
-    db.reset_login_state()
+    assert engine.connects == 1 and _db.login_attempts() == 1                               # no further attempt
+    _db.reset_login_state()
+
+
+def test_another_login_failure_is_not_a_refusal_and_writes_no_lock(monkeypatch):
+    _db.reset_login_state()
+    engine = _FakeEngine(_DriverError("08001", "[08001] could not open a connection"))
+    monkeypatch.setattr(_db, "get_connection", lambda: engine)
+    with pytest.raises(_DriverError):
+        _db.run_query("SELECT 1")
+    assert not os.path.exists(_db.REFUSED_LOCK_PATH)
+    _db.reset_login_state()
+
+
+def test_the_lock_blocks_the_preflight_the_login_and_the_monthly_command_and_is_never_deleted_by_the_code(monkeypatch, tmp_path):
+    _db.reset_login_state()
+    _db.write_refused_lock("some_job.py")
+    monkeypatch.setattr(_db.socket, "create_connection", lambda *a, **k: (_ for _ in ()).throw(AssertionError("the network was touched")))
+    monkeypatch.setenv("DB_SERVER", "dbhost.invalid")
+    with pytest.raises(_db.LoginRefused, match="fix the credentials, then delete output/state/db_login_refused.lock"):
+        _db.preflight()                                                                      # before the TCP connect
+    engine = _FakeEngine()
+    monkeypatch.setattr(_db, "get_connection", lambda: engine)
+    with pytest.raises(_db.LoginRefused):
+        _db.run_query("SELECT 1")                                                            # before the login
+    assert engine.connects == 0
+    calls = _cli_env(monkeypatch, tmp_path, _date(2026, 12, 7))
+    assert mr.cli([]) == 3 and calls == []                                                   # the monthly command stops before step 1
+    assert os.path.exists(_db.REFUSED_LOCK_PATH)                                             # still there: only the user deletes it
+
+
+def test_an_uncaught_login_refused_ends_any_script_with_exit_code_3_and_writes_the_lock(tmp_path):
+    lock = str(tmp_path / "x.lock")
+    code = ("import sys; sys.path.insert(0, r'%s'); import db; db.REFUSED_LOCK_PATH = r'%s'; raise db.LoginRefused('refused')" % (os.path.join(PROJECT_ROOT, "src"), lock))
+    r = _subprocess.run([sys.executable, "-c", code], capture_output=True, text=True)
+    assert r.returncode == 3 and os.path.exists(lock) and "DB LOGIN REFUSED" in r.stderr
+    assert set(json.loads(open(lock, encoding="utf-8").read())) == {"refused_at", "job"}
 
 
 def test_the_db_helper_session_logs_in_once_for_many_queries(monkeypatch):
-    import db
-    db.reset_login_state()
-    engine = _FakeEngine(fail=False)
-    monkeypatch.setattr(db, "get_connection", lambda: engine)
-    monkeypatch.setattr(db.pd, "read_sql", lambda sql, conn: pd.DataFrame({"n": [1]}))
-    with db.session():
-        assert db.run_query("SELECT 1")["n"].iloc[0] == 1 and len(db.run_query("SELECT 2")) == 1
-    assert engine.connects == 1 and db.login_attempts() == 1
-    db.reset_login_state()
+    _db.reset_login_state()
+    engine = _FakeEngine()
+    monkeypatch.setattr(_db, "get_connection", lambda: engine)
+    monkeypatch.setattr(_db.pd, "read_sql", lambda sql, conn: pd.DataFrame({"n": [1]}))
+    with _db.session():
+        assert _db.run_query("SELECT 1")["n"].iloc[0] == 1 and len(_db.run_query("SELECT 2")) == 1
+    assert engine.connects == 1 and _db.login_attempts() == 1
+    _db.reset_login_state()
 
 
 def test_the_preflight_is_a_plain_tcp_connect_that_never_logs_in(monkeypatch):
-    import db
-    db.reset_login_state()
+    _db.reset_login_state()
     seen = []
     monkeypatch.setenv("DB_SERVER", "somehost,14330\\INSTANCE")
-    monkeypatch.setattr(db.socket, "create_connection", lambda addr, timeout=None: seen.append((addr, timeout)) or _FakeConn())
-    out = db.preflight(timeout=2.0)
-    assert out["reachable"] is True and seen == [(("somehost", 14330), 2.0)] and db.login_attempts() == 0
+    monkeypatch.setattr(_db.socket, "create_connection", lambda addr, timeout=None: seen.append((addr, timeout)) or _FakeConn())
+    out = _db.preflight(timeout=2.0)
+    assert out["reachable"] is True and seen == [(("somehost", 14330), 2.0)] and _db.login_attempts() == 0
     monkeypatch.setenv("DB_SERVER", "somehost\\INSTANCE")
-    db.preflight()
+    _db.preflight()
     assert seen[-1][0] == ("somehost", 1433)
-    monkeypatch.setattr(db.socket, "create_connection", lambda *a, **k: (_ for _ in ()).throw(OSError("no route")))
-    with pytest.raises(db.DatabaseUnreachableError, match=r"DB host unreachable \(off org network\?\)"):
-        db.require_reachable()
-    assert db.login_attempts() == 0
+    monkeypatch.setattr(_db.socket, "create_connection", lambda *a, **k: (_ for _ in ()).throw(OSError("no route")))
+    with pytest.raises(_db.DatabaseUnreachableError, match=r"DB host unreachable \(off org network\?\)") as exc:
+        _db.require_reachable()
+    assert "somehost" not in str(exc.value) and _db.login_attempts() == 0

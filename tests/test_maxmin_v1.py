@@ -321,7 +321,7 @@ def _pending_expected():
     import reader_values as rv
     v = mm.load_config()["pending_criteria_values"]
     values = {"relative_mae_pass": f"{v['relative_mae_pass']:g}", "relative_mae_good": f"{v['relative_mae_good']:g}", "tracking_signal_limit": f"{v['tracking_signal_limit']:g}",
-              "decision_date": rv.thai_date_short(v["decision_date"])}
+              "decision_date": rv.thai_date_short(rv.criteria_decision_date(v))}
     return [[c.format(**values) for c in row] for row in PENDING_ROWS], values
 
 
@@ -334,13 +334,13 @@ def test_the_criteria_table_is_in_the_file_with_the_eight_approved_rows_and_valu
     assert not any("{" in v or "}" in v for r in payload["pending_criteria"] for v in r.values()), "a braced value was left unfilled"
     # the draft values and the date are config's: the rendered row text carries them
     cfg = mm.load_config()["pending_criteria_values"]
-    assert values == {"relative_mae_pass": "1", "relative_mae_good": "0.7", "tracking_signal_limit": "4", "decision_date": "5 ธ.ค. 69"} and cfg["decision_date"] == "2026-12-05"
+    assert values == {"relative_mae_pass": "1", "relative_mae_good": "0.7", "tracking_signal_limit": "4", "decision_date": "7 ธ.ค. 69"} and cfg["decision_month"] == "2026-12"
     assert payload["pending_criteria"][0]["now_used"] == "ร่าง: ต่ำกว่า 1 ถึงเกณฑ์ผ่าน, ต่ำกว่า 0.7 ถึงเกณฑ์ดี" and payload["pending_criteria"][1]["now_used"] == "ร่าง: ±4"
 
 
 def test_the_criteria_rows_follow_config_values_and_only_the_sales_report_scores_against_them():
     cfg = copy.deepcopy(mm.load_config())
-    cfg["pending_criteria_values"] = {"relative_mae_pass": 2, "relative_mae_good": 0.5, "tracking_signal_limit": 3.5, "decision_date": "2027-01-05"}
+    cfg["pending_criteria_values"] = {"relative_mae_pass": 2, "relative_mae_good": 0.5, "tracking_signal_limit": 3.5, "decision_month": "2027-01"}
     rows = mm.pending_criteria_rows(cfg)
     assert rows[0]["now_used"] == "ร่าง: ต่ำกว่า 2 ถึงเกณฑ์ผ่าน, ต่ำกว่า 0.5 ถึงเกณฑ์ดี" and rows[1]["now_used"] == "ร่าง: ±3.5"
     assert rows[0]["when"] == rows[2]["when"] == rows[4]["when"] == "หลังรอบ 5 ม.ค. 70"

@@ -699,7 +699,7 @@ def test_the_criteria_block_is_verbatim_has_every_division_and_group_and_reads_i
              "▸ Horizon 3 = ทายล่วงหน้า 3 เดือน ใช้ดูความแม่นในช่วงที่ต้องสั่งวัตถุดิบล่วงหน้า",
              f"▸ Tracking Signal = ความคลาดสะสม ÷ ความคลาดเฉลี่ย บอกว่าทายเอียงไปทางเดียวต่อเนื่องไหม เกิน ±{crit['tracking_signal_limit']:g} = เตือน",
              f"▸ ถึงเกณฑ์ร่าง ยังไม่ได้แปลว่าพิสูจน์แล้วว่าดีกว่า Naive: ผลมาจากการทดสอบย้อนหลังเพียง {rv.backtest_rounds(cfg)} รอบ ดูว่าฝ่ายไหนต่างจาก Naive จริงในหัวข้อ \"ใช้วิธี Top-down ดีกว่าวิธีอื่นไหม\"",
-             f"▸ เกณฑ์เป็นร่าง ผู้บริหารยืนยันหลังรอบ {rv.thai_date_short(crit['decision_date'])}"]
+             f"▸ เกณฑ์เป็นร่าง ผู้บริหารยืนยันหลังรอบ {rv.thai_date_short(rv.criteria_decision_date(crit))}"]
     block = re.search(r'<h3 id="criteria-vs-draft">.*?</table>', h, re.S).group(0)
     assert "<br>".join(lines) in re.sub(r"<!--.*?-->", "", block, flags=re.S).replace("&lt;", "<").replace("&quot;", '"')
     rows = _criteria_rows(h)

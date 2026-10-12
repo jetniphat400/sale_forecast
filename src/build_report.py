@@ -1080,7 +1080,7 @@ def render_page(config: dict) -> str:
         f"<td>{fmt_ratio(r['tracking_signal'], 1)}</td><td>{r['verdict_tracking']}</td></tr>" for r in accuracy["rows"])
     crit_head = "".join(f"<th>{html.escape(c)}</th>" for c in report["criteria_columns"])
     crit_values = {"pass_value": f"{th['pass']:g}", "good_value": f"{th['good']:g}", "warn_value": f"{th['limit']:g}", "n_rounds": str(rv.backtest_rounds(config)),
-                   "decision_date": rv.thai_date_short(config["maxmin_v1"]["pending_criteria_values"]["decision_date"])}
+                   "decision_date": rv.thai_date_short(rv.criteria_decision_date(config["maxmin_v1"]["pending_criteria_values"]))}
     criteria_html = f"""<h3 id="criteria-vs-draft">{html.escape(report['criteria_heading'])}</h3>
       <!-- source: Relative MAE, Horizon 3 and Tracking Signal recomputed at build from the saved monthly series with the functions of the main table (src/transferability_all_divisions.py), Naive = the last month before each origin; the forward months from the forward-test log (src/forward_test_scoring.py forward_naive_items); thresholds: config maxmin_v1.pending_criteria_values (draft). METRICS.md Sec.48. Tracking Signal points used per row: {", ".join(f"{r['label']} {r['n_points']}" for r in accuracy["rows"])}. -->
       {render_notes_html('sales_report.html', 'criteria-comparison', values=crit_values)}

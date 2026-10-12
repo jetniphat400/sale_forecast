@@ -164,6 +164,11 @@ def append_snapshot(snapshot: dict) -> None:
     logger.info("%s -- %s now has %d row(s) total.", action, SNAPSHOT_CSV, len(out))
 
 
+def is_weekday(now=None) -> bool:
+    """Monday to Friday: the daily job does nothing at the weekend."""
+    return (now or datetime.now()).weekday() < 5
+
+
 def main():
     """The posting-delay measurement and the stock snapshot, exactly as before, then the daily stock job (published
     data files), all inside ONE database session (src/db.py session()). A failure of the stock job never loses the
@@ -173,6 +178,14 @@ def main():
     import daily_stock_job as djob
     import db
     from db import session
+    if not is_weekday():      # Monday to Friday only: a missed Friday start that Task Scheduler launches at the weekend does nothing, before any lock check, preflight or login
+        logger.info("Not a weekday: the daily job runs Monday to Friday only; nothing done.")
+        return
+    try:
+        db.check_refused_lock()           # before the preflight and before any login
+    except db.LoginRefused as exc:
+        logger.error("%s", exc)
+        raise SystemExit(db.EXIT_LOGIN_REFUSED)
     config = load_config()
     root_config = djob.load_config()
     try:
@@ -187,12 +200,6 @@ def main():
         logger.info("Skipped: a successful daily run of today exists (run %s, %s). Log: %s", existing.get("run_id"), existing.get("status"),
                     djob.record_skip(PROJECT_ROOT, root_config, existing))
         return
-    refused = djob.login_refused_today(PROJECT_ROOT, root_config)
-    if refused:                       # the 12:00 start does not log in again after the server refused the login earlier today
-        exc = RuntimeError(f"an earlier run today (run {refused.get('run_id')}) was refused at the database login: not logging in again (repeated refused logins can lock the account)")
-        logger.error("%s", exc)
-        djob.record_failure(PROJECT_ROOT, root_config, "login retry blocked", exc)
-        raise SystemExit(1)
     try:
         db.require_reachable()                # a plain TCP connect, no authentication: off the organisation's network no login is attempted
     except db.DatabaseUnreachableError as exc:
@@ -211,6 +218,10 @@ def main():
             append_snapshot(snapshot)
             write_inventory_snapshot(inv_snapshot)
             djob.run(PROJECT_ROOT, base=base, config=root_config)
+    except db.LoginRefused as exc:       # the server refused the login: the lock is written, the job ends with exit code 3
+        logger.error("%s", exc)
+        djob.record_failure(PROJECT_ROOT, root_config, "database login refused", RuntimeError("Login failed (SQLSTATE 28000, refused by the server)"))
+        raise SystemExit(db.EXIT_LOGIN_REFUSED)
     except djob.DailyFailure as exc:
         logger.error("Daily stock job failed (%s): %s -- the posting-delay snapshot above was kept.", exc.gate or exc.step, exc)
         raise SystemExit(1)

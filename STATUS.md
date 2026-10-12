@@ -2629,7 +2629,7 @@ above and is not renamed retroactively.*
   user directly, never through chat.
 - **Bug fixed (2026-08-31, user-approved)**: `src/db.py`'s `get_connection()` built a
   SQLAlchemy URL as `mssql+pyodbc://user:pass@server/db?driver=...`, which does not handle the
-  backslash in a named SQL Server instance (`192.168.0.4\WebDB`) and caused a false "server not
+  backslash in a named SQL Server instance (`<db-host>`) and caused a false "server not
   found" error. Fixed by building the connection via an ODBC connection string passed through
   `odbc_connect`, which correctly handles the backslash and any special characters.
 

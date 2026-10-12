@@ -183,6 +183,13 @@ def thai_datetime_short(s) -> str:
     return f"{t.day} {THAI_MONTH_ABBR[t.month]} {str(t.year + 543)[-2:]} {t.strftime('%H:%M')}"
 
 
+def criteria_decision_date(values: dict) -> str:
+    """The date of the monthly run after which the draft criteria are decided: the run day (the first weekday on or after the 5th) of `values["decision_month"]` ('YYYY-MM'), as an ISO date."""
+    import monthly_refresh
+    year, month = str(values["decision_month"]).split("-")
+    return monthly_refresh.run_day(int(year), int(month)).isoformat()
+
+
 def thai_date_short(iso_date) -> str:
     """'2026-12-05' -> '5 ธ.ค. 69' (d MMM yy, Buddhist year as two digits)."""
     t = pd.Timestamp(str(iso_date)[:10])

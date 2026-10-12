@@ -75,7 +75,7 @@ import sys
 import tempfile
 import traceback
 import urllib.parse
-from datetime import datetime
+from datetime import date, datetime, timedelta
 
 import numpy as np
 import pandas as pd
@@ -90,6 +90,7 @@ import forward_test_scoring as fts
 from forward_test_common import (append_vintage_and_hash, compute_scope_hash, load_metadata,
                                  read_forward_test_log, save_metadata)
 from item_level_reconciliation import forecast_all_approaches
+import db as db_module_for_exit
 import ma_comparator
 import vintage_series
 from leakage_guard import LeakageGuardError, check_window_closed, load_min_margin_days
@@ -138,11 +139,60 @@ STEP_ORDER = ["1_pull_data", "2_validate", "3_frozen_snapshot", "4_backtest", "5
               "10_change_magnitude", "11_commit_and_push"]
 
 
+EXIT_OK, EXIT_ABORTED, EXIT_PARTIAL, EXIT_LOGIN_REFUSED = 0, 1, 2, 3
+MONTHLY_STATE_PATH = os.path.join(PROJECT_ROOT, "output", "state", "monthly_run_state.json")      # not in git: the month of the last successful monthly run
+
+
+def run_day(year: int, month: int, base_day: int = None) -> date:
+    """The monthly run's day: the first Monday to Friday on or after the base day of the month (config shadow.monthly_run_day_of_month, the 5th). Every date tied to the run (the criteria decision, the
+    shadow scoring, the page and manual text) comes from this one function."""
+    base = int(base_day if base_day is not None else load_config()["shadow"]["monthly_run_day_of_month"])
+    d = date(int(year), int(month), base)
+    while d.weekday() >= 5:
+        d += timedelta(days=1)
+    return d
+
+
+def read_monthly_state(path: str = None) -> dict:
+    path = path or MONTHLY_STATE_PATH
+    try:
+        with open(path, encoding="utf-8") as f:
+            return json.load(f)
+    except (OSError, ValueError):
+        return {}
+
+
+def monthly_run_due(today: date, state: dict, base_day: int = None) -> tuple:
+    """(run?, reason): the monthly job runs only on a weekday that is on or after this month's run day and only when no successful run is recorded for this month. A run day missed (machine off, user
+    not logged on) is made up on the next weekday, once. Decided before the lock check, the preflight or any login."""
+    if today.weekday() >= 5:
+        return False, "not a run day: the monthly job runs Monday to Friday only"
+    rd = run_day(today.year, today.month, base_day)
+    if today < rd:
+        return False, f"not a run day: this month's run day is {rd.isoformat()}"
+    if state.get("last_success_month") == f"{today.year}-{today.month:02d}":
+        return False, "already done this month: a successful monthly run is recorded"
+    return True, ("run day" if today == rd else f"run day made up (the run day was {rd.isoformat()})")
+
+
+def record_monthly_success(run_id: str, today: date = None, path: str = None) -> None:
+    """Written only when a run completes successfully (exit code 0)."""
+    path = path or MONTHLY_STATE_PATH
+    today = today or date.today()
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump({"last_success_month": f"{today.year}-{today.month:02d}", "run_id": run_id, "recorded_at": datetime.now().isoformat(timespec="seconds")}, f)
+
+
 class MonthlyRefreshAbort(Exception):
     """Raised to abort the run at a specific step (network unreachable, invariant violated,
     etc.) -- always caught once at the top level, recorded loudly in the run log, never
     swallowed or retried (CONVENTIONS.md: validation failures raised loudly; DATABASE ACCESS
     rule: never retry the database)."""
+
+
+class MonthlyLoginRefused(MonthlyRefreshAbort):
+    """A database stage ended with exit code 3: the server refused the login. The run stops (exit code 3) and no later stage logs in."""
 
 
 def load_config() -> dict:
@@ -187,16 +237,24 @@ def _skip_because_of_database_failure(label: str, script: str):
             "not_refreshed_reason": f"skipped: the database stage '{_DB_STAGE_FAILURE}' failed earlier in this run, so no further login attempt is made"}
 
 
+_PARTIAL_WARNINGS = []
+
+
 def _note_database_stage_failure(label: str, returncode) -> None:
+    """Exit code 3 (the login was refused) stops every later database stage and the run. Any other non-zero exit of an auxiliary stage keeps the previous file, is a WARN line in the run log and
+    makes the run end with exit code 2 (partial)."""
     global _DB_STAGE_FAILURE
-    if returncode not in (0, None) and _DB_STAGE_FAILURE is None:
+    if returncode == EXIT_LOGIN_REFUSED and _DB_STAGE_FAILURE is None:
         _DB_STAGE_FAILURE = label
+    elif returncode not in (0, None, EXIT_LOGIN_REFUSED):
+        _PARTIAL_WARNINGS.append(f"WARN: the database stage '{label}' exited {returncode}; the previous file stays and the run continues")
+        logger.warning(_PARTIAL_WARNINGS[-1])
 
 
 def _abort_if_a_database_stage_failed(step: str) -> None:
     if _DB_STAGE_FAILURE is not None:
-        raise MonthlyRefreshAbort(f"{step} ABORTED: the database stage '{_DB_STAGE_FAILURE}' failed; no later stage of this run logs in again (one login attempt per run on failure). "
-                                  f"The reason is in that stage's entry of the run log.")
+        raise MonthlyLoginRefused(f"{step} ABORTED: the database stage '{_DB_STAGE_FAILURE}' ended with exit code 3 (the login was refused); no later stage of this run logs in. "
+                                  f"Fix the credentials, then delete the lock file named in the message of the job.")
 
 
 def _pull_stage(label: str, script: str, output_path: str, args: list = None) -> dict:
@@ -242,14 +300,13 @@ def step1_pull_data(dry_run: bool, offline: bool = False) -> dict:
     github_reachable, github_err = check_tcp_reachable("github.com", 443)
 
     result = {
-        "db_host_checked": db_host, "db_port_checked": db_port,
+        "db_port_checked": db_port,
         "db_reachable": db_reachable, "db_reachability_error": db_err,
         "github_reachable": github_reachable, "github_reachability_error": github_err,
     }
     if not db_reachable:
         raise MonthlyRefreshAbort(
-            f"Step 1 (pull data) ABORTED: {db_module.UNREACHABLE_MESSAGE}: {db_host}:{db_port} is not reachable "
-            f"({db_err}). No login was attempted. Never retrying the database (DATABASE ACCESS rule)."
+            f"Step 1 (pull data) ABORTED: {db_module.UNREACHABLE_MESSAGE} ({db_err}). No login was attempted. Never retrying the database (DATABASE ACCESS rule)."
         )
 
     # ---- THE one real DB connection attempt this run makes: the 335-item, 5-division pull ----
@@ -257,6 +314,8 @@ def step1_pull_data(dry_run: bool, offline: bool = False) -> dict:
     result["load_data_all_divisions_returncode"] = proc.returncode
     result["load_data_all_divisions_stdout_tail"] = proc.stdout[-3000:]
     result["load_data_all_divisions_stderr_tail"] = proc.stderr[-3000:]
+    if proc.returncode == EXIT_LOGIN_REFUSED:
+        raise MonthlyLoginRefused("Step 1 (pull data) ABORTED: src/load_data_all_divisions.py exited with code 3: the database login was refused; the lock file is written and no stage logs in again.")
     if proc.returncode != 0:
         raise MonthlyRefreshAbort(
             f"Step 1 (pull data) ABORTED: src/load_data_all_divisions.py exited "
@@ -1884,6 +1943,7 @@ def main(dry_run: bool, force_new_vintage: bool = False, sandbox: bool = False, 
                "started_at": datetime.now().isoformat(timespec="seconds"), "steps": {}}
     global _DB_STAGE_FAILURE
     _DB_STAGE_FAILURE = None
+    _PARTIAL_WARNINGS.clear()
     if dry_run or sandbox or offline:
         run_log["stale_backup_folders"] = {"checked": False, "reason": "dry run, sandbox or offline run"}
     else:
@@ -1901,7 +1961,7 @@ def main(dry_run: bool, force_new_vintage: bool = False, sandbox: bool = False, 
             outcome = fn(*args, **kwargs)
             run_log["steps"][step_name] = {"status": "ok", **({"result": outcome} if outcome is not None else {})}
             return outcome
-        except Exception as e:      # noqa: BLE001 -- every failure must reach the run log
+        except (Exception, db_module_for_exit.LoginRefused) as e:      # noqa: BLE001 -- every failure must reach the run log (a refused login too)
             aborted = isinstance(e, MonthlyRefreshAbort)
             run_log["steps"][step_name] = {"status": "ABORTED" if aborted else "FAILED",
                                            "reason" if aborted else "error": str(e)}
@@ -1944,6 +2004,8 @@ def main(dry_run: bool, force_new_vintage: bool = False, sandbox: bool = False, 
             run_log["backup"] = {"status": "FAILED", "error": _mask(f"{type(e).__name__}: {e}")[:2000]}
             logger.error("BACKUP FAILED: %s", run_log["backup"]["error"])
 
+    if _PARTIAL_WARNINGS:
+        run_log["warnings"], run_log["partial"] = list(_PARTIAL_WARNINGS), True
     run_log["gate_outcomes"] = gate_outcomes(step8, step9, step10, step7d, step7e, step7f)
     run_log["finished_at"] = datetime.now().isoformat(timespec="seconds")
     _write_run_log(run_log, run_id, run_log_dir)
@@ -1981,8 +2043,9 @@ def _runner_lock(real_run: bool):
 
 
 def cli(argv=None) -> int:
-    """Command line entry. Exit code 0 only for a run that completed every step; any abort or failure returns 1
-    (the run log has already been written by main())."""
+    """Command line entry. Exit codes: 0 a run that completed every step (or a start that was not due: a weekend, before this month's run day, or already done this month: nothing is done, before the
+    lock check, the preflight or any login); 1 an abort or failure; 2 a run that completed but with an auxiliary pull that failed (a WARN line, the previous file kept); 3 the database login was refused (the
+    lock file is written; no job logs in until it is deleted). The run log has already been written by main()."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--dry-run", action="store_true",
                          help="Exercise every step's logic without writing/committing/pushing anything tracked.")
@@ -1990,6 +2053,7 @@ def cli(argv=None) -> int:
                          help="Override the one-vintage-per-calendar-month guard (Part 2, "
                               "task 2cfix2) for a deliberate second real run in the same month. "
                               "Its use is recorded in the run log.")
+    parser.add_argument("--ignore-run-day", action="store_true", help="Run although it is not the run day (a manual run); the weekday and lock rules of the jobs still apply to nothing else.")
     parser.add_argument("--in-sandbox", action="store_true", help=argparse.SUPPRESS)
     parser.add_argument("--run-id", default=None, help=argparse.SUPPRESS)
     parser.add_argument("--run-log-dir", default=None, help=argparse.SUPPRESS)
@@ -1999,22 +2063,44 @@ def cli(argv=None) -> int:
     parser.add_argument("--skip-tests", action="store_true",
                          help="Skip step 8 (for tests of the runner itself; recorded in the run log).")
     args = parser.parse_args(argv)
-    if not (args.dry_run or args.in_sandbox or args.offline):       # a real run: refuse before step 1 when it is not the publishing clone (decision D1)
-        import daily_stock_job
+    real_run = not (args.dry_run or args.in_sandbox or args.offline)
+    if real_run and not args.ignore_run_day:        # the run-day gate comes first: before the lock check, the preflight and any login
+        due, reason = monthly_run_due(date.today(), read_monthly_state())
+        if not due:
+            logger.info("Monthly refresh not started: %s.", reason)
+            return EXIT_OK
+        logger.info("Monthly refresh starts: %s.", reason)
+    if real_run:
+        try:
+            db_module_for_exit.check_refused_lock()
+        except db_module_for_exit.LoginRefused as e:
+            logger.error("MONTHLY REFRESH NOT STARTED: %s", e)
+            return EXIT_LOGIN_REFUSED
+        import daily_stock_job       # a real run: refuse before step 1 when it is not the publishing clone (decision D1)
         try:
             daily_stock_job.check_publishing_setup(PROJECT_ROOT, load_config())
         except daily_stock_job.DailyStop as e:
             logger.error("MONTHLY REFRESH NOT STARTED (%s): %s", e.step, e)
-            return 1
+            return EXIT_ABORTED
     try:
-        with _runner_lock(real_run=not (args.dry_run or args.in_sandbox or args.offline)):
+        with _runner_lock(real_run=real_run):
             log = main(dry_run=args.dry_run, force_new_vintage=args.force_new_vintage, sandbox=args.in_sandbox,
                        run_id=args.run_id, run_log_dir=args.run_log_dir, offline=args.offline, skip_tests=args.skip_tests)
+    except (MonthlyLoginRefused, db_module_for_exit.LoginRefused) as e:
+        db_module_for_exit.write_refused_lock("monthly_refresh.py")
+        logger.error("MONTHLY REFRESH STOPPED, the database login was refused: %s", e)
+        return EXIT_LOGIN_REFUSED
     except Exception as e:      # noqa: BLE001 -- the run log was written where the failure happened
         logger.error("MONTHLY REFRESH FAILED: %s: %s", type(e).__name__, e)
-        return 1
+        return EXIT_ABORTED
     print(json.dumps(log, indent=2, default=str))
-    return 1 if ("aborted_at_step" in log or log.get("backup", {}).get("status") == "FAILED") else 0
+    if "aborted_at_step" in log or log.get("backup", {}).get("status") == "FAILED":
+        return EXIT_ABORTED
+    if log.get("partial"):
+        return EXIT_PARTIAL
+    if real_run:
+        record_monthly_success(log.get("run_id", ""))
+    return EXIT_OK
 
 
 if __name__ == "__main__":

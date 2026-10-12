@@ -558,7 +558,7 @@ def test_the_exec_tab_texts_cards_table_and_remarks_are_verbatim_from_fixed_data
     import build_trend_tab as bt
     cfg = bt.load_config()
     import reader_values as rv
-    DECISION_DATE_TH = rv.thai_date_short(cfg["maxmin_v1"]["pending_criteria_values"]["decision_date"])
+    DECISION_DATE_TH = rv.thai_date_short(rv.criteria_decision_date(cfg["maxmin_v1"]["pending_criteria_values"]))
     d = _fixed_exec_data()
     d["watch"] = []
     lines = _exec_visible(bt.exec_render(d, cfg))

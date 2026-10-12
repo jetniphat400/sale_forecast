@@ -301,6 +301,7 @@ def test_a_real_run_and_step_11_refuse_outside_the_publishing_clone(tmp_path, mo
     import daily_stock_job
     monkeypatch.setattr(mr, "PROJECT_ROOT", str(tmp_path))                                  # not the clone named in config `publishing`
     monkeypatch.setattr(mr, "main", lambda *a, **k: (_ for _ in ()).throw(AssertionError("step 1 must not start")))
+    monkeypatch.setattr(mr, "monthly_run_due", lambda *a, **k: (True, "run day"))          # the run-day gate is tested elsewhere; here the run is due
     assert mr.cli([]) == 1                                                                 # refused before any step
     with pytest.raises(daily_stock_job.DailyStop, match="only from the publishing clone"):
         mr.step11_commit_and_push(False, *GATES)

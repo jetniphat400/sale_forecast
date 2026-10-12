@@ -51,7 +51,7 @@ TEXT = {
     "coverage_cols": ["รหัส", "ชื่อ", "ฝ่าย", "เหตุผล"],
     "coverage_reason": {"no_demand": "ไม่มียอดผลิต", "no_production": "ไม่พบการผลิตในระบบ", "no_bom": "ไม่มี BOM ในระบบ"},
     # Remarks (METRICS.md Sec.54): every line stays in its table; a line that is not goods carries a remark and is left out of the counts of the summary line under each list.
-    "summary_line": "ทั้งหมด {all} รายการ นับ {counted} รายการ · ไม่นับค่าแรง/ค่าจ้าง/ค่าบริการ {paid} รายการ (ไม่ใช่สินค้า ไม่ต้อง stock)",
+    "summary_line": "ทั้งหมด {all} รายการ นับ {counted} รายการ · ไม่นับค่าแรง/ค่าจ้าง/ค่าบริการ/ไม่ใช่สินค้า {paid} รายการ (ไม่ใช่สินค้า ไม่ต้อง stock)",
     "summary_pending": " · รอตรวจ {pending} รายการ ยังนับรวมไว้จนกว่าจะมีคนยืนยันว่าเป็นสินค้าหรือไม่",
     "remark_title": "หมายเหตุ: {evidence}",
 }

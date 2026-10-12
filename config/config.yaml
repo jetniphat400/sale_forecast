@@ -1255,7 +1255,7 @@ shadow:
   # model_experiment_2026_10: statsforecast Holt on the Type series up to the origin, clipped at 0, times the item's share of the Type in the training window
   pairs:
     surge_arrester: holt
-  monthly_run_day_of_month: 5          # the monthly job runs on this day (STATUS.md plan); the date of the first evaluation is derived from it and the leakage guard, never typed
+  monthly_run_day_of_month: 5          # the base day: the monthly job runs on the first weekday (Monday to Friday) on or after it (monthly_refresh.run_day); the date of the first evaluation is derived from it and the leakage guard, never typed
   min_points_tracking_signal: 3        # Tracking Signal of a shadow method is shown only from this many scored points (not part of the rule; the rule uses MAE only)
   rule:
     vintage_compared: 2                # vintage 2 only; vintage 3 and later shadow forecasts are recorded but do not count toward this rule
@@ -1690,16 +1690,31 @@ material_plan:
   output_material_summary_file: "output/summary/material_plan_v1_material_summary.csv"
   # The material plan page's first list: materials whose latest order date falls from the day of the plan to that day plus this many days (decided by the user, 2026-10-06).
   order_window_days: 30
-  # Remarks on material lines (METRICS.md Sec.54). Every line stays in every table; a line is tagged when it is not goods. The rules are attribute values and keywords, never a list of codes.
-  # (1) a PAID remark (ค่าแรง, ค่าจ้าง or ค่าบริการ: labor, subcontract or service charges bought by purchase order, not goods, not stocked): the line is NOT counted in the page's summary counts.
-  # (2) the remark "รอตรวจ" (to be checked): the type is uncertain, the line IS counted until a person confirms it. A line matching both gets the paid remark.
+  # Remarks on material lines (METRICS.md Sec.54). Every line stays in every table; a line is tagged when it is not goods. The rules are keywords, code prefixes and attribute values; the only codes named
+  # are the ones the user confirmed. (1) a PAID remark (ค่าแรง, ค่าจ้าง, ค่าบริการ or ไม่ใช่สินค้า): labor, hire, service charges and things the user confirmed are not goods; the line is NOT counted in the
+  # page's summary counts. (2) "รอตรวจ" (to be checked): the type is uncertain, the line IS counted until a person confirms it. Order of the rules: confirmed by the user, LABOR code, name keywords, รอตรวจ.
   non_stock_rule:
     enabled: true
     attributes_file: output/data/material_pull/item_attributes.pkl      # the item master read-only with the material pull (Cube_ItemList, Cube_Inventory_Aging, Cube_Inventory_Exact, cube_inventory_tran)
+    user_confirmed:                                                      # answers of the user, 2026-10-12: these are not goods
+      remark: "ไม่ใช่สินค้า"
+      evidence: "ผู้ใช้ยืนยัน"
+      keywords: ["SLIT COST", "COST OF PAPER"]                           # found in the name or the code
+      codes:                                                             # code: reason
+        02-00-R-7048: "confirmed by user 2026-10-12"
+        TF-R-01-0077: "confirmed by user 2026-10-12"
+        TF-R-05-0216: "confirmed by user 2026-10-12"
+        TF-R-08-0223TF: "confirmed by user 2026-10-12"
+        TF-R-08-0224TF: "confirmed by user 2026-10-12"
+    labor_code_prefixes: ["LABOR-", "LABOR_"]                            # a code starting with one of these (any case) is labor cost, never รอตรวจ
+    labor_code_default: {remark: "ค่าแรง", evidence: code}               # unless the name states one of the labels below
+    labor_code_name_labels:
+      ค่าจ้าง: ["ค่าจ้าง"]
+      ค่าบริการ: ["ค่าบริการ", "ค่า บริการ", "ค่าขนส่ง", "LOGISTICS COST", "SERVICE"]
     paid_remark_order: ["ค่าแรง", "ค่าจ้าง", "ค่าบริการ"]                  # the first remark in this order whose keyword is found in the description (then in the code) is the line's remark
-    paid_remarks:                                                        # the first remark whose keyword is found in the description (then in the code) is the line's remark
+    paid_remarks:
       ค่าแรง: ["ค่าแรง", "LABOR"]
-      ค่าจ้าง: ["ค่าจ้าง", "จ้าง"]
+      ค่าจ้าง: ["ค่าจ้าง", "จ้าง", "OUTSOURCE"]
       ค่าบริการ: ["ค่าบริการ", "ค่า บริการ", "ค่าขนส่ง", "LOGISTICS COST", "SERVICE"]
     pending_review:                                                      # remark รอตรวจ for a line with no keyword match that has any of these
       item_group: ["2000", "400", "4012"]                                # Cube_ItemList.ItemGroup (the group the item master gives to labor and processing charges)
@@ -1707,12 +1722,8 @@ material_plan:
       service_units: ["HOUR", "JOB", "LOT"]                              # a unit of measure that names work, not a thing
     pending_label: "รอตรวจ"
     evidence_labels: {name: "จากชื่อ", code: "จากรหัส", item_group: "จากกลุ่มสินค้า", no_master: "ไม่มีข้อมูลในระบบ", unit: "หน่วยนับ", reviewed: "จากการตรวจชื่อ"}
-    exceptions:                                                          # a line moved to รอตรวจ by a review of its name (Validator, 2026-10-09): code: one-line reason (no description)
-      LABOR-RS-R-06-0006: "the name reads like a physical part; only the LABOR- code prefix marks it"
-      LABOR-RS-R-06-0025: "the name reads like a physical part; only the LABOR- code prefix marks it"
-      LABOR-03-CC-R-1046: "the name is unclear: outsource wording beside a product name"
-      LABOR-RS-R-06-0017: "the name is unclear: a process and a material name, no fee word"
-      LABOR_TF-R-09-0027: "no description in the item names; only the LABOR_ code prefix marks it"
+    exceptions:                                                          # a (non-LABOR) line moved to รอตรวจ by a review of its name: code: one-line reason (no description)
+      {}
   # Items shown in the "used in" column (the finished goods that need most of the material).
   used_in_max_items: 3
 
@@ -1769,8 +1780,8 @@ maxmin_v1:
   #   relative_mae_pass 1 and relative_mae_good 0.7: Morlidge's ratio of forecast MAE to naive MAE (Gilliland / SAS, "The avoidability of forecast error, Part 4"): a forecast
   #   no better than the naive one (ratio 1) adds nothing. The measure is Relative MAE = MAE of our forecast / MAE of Naive on the same items, months and horizons (METRICS.md Sec.48).
   #   tracking_signal_limit 4: the common tracking-signal control limit (APICS / CPIM practice).
-  #   decision_date: the criteria are decided after the 2026-12-05 run (the run after the first forward results).
-  pending_criteria_values: {relative_mae_pass: 1, relative_mae_good: 0.7, tracking_signal_limit: 4, decision_date: "2026-12-05"}
+  #   decision_month: the criteria are decided after that month's monthly run (the run after the first forward results); the date is the run day of the month (the first weekday on or after the 5th), never typed.
+  pending_criteria_values: {relative_mae_pass: 1, relative_mae_good: 0.7, tracking_signal_limit: 4, decision_month: "2026-12"}
   # Approved text of 2026-10-08 (verbatim); {braces} are filled from pending_criteria_values (the date with the shared Thai date formatter).
   pending_criteria_rows:
     - {topic: "ยอดทายดีกว่าวิธีง่ายไหม", to_decide: "Relative MAE ต่ำแค่ไหนถึงนับว่าถึงเกณฑ์ (MAE ของเรา ÷ MAE ของ Naive)", now_used: "ร่าง: ต่ำกว่า {relative_mae_pass} ถึงเกณฑ์ผ่าน, ต่ำกว่า {relative_mae_good} ถึงเกณฑ์ดี", who: "ผู้บริหาร", when: "หลังรอบ {decision_date}"}
