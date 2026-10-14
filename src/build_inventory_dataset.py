@@ -52,11 +52,6 @@ SCOPE_335_FILE = os.path.join(PROJECT_ROOT, "output", "summary", "phaseC_step2_s
 OUTPUT_PATH = os.path.join(PROJECT_ROOT, "data", "inventory.json")
 SOURCE_TABLE = "[salewarehouse].[dbo].[Cube_Inventory_Exact]"
 CES_TABLE = "[salewarehouse].[dbo].[Cube_CES]"  # NEW Reserved source, per METRICS.md Sec.14
-# Rows sharing every one of these values but sitting under different docID (contract) numbers are
-# the cross-contract duplicate-recording pattern documented in
-# output/summary/reserve_backlog_relationship_report.md. Used for DIAGNOSTICS ONLY here -- the
-# backlog figure written to JSON is the as-is sum, not de-duplicated.
-BACKLOG_DEDUP_KEY = ["itemcode", "quantity", "status", "deliverydate", "plan_deliverydate"]
 
 
 def load_config() -> dict:
@@ -341,19 +336,6 @@ def add_backlog_and_available(classified: pd.DataFrame, backlog_per_code: pd.Dat
     merged["available"] = merged["qty"] - merged["backlog"]
     merged.loc[merged["state"] == "no_db_record", "available"] = None
     return merged
-
-
-def flag_duplicate_backlog_rows(backlog: pd.DataFrame) -> pd.DataFrame:
-    """Flags rows that share BACKLOG_DEDUP_KEY with another row under a DIFFERENT docID.
-
-    Diagnostics only -- these rows are still counted in the written figure. Rows sharing a docID
-    are legitimate multi-line delivery schedules, not duplicates, so they are not flagged.
-    """
-    df = backlog.copy()
-    docids_per_key = df.groupby(BACKLOG_DEDUP_KEY, dropna=False)["docID"].transform("nunique")
-    rows_per_key = df.groupby(BACKLOG_DEDUP_KEY, dropna=False)["docID"].transform("size")
-    df["is_cross_contract_duplicate"] = (rows_per_key > 1) & (docids_per_key > 1)
-    return df
 
 
 # --------------------------------------------------------------------------------------------

@@ -11,8 +11,8 @@ per CONVENTIONS.md's division source-of-truth rule). createDate >= 2024-01-01, r
 'Omni Channel', status IN ('Actual','MPS') -- same filters this project uses throughout
 (config/config.yaml, src/phaseI_sensitivity_engine.py line ~115).
 
-DATABASE ACCESS RULE: ONE connection attempt for this entire task. get_connection() is called
-once; every SELECT below runs over that same open connection. On failure: stop, report, no retry.
+DATABASE ACCESS RULE: ONE connection attempt for this entire task. One db.session(preflight=True) is
+opened; every SELECT below runs over that same open connection. On failure: stop, report, no retry.
 
 Known going in (to be VERIFIED, not trusted): Cube_Quotation has itemcode, ctr_leadtime,
 report_date (investigate_leadtime_classification.py); cube_Sale_APD has quotationid
