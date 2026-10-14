@@ -29,7 +29,7 @@ import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
-from db import get_connection  # noqa: E402
+from db import session  # noqa: E402
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 logger = logging.getLogger("phaseJ2_explorerA")
@@ -55,8 +55,7 @@ def main():
     logger.info("DATABASE ACCESS RULE: opening the SINGLE connection attempt for this entire "
                 "task now (%d codes). No retry on failure.", len(codes))
     try:
-        engine = get_connection()
-        with engine.connect() as conn:
+        with session(preflight=True) as conn:
             # ---- 1. Schema verification: full column list of both tables ----
             quo_cols = pd.read_sql(
                 "SELECT COLUMN_NAME, DATA_TYPE, ORDINAL_POSITION FROM INFORMATION_SCHEMA.COLUMNS "

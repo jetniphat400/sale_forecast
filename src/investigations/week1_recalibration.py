@@ -189,6 +189,30 @@ def verify_recorded() -> bool:
     return True
 
 
+CES_COLUMNS = ["ContractID", "ItemCode", "CtrDate", "PlanDelDate", "ForecastDelDate", "ActualDelDate", "Status", "PlanQty", "ActualQty", "RevenueType"]       # the columns of ces_92.csv
+
+
+def pull_ces_input(path: str = CES_PATH, config: dict = None) -> dict:
+    """The producer of the recalibration's observed-delivery input (`ces_92.csv`), added 2026-10-14 (Prompt 30). READ ONLY, ONE database session through src/db.py (lock check, preflight,
+    one login attempt; a refused login ends the process with exit code 3), by hand only: it is part of no scheduled job, and a person decides when to run it. It pulls the Cube_CES rows
+    of the 92 items listed in config maxmin_v1.ensemble_stock_items_file (stock92.json), Omni Channel only (the locked scope; the earlier saved file also held Tendering and blank rows), no
+    date filter at the pull (src/cube_ces_pull.py), the columns CES_COLUMNS in this order, and writes them to `path`.
+    NOT YET COMPARED WITH A REAL PULL: the saved file of 2026-10-05 was made by a script that is not in the repository, so the row set and the column formats of this pull are checked only
+    against that file's schema (tests/test_cube_ces_pull.py), not against a pull."""
+    import db
+    from cube_ces_pull import pull_cube_ces_for_items
+    config = config or load_config()
+    with open(os.path.join(PROJECT_ROOT, *config["maxmin_v1"]["ensemble_stock_items_file"].split("/")), encoding="utf-8") as f:
+        items = sorted(str(c).strip() for c in json.load(f))
+    with db.session(preflight=True):
+        df = pull_cube_ces_for_items(items, columns=CES_COLUMNS, revenue_type=REVENUE_TYPE)
+    df = df[CES_COLUMNS]
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    df.to_csv(path, index=False, encoding="utf-8")
+    logger.info("Recalibration input written: %d Cube_CES rows of %d items (Omni Channel) to %s", len(df), len(items), path)
+    return {"rows": int(len(df)), "items": len(items), "path": path}
+
+
 def main(run_control: bool = True):
     config = load_config()
     items = json.load(open(os.path.join(INPUT_DIR, "stock92.json"), encoding="utf-8"))
@@ -260,4 +284,7 @@ def main(run_control: bool = True):
 
 
 if __name__ == "__main__":
-    main(run_control="--no-control" not in sys.argv)
+    if "--pull" in sys.argv:                 # by hand only: the producer of ces_92.csv (one read-only session); then stop
+        print(json.dumps(pull_ces_input()))
+    else:
+        main(run_control="--no-control" not in sys.argv)

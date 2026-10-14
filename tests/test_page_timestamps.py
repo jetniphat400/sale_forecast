@@ -150,9 +150,8 @@ def test_the_data_range_line_follows_the_fit_window_of_the_latest_vintage_not_a_
 
 def test_reserved_source_is_cube_ces_not_cube_backlog():
     """Static source check: the WRITTEN Reserved figure must come from
-    query_backlog_ces()/dedup_and_aggregate_ces_backlog() (Cube_CES), not query_backlog()/
-    aggregate_backlog() (Cube_Backlog) -- the old functions are kept only for the one-time
-    before/after comparison in __main__, never called for the written value."""
+    query_backlog_ces()/dedup_and_aggregate_ces_backlog() (Cube_CES). The old Cube_Backlog
+    functions (query_backlog, aggregate_backlog) were removed on 2026-10-14 (Prompt 27)."""
     src_path = os.path.join(PROJECT_ROOT, "src", "build_inventory_dataset.py")
     with open(src_path, "r", encoding="utf-8") as f:
         src = f.read()

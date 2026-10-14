@@ -1174,7 +1174,7 @@ function renderStockLabels() {{
 
 function renderDataLine() {{
   document.getElementById('data-line').textContent =
-    'Forecast (ยอดทาย) รันเมื่อ ' + DATA.forecast_round_label + ' · ข้อมูล stock ดึงเมื่อ ' + (STOCK_OK ? thaiDateTime(STOCK.pull_time) : STOCK_UNKNOWN);
+    'Forecast (ยอดทาย) รันเมื่อ ' + DATA.forecast_round_label + ' · ข้อมูล stock จาก DB (Cube_Inventory_Exact) ดึงเมื่อ ' + (STOCK_OK ? thaiDateTime(STOCK.pull_time) : STOCK_UNKNOWN);
 }}
 
 function startPage() {{

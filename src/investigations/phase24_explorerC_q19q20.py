@@ -9,6 +9,7 @@ Reuses the existing 2026-09-24 same-day pull `output/summary/phase23_part0_cubef
 this script's one connection is spent on (a) a fresh live INFORMATION_SCHEMA.COLUMNS check and
 (b) pulling the 12-item PEM104 scope, which the existing file does not cover.
 """
+import contextlib
 import logging
 import os
 import sys
@@ -17,7 +18,7 @@ import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
-from db import get_connection
+from db import session
 from cube_final_pull import CUBE_FINAL_COLUMNS
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
@@ -41,9 +42,9 @@ def main():
     logger.info("PEM104 scope: %d item codes", len(pem104_codes))
 
     logger.info("DATABASE ACCESS RULE: opening the single connection attempt now. No retry on failure.")
+    stack = contextlib.ExitStack()           # the one session of db.py: lock check, preflight, one login attempt, LoginRefused ends with exit code 3
     try:
-        engine = get_connection()
-        conn = engine.connect()
+        conn = stack.enter_context(session(preflight=True))
     except Exception as exc:
         logger.error("Connection FAILED -- STOPPING, not retrying. Verbatim error: %r", exc)
         print(f"CONNECTION FAILED: {exc!r}")
@@ -92,7 +93,7 @@ def main():
         logger.info("cube_final table-wide row count: %d", rowcount["n"].iloc[0])
 
     finally:
-        conn.close()
+        stack.close()
         logger.info("Connection closed.")
 
     print("\n=== SUMMARY ===")

@@ -7,9 +7,9 @@ The prospective posting-delay measurement that used to run here (a daily row cou
 cube_final, appended to output/snapshots/posting_delay.csv) was removed on 2026-10-12 (Prompt 27): it was not limited
 to the Price List items and no page reads it. The existing posting_delay.csv is kept as it was; it no longer grows.
 
-Never writes credentials: only calls src/db.py::run_query, which returns a DataFrame -- this
-script never touches the connection string, .env contents, or credential env vars directly, and
-nothing here logs them.
+Never writes credentials: every query goes through src/db.py (one session, one login attempt), which
+returns DataFrames -- this script never touches the connection string, .env contents, or credential
+env vars directly, and nothing here logs them.
 
 DATABASE ACCESS RULE: one connection attempt only. If it fails, stop and report -- nothing here
 retries a failed login.

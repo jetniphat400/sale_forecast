@@ -14,19 +14,21 @@ output/summary/inventory_source_investigation_report.md Part 1d -- because it ha
 unique (company, warehouse, itemcode) grain and a directly-readable `stock` column, unlike
 Aging's GL-account-duplicated rows or the tran ledger's derived-balance requirement).
 
-Step 2B: joins the same registry to outstanding customer backlog from Cube_Backlog, filtered to
-`sale_company IN ('PEM','CI')` so the demand side covers the same company scope as the supply
-side (Cube_Inventory_Exact holds exactly two company values, PEM and CI -- see
-output/summary/company_scope_investigation_report.md). NO status filter is applied: every row in
-Cube_Backlog is already outstanding (`viewType = 'CTR/PO to be delivered'` table-wide, and the
-table carries no delivered/cancelled status value at all -- see
-output/summary/reserved_available_investigation_report.md Part 2b). `available` is then
-on-hand minus backlog, never clamped: a negative means outstanding orders exceed stock on hand.
-Each item also carries `backlog_rows`: the individual Cube_Backlog rows behind its total, as-is and
-never de-duplicated, so a reviewer can judge each row for themselves. Every item's rows are asserted
-to sum exactly to that item's backlog total.
+Step 2B: joins the same registry to the confirmed demand not yet delivered: the Cube_CES rows with
+Status = 'Backlog' (since 2026-09-25, task 2a Part 5, METRICS.md Sec.14), every channel (stock and
+accepted orders are shared across channels; RevenueType is carried for PEM103's Omni limit in the
+operation plan), deduplicated on contract + item (`dedup_and_aggregate_ces_backlog`). `available`
+is on-hand minus backlog, never clamped: a negative means outstanding orders exceed stock on hand.
+Each item also carries `backlog_rows`: the individual Cube_CES rows behind its total, so a reviewer
+can judge each row. Every item's rows are asserted to sum exactly to that item's backlog total.
+The old Cube_Backlog table is no longer read (its pull and the warehouse-role pull from
+cube_inventory_tran were removed on 2026-10-14, Prompt 27).
 
-Step 3: the per-warehouse stock breakdown of each item.
+Step 3: the per-warehouse stock breakdown of each item (by_warehouse; the sellable, staging and
+elsewhere split of Step 2C comes from config phase_e1_assumptions).
+
+The saved pulls (`--save-pulls`) hold two tables, inventory and backlog_ces; `--from-pulls` builds
+the file from them with no database connection.
 """
 import json
 import logging
@@ -311,32 +313,6 @@ def _clean_date(v) -> str:
     return ts.strftime("%Y-%m-%d %H:%M:%S")
 
 
-def build_backlog_rows(backlog: pd.DataFrame) -> dict:
-    """code -> [the individual Cube_Backlog rows behind that code's total], NOT de-duplicated.
-
-    Every row is carried through exactly as the source holds it, including rows that duplicate
-    another row's (quantity, status, deliverydate) under a different docID -- surfacing those to a
-    human reviewer is the entire point of this per-row view, so collapsing them here would destroy
-    the thing it exists to show.
-    """
-    out = {}
-    for itemcode, grp in backlog.groupby("itemcode"):
-        rows = []
-        for _, r in grp.iterrows():
-            rows.append({
-                "doc_id": _clean_str(r["docID"]),
-                "job": _clean_str(r["job"]),
-                "customer": _clean_str(r["customer"]),
-                "quantity": float(r["quantity"]),
-                "status": _clean_str(r["status"]),
-                "delivery_date": _clean_date(r["deliverydate"]),
-                "plan_delivery_date": _clean_date(r["plan_deliverydate"]),
-                "backlog_from": _clean_str(r["backlog_from"]),
-            })
-        out[itemcode] = rows
-    return out
-
-
 def assert_backlog_rows_sum(classified: pd.DataFrame, backlog_rows: dict) -> list:
     """Every item's per-row detail must sum exactly to the `backlog` total written for that item.
 
@@ -365,60 +341,6 @@ def add_backlog_and_available(classified: pd.DataFrame, backlog_per_code: pd.Dat
     merged["available"] = merged["qty"] - merged["backlog"]
     merged.loc[merged["state"] == "no_db_record", "available"] = None
     return merged
-
-
-def classify_negative_causes(negatives: pd.DataFrame, flagged_backlog: pd.DataFrame) -> pd.DataFrame:
-    """Assigns each negative-available code a most-likely cause from row-level evidence.
-
-    Order matters: the duplicate test runs first, because a code whose backlog is inflated by
-    duplicate rows would otherwise be misread as genuine excess demand.
-    """
-    dup_by_code = flagged_backlog[flagged_backlog["is_cross_contract_duplicate"]].groupby("itemcode")
-    dup_qty = dup_by_code["quantity"].sum().to_dict()
-    dup_rows = dup_by_code.size().to_dict()
-    dup_docids = dup_by_code["docID"].apply(lambda s: sorted(set(s))).to_dict()
-
-    # DELIVERYORDER's meaning is unresolved -- it may mean "already physically shipped" (in which
-    # case those units should not count as outstanding at all) or "delivery order raised, not yet
-    # shipped". A negative that only exists because of such rows cannot be called either way.
-    do = flagged_backlog[flagged_backlog["status"].astype(str).str.strip() == "DELIVERYORDER"]
-    do_qty = do.groupby("itemcode")["quantity"].sum().to_dict()
-
-    rows = []
-    for _, r in negatives.iterrows():
-        code, qty, backlog, available = r["code"], r["qty"], r["backlog"], r["available"]
-        dedup_available = qty - (backlog - dup_qty.get(code, 0.0))
-        if code in dup_qty and dedup_available >= 0:
-            cause = "duplicate backlog rows"
-            evidence = (f"{dup_rows[code]} rows sharing {BACKLOG_DEDUP_KEY} across docIDs "
-                        f"{dup_docids[code]} contribute {dup_qty[code]:,.0f} units; removing them "
-                        f"leaves {backlog - dup_qty[code]:,.0f} backlog against {qty:,.0f} on hand, "
-                        f"i.e. available {dedup_available:,.0f} -- no longer negative")
-        elif code in dup_qty:
-            cause = "duplicate backlog rows (partial)"
-            evidence = (f"{dup_rows[code]} duplicate rows across docIDs {dup_docids[code]} "
-                        f"contribute {dup_qty[code]:,.0f} units, but removing them still leaves "
-                        f"{backlog - dup_qty[code]:,.0f} backlog against {qty:,.0f} on hand "
-                        f"(available {dedup_available:,.0f}) -- duplication is only part of it")
-        elif code in do_qty and qty - (backlog - do_qty[code]) >= 0:
-            cause = "cannot be determined (DELIVERYORDER)"
-            evidence = (f"{do_qty[code]:,.0f} of the {backlog:,.0f} backlog units are "
-                        f"DELIVERYORDER-status rows; if that status means already shipped this code "
-                        f"is not short at all (available would be "
-                        f"{qty - (backlog - do_qty[code]):,.0f}). That status's meaning is "
-                        f"unresolved in the data, so the shortfall cannot be confirmed either way")
-        elif qty == 0:
-            cause = "backlog exists but on-hand is zero"
-            evidence = (f"{backlog:,.0f} units of backlog against a stock record showing 0 on hand "
-                        f"in every warehouse -- nothing can be allocated because nothing is there")
-        else:
-            cause = "genuine excess of orders over stock"
-            evidence = (f"{backlog:,.0f} units ordered against {qty:,.0f} on hand, with no "
-                        f"duplicate-key rows in the filtered backlog -- reads as real outstanding "
-                        f"demand exceeding stock, not a data artifact")
-        rows.append({"code": code, "qty": qty, "backlog": backlog, "available": available,
-                     "cause": cause, "evidence": evidence})
-    return pd.DataFrame(rows)
 
 
 def flag_duplicate_backlog_rows(backlog: pd.DataFrame) -> pd.DataFrame:

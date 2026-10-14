@@ -117,3 +117,37 @@ def test_the_observed_not_late_counts_only_omni_channel_rows(tmp_path):
     assert r["units"] == 20.0 and r["not_late"] == 0.5                              # the 80 late Tendering units are not counted
     with pytest.raises(ValueError, match="no RevenueType"):
         wr.observed_not_late(ces.drop(columns="RevenueType"), ["A"], "2026-01-01")
+
+
+# ---------------------------------------------------------------- Prompt 30: the producer of the recalibration input (fakes only; it is not yet compared with a real pull)
+def test_the_recalibration_input_producer_writes_the_saved_files_schema_through_one_session_with_the_omni_filter(monkeypatch, tmp_path):
+    import contextlib
+    import sys
+    sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "src", "investigations"))
+    import week1_recalibration as wr
+    import db
+    expected = ["ContractID", "ItemCode", "CtrDate", "PlanDelDate", "ForecastDelDate", "ActualDelDate", "Status", "PlanQty", "ActualQty", "RevenueType"]
+    assert wr.CES_COLUMNS == expected
+    if os.path.exists(wr.CES_PATH):                                              # the saved file's header is the schema
+        assert list(pd.read_csv(wr.CES_PATH, nrows=0).columns) == expected
+    items_path = tmp_path / "stock92.json"
+    items_path.write_text('["B-2", "A-1"]')
+    seen = {}
+
+    @contextlib.contextmanager
+    def fake_session(preflight=False):
+        seen["session"], seen["preflight"] = True, preflight
+        yield object()
+    monkeypatch.setattr(db, "session", fake_session)
+    row = {c: None for c in expected}
+    row.update({"ContractID": "C1", "ItemCode": "A-1", "Status": "Actual", "ActualQty": 3.0, "RevenueType": "Omni Channel"})
+    monkeypatch.setattr(cube_ces_pull, "run_query", lambda sql: seen.setdefault("sql", sql) and pd.DataFrame([{**row, "Extra": 1}]))
+    cfg = {"maxmin_v1": {"ensemble_stock_items_file": str(items_path).replace("\\", "/")}}
+    monkeypatch.setattr(wr, "PROJECT_ROOT", "")
+    out = tmp_path / "ces_92.csv"
+    res = wr.pull_ces_input(str(out), cfg)
+    assert seen["session"] and seen["preflight"] is True                           # through db.py, with the preflight
+    assert "AND RevenueType = 'Omni Channel'" in seen["sql"] and "('A-1','B-2')" in seen["sql"] and "ForecastDelDate" in seen["sql"].split("FROM")[0]
+    assert "CtrDate >=" not in seen["sql"] and "WHERE ItemCode IN" in seen["sql"]
+    written = pd.read_csv(out)
+    assert list(written.columns) == expected and res == {"rows": 1, "items": 2, "path": str(out)}       # exactly the saved schema; the extra column is dropped

@@ -137,6 +137,7 @@
   }
  ],
  "manual_values": {
+  "n_calibration_items": "92",
   "stale_monthly": "5 ต.ค. 69",
   "stale_daily": "1",
   "n_rounds": "7",

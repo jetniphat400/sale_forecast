@@ -8650,7 +8650,7 @@ function omniShowTab(n){
   document.querySelectorAll('[title*="{n31}"]').forEach(function(e){ e.title = e.title.replace('{n31}', OMNI.n31); });
   var el = document.getElementById('trendDataNote');
   if (el && meta.pull) {
-    el.textContent = 'ยอดนับตามวันที่รับ PO จึงไม่เท่ากับยอดในหน้าพยากรณ์ ซึ่งนับตามเดือนที่ต้องส่งของ · ข้อมูลถึง ' + meta.pull;
+    el.textContent = 'ยอดนับตามวันที่รับ PO จึงไม่เท่ากับยอดในหน้าพยากรณ์ ซึ่งนับตามเดือนที่ต้องส่งของ · ข้อมูลขายใน DB (cube_Sale_APD) ถึง ' + meta.pull;
     el.style.display = 'block';
   }
 })();

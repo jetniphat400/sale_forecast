@@ -200,8 +200,9 @@ def disabled_division_reasons() -> dict:
     reasons = {
         "CI101": f"ยังไม่ประเมิน (Not assessed) มีของในคลังแค่ {n_ci} จาก {t_ci} รหัส และอยู่ในคลังเดียวกับ PEM101 ยังกำหนดคลังของฝ่ายนี้ไม่ได้",
         "PEM102": f"ยังไม่ประเมิน (Not assessed) มีของในคลังแค่ {n_102} จาก {t_102} รหัส น้อยเกินกว่าจะกำหนดคลังได้",
-        "PEM104": "ไม่มีนโยบาย stock ฝ่ายนี้ผลิตตามสั่งทั้งหมด",
     }
+    for division, code in rv.division_reason_codes().items():             # a division that is not forecast: the configured reason (config not_forecast_reasons)
+        reasons[division] = rv.not_forecast_text(code, "min_max_line", division)
     return {d: reason + NO_MIN_MAX_SEPARATOR + no_min_max_line(d) for d, reason in reasons.items()}
 
 

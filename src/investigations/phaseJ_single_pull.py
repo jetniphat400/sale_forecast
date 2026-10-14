@@ -25,7 +25,7 @@ import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
-from db import get_connection
+from db import session
 from phaseE1_common import PROJECT_ROOT
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
@@ -54,8 +54,7 @@ def main():
                 "(%d codes, Cube_CES only -- cube_Sale_APD/Cube_Inventory_Exact reused from "
                 "Phase I's cache). No retry on failure.", len(codes))
     try:
-        engine = get_connection()
-        with engine.connect() as conn:
+        with session(preflight=True) as conn:
             ces = pd.read_sql(sql, conn)
     except Exception as exc:
         logger.error("DATABASE ACCESS RULE: the single connection attempt failed -- STOPPING, "

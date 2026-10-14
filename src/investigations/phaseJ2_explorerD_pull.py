@@ -37,7 +37,7 @@ import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
-from db import get_connection
+from db import session
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 logger = logging.getLogger("phaseJ2_explorerD_pull")
@@ -64,8 +64,7 @@ def main():
     logger.info("DATABASE ACCESS RULE: opening the single connection attempt for this task now. "
                 "No retry on failure.")
     try:
-        engine = get_connection()
-        with engine.connect() as conn:
+        with session(preflight=True) as conn:
             # Query 0: schema probe
             sample = pd.read_sql(f"SELECT TOP 5 * FROM {CUBE_FINAL_TABLE}", conn)
             sample.to_csv(CUBE_FINAL_SAMPLE_OUT, index=False)

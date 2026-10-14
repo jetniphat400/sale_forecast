@@ -5,6 +5,7 @@ report match rates in both directions.
 DATABASE ACCESS RULE: ONE connection attempt for this whole script. On a failed login, stop and
 report the verbatim error -- do not retry. All SELECTs below run over the same connection/session.
 """
+import contextlib
 import logging
 import os
 import sys
@@ -13,7 +14,7 @@ import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
-from db import get_connection
+from db import session
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 logger = logging.getLogger("phase23_part0")
@@ -34,9 +35,9 @@ def main():
     logger.info("Scope: %d item codes across PEM101/PEM103/PEM107", len(codes))
 
     logger.info("DATABASE ACCESS RULE: opening the single connection attempt now. No retry on failure.")
+    stack = contextlib.ExitStack()           # the one session of db.py: lock check, preflight, one login attempt, LoginRefused ends with exit code 3
     try:
-        engine = get_connection()
-        conn = engine.connect()
+        conn = stack.enter_context(session(preflight=True))
     except Exception as exc:
         logger.error("Connection FAILED -- STOPPING, not retrying. Verbatim error: %r", exc)
         print(f"CONNECTION FAILED: {exc!r}")
@@ -117,7 +118,7 @@ def main():
                         "(contains customer_name -- gitignored, never commit/quote)", len(step1))
 
     finally:
-        conn.close()
+        stack.close()
         logger.info("Connection closed.")
 
     print("\n=== SUMMARY ===")

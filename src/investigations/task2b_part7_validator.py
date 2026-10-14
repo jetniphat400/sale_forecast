@@ -21,6 +21,7 @@ DATABASE ACCESS RULE (binding, this task's brief): ONE connection attempt for th
 On a failed login, stop immediately and report the failure -- no retry. All SELECTs run over the
 same connection/session.
 """
+import contextlib
 import json
 import logging
 import os
@@ -34,7 +35,7 @@ SRC_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_SRC = os.path.dirname(SRC_DIR)
 sys.path.insert(0, PROJECT_SRC)
 
-from db import get_connection  # noqa: E402
+from db import session  # noqa: E402
 from cube_final_pull import pull_cube_final_for_items  # noqa: E402
 from pricelist_reader import load_visible_product_rows  # noqa: E402
 
@@ -406,9 +407,9 @@ def main():
     config = load_config()
 
     logger.info("DATABASE ACCESS RULE: opening the single connection attempt now. No retry on failure.")
+    stack = contextlib.ExitStack()           # the one session of db.py: lock check, preflight, one login attempt, LoginRefused ends with exit code 3
     try:
-        engine = get_connection()
-        conn = engine.connect()
+        conn = stack.enter_context(session(preflight=True))
     except Exception as exc:
         logger.error("Connection FAILED -- STOPPING, not retrying. Verbatim error: %r", exc)
         print(f"CONNECTION FAILED: {exc!r}")
@@ -425,7 +426,7 @@ def main():
         c2_total_onhand, c2_excess_count, c2_n_items, c2_n_zero_forecast = check2_fresh_warehouse_threshold(conn)
         c4 = check4_pem107_alert(conn, config)
     finally:
-        conn.close()
+        stack.close()
         logger.info("Connection closed.")
 
     # Check 3 needs no DB access -- runs after the connection is closed.

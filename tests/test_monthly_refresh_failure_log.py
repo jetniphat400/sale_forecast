@@ -321,7 +321,9 @@ def test_any_other_failure_of_an_auxiliary_pull_keeps_the_previous_file_and_warn
     out = mr.step1_pull_data(False, offline=False)                                           # the step completes
     assert started == ["load_data_all_divisions.py", "load_data_full.py", "build_inventory_dataset.py", "material_plan.py", "build_trend_tab.py"]
     assert out["inventory_pull"]["refreshed"] is False and "exited 1" in out["inventory_pull"]["not_refreshed_reason"]
-    assert len(mr._PARTIAL_WARNINGS) == 1 and mr._PARTIAL_WARNINGS[0].startswith("WARN:") and "inventory.json pulls" in mr._PARTIAL_WARNINGS[0]
+    failed = [w for w in mr._PARTIAL_WARNINGS if "exited 1" in w]
+    assert len(failed) == 1 and failed[0].startswith("WARN:") and "inventory.json pulls" in failed[0]
+    assert all("was not rewritten" in w for w in mr._PARTIAL_WARNINGS if w not in failed)          # the fake stages exit 0 and write nothing: each is its own WARN since Prompt 30
 
 
 def test_a_warning_from_an_auxiliary_stage_is_in_the_run_log_and_the_run_is_partial(monkeypatch, tmp_path):
@@ -517,3 +519,55 @@ def test_the_preflight_is_a_plain_tcp_connect_that_never_logs_in(monkeypatch):
     with pytest.raises(_db.DatabaseUnreachableError, match=r"DB host unreachable \(off org network\?\)") as exc:
         _db.require_reachable()
     assert "somehost" not in str(exc.value) and _db.login_attempts() == 0
+
+
+# ------------------------------------------------------------------ Prompt 30: a stage that exits 0 without rewriting its declared output file is partial (WARN, exit 2)
+def _unwritten_env(monkeypatch, tmp_path):
+    monkeypatch.setattr(mr, "_DB_STAGE_FAILURE", None)
+    mr._PARTIAL_WARNINGS.clear()
+    monkeypatch.setattr(mr, "SUMMARY_DIR", str(tmp_path))
+    return tmp_path / "out.csv"
+
+
+def test_a_pull_stage_that_exits_0_without_rewriting_its_file_is_a_warning_and_a_rewritten_file_is_not(monkeypatch, tmp_path):
+    out = _unwritten_env(monkeypatch, tmp_path)
+    out.write_text("a,b\n1,2\n")
+    monkeypatch.setattr(mr, "run_script", lambda script, args=None: _Proc(0))                  # exit 0, the file untouched: same mtime and same sha256
+    r = mr._pull_stage("aux pull", "aux.py", str(out))
+    assert r["refreshed"] is False and r["not_refreshed_reason"] == "output file not rewritten"
+    assert len(mr._PARTIAL_WARNINGS) == 1 and mr._PARTIAL_WARNINGS[0].startswith("WARN: the stage 'aux pull' exited 0 but its output file was not rewritten")
+    mr._PARTIAL_WARNINGS.clear()
+
+    def rewrite(script, args=None):
+        out.write_text("a,b\n3,4\n")
+        return _Proc(0)
+    monkeypatch.setattr(mr, "run_script", rewrite)
+    assert mr._pull_stage("aux pull", "aux.py", str(out))["refreshed"] is True and mr._PARTIAL_WARNINGS == []
+    os.remove(out)                                                                              # a file that was never created is not rewritten either
+    monkeypatch.setattr(mr, "run_script", lambda script, args=None: _Proc(0))
+    mr._pull_stage("aux pull", "aux.py", str(out))
+    assert len(mr._PARTIAL_WARNINGS) == 1
+    mr._PARTIAL_WARNINGS.clear()
+    monkeypatch.setattr(mr, "run_script", lambda script, args=None: _Proc(1))                  # a non-zero exit keeps its own WARN (not a second one)
+    mr._pull_stage("aux pull", "aux.py", str(out))
+    assert len(mr._PARTIAL_WARNINGS) == 1 and "exited 1" in mr._PARTIAL_WARNINGS[0]
+
+
+def test_a_regeneration_step_that_exits_0_without_rewriting_its_file_is_a_warning(monkeypatch, tmp_path):
+    _unwritten_env(monkeypatch, tmp_path)
+    (tmp_path / "x.csv").write_text("a\n1\n")
+    monkeypatch.setattr(mr, "run_script", lambda script, args=None: _Proc(0))
+    r = mr._run_regeneration_step("regen", "regen.py", "x.csv")
+    assert r["refreshed"] is False and len(mr._PARTIAL_WARNINGS) == 1 and "regen" in mr._PARTIAL_WARNINGS[0]
+
+
+def test_the_run_with_such_a_stage_is_partial_and_the_command_ends_with_exit_code_2(monkeypatch, tmp_path):
+    out = _unwritten_env(monkeypatch, tmp_path)
+    out.write_text("a\n1\n")
+    _stub_steps(monkeypatch)
+    monkeypatch.setattr(mr, "run_script", lambda script, args=None: _Proc(0))
+    monkeypatch.setattr(mr, "step1_pull_data", lambda *a, **k: mr._pull_stage("aux pull", "aux.py", str(out)) and {"snapshot_pull_date": "2026-10-02 07:45:57"})
+    log = _run(monkeypatch, tmp_path)
+    assert log["partial"] is True and "aborted_at_step" not in log and len(log["warnings"]) == 1 and "was not rewritten" in log["warnings"][0]
+    _cli_env(monkeypatch, tmp_path, _date(2026, 12, 7), main_log=log)
+    assert mr.cli([]) == 2 and not os.path.exists(mr.MONTHLY_STATE_PATH)              # not marked done: it runs again on the next weekday

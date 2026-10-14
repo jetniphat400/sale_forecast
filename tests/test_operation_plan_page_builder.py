@@ -197,7 +197,7 @@ def test_the_heading_months_and_the_data_line_come_from_the_plan_not_from_typing
     v = _values()
     page = bp.render(v)
     assert f"แผนการผลิต {len(MONTHS)} เดือน · ทุกฝ่าย" in page and "PEM101 และ PEM107" not in page
-    assert f"ข้อมูล stock ดึงเมื่อ {v['pull_time']} · Forecast (ยอดทาย) รันเมื่อ {v['forecast_run_month']}" in page
+    assert f"ข้อมูล stock จาก DB (Cube_Inventory_Exact) ดึงเมื่อ {v['pull_time']} · Forecast (ยอดทาย) รันเมื่อ {v['forecast_run_month']}" in page
     im, dm, meta = _plan()
     meta4 = dict(meta, months=MONTHS)
     assert "6 เดือน" not in page
@@ -479,7 +479,7 @@ def test_the_new_page_shows_heading_data_line_summary_flag_lines_and_item_table(
     edge.open(site + "/forecast/operation_plan.html")
     assert _wait(edge, "document.querySelectorAll('#item-table-body tr').length > 0")
     assert edge.ev("document.getElementById('page-title').innerText") == f"แผนการผลิต {v['n_months']} เดือน · ทุกฝ่าย"
-    assert edge.ev("document.getElementById('data-line').innerText") == f"ข้อมูล stock ดึงเมื่อ {v['pull_time']} · Forecast (ยอดทาย) รันเมื่อ {v['forecast_run_month']}"
+    assert edge.ev("document.getElementById('data-line').innerText") == f"ข้อมูล stock จาก DB (Cube_Inventory_Exact) ดึงเมื่อ {v['pull_time']} · Forecast (ยอดทาย) รันเมื่อ {v['forecast_run_month']}"
     heads = edge.ev("[...document.querySelectorAll('#summary-PEM101 thead th')].map(t=>t.innerText.replace('รวมทุกช่องทาง','').trim())")
     assert heads == ["เดือน", "ผลิตตามยอดทาย + ออเดอร์ (Demand-driven)", "เติมให้ถึง Max (Build to Max)", "ผลิตตามสั่ง (MTO: Make to Order)", "รวม", "เทียบกับยอดผลิตสูงสุดต่อเดือนในอดีต (Historical peak)"]
     for d in v["divisions"]:
@@ -766,7 +766,8 @@ def test_the_recorded_plan_page_reads_the_reason_from_config_not_from_a_typed_di
     for k in ("output_item_month_file", "output_division_month_file", "output_meta_file", "output_integrity_file"):
         if not os.path.exists(op.path_of(PROJECT_ROOT, cfg[k])):
             pytest.skip("SKIPPED, not passed: the recorded operation plan is not on this machine")
-    assert cfg["exclusion_reasons"] == {"PEM104": "made_to_order"}
+    import reader_values as rv
+    assert "exclusion_reasons" not in cfg and rv.division_reason_codes() == {"PEM104": "made_to_order"}        # the one entry is config not_forecast_reasons
     page = bp.render(bp.build_values())
     assert re.findall(r'<p class="note-line division-line" data-division="PEM104">(.*?)</p>', page)[0] == "PEM104 ผลิตตามสั่งทั้งหมด จึงไม่ได้ทายยอดขาย"
     src = open(os.path.join(PROJECT_ROOT, "src", "build_operation_plan_page.py"), encoding="utf-8").read()

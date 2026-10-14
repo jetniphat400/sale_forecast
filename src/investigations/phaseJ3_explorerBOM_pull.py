@@ -10,7 +10,7 @@ import sys
 import os
 
 sys.path.insert(0, "src")
-from db import get_connection  # noqa: E402
+from db import session  # noqa: E402
 
 import pandas as pd  # noqa: E402
 
@@ -27,8 +27,7 @@ def code_list_sql(codes):
     return ",".join(f"'{c}'" for c in escaped)
 
 
-engine = get_connection()
-with engine.connect() as conn:
+with session(preflight=True) as conn:
     # 1. Schema / structure
     print("\n=== STEP 1: SELECT TOP 5 * FROM Cube_BOM_Exact ===")
     top5 = pd.read_sql("SELECT TOP 5 * FROM Cube_BOM_Exact", conn)

@@ -39,7 +39,7 @@ DASH = "-"
 # Approved Thai text, verbatim. {braces} are computed values.
 TEXT = {
     "heading": "แผนการผลิต {n_months} เดือน · ทุกฝ่าย",
-    "data_line": "ข้อมูล stock ดึงเมื่อ {pull_time} · Forecast (ยอดทาย) รันเมื่อ {forecast_run_month}",
+    "data_line": "ข้อมูล stock จาก DB (Cube_Inventory_Exact) ดึงเมื่อ {pull_time} · Forecast (ยอดทาย) รันเมื่อ {forecast_run_month}",
     "col_month": "เดือน", "col_demand": "ผลิตตามยอดทาย + ออเดอร์ (Demand-driven)", "col_refill": "เติมให้ถึง Max (Build to Max)", "col_mto": "ผลิตตามสั่ง (MTO: Make to Order)", "col_total": "รวม",
     "col_capacity": "เทียบกับยอดผลิตสูงสุดต่อเดือนในอดีต (Historical peak)", "above_capacity": "สูงกว่าที่เคยผลิตได้ในอดีต (ไม่ใช่ขีดความสามารถ)",
     "line_refill": "{first_month} PEM101 ต้องเติมให้ถึง Max {refill_units} หน่วย นอกเหนือจากความต้องการเดือนนั้น เพราะ stock ตอนนี้ต่ำกว่า Max ทยอยเติมในเดือนถัดไปได้",
@@ -59,7 +59,6 @@ TEXT = {
     "flag_inconsistent_tip": "ป้าย MTS/MTO ที่บันทึกใน DB (cube_Sale_APD) ไม่ตรงกับพฤติกรรมจริงของสินค้า ใช้พฤติกรรมจริงตัดสิน และให้ฝ่ายยืนยัน",
     "material_link": "แผนวัตถุดิบ",
     "no_production_note": "แถวที่ขึ้นว่า ไม่มีบันทึกผลิตใน DB (cube_final) ไม่ได้รวมในยอดผลิตของฝ่าย",
-    "line_made_to_order": "{division} ผลิตตามสั่งทั้งหมด จึงไม่ได้ทายยอดขาย",
     "omni_only": "เฉพาะ Omni (ไม่รวมงานประมูล)", "omni_only_tip": "ออเดอร์ของ PEM103 นับเฉพาะช่องทาง Omni Channel งานประมูลไม่อยู่ในแผนนี้",
     "line_pem103_fallback": "ออเดอร์ของ PEM103 ในแผนนี้ใช้ข้อมูลที่ดึงไว้เมื่อ {pulled} เพราะการดึงล่าสุดยังไม่มีข้อมูลช่องทางของออเดอร์ จะใช้ข้อมูลล่าสุดเมื่อรอบดึงถัดไปมีข้อมูลช่องทาง",
     "all_channels": "รวมทุกช่องทาง", "all_channels_tip": "stock และออเดอร์ที่รับแล้วใช้ร่วมกันทุกช่องทาง",
@@ -182,8 +181,8 @@ def compute_values(item_month: pd.DataFrame, division_month: pd.DataFrame, meta:
         lines = []
         if counts["stock_items_by_division"][d] == 0:
             # a division with no forecast item whose recorded reason is made to order says so; any other division with no stock item keeps the general line
-            made_to_order = forecast_items.get(d, 0) == 0 and (exclusion_reasons or {}).get(d) == "made_to_order"
-            lines.append(TEXT["line_made_to_order" if made_to_order else "line_no_stock"].format(division=d))
+            reason = rv.not_forecast_text((exclusion_reasons or {}).get(d), "line", d) if forecast_items.get(d, 0) == 0 else None
+            lines.append(reason if reason else TEXT["line_no_stock"].format(division=d))
         if counts["no_forecast_items_by_division"][d] > 0:
             k = no_forecast_with_orders[d]
             lines.append((TEXT["line_no_forecast"] if k > 0 else TEXT["line_no_forecast_no_orders"]).format(n=counts["no_forecast_items_by_division"][d], k=k))
@@ -371,7 +370,7 @@ def item_master_check(root: str, cfg: dict, codes) -> dict:
 def build_values(root: str = PROJECT_ROOT, out_dir: str = None) -> dict:
     cfg = op.load_config(root)
     im, dm, meta = op.read_outputs(root, cfg, out_dir)
-    return compute_values(im, dm, meta, product_names(root), forecast_run_date(root, cfg, meta["vintage_id"]), list(cfg["divisions"]), cfg.get("exclusion_reasons", {}),
+    return compute_values(im, dm, meta, product_names(root), forecast_run_date(root, cfg, meta["vintage_id"]), list(cfg["divisions"]), rv.division_reason_codes(),
                           master=item_master_check(root, cfg, im["item"].unique()))
 
 

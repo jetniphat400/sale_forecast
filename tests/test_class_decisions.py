@@ -226,3 +226,28 @@ def test_s2_two_computations_agree_on_every_item_of_the_saved_class_evidence():
     differ = [i for i in items if by_module[i] != by_loops[i]]
     assert not differ, f"the two computations of S2 differ on {len(differ)} items, for example {differ[:5]}"
     assert len(items) > 400 and sum(1 for v in by_loops.values() if v[3]) > 100
+
+
+# ------------------------------------------------------------------ Prompt 30: the reason PEM104 is not forecast is one config entry that every page line reads
+def test_the_pem104_reason_and_every_page_line_that_states_it_come_from_one_config_entry():
+    import glob
+    import reader_values as rv
+    import yaml
+    cfg = yaml.safe_load(open(os.path.join(PROJECT_ROOT, "config", "config.yaml"), encoding="utf-8"))
+    assert rv.division_reason_codes(cfg) == {"PEM104": "made_to_order"}
+    entry = cfg["not_forecast_reasons"]["made_to_order"]
+    line, mm_line = entry["line"], entry["min_max_line"]
+    assert rv.not_forecast_text("made_to_order", "line", "PEM104", cfg) == "PEM104 ผลิตตามสั่งทั้งหมด จึงไม่ได้ทายยอดขาย" and rv.not_forecast_text("no_such_reason", "line", "X", cfg) is None
+    # no typed copy: the wording is in config only, in no code file (investigations aside) and in no second config key
+    text = "ผลิตตามสั่งทั้งหมด"
+    for path in glob.glob(os.path.join(PROJECT_ROOT, "src", "*.py")):
+        assert text not in open(path, encoding="utf-8").read(), path
+    assert open(os.path.join(PROJECT_ROOT, "config", "config.yaml"), encoding="utf-8").read().count(text) == 2          # the two lines of the one entry
+    assert "remark_PEM104" not in cfg["exec_summary"]["text"] and "exclusion_reasons" not in cfg["operation_plan"]
+    # every page that states it shows the configured wording
+    sales_exec = open(os.path.join(PROJECT_ROOT, "index.html"), encoding="utf-8").read()
+    assert f"<td>{rv.not_forecast_text('made_to_order', 'line', 'PEM104', cfg)}</td>" in sales_exec
+    assert rv.not_forecast_text("made_to_order", "line", "PEM104", cfg) in open(os.path.join(PROJECT_ROOT, "forecast", "operation_plan.html"), encoding="utf-8").read()
+    assert mm_line in open(os.path.join(PROJECT_ROOT, "forecast", "inventory.html"), encoding="utf-8").read()
+    with pytest.raises(rv.ReaderValueError, match="two not_forecast_reasons"):
+        rv.division_reason_codes({"not_forecast_reasons": {"a": {"divisions": ["D"]}, "b": {"divisions": ["D"]}}})

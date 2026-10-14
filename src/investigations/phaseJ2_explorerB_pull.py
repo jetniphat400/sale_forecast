@@ -11,6 +11,7 @@ precedent.
 Scope: PEM101/PEM103/PEM107 item codes (output/data/phaseI_combined_scope_351items.csv, 351
 codes), CtrDate >= 2024-01-01.
 """
+import contextlib
 import logging
 import os
 import sys
@@ -19,7 +20,7 @@ import pandas as pd
 
 PROJECT_ROOT = r"D:\sale_forecast"
 sys.path.insert(0, os.path.join(PROJECT_ROOT, "src"))
-from db import get_connection  # noqa: E402
+from db import session  # noqa: E402
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 logger = logging.getLogger("phaseJ2_explorerB_pull")
@@ -40,9 +41,9 @@ def main():
 
     logger.info("DATABASE ACCESS RULE: opening the single connection attempt for this task now. "
                 "No retry on failure.")
+    stack = contextlib.ExitStack()           # the one session of db.py: lock check, preflight, one login attempt, LoginRefused ends with exit code 3
     try:
-        engine = get_connection()
-        conn = engine.connect()
+        conn = stack.enter_context(session(preflight=True))
     except Exception as exc:
         logger.error("DATABASE ACCESS RULE: the single connection attempt FAILED -- STOPPING, "
                      "not retrying. Error: %r", exc)
@@ -84,8 +85,7 @@ def main():
         logger.info("Main pull: %d rows, %d distinct ItemCode, %d distinct ContractID",
                     len(main), main["ItemCode"].nunique(), main["ContractID"].nunique())
     finally:
-        conn.close()
-        engine.dispose()
+        stack.close()
 
     print(f"OK: top5_cols={list(top5.columns)}")
     print(f"OK: main_rows={len(main)}")

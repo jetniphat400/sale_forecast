@@ -501,3 +501,41 @@ def test_the_daily_job_builds_its_files_from_a_pull_whose_backlog_has_the_revenu
     import build_inventory_dataset as bid
     per_code, detail = bid.dedup_and_aggregate_ces_backlog(ces)
     assert float(per_code["backlog"].sum()) == float(bid.dedup_and_aggregate_ces_backlog(ces.drop(columns="RevenueType"))[0]["backlog"].sum())      # every channel counts (stock panel)
+
+
+# ------------------------------------------------------------------ Prompt 30: every connection goes through the one login function of src/db.py
+def test_nothing_outside_db_py_opens_a_connection_itself():
+    """A static check over every src file (investigations included): no call of engine.connect() or get_connection() outside src/db.py, so the lock check, the one attempt and
+    LoginRefused (exit code 3) cannot be bypassed. Docstrings and comments are not calls."""
+    import ast
+    src_dir = os.path.join(PROJECT_ROOT, "src")
+    offenders = []
+    for dirpath, _dirs, files in os.walk(src_dir):
+        for name in files:
+            path = os.path.join(dirpath, name)
+            if not name.endswith(".py") or os.path.abspath(path) == os.path.abspath(os.path.join(src_dir, "db.py")):
+                continue
+            tree = ast.parse(open(path, encoding="utf-8").read())
+            for node in ast.walk(tree):
+                if isinstance(node, ast.Call):
+                    f = node.func
+                    called = f.attr if isinstance(f, ast.Attribute) else (f.id if isinstance(f, ast.Name) else "")
+                    if called == "get_connection" or (called == "connect" and isinstance(f, ast.Attribute) and isinstance(f.value, ast.Name) and f.value.id in ("engine", "conn", "connection")):
+                        offenders.append(f"{os.path.relpath(path, PROJECT_ROOT)}:{node.lineno}")
+    assert offenders == [], offenders
+
+
+def test_the_session_makes_the_preflight_first_only_when_asked_and_makes_no_login_when_it_fails(monkeypatch):
+    import db
+    calls = []
+    monkeypatch.setattr(db, "require_reachable", lambda *a, **k: calls.append("preflight") or (_ for _ in ()).throw(db.DatabaseUnreachableError("unreachable")))
+    monkeypatch.setattr(db, "get_connection", lambda: calls.append("engine") or (_ for _ in ()).throw(AssertionError("no engine may be built after a failed preflight")))
+    with pytest.raises(db.DatabaseUnreachableError):
+        with db.session(preflight=True):
+            pass
+    assert calls == ["preflight"]
+    calls.clear()
+    with pytest.raises(AssertionError):                       # without the preflight flag the session goes straight to the engine, as the jobs always did
+        with db.session():
+            pass
+    assert calls == ["engine"]

@@ -17,7 +17,7 @@ ORDER, exactly as specified there:
     7c recompute material plan v1 (METRICS.md Sec.43) from the operation plan just recorded and the saved week 3 pulls, then build
       forecast/material_plan.html from it
     7e rebuild the data of the Trend tab of index.html from the saved pull of step 1 (src/build_trend_tab.py), gate: its totals equal the completeness query
-    7f rebuild the executive summary tab of index.html (src/build_trend_tab.py) from the saved pulls, the forecast page and the recorded plans, gate: the total row equals
+    7f rebuild the executive summary tab of index.html (src/build_exec_summary.py) from the saved pulls, the forecast page and the recorded plans, gate: the total row equals
       the sum of the division rows and each projection equals YTD plus the forecast page's baht for the remaining months
     8 run the full test suite
     9 scan staged files for sensitive content
@@ -251,6 +251,27 @@ def _note_database_stage_failure(label: str, returncode) -> None:
         logger.warning(_PARTIAL_WARNINGS[-1])
 
 
+def _file_state(path: str):
+    """(mtime, sha256) of `path` as it stands, or None when it does not exist."""
+    if not os.path.exists(path):
+        return None
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(1 << 20), b""):
+            h.update(chunk)
+    return os.path.getmtime(path), h.hexdigest()
+
+
+def _note_unwritten_output(label: str, returncode, before, after) -> bool:
+    """A stage that exits 0 without rewriting its declared output file (same mtime and same sha256 as before the stage, or the file still missing) did not do its job: it is a WARN line
+    in the run log and the run ends with exit code 2 (partial), like a stage that failed (Prompt 30, METRICS.md Sec.53). Returns True when it was noted."""
+    if returncode == 0 and after == before:
+        _PARTIAL_WARNINGS.append(f"WARN: the stage '{label}' exited 0 but its output file was not rewritten (same sha256 and mtime as before the stage); the previous file stays and the run continues")
+        logger.warning(_PARTIAL_WARNINGS[-1])
+        return True
+    return False
+
+
 def _abort_if_a_database_stage_failed(step: str) -> None:
     if _DB_STAGE_FAILURE is not None:
         raise MonthlyLoginRefused(f"{step} ABORTED: the database stage '{_DB_STAGE_FAILURE}' ended with exit code 3 (the login was refused); no later stage of this run logs in. "
@@ -263,12 +284,13 @@ def _pull_stage(label: str, script: str, output_path: str, args: list = None) ->
     skipped = _skip_because_of_database_failure(label, script)
     if skipped:
         return skipped
-    before = os.path.getmtime(output_path) if os.path.exists(output_path) else None
+    before = _file_state(output_path)
     proc = run_script(script, args)
-    after = os.path.getmtime(output_path) if os.path.exists(output_path) else None
+    after = _file_state(output_path)
     ok = proc.returncode == 0 and after is not None and after != before
     out = {"label": label, "script": script, "returncode": proc.returncode, "refreshed": ok}
     _note_database_stage_failure(label, proc.returncode)
+    _note_unwritten_output(label, proc.returncode, before, after)
     if not ok:
         out["not_refreshed_reason"] = (f"script exited {proc.returncode}" if proc.returncode else "output file not rewritten")
         out["stderr_tail"] = proc.stderr[-1500:]
@@ -499,12 +521,13 @@ def _run_regeneration_step(label: str, script_name: str, output_rel_path: str, s
         skipped = _skip_because_of_database_failure(label, script_name)
         if skipped:
             return {**skipped, "output_file": output_rel_path}
-    mtime_before = os.path.getmtime(out_path) if os.path.exists(out_path) else None
+    state_before = _file_state(out_path)
     proc = run_script(script_name)
     if uses_database:
         _note_database_stage_failure(label, proc.returncode)
-    mtime_after = os.path.getmtime(out_path) if os.path.exists(out_path) else None
-    succeeded = proc.returncode == 0 and mtime_after is not None and mtime_after != mtime_before
+    state_after = _file_state(out_path)
+    _note_unwritten_output(label, proc.returncode, state_before, state_after)
+    succeeded = proc.returncode == 0 and state_after is not None and state_after != state_before
     result = {
         "label": label, "script": script_name, "output_file": output_rel_path,
         "returncode": proc.returncode, "refreshed": succeeded,
@@ -1562,7 +1585,7 @@ def step7e_trend_tab(dry_run: bool, staged_dir: str) -> dict:
 
 
 # ---------------------------------------------------------------------------------------------
-# Step 7f: the executive summary tab of index.html (src/build_trend_tab.py, METRICS.md Sec.49)
+# Step 7f: the executive summary tab of index.html (src/build_exec_summary.py, METRICS.md Sec.49)
 # ---------------------------------------------------------------------------------------------
 
 def step7f_exec_summary(dry_run: bool, staged_dir: str, step7_result: dict = None) -> dict:
@@ -1570,15 +1593,16 @@ def step7f_exec_summary(dry_run: bool, staged_dir: str, step7_result: dict = Non
     sum of the division rows and each division's projection equals its YTD plus the forecast page's baht for the remaining months, otherwise the run stops (nothing is written). A dry
     run reads the staged pages and plans; inside a temporary copy of the project it writes the copy's index.html, a staged dry run writes under its staging folder. Makes no database
     connection."""
-    import build_trend_tab
+    import build_exec_summary
+    from build_trend_tab import TrendTabError
     index_path = os.path.join(staged_dir, "index.html") if (dry_run and not IN_SANDBOX) else None
     if index_path and not os.path.exists(index_path):
         shutil.copyfile(os.path.join(PROJECT_ROOT, "index.html"), index_path)
     plan_dir = os.path.join(staged_dir, "operation_plan") if dry_run else None
     sales_path = (step7_result or {}).get("rendered_path")
     try:
-        report = build_trend_tab.run_exec_build(PROJECT_ROOT, index_path=index_path, sales_report_path=sales_path, plan_dir=plan_dir)
-    except build_trend_tab.TrendTabError as e:
+        report = build_exec_summary.run_exec_build(PROJECT_ROOT, index_path=index_path, sales_report_path=sales_path, plan_dir=plan_dir)
+    except TrendTabError as e:
         raise MonthlyRefreshAbort(f"Step 7f (executive summary) STOPPED: {e}") from e
     report["written_to_tracked_path"] = False if index_path else not dry_run
     return report

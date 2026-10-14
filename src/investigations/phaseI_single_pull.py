@@ -29,7 +29,7 @@ import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
-from db import get_connection
+from db import session
 from phaseE1_common import PROJECT_ROOT, load_config, load_scope
 from phaseE2_pilot_recompute import load_division_scope
 
@@ -90,8 +90,7 @@ def main():
     logger.info("DATABASE ACCESS RULE: opening the single connection attempt for this task now "
                 "(%d codes, both queries over the same connection). No retry on failure.", len(codes))
     try:
-        engine = get_connection()
-        with engine.connect() as conn:
+        with session(preflight=True) as conn:
             raw_sales = pd.read_sql(sales_sql, conn)
             inv = pd.read_sql(inv_sql, conn)
     except Exception as exc:

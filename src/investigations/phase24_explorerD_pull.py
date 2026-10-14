@@ -11,7 +11,7 @@ from pathlib import Path
 import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from db import get_connection
+from db import session
 from zero_row_guard import guard_nonempty
 
 SCOPE_PATH = Path(__file__).resolve().parents[2] / "output" / "data" / "phaseI_combined_scope_351items.csv"
@@ -37,8 +37,7 @@ cube_final_sql = f"""
     WHERE itemcode IN ('{code_list}')
 """
 
-engine = get_connection()
-with engine.connect() as conn:
+with session(preflight=True) as conn:
     sale_apd_df = pd.read_sql(sale_apd_sql, conn)
     guard_nonempty(sale_apd_df, table="cube_Sale_APD", filter_desc=f"itemcode IN ({len(item_codes)} PEM103 codes)")
     print(f"cube_Sale_APD: {len(sale_apd_df)} rows")

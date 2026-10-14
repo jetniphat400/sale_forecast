@@ -168,7 +168,7 @@ def test_stock_panel_available_note_and_three_labels(page):
 def test_trend_note_is_first_in_the_tab_and_follows_the_data(page):
     text = open(INDEX, encoding="utf-8").read()
     omni = json.loads(_embedded_lines(text)["OMNI"][len("const OMNI = "):].rstrip(";"))
-    expected = f"ยอดนับตามวันที่รับ PO จึงไม่เท่ากับยอดในหน้าพยากรณ์ ซึ่งนับตามเดือนที่ต้องส่งของ · ข้อมูลถึง {omni['meta']['pull']}"
+    expected = f"ยอดนับตามวันที่รับ PO จึงไม่เท่ากับยอดในหน้าพยากรณ์ ซึ่งนับตามเดือนที่ต้องส่งของ · ข้อมูลขายใน DB (cube_Sale_APD) ถึง {omni['meta']['pull']}"
     assert page["trend"].lstrip().startswith(expected), page["trend"][:200]
     assert page["trend_first"] == "trendDataNote"
     assert re.fullmatch(r"\d{1,2} \S+ \d{2}", omni["meta"]["pull"])                      # the shared Thai date format (d MMM yy)
@@ -193,7 +193,7 @@ def test_trend_values_change_when_their_sources_change(edge, tmp_path_factory):
         pl = edge.ev("document.getElementById('trendPlLabel').textContent")
     finally:
         server.shutdown()
-    assert note.endswith("ข้อมูลถึง 1 ม.ค. 70") and pl == "Q9-2099", (note, pl)
+    assert note.endswith("ข้อมูลขายใน DB (cube_Sale_APD) ถึง 1 ม.ค. 70") and pl == "Q9-2099", (note, pl)
 
 
 def test_trend_note_stays_hidden_when_the_data_carry_no_pull_date(edge, tmp_path_factory):
@@ -270,12 +270,12 @@ def test_manual_states_the_gap_without_a_typed_percentage(page):
     import re as _re
     manual_values = json.load(open(os.path.join(PROJECT_ROOT, "data", "assumptions.json"), encoding="utf-8"))["manual_values"]
     assert "[ค่าไม่พบ" not in page["manual"] and not _re.search(r"\{[a-z_0-9]+\}", page["manual"]) and "5 ธ.ค." not in page["manual"]
-    assert f"ข้อมูลถึง {manual_values['trend_data_through']}" in page["manual"] and "วันธรรมดา (จันทร์ถึงศุกร์) วันแรกตั้งแต่วันที่ " + manual_values["run_day_base"] in page["manual"]
+    assert f"ข้อมูลขายใน DB (cube_Sale_APD) ถึง {manual_values['trend_data_through']}" in page["manual"] and "วันธรรมดา (จันทร์ถึงศุกร์) วันแรกตั้งแต่วันที่ " + manual_values["run_day_base"] in page["manual"]
     assert f"ต้องรอ {manual_values['guard_days']} วันหลังสิ้นเดือน" in page["manual"]
     # the confirmed lead time (45-60 days, read from config), never the stress point 75; the one term for on-time delivery; the data date in the one year format
     assert "แต่สั่งวัตถุดิบใช้ 45-60 วัน" in page["manual"] and "45-75" not in page["manual"]
     assert "ฝ่ายที่ขายเยอะ MAE มักสูงกว่า" in page["manual"] and "สูงกว่าเสมอ" not in page["manual"].split("ฝ่ายที่ขายเยอะ")[1][:30]
-    assert re.search(r"ข้อมูลถึง \d{1,2} \S+ \d{2}\b", page["manual"]) and not re.search(r"\b(20[2-3]\d|25[6-7]\d)\b", page["manual"])
+    assert re.search(r"ข้อมูลขายใน DB \(cube_Sale_APD\) ถึง \d{1,2} \S+ \d{2}\b", page["manual"]) and not re.search(r"\b(20[2-3]\d|25[6-7]\d)\b", page["manual"])
 
 
 # ------------------------------------------------------------------ embedded data untouched
@@ -557,9 +557,9 @@ def test_trend_yellow_note_and_chart_caption_show_the_months_and_date_of_the_dat
 
 # ------------------------------------------------------------------ Prompt 13: the executive summary tab (src/build_trend_tab.py, METRICS.md Sec.49)
 def _exec_block(text: str) -> str:
-    import build_trend_tab as bt
-    assert text.count(bt.EXEC_BEGIN) == 1 and text.count(bt.EXEC_END) == 1
-    return text[text.index(bt.EXEC_BEGIN) + len(bt.EXEC_BEGIN):text.index(bt.EXEC_END)]
+    import build_exec_summary as bx
+    assert text.count(bx.EXEC_BEGIN) == 1 and text.count(bx.EXEC_END) == 1
+    return text[text.index(bx.EXEC_BEGIN) + len(bx.EXEC_BEGIN):text.index(bx.EXEC_END)]
 
 
 def _exec_visible(block: str) -> list:
@@ -595,12 +595,13 @@ def test_the_s_and_op_pointer_line_is_under_the_kpi_cards_and_links_to_the_new_t
 
 def test_the_exec_tab_texts_cards_table_and_remarks_are_verbatim_from_fixed_data():
     import build_trend_tab as bt
+    import build_exec_summary as bx
     cfg = bt.load_config()
     import reader_values as rv
     DECISION_DATE_TH = rv.thai_date_short(rv.criteria_decision_date(cfg["maxmin_v1"]["pending_criteria_values"]))
     d = _fixed_exec_data()
     d["watch"] = []
-    lines = _exec_visible(bt.exec_render(d, cfg))
+    lines = _exec_visible(bx.exec_render(d, cfg))
     assert lines[0].startswith("ยอดขาย ม.ค.–ส.ค. 69 | ") or "ยอดขาย ม.ค.–ส.ค. 69" in lines
     joined = "\n".join(lines)
     for text in ["ยอดขาย ม.ค.–ส.ค. 69", "130.0 ล้านบาท", "เทียบช่วงเดียวกันปีก่อน +8.3%", "คาดการณ์ทั้งปี 69 (สินค้าใน Price List)", "190.0 ล้านบาท",
@@ -616,30 +617,31 @@ def test_the_exec_tab_texts_cards_table_and_remarks_are_verbatim_from_fixed_data
     # no revenue target anywhere in the tab (Prompt 27: the pilot scope is Price List items only): no target column, no attainment text, no PEMC row, no card-2 subtitle
     for gone in ("ถึงเป้า", "เป้า (Revenue)", "เป้ารวมสินค้า Omni", "ไม่พบเป้า", "PEMC", "เป้ามาจากระบบเป้า"):
         assert gone not in joined, gone
-    assert 'id="execCard2"' in bt.exec_render(d, cfg) and bt.exec_render(d, cfg).count('class="s"') == 3        # card 2 has no subtitle line any more
+    assert 'id="execCard2"' in bx.exec_render(d, cfg) and bx.exec_render(d, cfg).count('class="s"') == 3        # card 2 has no subtitle line any more
 
 
 def test_each_watch_out_line_appears_only_when_its_condition_holds():
     import build_trend_tab as bt
+    import build_exec_summary as bx
     cfg = bt.load_config()
-    none = bt.exec_watch([{"group": "G", "value": 3.9}, {"group": "H", "value": -4.0}, {"group": "I", "value": None}], 4.0, [], 0, None)
+    none = bx.exec_watch([{"group": "G", "value": 3.9}, {"group": "H", "value": -4.0}, {"group": "I", "value": None}], 4.0, [], 0, None)
     assert none == []                                                                                    # at the limit or inside it: no line; no plan line, no late material, no alert
-    low = bt.exec_watch([{"group": "G", "value": -4.1}], 4.0, [], 0, None)
-    high = bt.exec_watch([{"group": "H", "value": 6.7}], 4.0, [], 0, None)
-    plan = bt.exec_watch([], 4.0, [{"division": "D1", "month": "ต.ค. 69", "pct": "119.9%"}], 0, None)
-    mat = bt.exec_watch([], 4.0, [], 584, None)
-    alert = bt.exec_watch([], 4.0, [], 0, {"since": "พ.ค. 69", "pct": "57.7%"})
+    low = bx.exec_watch([{"group": "G", "value": -4.1}], 4.0, [], 0, None)
+    high = bx.exec_watch([{"group": "H", "value": 6.7}], 4.0, [], 0, None)
+    plan = bx.exec_watch([], 4.0, [{"division": "D1", "month": "ต.ค. 69", "pct": "119.9%"}], 0, None)
+    mat = bx.exec_watch([], 4.0, [], 584, None)
+    alert = bx.exec_watch([], 4.0, [], 0, {"since": "พ.ค. 69", "pct": "57.7%"})
     assert [w["kind"] for w in low + high + plan + mat + alert] == ["low", "high", "plan", "material", "pem107"]
     d = _fixed_exec_data()
     d["watch"] = low + high + plan + mat + alert
-    lines = _exec_visible(bt.exec_render(d, cfg))
+    lines = _exec_visible(bx.exec_render(d, cfg))
     assert "G ทายต่ำกว่าจริงต่อเนื่อง (Tracking Signal -4.1) คาดการณ์ทั้งปีของกลุ่มนี้อาจต่ำกว่าที่จะเกิดจริง" in lines
     assert "H ทายสูงกว่าจริงต่อเนื่อง (Tracking Signal 6.7) คาดการณ์ทั้งปีของกลุ่มนี้อาจสูงกว่าที่จะเกิดจริง" in lines
     assert "แผนผลิต D1 เดือน ต.ค. 69 สูงกว่ายอดผลิตสูงสุดรายเดือนในอดีต (Historical peak ไม่ใช่ขีดความสามารถผลิต) (119.9%)" in lines
     assert "วัตถุดิบ 584 รายการเลยกำหนดสั่ง (Late to order) สั่งวันนี้ของมาไม่ทันแผน" in lines
     assert "PEM107 ส่งของช่องทาง Omni ทันน้อยลงตั้งแต่ พ.ค. 69 (57.7% ส่งทัน คือ ส่งไม่ช้ากว่าวันนัด)" in lines
     assert "5 เรื่อง" in "\n".join(lines)                                                                 # card 4 counts the lines shown
-    assert not any("ทายต่ำกว่าจริง" in x for x in _exec_visible(bt.exec_render(dict(d, watch=high), cfg)))
+    assert not any("ทายต่ำกว่าจริง" in x for x in _exec_visible(bx.exec_render(dict(d, watch=high), cfg)))
 
 
 def _fixed_page(tmp_path, a_vals, b_vals):
@@ -671,30 +673,30 @@ def _gate_data(rows_projection):
 
 
 def test_the_total_row_and_the_year_end_projection_identities_are_gated(tmp_path):
-    import build_trend_tab as bt
+    import build_exec_summary as bx
     # AAA: item A1 forecast 10 and 20 against 40 and 5 on the books -> 40 + 20; item A2 forecast 30 and 8 against 0 and 70 -> 30 + 70; BBB: B1 forecast 2 and 9 against 3 and 4 -> 3 + 9
     page = _fixed_page(tmp_path, [("A1", [10, 20]), ("A2", [30, 8])], [("B1", [2, 9])])
-    assert bt.exec_gate(_gate_data([40 + 20 + 30 + 70, 3 + 9]), page)["passed"]
-    with pytest.raises(bt.ExecSummaryError, match="projection"):
-        bt.exec_gate(_gate_data([40 + 20 + 30 + 70 + 1, 3 + 9]), page)                                   # a projection that is not YTD plus the per-item maxima
-    with pytest.raises(bt.ExecSummaryError, match="projection"):
-        bt.exec_gate(_gate_data([10 + 20 + 30 + 8, 3 + 9]), page)                                         # the forecast page's baht alone is no longer the rule
+    assert bx.exec_gate(_gate_data([40 + 20 + 30 + 70, 3 + 9]), page)["passed"]
+    with pytest.raises(bx.ExecSummaryError, match="projection"):
+        bx.exec_gate(_gate_data([40 + 20 + 30 + 70 + 1, 3 + 9]), page)                                   # a projection that is not YTD plus the per-item maxima
+    with pytest.raises(bx.ExecSummaryError, match="projection"):
+        bx.exec_gate(_gate_data([10 + 20 + 30 + 8, 3 + 9]), page)                                         # the forecast page's baht alone is no longer the rule
     bad = _gate_data([40 + 20 + 30 + 70, 3 + 9])
     bad["total"]["ytd"] += 5.0                                                                           # a total row that is not the sum of the division rows
-    with pytest.raises(bt.ExecSummaryError, match="total row"):
-        bt.exec_gate(bad, page)
+    with pytest.raises(bx.ExecSummaryError, match="total row"):
+        bx.exec_gate(bad, page)
     wrong_months = _gate_data([40 + 20 + 30 + 70, 3 + 9])
     wrong_months["remaining_months"] = ["2026-10", "2026-11"]
-    with pytest.raises(bt.ExecSummaryError, match="remaining months"):
-        bt.exec_gate(wrong_months, page)
+    with pytest.raises(bx.ExecSummaryError, match="remaining months"):
+        bx.exec_gate(wrong_months, page)
 
 
 def test_the_remaining_months_take_the_larger_of_the_forecast_and_the_orders_on_the_books():
-    import build_trend_tab as bt
-    assert bt.exec_month_units(10, 4) == 10 and bt.exec_month_units(4, 10) == 10                          # forecast above the orders, orders above the forecast
-    assert bt.exec_month_units(None, 7) == 7 and bt.exec_month_units(0, 0) == 0                           # an item with no forecast row counts 0 forecast units
-    assert bt.exec_month_baht(10.4, 4, 100.0) == 1040 and bt.exec_month_baht(2.0, 3.5, 100.0) == 350     # units x unit price in whole baht
-    assert bt.exec_month_baht(2.5, 0, 0.1) == 0 and bt.exec_month_baht(2.5, 0, 0.3) == 1 and bt.exec_month_baht(5, 9, None) == 0   # half up at item and month level; no price: 0
+    import build_exec_summary as bx
+    assert bx.exec_month_units(10, 4) == 10 and bx.exec_month_units(4, 10) == 10                          # forecast above the orders, orders above the forecast
+    assert bx.exec_month_units(None, 7) == 7 and bx.exec_month_units(0, 0) == 0                           # an item with no forecast row counts 0 forecast units
+    assert bx.exec_month_baht(10.4, 4, 100.0) == 1040 and bx.exec_month_baht(2.0, 3.5, 100.0) == 350     # units x unit price in whole baht
+    assert bx.exec_month_baht(2.5, 0, 0.1) == 0 and bx.exec_month_baht(2.5, 0, 0.3) == 1 and bx.exec_month_baht(5, 9, None) == 0   # half up at item and month level; no price: 0
     raw = pd.DataFrame([
         {"itemcode": "A", "createDate": "2026-08-01", "forecast_date": "2026-09-10", "qty": 3, "status": "MPS", "revenue_type": "Omni Channel"},
         {"itemcode": "A", "createDate": "2026-08-05", "forecast_date": "2026-09-20", "qty": 4, "status": "Actual", "revenue_type": "Omni Channel"},
@@ -704,7 +706,7 @@ def test_the_remaining_months_take_the_larger_of_the_forecast_and_the_orders_on_
         {"itemcode": "A", "createDate": "2026-08-01", "forecast_date": "2026-09-10", "qty": 70, "status": "MPS", "revenue_type": "Tendering"},          # not Omni Channel
         {"itemcode": "B", "createDate": "2026-08-01", "forecast_date": "2026-09-10", "qty": 80, "status": "MPS", "revenue_type": "Omni Channel"},       # outside the scope
         {"itemcode": "A", "createDate": "2026-08-01", "forecast_date": "2026-03-10", "qty": 90, "status": "Actual", "revenue_type": "Omni Channel"}])  # a month already in YTD
-    assert bt.exec_booked_units(raw, {"A"}, ["2026-09", "2026-10"]) == {("A", "2026-09"): 7.0, ("A", "2026-10"): 6.0}
+    assert bx.exec_booked_units(raw, {"A"}, ["2026-09", "2026-10"]) == {("A", "2026-09"): 7.0, ("A", "2026-10"): 6.0}
 
 
 def test_the_tab_holds_no_customer_or_person_identifier_and_no_revenue_target():
@@ -721,11 +723,12 @@ def test_the_tab_holds_no_customer_or_person_identifier_and_no_revenue_target():
 
 def test_the_executive_tab_in_index_html_is_what_the_builder_makes_from_the_saved_pulls():
     import build_trend_tab as bt
+    import build_exec_summary as bx
     cfg = bt.load_config()
-    data = bt.exec_data(PROJECT_ROOT)
-    assert "\n" + bt.exec_render(data, cfg) + "\n" == _exec_block(open(INDEX, encoding="utf-8").read())
+    data = bx.exec_data(PROJECT_ROOT)
+    assert "\n" + bx.exec_render(data, cfg) + "\n" == _exec_block(open(INDEX, encoding="utf-8").read())
     # the identities on the real figures: the total row is the sum of its rows, each projection is YTD plus the remaining months' baht of the forecast page
-    assert bt.exec_gate(data, os.path.join(PROJECT_ROOT, "forecast", "sales_report.html"))["passed"]
+    assert bx.exec_gate(data, os.path.join(PROJECT_ROOT, "forecast", "sales_report.html"))["passed"]
     assert data["rows"][0]["division"] == "PEM101" and [r["division"] for r in data["rows"]] == ["PEM101", "PEM103", "PEM107", "PEM102", "CI101"]
     assert data["n_forecast_divisions"] == 5
 
@@ -888,3 +891,17 @@ def test_the_stock_panel_script_judges_its_two_daily_sources_by_the_previous_wee
         assert [bool(x) for x in shown] == [old, old], (generated, loaded, shown)
         if old:
             assert all("ข้อมูล" in x and "เก่า" in x and "ดึงก่อนวันทำการก่อนหน้า" in x and "page_built_at" not in x for x in shown)
+
+
+def test_prompt_30_source_wording_the_min_max_settings_the_stock_pull_line_and_the_trend_data_line_name_their_db_table():
+    inv = open(os.path.join(PROJECT_ROOT, "forecast", "inventory.html"), encoding="utf-8").read()
+    plan = open(os.path.join(PROJECT_ROOT, "forecast", "operation_plan.html"), encoding="utf-8").read()
+    idx = open(INDEX, encoding="utf-8").read()
+    manual = open(os.path.join(PROJECT_ROOT, "docs", "user_manual.md"), encoding="utf-8").read()
+    visible = lambda t: re.sub(r"<!--.*?-->", "", t, flags=re.S)
+    # the Min-Max page: the Min and Max settings are named as DB (Cube_Inventory_Exact), the old "ตั้งในระบบตอนนี้" is gone from what is shown
+    assert "Min ค่าที่ตั้งใน DB (Cube_Inventory_Exact)" in visible(inv) and "ในระบบตอนนี้" not in visible(inv) and "ระบบตอนนี้" not in visible(plan)
+    assert "ข้อมูล stock จาก DB (Cube_Inventory_Exact) ดึงเมื่อ" in inv and "ข้อมูล stock จาก DB (Cube_Inventory_Exact) ดึงเมื่อ" in plan
+    assert "ข้อมูล stock ดึงเมื่อ" not in visible(inv) and "ข้อมูล stock ดึงเมื่อ" not in visible(plan)
+    assert "· ข้อมูลขายใน DB (cube_Sale_APD) ถึง ' + meta.pull" in idx and "ข้อมูลถึง " not in visible(_outside_the_original_tab(idx))
+    assert manual.count("ข้อมูลขายใน DB (cube_Sale_APD) ถึง {trend_data_through}") == 2 and "ข้อมูลถึง {" not in manual

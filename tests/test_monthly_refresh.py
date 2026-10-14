@@ -269,14 +269,14 @@ def test_the_executive_summary_step_runs_after_the_trend_step_and_before_the_tes
 
 
 def test_the_executive_summary_step_stops_the_run_when_a_projection_differs_from_the_forecast_page(tmp_path, monkeypatch):
-    import build_trend_tab as bt
-    real = bt.exec_data
+    import build_exec_summary as bx
+    real = bx.exec_data
 
     def wrong(root=mr.PROJECT_ROOT, plan_dir=None):
         d = real(root, None)                                                                         # the recorded plan outputs (a staged dry run's folder holds none in this test)
         d["rows"][0]["projection"] += 1.0
         d["total"]["projection"] += 1.0
         return d
-    monkeypatch.setattr(bt, "exec_data", wrong)
+    monkeypatch.setattr(bx, "exec_data", wrong)
     with pytest.raises(mr.MonthlyRefreshAbort, match="projection"):
         mr.step7f_exec_summary(True, str(tmp_path), {"rendered_path": os.path.join(mr.PROJECT_ROOT, "forecast", "sales_report.html")})

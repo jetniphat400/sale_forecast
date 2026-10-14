@@ -230,7 +230,7 @@ def projection_effect(label: str, candidate: str, cfg: dict) -> dict:
     fit window (train size 31), the same unit prices and booked-order rule (the larger of the forecast and the units on the books, per item and remaining month). The current method
     recomputed here must equal the vintage's forecast units (checked). Nothing is written to a page or a recorded output."""
     import build_report as br
-    import build_trend_tab as bt
+    import build_exec_summary as bx
     import forward_test_scoring as fts
     import reader_values as rv
     full = load_config()
@@ -250,7 +250,7 @@ def projection_effect(label: str, candidate: str, cfg: dict) -> dict:
     idx = [forward["months"].index(m) for m in remaining]
     raw = pd.read_csv(fts.RAW_HISTORY_PATH, usecols=["itemcode", "createDate", "forecast_date", "qty", "status", "revenue_type"])
     items = items_of_group(label, full)
-    booked = bt.exec_booked_units(raw, set(items), remaining)
+    booked = bx.exec_booked_units(raw, set(items), remaining)
     by_month = {m: {"current": 0, "candidate": 0} for m in remaining}
     cache, max_diff = {}, 0.0
     for code in items:
@@ -262,8 +262,8 @@ def projection_effect(label: str, candidate: str, cfg: dict) -> dict:
         max_diff = max(max_diff, float(np.abs(fc["current"] - np.asarray(fwd_units[code])).max()))
         for m, i in zip(remaining, idx):
             b = booked.get((code, m), 0.0)
-            by_month[m]["current"] += bt.exec_month_baht(fc["current"][i], b, prices[code]["price"])
-            by_month[m]["candidate"] += bt.exec_month_baht(fc[candidate][i], b, prices[code]["price"])
+            by_month[m]["current"] += bx.exec_month_baht(fc["current"][i], b, prices[code]["price"])
+            by_month[m]["candidate"] += bx.exec_month_baht(fc[candidate][i], b, prices[code]["price"])
     cur, cand = sum(v["current"] for v in by_month.values()), sum(v["candidate"] for v in by_month.values())
     return {"group": label, "candidate": candidate, "n_items": len(items), "remaining_months": remaining, "by_month": by_month, "remaining_current": cur, "remaining_candidate": cand,
             "difference": cand - cur, "max_abs_diff_current_vs_vintage_units": max_diff}

@@ -221,12 +221,16 @@ _SHARED_CONNECTION = None
 
 
 @contextlib.contextmanager
-def session():
+def session(preflight: bool = False):
     """Opens ONE connection (one attempt, no retry: a login failure raises to the caller) and makes run_query use
-    it until the block ends."""
+    it until the block ends. `preflight=True` first makes the plain TCP check of `require_reachable` (no authentication; off the organisation's network
+    no login is attempted): the investigation scripts pass it, the jobs make that check themselves before the session. The lock check, the one attempt
+    and LoginRefused (exit code 3) are in `_login`, which every connection goes through."""
     global _SHARED_CONNECTION
     if _SHARED_CONNECTION is not None:
         raise RuntimeError("a database session is already open")
+    if preflight:
+        require_reachable()
     engine = get_connection()
     conn = _login(engine)
     _SHARED_CONNECTION = conn

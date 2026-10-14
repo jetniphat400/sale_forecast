@@ -100,6 +100,34 @@ def confirmed_lead_time_range(config: dict) -> tuple:
     return min(grid), default
 
 
+def not_forecast_reasons(config: dict = None) -> dict:
+    """config `not_forecast_reasons`: {reason code: {divisions, line, min_max_line}}, the one entry that states why a division is not forecast."""
+    import yaml
+    if config is None:
+        with open(os.path.join(PROJECT_ROOT, "config", "config.yaml"), encoding="utf-8") as f:
+            config = yaml.safe_load(f)
+    return config["not_forecast_reasons"]
+
+
+def division_reason_codes(config: dict = None) -> dict:
+    """{division: reason code} from config `not_forecast_reasons`; a division listed under two codes stops the build."""
+    out = {}
+    for code, entry in not_forecast_reasons(config).items():
+        for division in entry["divisions"]:
+            if division in out:
+                raise ReaderValueError(f"{division} is listed under two not_forecast_reasons: {out[division]} and {code}")
+            out[division] = code
+    return out
+
+
+def not_forecast_text(code: str, kind: str, division: str = None, config: dict = None):
+    """The text of reason `code` of kind 'line' or 'min_max_line' with {division} filled, or None when config has no such reason (the caller then uses its general line)."""
+    entry = not_forecast_reasons(config).get(code)
+    if entry is None:
+        return None
+    return entry[kind].format(division=division)
+
+
 def date_today():
     """Today's date on the machine's clock (one place, so a test can fix it)."""
     import datetime as _dt
@@ -467,6 +495,7 @@ def manual_values(config: dict = None, root: str = PROJECT_ROOT) -> dict:
     guard = int(config["leakage_guard"]["min_margin_days"])
     base = int(config["shadow"]["monthly_run_day_of_month"])
     return {
+        "n_calibration_items": str(len(json.load(open(os.path.join(root, *config["maxmin_v1"]["ensemble_stock_items_file"].split("/")), encoding="utf-8")))),
         "stale_monthly": thai_date_short(latest_run_day(date_today(), base).isoformat()),
         "stale_daily": str(int(config["page_timestamps"]["daily_weekdays_back"])),
         "n_rounds": str(backtest_rounds(config)), "holdout_months": str(config["backtest"]["holdout_months"]),

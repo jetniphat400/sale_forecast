@@ -1171,7 +1171,17 @@ trend_tab:
   pull_dir: "output/data/trend_pull"
   index_file: "index.html"
 
-# Executive summary tab of index.html (src/build_trend_tab.py, decisions of the user 2026-10-09, METRICS.md Sec.49). The revenue-target comparison (Cube_Target_PMIS) was removed on
+# Why a division is not forecast (one entry; Prompt 30). made_to_order = the division is made to order by business model, so no stock policy applies and no sales forecast is made
+# (business-confirmed 2026-09-23; DATA_MAP.md, Locked Decisions "Exclusion -- PEM104"; this supersedes the older "insufficient data" reason, which was a symptom). Every page line that
+# states the reason is read from here (reader_values.not_forecast_text): `line` is the executive table's remark and the operation plan's division line ({division} is filled), `min_max_line`
+# the Min-Max page's text for a division without a stock policy. A division with no forecast item and no entry keeps the line that says it has no stock item.
+not_forecast_reasons:
+  made_to_order:
+    divisions: [PEM104]
+    line: "{division} ผลิตตามสั่งทั้งหมด จึงไม่ได้ทายยอดขาย"
+    min_max_line: "ไม่มีนโยบาย stock ฝ่ายนี้ผลิตตามสั่งทั้งหมด"
+
+# Executive summary tab of index.html (src/build_exec_summary.py, decisions of the user 2026-10-09, METRICS.md Sec.49). The revenue-target comparison (Cube_Target_PMIS) was removed on
 # 2026-10-12 (Prompt 27): the pilot scope is Price List items only and the target covers every Omni product.
 exec_summary:
   # Approved Thai text of 2026-10-09 (verbatim); {braces} are filled at build time. Money in millions of baht with one decimal.
@@ -1191,7 +1201,6 @@ exec_summary:
     columns: ["ฝ่าย", "ยอดขาย YTD", "ปีก่อน YTD", "เปลี่ยน", "คาดการณ์ทั้งปี", "Relative MAE", "หมายเหตุ"]
     total_label: "รวม"
     dash: "–"
-    remark_PEM104: "PEM104 ผลิตตามสั่งทั้งหมด จึงไม่ได้ทายยอดขาย"
     watch_heading: "เรื่องที่ต้องระวัง"
     watch_low: "{group} ทายต่ำกว่าจริงต่อเนื่อง (Tracking Signal {value}) คาดการณ์ทั้งปีของกลุ่มนี้อาจต่ำกว่าที่จะเกิดจริง"
     watch_high: "{group} ทายสูงกว่าจริงต่อเนื่อง (Tracking Signal {value}) คาดการณ์ทั้งปีของกลุ่มนี้อาจสูงกว่าที่จะเกิดจริง"
@@ -1851,11 +1860,7 @@ maxmin_v1:
 operation_plan:
   # Week 3 (2026-10-06): all six divisions, in the order the pages show them.
   divisions: [PEM101, PEM103, PEM107, PEM102, PEM104, CI101]
-  # The recorded reason a division has no forecast item (the page says it in its own words): made_to_order = the division is made to order by business model, so no
-  # stock policy applies and no sales forecast is made (business-confirmed 2026-09-23; DATA_MAP.md, Locked Decisions "Exclusion -- PEM104"; this supersedes the older
-  # "insufficient data" reason, which was a symptom). A division with no forecast item and no entry here keeps the line that says it has no stock item.
-  exclusion_reasons:
-    PEM104: made_to_order
+  # The reason a division has no forecast item is the top-level key `not_forecast_reasons` (one entry; every page line that states it reads it).
   # Only these divisions have a Min and Max (read from the inventory page); every other item's load equals its demand.
   divisions_min_max_from_page: [PEM101, PEM107]
   # The Sec.23 item-level file: class, display label and flags per item of the six divisions (output/summary, untracked).
