@@ -1,14 +1,14 @@
 {
   "snapshot": {
     "source_table": "[salewarehouse].[dbo].[Cube_Inventory_Exact]",
-    "loaded_at": "2026-10-12 21:41:47.510000",
-    "generated_at": "2026-10-13T01:00:24Z",
+    "loaded_at": "2026-10-13 21:40:40.573000",
+    "generated_at": "2026-10-14T01:00:24Z",
     "refresh_cadence": "unknown"
   },
   "backlog": {
     "source_table": "[salewarehouse].[dbo].[Cube_CES]",
     "status_filter": "Backlog",
-    "loaded_at": "2026-10-13 06:59:42.530000",
+    "loaded_at": "2026-10-14 07:07:10.060000",
     "scope_note": "SWITCHED 2026-09-25 (task 2a, Part 5; DATA_MAP.md Trap 23) from the Cube_Backlog TABLE to Cube_CES rows with Status='Backlog' -- METRICS.md Sec.14's literal confirmed-demand source. Cube_Backlog is known to lag Cube_CES by ~14 hours and can hold already-delivered pairs (DATA_MAP.md Trap 5). Deduplicated on (contract, item) per METRICS.md Sec.14's exact text -- see reserved_change_report below for the before/after total and the list of codes whose value changed.",
     "rows_used": 136,
     "raw_rows_before_dedup": 799,
