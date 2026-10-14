@@ -7597,7 +7597,7 @@ tr.section[role="button"]:focus-visible{outline:2px solid var(--series-1);outlin
    <th data-k="code">รหัส</th><th>ชื่อสินค้า (ตาม Price List)</th><th>หมวด</th><th>ประเภท</th><th>ฝ่าย</th><th>กลุ่ม</th><th data-k="adi" title="โดยเฉลี่ยกี่เดือนถึงขายได้ 1 ครั้ง ({n31} ÷ เดือนที่มีขาย) ยิ่งสูง = ยิ่งขายนานๆ ครั้ง">ADI</th><th title="ความผันผวนของขนาดออเดอร์ในเดือนที่ขายได้ ค่าสูง = บางเดือนน้อย บางเดือนก้อนใหญ่">CV²</th><th data-k="qty">Qty รวม</th><th data-k="sale">ยอดขาย (ลบ.)</th><th>Remark</th>
   </tr></thead><tbody id="skuBody"></tbody></table></div>
   <div class="hint" id="tblNote"></div>
-  <div class="hint" style="margin-top:4px"><span class="badge st-match">Match</span> = สเปคสองระบบสอดคล้องกัน &nbsp; <span class="badge st-conflict">Check spec</span> = ตัวเลขสเปคขัดแย้ง ควรตรวจสอบ &nbsp; <span class="badge st-nospec">No spec info</span> = ไม่มีตัวเลขสเปคให้เทียบ &nbsp; <span class="badge st-nodata">No data in DB</span> = ไม่มียอดขายในระบบสำหรับปี <span class="omni-yrs"></span></div>
+  <div class="hint" style="margin-top:4px"><span class="badge st-match">Match</span> = สเปคสองระบบสอดคล้องกัน &nbsp; <span class="badge st-conflict">Check spec</span> = ตัวเลขสเปคขัดแย้ง ควรตรวจสอบ &nbsp; <span class="badge st-nospec">No spec info</span> = ไม่มีตัวเลขสเปคให้เทียบ &nbsp; <span class="badge st-nodata">No data in DB</span> = ไม่มียอดขายใน DB (cube_Sale_APD) สำหรับปี <span class="omni-yrs"></span></div>
  </div>
  <div class="hint" style="margin-top:8px">จำแนกกลุ่มด้วยเกณฑ์ Syntetos-Boylan (ADI 1.32, CV² 0.49) บน qty รายเดือน ฐาน <span class="omni-n31"></span> เดือน · รายเดือนคำนวณจากผลรวมข้อมูลรายวันชุดเดียวกับ drill down</div>
 <!-- removed from view: "จัดทำจากข้อมูล ณ 25 ส.ค. 2026" and "ตัวเลขตรวจทานกับผล query ตรงจาก cube_Sale_APD แล้ว" -->
@@ -7642,7 +7642,7 @@ tr.section[role="button"]:focus-visible{outline:2px solid var(--series-1);outlin
 <div id="execTab">
  <div class="wrap">
 <!-- EXEC-TAB-BEGIN -->
-<div class="kpis" id="execCards"><div class="kpi" id="execCard1"><div class="k">ยอดขาย ม.ค.–ส.ค. 69</div><div class="v">542.1 ล้านบาท</div><div class="s">เทียบช่วงเดียวกันปีก่อน +54.1%</div></div><div class="kpi" id="execCard2"><div class="k">คาดการณ์ทั้งปี 69 (สินค้าใน Price List)</div><div class="v">982.4 ล้านบาท</div></div><div class="kpi" id="execCard3"><div class="k">ความแม่นของยอดทาย</div><div class="v">4 จาก 5 ฝ่าย</div><div class="s">Relative MAE ต่ำกว่าวิธีเทียบ Naive (ใช้ยอดเดือนก่อนเป็นค่าทาย) ตามเกณฑ์ร่าง · ฝ่ายที่พิสูจน์แล้วว่าดีกว่าจริงดูในหน้ายอดขาย · ยืนยันเกณฑ์หลังรอบ 7 ธ.ค. 69</div></div><div class="kpi" id="execCard4"><div class="k">เรื่องที่ต้องระวัง</div><div class="v">8 เรื่อง</div><div class="s">ดูรายการด้านล่าง</div></div></div><p class="hint" id="execUnit">หน่วยตัวเลขในตาราง: ล้านบาท</p><div class="table-scroll"><table id="execTable"><thead><tr><th>ฝ่าย</th><th>ยอดขาย YTD</th><th>ปีก่อน YTD</th><th>เปลี่ยน</th><th>คาดการณ์ทั้งปี</th><th>Relative MAE</th><th>หมายเหตุ</th></tr></thead><tbody><tr data-division="PEM101"><td>PEM101</td><td>219.0</td><td>176.7</td><td>+24.0%</td><td>380.9</td><td>0.80</td><td></td></tr><tr data-division="PEM103"><td>PEM103</td><td>178.5</td><td>32.2</td><td>+454.1%</td><td>333.0</td><td>1.04</td><td></td></tr><tr data-division="PEM107"><td>PEM107</td><td>73.8</td><td>85.7</td><td>-13.9%</td><td>128.7</td><td>0.86</td><td></td></tr><tr data-division="PEM102"><td>PEM102</td><td>46.5</td><td>32.8</td><td>+41.7%</td><td>81.0</td><td>0.92</td><td></td></tr><tr data-division="CI101"><td>CI101</td><td>24.3</td><td>24.4</td><td>-0.3%</td><td>58.7</td><td>0.83</td><td></td></tr><tr class="total-row" id="execTotalRow"><td>รวม</td><td>542.1</td><td>351.7</td><td>+54.1%</td><td>982.4</td><td>–</td><td></td></tr><tr data-division="PEM104"><td>PEM104</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>PEM104 ผลิตตามสั่งทั้งหมด จึงไม่ได้ทายยอดขาย</td></tr></tbody></table></div><h3 id="execWatchTitle">เรื่องที่ต้องระวัง</h3><ul id="execWatch"><li>PEM103 ทายต่ำกว่าจริงต่อเนื่อง (Tracking Signal -7.8) คาดการณ์ทั้งปีของกลุ่มนี้อาจต่ำกว่าที่จะเกิดจริง</li><li>CI101 ทายสูงกว่าจริงต่อเนื่อง (Tracking Signal 6.7) คาดการณ์ทั้งปีของกลุ่มนี้อาจสูงกว่าที่จะเกิดจริง</li><li>Fuse Cutout ทายต่ำกว่าจริงต่อเนื่อง (Tracking Signal -4.7) คาดการณ์ทั้งปีของกลุ่มนี้อาจต่ำกว่าที่จะเกิดจริง</li><li>Surge Arrester ทายต่ำกว่าจริงต่อเนื่อง (Tracking Signal -6.8) คาดการณ์ทั้งปีของกลุ่มนี้อาจต่ำกว่าที่จะเกิดจริง</li><li>แผนผลิต PEM103 เดือน ต.ค. 69 สูงกว่ายอดผลิตสูงสุดรายเดือนในอดีต (Historical peak ไม่ใช่ขีดความสามารถผลิต) (119.9%)</li><li>แผนผลิต PEM102 เดือน ต.ค. 69 สูงกว่ายอดผลิตสูงสุดรายเดือนในอดีต (Historical peak ไม่ใช่ขีดความสามารถผลิต) (243.7%)</li><li>วัตถุดิบ 533 รายการเลยกำหนดสั่ง (Late to order) สั่งวันนี้ของมาไม่ทันแผน</li><li>PEM107 ส่งของช่องทาง Omni ทันน้อยลงตั้งแต่ พ.ค. 69 (57.7% ส่งทัน คือ ส่งไม่ช้ากว่าวันนัด)</li></ul><h3 id="execDecideTitle">เรื่องที่รอผู้บริหารตัดสิน</h3><ul id="execDecide"><li>ยอดทายดีกว่าวิธีง่ายไหม · Relative MAE ต่ำแค่ไหนถึงนับว่าถึงเกณฑ์ (MAE ของเรา ÷ MAE ของ Naive)</li><li>ยอดทายเอียงไปทางเดียวต่อเนื่อง (Bias) · Tracking Signal (ความคลาดสะสม ÷ ความคลาดเฉลี่ย) เกินเท่าไหร่ถึงเตือน</li><li>ฝ่ายที่ยอดทายไม่ชนะวิธีง่าย · ใช้วิธีง่ายแทนไหม</li><li>เป้าการส่งทัน (not-late คือ ส่งไม่ช้ากว่าวันนัด) · บริษัทต้องการกี่ %</li></ul><p><a id="execToAssump" href="#" onclick="omniShowTab(4);return false">สมมติฐานที่ใช้อยู่</a></p><p class="hint" id="execFooter">ยอดขายนับตามเดือนที่ต้องส่งของ รวม PO ที่รับแล้วแต่ยังไม่ส่ง (MPS) · ไม่รวม VAT · คาดการณ์ = ยอดจริงถึง ส.ค. 69 + เดือนที่เหลือใช้ค่าที่มากกว่าระหว่างยอดทายกับออเดอร์ที่รับแล้ว × ราคาขายเฉลี่ยจริง · ยอดขายและคาดการณ์นับเฉพาะสินค้าใน Price List</p>
+<div class="kpis" id="execCards"><div class="kpi" id="execCard1"><div class="k">ยอดขาย ม.ค.–ส.ค. 69</div><div class="v">542.1 ล้านบาท</div><div class="s">เทียบช่วงเดียวกันปีก่อน +54.1%</div></div><div class="kpi" id="execCard2"><div class="k">คาดการณ์ทั้งปี 69 (สินค้าใน Price List)</div><div class="v">982.4 ล้านบาท</div></div><div class="kpi" id="execCard3"><div class="k">ความแม่นของยอดทาย</div><div class="v">4 จาก 5 ฝ่าย</div><div class="s">Relative MAE ต่ำกว่าวิธีเทียบ Naive (ใช้ยอดเดือนก่อนเป็นค่าทาย) ตามเกณฑ์ร่าง · ฝ่ายที่พิสูจน์แล้วว่าดีกว่าจริงดูในหน้ายอดขาย · ยืนยันเกณฑ์หลังรอบ 7 ธ.ค. 69</div></div><div class="kpi" id="execCard4"><div class="k">เรื่องที่ต้องระวัง</div><div class="v">8 เรื่อง</div><div class="s">ดูรายการด้านล่าง</div></div></div><p class="hint" id="execUnit">หน่วยตัวเลขในตาราง: ล้านบาท</p><div class="table-scroll"><table id="execTable"><thead><tr><th>ฝ่าย</th><th>ยอดขาย YTD</th><th>ปีก่อน YTD</th><th>เปลี่ยน</th><th>คาดการณ์ทั้งปี</th><th>Relative MAE</th><th>หมายเหตุ</th></tr></thead><tbody><tr data-division="PEM101"><td>PEM101</td><td>219.0</td><td>176.7</td><td>+24.0%</td><td>380.9</td><td>0.80</td><td></td></tr><tr data-division="PEM103"><td>PEM103</td><td>178.5</td><td>32.2</td><td>+454.1%</td><td>333.0</td><td>1.04</td><td></td></tr><tr data-division="PEM107"><td>PEM107</td><td>73.8</td><td>85.7</td><td>-13.9%</td><td>128.7</td><td>0.86</td><td></td></tr><tr data-division="PEM102"><td>PEM102</td><td>46.5</td><td>32.8</td><td>+41.7%</td><td>81.0</td><td>0.92</td><td></td></tr><tr data-division="CI101"><td>CI101</td><td>24.3</td><td>24.4</td><td>-0.3%</td><td>58.7</td><td>0.83</td><td></td></tr><tr class="total-row" id="execTotalRow"><td>รวม</td><td>542.1</td><td>351.7</td><td>+54.1%</td><td>982.4</td><td>–</td><td></td></tr><tr data-division="PEM104"><td>PEM104</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>PEM104 ผลิตตามสั่งทั้งหมด จึงไม่ได้ทายยอดขาย</td></tr></tbody></table></div><h3 id="execWatchTitle">เรื่องที่ต้องระวัง</h3><ul id="execWatch"><li>PEM103 ทายต่ำกว่าจริงต่อเนื่อง (Tracking Signal -7.8) คาดการณ์ทั้งปีของกลุ่มนี้อาจต่ำกว่าที่จะเกิดจริง</li><li>CI101 ทายสูงกว่าจริงต่อเนื่อง (Tracking Signal 6.7) คาดการณ์ทั้งปีของกลุ่มนี้อาจสูงกว่าที่จะเกิดจริง</li><li>Fuse Cutout ทายต่ำกว่าจริงต่อเนื่อง (Tracking Signal -4.7) คาดการณ์ทั้งปีของกลุ่มนี้อาจต่ำกว่าที่จะเกิดจริง</li><li>Surge Arrester ทายต่ำกว่าจริงต่อเนื่อง (Tracking Signal -6.8) คาดการณ์ทั้งปีของกลุ่มนี้อาจต่ำกว่าที่จะเกิดจริง</li><li>แผนผลิต PEM103 เดือน ต.ค. 69 สูงกว่ายอดผลิตสูงสุดรายเดือนในอดีต (Historical peak ไม่ใช่ขีดความสามารถผลิต) (119.9%)</li><li>แผนผลิต PEM102 เดือน ต.ค. 69 สูงกว่ายอดผลิตสูงสุดรายเดือนในอดีต (Historical peak ไม่ใช่ขีดความสามารถผลิต) (244.9%)</li><li>วัตถุดิบ 544 รายการเลยกำหนดสั่ง (Late to order) สั่งวันนี้ของมาไม่ทันแผน</li><li>PEM107 ส่งของช่องทาง Omni ทันน้อยลงตั้งแต่ พ.ค. 69 (57.7% ส่งทัน คือ ส่งไม่ช้ากว่าวันนัด)</li></ul><h3 id="execDecideTitle">เรื่องที่รอผู้บริหารตัดสิน</h3><ul id="execDecide"><li>ยอดทายดีกว่าวิธีง่ายไหม · Relative MAE ต่ำแค่ไหนถึงนับว่าถึงเกณฑ์ (MAE ของเรา ÷ MAE ของ Naive)</li><li>ยอดทายเอียงไปทางเดียวต่อเนื่อง (Bias) · Tracking Signal (ความคลาดสะสม ÷ ความคลาดเฉลี่ย) เกินเท่าไหร่ถึงเตือน</li><li>ฝ่ายที่ยอดทายไม่ชนะวิธีง่าย · ใช้วิธีง่ายแทนไหม</li><li>เป้าการส่งทัน (not-late คือ ส่งไม่ช้ากว่าวันนัด) · บริษัทต้องการกี่ %</li></ul><p><a id="execToAssump" href="#" onclick="omniShowTab(4);return false">สมมติฐานที่ใช้อยู่</a></p><p class="hint" id="execFooter">ยอดขายนับตามเดือนที่ต้องส่งของ รวม PO ที่รับแล้วแต่ยังไม่ส่ง (MPS) · ไม่รวม VAT · คาดการณ์ = ยอดจริงถึง ส.ค. 69 + เดือนที่เหลือใช้ค่าที่มากกว่าระหว่างยอดทายกับออเดอร์ที่รับแล้ว × ราคาขายเฉลี่ยจริง · ยอดขายและคาดการณ์นับเฉพาะสินค้าใน Price List</p>
 <!-- EXEC-TAB-END -->
  </div>
 </div>
@@ -8202,12 +8202,12 @@ function omniShowTab(n){
 
     // The three dates this panel shows, all from data/inventory.json: the source table's own load times and the pull time.
     document.getElementById('invSnapshotLabel').textContent =
-      'ข้อมูล stock ในระบบ ณ ' + thaiDateTime(data.snapshot.loaded_at);
+      'ข้อมูล stock ใน DB (Cube_Inventory_Exact) ณ ' + thaiDateTime(data.snapshot.loaded_at);
 
     const bl = data.backlog || {};
     const blScope = (bl.sale_company_filter || []).join(' และ ');
     document.getElementById('invBacklogLabel').innerHTML =
-      'ยอดจองในระบบ ณ ' + invEsc(thaiDateTime(bl.loaded_at)) + '<br>'
+      'ยอดจองใน DB (Cube_CES) ณ ' + invEsc(thaiDateTime(bl.loaded_at)) + '<br>'
       // Moved off screen: "สลับจาก Cube_Backlog มาเป็น Cube_CES Status='Backlog' แล้ว (task 2a Part 5, DATA_MAP.md Trap 23, METRICS.md §14), ตัดข้อมูลซ้ำ (dedup) ตาม contract+item"
       + 'สูตร Available <b>ไม่ได้เปลี่ยน</b> (ยัง = สต็อคคงเหลือ − Reserved เหมือนเดิม, ยังไม่รวมสินค้าที่กำลังจะเข้า) — '
       + '<b>Available ในตอนนี้ยังรวมสต็อคในคลังที่ไม่ได้ถูกกำหนดว่า "ขายได้" (sellable) ด้วย</b> '
@@ -8232,26 +8232,40 @@ function omniShowTab(n){
     // TWO independently-pulled inputs (on-hand stock, Reserved/backlog) -- each gets its OWN
     // staleness notice, evaluated against its OWN data_pulled_at, so a stale Reserved pull never
     // marks the (possibly fresh) stock figures stale, and vice versa.
-    const ageDaysStock = INV_PAGE_BUILT_AT
-      ? (new Date(INV_PAGE_BUILT_AT.replace(' ', 'T')) - new Date(stockPulledAt.replace(' ', 'T'))) / 86400000
-      : NaN;
+    // Freshness by pull cadence (Prompt 29, config page_timestamps): both are daily-pulled sources, old when their date is before the previous weekday of the day they were pulled.
+    const INV_DAILY_WEEKDAYS_BACK = 1;     // config page_timestamps.daily_weekdays_back (a test keeps the two equal)
+    function invPrevWeekday(iso, back) {
+      const p = iso.split('-');
+      const d = new Date(Date.UTC(Number(p[0]), Number(p[1]) - 1, Number(p[2])));
+      let n = 0;
+      while (n < back) {
+        d.setUTCDate(d.getUTCDate() - 1);
+        if (d.getUTCDay() !== 0 && d.getUTCDay() !== 6) n++;
+      }
+      return d.toISOString().slice(0, 10);
+    }
+    function invOldCutoff(pulled, today) {
+      const p = /^(\d{4}-\d{2}-\d{2})/.exec(String(pulled || '')), t = /^(\d{4}-\d{2}-\d{2})/.exec(String(today || ''));
+      if (!p || !t) return '';
+      const cut = invPrevWeekday(t[1], INV_DAILY_WEEKDAYS_BACK);
+      return p[1] < cut ? cut : '';
+    }
+    const stockCut = invOldCutoff(stockPulledAt, INV_PAGE_BUILT_AT);
     const staleEl = document.getElementById('invStalenessNote');
-    if (!isNaN(ageDaysStock) && ageDaysStock > 7) {
+    if (stockCut) {
       staleEl.style.display = 'block';
-      staleEl.innerHTML = '⚠ <b>ข้อมูลสต็อคเก่ากว่า 7 วัน</b> (' + ageDaysStock.toFixed(1)
-        + ' วัน เทียบกับ page_built_at) — ตัวเลขสต็อคในหน้านี้อาจไม่ตรงกับสต็อคจริงปัจจุบัน';
+      staleEl.innerHTML = '⚠ <b>ข้อมูลสต็อคเก่า</b> (ดึงก่อนวันทำการก่อนหน้า ' + thaiDateShort(stockCut)
+        + ') — ตัวเลขสต็อคในหน้านี้อาจไม่ตรงกับสต็อคจริงปัจจุบัน';
     } else {
       staleEl.style.display = 'none';
     }
 
-    const ageDaysBacklog = (backlogPulledAt && INV_PAGE_BUILT_AT)
-      ? (new Date(INV_PAGE_BUILT_AT.replace(' ', 'T')) - new Date(backlogPulledAt.replace(' ', 'T'))) / 86400000
-      : NaN;
+    const backlogCut = invOldCutoff(backlogPulledAt, INV_PAGE_BUILT_AT);
     const backlogStaleEl = document.getElementById('invBacklogStalenessNote');
-    if (!isNaN(ageDaysBacklog) && ageDaysBacklog > 7) {
+    if (backlogCut) {
       backlogStaleEl.style.display = 'block';
-      backlogStaleEl.innerHTML = '⚠ <b>ข้อมูล Reserved เก่ากว่า 7 วัน</b> (' + ageDaysBacklog.toFixed(1)
-        + ' วัน เทียบกับ page_built_at) — ตัวเลข Reserved ในหน้านี้อาจไม่ตรงกับปัจจุบัน '
+      backlogStaleEl.innerHTML = '⚠ <b>ข้อมูล Reserved เก่า</b> (ดึงก่อนวันทำการก่อนหน้า ' + thaiDateShort(backlogCut)
+        + ') — ตัวเลข Reserved ในหน้านี้อาจไม่ตรงกับปัจจุบัน '
         + '(ประเมินแยกจากความเก่าของข้อมูลสต็อคด้านบน)'; // METRICS.md §26
     } else {
       backlogStaleEl.style.display = 'none';
@@ -8262,7 +8276,7 @@ function omniShowTab(n){
       '<div class="kpi-card"><div class="label">รหัสสินค้าทั้งหมด</div><div class="value">' + t.codes + '</div></div>'
       + '<div class="kpi-card"><div class="label">มีของ</div><div class="value">' + t.has_stock + '</div></div>'
       + '<div class="kpi-card"><div class="label">ของเป็นศูนย์</div><div class="value">' + t.zero_stock + '</div></div>'
-      + '<div class="kpi-card"><div class="label">ไม่มีในระบบ stock</div><div class="value">' + t.no_db_record + '</div></div>';
+      + '<div class="kpi-card"><div class="label">ไม่มีใน DB (Cube_Inventory_Exact)</div><div class="value">' + t.no_db_record + '</div></div>';
 
     // Sellable / Staging / Elsewhere totals per division (task 2a Part 5). Label reuses
     // config.yaml's own wording for the sellable-warehouse assumption.
@@ -8380,7 +8394,7 @@ function omniShowTab(n){
 
       let qtyCell;
       if (it.state === 'no_db_record') {
-        qtyCell = '<span class="badge badge-nodata">ไม่มีข้อมูลในระบบ</span>';
+        qtyCell = '<span class="badge badge-nodata">ไม่มีข้อมูลใน DB (Cube_Inventory_Exact)</span>';
       } else if (it.by_warehouse && it.by_warehouse.length) {
         qtyCell = '<button type="button" class="inv-qty-btn" data-code="' + invEsc(it.code) + '">' + invFmtQty(it.qty) + '</button>';
       } else {
@@ -8415,7 +8429,7 @@ function omniShowTab(n){
 
       let availCell;
       if (it.available == null) {
-        availCell = '<span class="badge badge-nodata">ไม่มีข้อมูลในระบบ</span>';
+        availCell = '<span class="badge badge-nodata">ไม่มีข้อมูลใน DB (Cube_Inventory_Exact)</span>';
       } else {
         availCell = '<span class="inv-num' + (it.available < 0 ? ' inv-neg' : '') + '">'
           + invFmtQty(it.available) + '</span>';
@@ -8544,7 +8558,7 @@ function omniShowTab(n){
     const rowSum = rows.reduce((s, r) => s + (r.quantity || 0), 0);
     document.getElementById('invBlSub').innerHTML =
       'รายการ Backlog ทั้งหมด ' + rows.length + ' รายการที่รวมกันเป็นยอด Reserved ของรหัสนี้ '
-      + '(แสดงตามที่บันทึกไว้ในระบบ ไม่มีการรวบหรือตัดรายการซ้ำออก)<br>'
+      + '(แสดงตามที่บันทึกไว้ใน DB (Cube_CES) ไม่มีการรวบหรือตัดรายการซ้ำออก)<br>'
       + 'สต็อคคงเหลือ ' + invFmtQty(it.qty) + ' − Reserved ' + invFmtQty(it.backlog)
       + ' = Available ' + invFmtQty(it.available) + ' <span class="inv-allch" title="stock และออเดอร์ที่รับแล้วใช้ร่วมกันทุกช่องทาง">รวมทุกช่องทาง</span>';
 

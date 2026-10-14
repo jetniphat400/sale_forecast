@@ -434,7 +434,7 @@ def build_page(**data_sources) -> str:
   <p class="note-box"><b>หมายเหตุสำคัญ:</b> ตัวเลขในหน้านี้เป็น <b>ผลจำลอง (scenario values) ภายใต้สมมติฐานที่ระบุไว้เท่านั้น
     ไม่ใช่คำแนะนำการสั่งซื้อ (purchase recommendation)</b> ตัวควบคุมด้านล่างเปลี่ยนแค่ตัวเลขบนหน้านี้ ไม่ได้เปลี่ยนการทายยอดขาย
     รายการ placeholder/excluded จะไม่มี Min/Max และไม่มีปริมาณสั่งซื้อ (purchase quantity) ใดๆ ทั้งสิ้น
-    รายชื่อคลังที่ขายได้เป็นสมมติฐาน ระบบไม่ได้บันทึกว่าของที่ส่งออกไปมาจากคลังไหน จึงตรวจจากข้อมูลไม่ได้</p>
+    รายชื่อคลังที่ขายได้เป็นสมมติฐาน DB (cube_Sale_APD) ไม่ได้บันทึกว่าของที่ส่งออกไปมาจากคลังไหน จึงตรวจจากข้อมูลไม่ได้</p>
   <!-- Previous wording, kept off screen: figures on this page are computed from the MONTHLY history embedded in the page (monthly proration, METRICS.md Sec.4's explicit fallback), not the DAILY window the server-side pipeline uses. The percentage is computed at build time: src/reader_values.py pipeline_gap_pct, page monthly-prorated stock value against output/summary/phaseE1fix_2_minmax_stockvalue.csv (stock_value_contribution) over the same PEM101 items at the default scenario; the earlier typed figure was 3.3% from a run on the older 128-item pilot set (STATUS.md Phase E1-fix-2). -->
   <p class="note-box" id="proration-note">ตัวเลขบนหน้านี้คำนวณจากยอดขายรายเดือนเพื่อให้หน้าโหลดเร็ว จึงต่างจากค่าเต็มที่คำนวณจากข้อมูลรายวัน (ค่าอ้างอิง) ประมาณ {gap_pct}% ของค่าเต็ม (PEM101)</p>
 
@@ -442,11 +442,11 @@ def build_page(**data_sources) -> str:
   <!-- Stock figures (Months of cover, ของค้าง, the stock-with-no-forecast table, the count in the summary box) come from the stock file loaded when the page opens; the three dates below describe that file. -->
   <p class="note-box" id="stock-labels" style="display:none"></p>
   <!-- Formula: Value at risk = max(0, current_min − scenario_min) × unit_cost, the earlier on-screen hint described the opposite direction (current stock below the scenario) although the formula measures a system Min above the simulated one. Excess = months of cover above the obsolescence threshold set above (METRICS.md §40), recomputed whenever the ticked warehouses or the threshold change. -->
-  <p class="hint">Excess Min value (มูลค่า Min ส่วนเกิน) = ถ้า Min ในระบบสูงกว่าที่จำลอง ส่วนเกินคิดเป็นเงินเท่าไหร่<br>ของค้าง (Excess stock) = stock พอขายเกินจำนวนเดือนที่ตั้งไว้ด้านบน ไม่ใช่ออเดอร์ค้างส่ง (open orders)<br>Min = ระดับที่ต้องสั่งเติม · Max = ระดับที่สั่งเติมให้ถึง</p>
+  <p class="hint">Excess Min value (มูลค่า Min ส่วนเกิน) = ถ้า Min ใน DB (Cube_Inventory_Exact) สูงกว่าที่จำลอง ส่วนเกินคิดเป็นเงินเท่าไหร่<br>ของค้าง (Excess stock) = stock พอขายเกินจำนวนเดือนที่ตั้งไว้ด้านบน ไม่ใช่ออเดอร์ค้างส่ง (open orders)<br>Min = ระดับที่ต้องสั่งเติม · Max = ระดับที่สั่งเติมให้ถึง</p>
   {render_notes_html('inventory.html', 'excess-threshold', values=note_values)}
   <!-- Previous wording of the class caption, kept off screen: Policy = METRICS.md §23 class (stock_policy/confirmed_to_order/conflict) for PEM101/PEM107, supersedes section 15. Only stock_policy items receive a Min/Max here; confirmed_to_order and conflict items are listed with no Min/Max in the separate table below. Label = dominant manufacturing_type (MTS/MTO/ETO/mixed). Signals = S1 (on-hand stock) / S2 (batch-before-PO share) / S3 (median notice, days), check/cross/dash (dash = S2 could not be computed, S1+S3 both required instead). The number of signals and the notice threshold below are read at build time: src/reader_values.py fulfilment_signal_count (task2b_part2_item_level.csv) and fulfilment_notice_threshold_days (S3_THRESHOLD_DAYS in src/investigations/task2b_part2_fulfilment_segmentation.py). -->
   <div id="policy-class-notes" style="display:none">
-    <p class="hint" id="segmentation-note">นโยบายการผลิต (ไม่ใช่ Product Type): เก็บ stock (MTS) / ผลิตตามสั่ง (MTO) / ยังไม่ชัด · ดูจากป้ายในระบบ (MTS / MTO / ETO) คู่กับพฤติกรรมจริง {signal_count} อย่าง: มีของในคลัง · ผลิตเป็น batch ก่อนลูกค้าสั่ง · ส่งได้ภายใน {notice_days} วัน · ✓ ตรง ✗ ไม่ตรง – คำนวณไม่ได้</p>
+    <p class="hint" id="segmentation-note">นโยบายการผลิต (ไม่ใช่ Product Type): เก็บ stock (MTS) / ผลิตตามสั่ง (MTO) / ยังไม่ชัด · ดูจากป้ายใน DB (cube_Sale_APD) (MTS / MTO / ETO) คู่กับพฤติกรรมจริง {signal_count} อย่าง: มีของในคลัง · ผลิตเป็น batch ก่อนลูกค้าสั่ง · ส่งได้ภายใน {notice_days} วัน · ✓ ตรง ✗ ไม่ตรง – คำนวณไม่ได้</p>
     {render_notes_html('inventory.html', 'item-policy-classes', values=note_values)}
   </div>
   <div class="table-scroll"><table class="report-table" id="item-table">
@@ -454,7 +454,7 @@ def build_page(**data_sources) -> str:
       <th onclick="sortTable(0)">Item</th><th onclick="sortTable(1)">Policy</th>
       <th onclick="sortTable(2)">Label</th><th onclick="sortTable(3)">Signals (S1/S2/S3)</th>
       <th onclick="sortTable(4)">Min</th><th onclick="sortTable(5)">Max</th>
-      <th onclick="sortTable(6)">Min (ที่ตั้งในระบบคลัง)</th><th onclick="sortTable(7)">Max (ที่ตั้งในระบบคลัง)</th>
+      <th onclick="sortTable(6)">Min (ที่ตั้งใน DB (Cube_Inventory_Exact))</th><th onclick="sortTable(7)">Max (ที่ตั้งใน DB (Cube_Inventory_Exact))</th>
       <th onclick="sortTable(8)">Months of cover</th>
       <th onclick="sortTable(9)">Excess Min value (THB)</th><th onclick="sortTable(10)">ของค้าง</th>
     </tr></thead>
@@ -492,7 +492,7 @@ def build_page(**data_sources) -> str:
 
   <!-- previously: Min เทียบกับค่าปัจจุบัน (current_min_max) — รายรายการ -->
   <!-- label changed: "Min ที่จำลอง เทียบกับ Min ที่ตั้งในระบบตอนนี้" ("ตอนนี้" called the system value current) -->
-  <h2>Min ที่จำลอง เทียบกับ Min ค่าที่ตั้งในระบบ</h2>
+  <h2>Min ที่จำลอง เทียบกับ Min ค่าที่ตั้งใน DB (Cube_Inventory_Exact)</h2>
   <div id="chart-min-vs-current" class="plotly-chart"></div>
   {render_notes_html('inventory.html', 'chart-min-vs-current', values=note_values)}
 
@@ -785,7 +785,7 @@ function renderMinVsCurrent(perItem) {{
   const withCurrent = perItem.filter(r => r.min !== null && r.currentMin !== null && r.currentMin !== undefined);
   plotSafe('chart-min-vs-current', () => Plotly.newPlot('chart-min-vs-current', [
     {{ x: withCurrent.map(r => r.code), y: withCurrent.map(r => r.min), name: 'Scenario Min', type: 'bar', marker: {{color:'#2a78d6'}} }},
-    {{ x: withCurrent.map(r => r.code), y: withCurrent.map(r => r.currentMin), name: 'Min (ค่าที่ตั้งในระบบ)', type: 'bar', marker: {{color:'#eda100'}} }}
+    {{ x: withCurrent.map(r => r.code), y: withCurrent.map(r => r.currentMin), name: 'Min (ค่าที่ตั้งใน DB (Cube_Inventory_Exact))', type: 'bar', marker: {{color:'#eda100'}} }}
   ], {{ margin: {{t:10, b:90, l:70}}, barmode: 'group',
        xaxis: {{title: {{text: 'รหัสสินค้า'}}, tickangle: -60, tickfont:{{size:8}}}},
        yaxis: {{title: {{text: 'จำนวน (ชิ้น)'}}}} }}, {{responsive: true}}));
@@ -974,6 +974,29 @@ function renderCurveTarget(divisionData) {{
   applyCurveTarget(p1.not_late_pct);
 }}
 
+// Freshness by pull cadence (Prompt 29, METRICS.md Sec.26): a monthly source is old when its pull date is before the latest monthly run day on or before the build date
+// (DATA.freshness.monthly_cutoff, fixed at build); a daily source is old when its date is before the previous weekday of the day it is read against.
+function ymdOf(s) {{
+  const m = /^(\\d{{4}}-\\d{{2}}-\\d{{2}})/.exec(String(s || ''));
+  return m ? m[1] : null;
+}}
+function prevWeekday(iso, back) {{
+  const p = iso.split('-');
+  const d = new Date(Date.UTC(Number(p[0]), Number(p[1]) - 1, Number(p[2])));
+  let n = 0;
+  while (n < back) {{
+    d.setUTCDate(d.getUTCDate() - 1);
+    if (d.getUTCDay() !== 0 && d.getUTCDay() !== 6) n++;
+  }}
+  return d.toISOString().slice(0, 10);
+}}
+function oldCutoff(cadence, pulled, today) {{
+  // The cutoff date (ISO) when a source of this cadence pulled on `pulled` is old on `today`, '' when it is fresh or a date is missing.
+  const p = ymdOf(pulled), t = ymdOf(today);
+  if (!p || !t) return '';
+  const cut = cadence === 'monthly' ? DATA.freshness.monthly_cutoff : prevWeekday(t, DATA.freshness.daily_weekdays_back);
+  return p < cut ? cut : '';
+}}
 function parseYmdHm(s) {{
   // Parses 'YYYY-MM-DD HH:MM[:SS]' (this machine's own clock, ICT/UTC+7 -- confirmed this task
   // via `date`) into a JS Date; returns null if the string doesn't start with that pattern (e.g.
@@ -1059,15 +1082,10 @@ function onDivisionChange() {{
   noMinMax.textContent = divisionData.no_min_max_line || '';
   noMinMax.style.display = divisionData.no_min_max_line ? '' : 'none';
   renderPem107Alert(currentDivision);
-  const builtAt = parseYmdHm(DATA.page_built_at);
-  const pulledAt = parseYmdHm(divisionData.snapshot_pull_date);
   let staleNote = '';
-  if (builtAt && pulledAt) {{
-    const ageDays = (builtAt - pulledAt) / 86400000;
-    if (ageDays > DATA.staleness_threshold_days) {{
-      staleNote = ' <span class="note-box" style="display:inline;padding:2px 8px;">&#9888; ข้อมูลเก่ากว่า ' + DATA.staleness_threshold_days + ' วัน (' +
-        ageDays.toFixed(1) + ' วัน) เทียบกับหน้าสร้างเมื่อ</span>';
-    }}
+  const monthlyCut = oldCutoff(DATA.freshness.cadence.pilot_sales, divisionData.snapshot_pull_date, DATA.page_built_at);
+  if (monthlyCut) {{
+    staleNote = ' <span class="note-box" style="display:inline;padding:2px 8px;">&#9888; ข้อมูลเก่า ดึงก่อนรอบดึงรายเดือนล่าสุด (' + thaiDateShort(monthlyCut) + ')</span>';
   }}
   // A trailing "(live pull, ...)" explanation stays off screen, in an HTML comment.
   const pullShown = String(divisionData.snapshot_pull_date).split(' (')[0];
@@ -1143,18 +1161,14 @@ function renderStockLabels() {{
   const el = document.getElementById('stock-labels');
   el.style.display = '';
   if (!STOCK_OK) {{ el.textContent = STOCK_FAIL_MSG; return; }}
-  const pull = parseYmdHm(STOCK.pull_time);
-  function stale(t) {{
-    const at = parseYmdHm(t);
-    if (!pull || !at) return '';
-    const age = (pull - at) / 86400000;
-    return age > DATA.staleness_threshold_days
-      ? ' <span style="color:#c0392b">&#9888; ข้อมูลเก่ากว่า ' + DATA.staleness_threshold_days + ' วัน (' + age.toFixed(1) + ' วัน) เทียบกับเวลาที่ดึง</span>' : '';
+  function stale(t, cadence) {{
+    const cut = oldCutoff(cadence, t, STOCK.pull_time);
+    return cut ? ' <span style="color:#c0392b">&#9888; ข้อมูลเก่า ดึงก่อนวันทำการก่อนหน้า (' + thaiDateShort(cut) + ')</span>' : '';
   }}
   el.innerHTML =
-    '<span id="stock-label-stock">ข้อมูล stock ในระบบ ณ ' + thaiDateTime(STOCK.stock_source_load_time) + '</span>' + stale(STOCK.stock_source_load_time) + '<br>' +
-    '<span id="stock-label-reserved">ยอดจองในระบบ ณ ' + thaiDateTime(STOCK.reserved_source_load_time) + '</span>' +
-      (STOCK.reserved_source_load_time ? stale(STOCK.reserved_source_load_time) : '') + '<br>' +
+    '<span id="stock-label-stock">ข้อมูล stock ใน DB (Cube_Inventory_Exact) ณ ' + thaiDateTime(STOCK.stock_source_load_time) + '</span>' + stale(STOCK.stock_source_load_time, DATA.freshness.cadence.stock) + '<br>' +
+    '<span id="stock-label-reserved">ยอดจองใน DB (Cube_CES) ณ ' + thaiDateTime(STOCK.reserved_source_load_time) + '</span>' +
+      (STOCK.reserved_source_load_time ? stale(STOCK.reserved_source_load_time, DATA.freshness.cadence.reserved) : '') + '<br>' +
     '<span id="stock-label-pulled">ดึงข้อมูลเมื่อ ' + thaiDateTime(STOCK.pull_time) + '</span>';
 }}
 

@@ -100,9 +100,66 @@ def confirmed_lead_time_range(config: dict) -> tuple:
     return min(grid), default
 
 
-def staleness_threshold_days(config: dict) -> int:
-    """config.yaml page_timestamps.staleness_threshold_days (METRICS.md Sec.26)."""
-    return int(config["page_timestamps"]["staleness_threshold_days"])
+def date_today():
+    """Today's date on the machine's clock (one place, so a test can fix it)."""
+    import datetime as _dt
+    return _dt.date.today()
+
+
+def _as_date(value):
+    """A date from a date, a timestamp or a 'YYYY-MM-DD...' text."""
+    import datetime as _dt
+    if isinstance(value, _dt.datetime):
+        return value.date()
+    if isinstance(value, _dt.date):
+        return value
+    return _dt.date.fromisoformat(str(value).strip()[:10])
+
+
+def previous_weekday(today, weekdays_back: int = 1):
+    """The date `weekdays_back` Monday-to-Friday days before `today` (the day itself never counts): Monday gives the Friday before, Saturday and Sunday give Friday."""
+    import datetime as _dt
+    d, n = _as_date(today), 0
+    while n < int(weekdays_back):
+        d -= _dt.timedelta(days=1)
+        if d.weekday() < 5:
+            n += 1
+    return d
+
+
+def latest_run_day(today, base_day: int = None):
+    """The latest monthly run day (monthly_refresh.run_day) that is on or before `today`: this month's if it has come, otherwise last month's."""
+    import monthly_refresh
+    d = _as_date(today)
+    run = monthly_refresh.run_day(d.year, d.month, base_day)
+    if run <= d:
+        return run
+    y, m = (d.year - 1, 12) if d.month == 1 else (d.year, d.month - 1)
+    return monthly_refresh.run_day(y, m, base_day)
+
+
+def freshness_cutoff(cadence: str, today, config: dict):
+    """The date a source's pull date must not be before to count as fresh on `today`: monthly = the latest run day on or before today, daily = the previous weekday
+    (config page_timestamps.daily_weekdays_back weekdays back). Raises for any other cadence."""
+    if cadence == "monthly":
+        return latest_run_day(today, int(config["shadow"]["monthly_run_day_of_month"]))
+    if cadence == "daily":
+        return previous_weekday(today, int(config["page_timestamps"]["daily_weekdays_back"]))
+    raise ReaderValueError(f"unknown freshness cadence {cadence!r}: expected 'monthly' or 'daily'")
+
+
+def source_cadence(config: dict, label: str) -> str:
+    """The cadence ('monthly' or 'daily') config page_timestamps classifies the freshness-tagged source `label` under. A source in neither list, or in both, stops the build."""
+    pt = config["page_timestamps"]
+    monthly, daily = label in pt["monthly_sources"], label in pt["daily_sources"]
+    if monthly == daily:
+        raise ReaderValueError(f"the freshness-tagged source {label!r} is in {'both lists' if monthly else 'neither list'} of config page_timestamps (monthly_sources, daily_sources)")
+    return "monthly" if monthly else "daily"
+
+
+def is_old(cadence: str, pull_date, today, config: dict) -> bool:
+    """True when a source of this cadence pulled on `pull_date` is old on `today` (its pull date is before the cadence's cutoff)."""
+    return _as_date(pull_date) < freshness_cutoff(cadence, today, config)
 
 
 def pipeline_gap_pct(pem101: dict, controls: dict, days_per_month: float) -> float:
@@ -410,7 +467,8 @@ def manual_values(config: dict = None, root: str = PROJECT_ROOT) -> dict:
     guard = int(config["leakage_guard"]["min_margin_days"])
     base = int(config["shadow"]["monthly_run_day_of_month"])
     return {
-        "stale_days": str(staleness_threshold_days(config)),
+        "stale_monthly": thai_date_short(latest_run_day(date_today(), base).isoformat()),
+        "stale_daily": str(int(config["page_timestamps"]["daily_weekdays_back"])),
         "n_rounds": str(backtest_rounds(config)), "holdout_months": str(config["backtest"]["holdout_months"]),
         "n_focus_items": str(len(backtest_all_divisions.FOCUS_ITEMS)),
         "notice_bucket_first": str(buckets[0]), "notice_bucket_second": str(buckets[1]), "notice_bucket_last": str(buckets[-1]),

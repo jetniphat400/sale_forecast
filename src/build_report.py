@@ -777,8 +777,7 @@ def render_page(config: dict) -> str:
     freshness = gather_freshness()
     backtest_window = gather_backtest_window(primary_results, results["per_division"])
 
-    # Staleness threshold (METRICS.md Sec.26): read from config.yaml page_timestamps at build time.
-    STALENESS_THRESHOLD_DAYS = rv.staleness_threshold_days(config)
+    # Freshness (METRICS.md Sec.26, amended 2026-10-14): each source is judged by its own pull cadence (config page_timestamps), against the build date.
     page_built_at = datetime.now().strftime("%Y-%m-%d %H:%M")
     built_dt = datetime.strptime(page_built_at, "%Y-%m-%d %H:%M")
     data_pulled_at = freshness["data_pulled_at_min"]
@@ -787,17 +786,16 @@ def render_page(config: dict) -> str:
     # evaluated per section, not from the single oldest input on the page, so one stale section
     # never marks a whole page stale." Each section's own age against page_built_at is checked
     # independently -- no single global is_stale flag any more.
-    section_ages = {label: (built_dt - datetime.strptime(pulled_at[:16], "%Y-%m-%d %H:%M")).days
-                     for label, pulled_at in freshness["sections"].items()}
-    stale_sections = [label for label, age in section_ages.items() if age > STALENESS_THRESHOLD_DAYS]
+    stale_sections = [label for label, pulled_at in freshness["sections"].items()
+                      if rv.is_old(rv.source_cadence(config, label), pulled_at, built_dt, config)]
 
     freshness_rows = "".join(
         f"<tr><td><!-- source: {freshness['section_sources'][label]} -->{html.escape(label)}</td><td>{rv.thai_datetime_short(value, seconds=len(str(value).strip()) >= 19)}</td>"
-        f"<td>{f'เก่ากว่า {STALENESS_THRESHOLD_DAYS} วัน (Stale)' if label in stale_sections else 'ใหม่ (Fresh)'}</td></tr>"
+        f"<td>{'เก่า (Stale)' if label in stale_sections else 'ใหม่ (Fresh)'}</td></tr>"
         for label, value in freshness["sections"].items()
     )
     staleness_html = (
-        f"""<p class="note-box"><b>⚠ บางส่วนของหน้านี้ใช้ข้อมูลเก่ากว่า {STALENESS_THRESHOLD_DAYS} วัน (ประเมินแยกทีละส่วน):</b>
+        f"""<p class="note-box"><b>⚠ บางส่วนของหน้านี้ใช้ข้อมูลที่เก่ากว่ารอบดึงล่าสุด (ประเมินแยกทีละส่วน):</b>
         {"; ".join(html.escape(s) for s in stale_sections)} — ส่วนอื่นของหน้านี้ที่ไม่อยู่ในรายการนี้
         ยังคงใช้ข้อมูลที่ทันสมัย (ไม่ถือว่าทั้งหน้าเก่าเพียงเพราะส่วนใดส่วนหนึ่งเก่า)<!-- METRICS.md §26 --></p>"""
         if stale_sections else ""
@@ -1017,7 +1015,7 @@ def render_page(config: dict) -> str:
       <h2>5. ข้อมูลที่ใช้ (Data)</h2>
       <table class="report-table">
         <tbody>
-          <tr><td>แหล่งข้อมูล (Source table)</td><td>{cite_config('source_table')}<!-- table: {html.escape(str(config['source_table']))} -->ระบบขายของบริษัท</td></tr>
+          <tr><td>แหล่งข้อมูล (Source table)</td><td>{cite_config('source_table')}<!-- table: {html.escape(str(config['source_table']))} -->DB (cube_Sale_APD)</td></tr>
           <!-- source: the fit window (first and last month) of vintage {vf['vintage_id']} of the forward-test log metadata, the series every figure of this page's forecast is fitted on -->
           <tr><td colspan="2" id="fit-range-line">{html.escape(report['fit_range_line'].format(first_month=rv.thai_month_short(vf['fit_first']), last_month=rv.thai_month_short(vf['fit_last'])))}</td></tr>
           <!-- Split lots; STATUS.md, Locked Decisions -->

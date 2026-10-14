@@ -103,7 +103,9 @@ def get_category_scope(config: dict) -> pd.DataFrame:
 
     code_list = "','".join(all_codes)
     source_table = config["source_table"]
-    present = run_query(f"SELECT DISTINCT itemcode FROM {source_table} WHERE itemcode IN ('{code_list}')")
+    # Decision of the user, 2026-10-14 (Prompt 29): a code whose sales rows are all outside the Omni Channel has NO history. The pull is limited by channel only; it keeps
+    # its years (no date filter, as before) and every status.
+    present = run_query(f"SELECT DISTINCT itemcode FROM {source_table} WHERE itemcode IN ('{code_list}') AND {revenue_type_sql_clause(config)}")
     present_codes = set(present["itemcode"])
     scope_df["has_any_history"] = scope_df["code"].isin(present_codes)
     return scope_df

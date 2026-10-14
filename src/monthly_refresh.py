@@ -276,6 +276,27 @@ def _pull_stage(label: str, script: str, output_path: str, args: list = None) ->
     return out
 
 
+SCOPE_FLAGS_PATH = os.path.join(PROJECT_ROOT, "output", "summary", "part1_category_scope_all_codes.csv")
+
+
+def _history_flags() -> dict:
+    """{code: has_any_history} of the 128-item scope file as it stands (empty when the file does not exist yet)."""
+    try:
+        df = pd.read_csv(SCOPE_FLAGS_PATH)
+        return {str(c): bool(v) for c, v in zip(df["code"], df["has_any_history"])}
+    except (OSError, ValueError, KeyError):
+        return {}
+
+
+def _report_history_flips(before: dict, after: dict) -> dict:
+    """The codes whose has_any_history changed between two runs of the pilot pull (the flag counts Omni Channel rows only since 2026-10-14, Prompt 29). Printed in the run
+    log (one line per direction, codes only) so a code that lost or gained its history is seen, never silent."""
+    lost = sorted(c for c in after if before.get(c) is True and after[c] is False)
+    gained = sorted(c for c in after if before.get(c) is False and after[c] is True)
+    logger.info("has_any_history (Omni Channel rows only): %d code(s) lost their history: %s; %d gained it: %s", len(lost), ", ".join(lost) or "none", len(gained), ", ".join(gained) or "none")
+    return {"lost_history": lost, "gained_history": gained, "n_codes": len(after)}
+
+
 def step1_pull_data(dry_run: bool, offline: bool = False) -> dict:
     if offline:
         # Test/offline mode: no connection at all; the data already under output/data is used as this run's pull.
@@ -329,7 +350,9 @@ def step1_pull_data(dry_run: bool, offline: bool = False) -> dict:
     result["n_divisions"] = monthly["division"].nunique()
     # ---- the other pulls the pages need, in the same pull stage (C-fix Parts 1 and 2). Each is recorded and
     # never aborts the run: a failure leaves the older file in place and the run log says "not refreshed".
+    flags_before = _history_flags()
     result["pilot_128item_refresh"] = _pull_stage("128-item pilot monthly file", "load_data_full.py", PILOT_MONTHLY_PATH)
+    result["has_any_history_flips"] = _report_history_flips(flags_before, _history_flags())
     result["inventory_pull"] = _pull_stage("inventory.json pulls", "build_inventory_dataset.py",
                                            os.path.join(INVENTORY_PULL_DIR, "pull_meta.json"),
                                            args=["--save-pulls", INVENTORY_PULL_DIR])

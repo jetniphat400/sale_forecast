@@ -290,3 +290,64 @@ def test_mase_or_undefined_converts_nan_to_none():
         for _, r in df.iterrows()
     ]
     assert records[0]["MASE"] is None
+
+
+# ------------------------------------------------------------------ Prompt 29: freshness by pull cadence (config page_timestamps, METRICS.md Sec.26)
+def _cfg():
+    import yaml
+    with open(os.path.join(PROJECT_ROOT, "config", "config.yaml"), encoding="utf-8") as f:
+        return yaml.safe_load(f)
+
+
+@pytest.mark.parametrize("today,pulled,old", [
+    ("2026-10-04", "2026-09-07", False),    # before October's run day (Monday 5 October): the latest run day is 7 September (the 5th of September was a Saturday)
+    ("2026-10-04", "2026-09-06", True),
+    ("2026-10-05", "2026-10-05", False),    # on the run day, a pull of that day is fresh
+    ("2026-10-05", "2026-10-04", True),     # ... and one from the day before is old
+    ("2026-10-14", "2026-10-05", False),    # the 2026-10-05 pull is fresh all month, until the next run day
+    ("2026-11-04", "2026-10-05", False),
+    ("2026-11-05", "2026-10-05", True),     # the next run day has come and no new pull yet: old
+    ("2026-11-05", "2026-11-05", False),
+])
+def test_a_monthly_source_is_old_when_pulled_before_the_latest_run_day(today, pulled, old):
+    import reader_values as rv
+    assert rv.is_old("monthly", pulled, today, _cfg()) is old
+
+
+@pytest.mark.parametrize("today,pulled,old", [
+    ("2026-10-12", "2026-10-09", False),    # Monday: the previous weekday is the Friday, a Friday pull is fresh
+    ("2026-10-12", "2026-10-08", True),     # ... a Thursday pull is old
+    ("2026-10-13", "2026-10-12", False),    # Tuesday: the previous weekday is Monday
+    ("2026-10-13", "2026-10-09", True),     # a Friday pull seen on Tuesday is old
+    ("2026-10-10", "2026-10-09", False),    # Saturday: the previous weekday is Friday
+    ("2026-10-11", "2026-10-08", True),     # Sunday
+])
+def test_a_daily_source_is_old_when_pulled_before_the_previous_weekday(today, pulled, old):
+    import reader_values as rv
+    assert rv.is_old("daily", pulled, today, _cfg()) is old
+
+
+def test_every_freshness_tagged_source_is_classified_once_and_an_unclassified_one_stops_the_build():
+    import reader_values as rv
+    cfg = _cfg()
+    pt = cfg["page_timestamps"]
+    assert not set(pt["monthly_sources"]) & set(pt["daily_sources"])
+    assert {rv.source_cadence(cfg, s) for s in pt["monthly_sources"]} == {"monthly"} and {rv.source_cadence(cfg, s) for s in pt["daily_sources"]} == {"daily"}
+    with pytest.raises(rv.ReaderValueError, match="neither list"):
+        rv.source_cadence(cfg, "a new section")
+    with pytest.raises(rv.ReaderValueError, match="unknown freshness cadence"):
+        rv.freshness_cutoff("weekly", "2026-10-14", cfg)
+    # every section of the sales report is on the monthly list
+    import build_report
+    assert {"ช่วงข้อมูลหลัก", "ผลทดสอบต่อฝ่าย", "กราฟ Rolling-origin", "กราฟระยะเวลาแจ้งล่วงหน้า", "กราฟ MAE โมเดลพื้นฐาน", "กราฟส่งตรงวันพอดี", "กราฟส่งทัน"} <= set(pt["monthly_sources"])
+
+
+def test_the_two_thresholds_are_manual_values_and_the_manual_uses_them_and_the_old_one_is_gone():
+    import reader_values as rv
+    cfg = _cfg()
+    values = rv.manual_values(cfg)
+    assert "stale_days" not in values and values["stale_daily"] == str(cfg["page_timestamps"]["daily_weekdays_back"])
+    assert values["stale_monthly"] == rv.thai_date_short(rv.latest_run_day(rv.date_today(), int(cfg["shadow"]["monthly_run_day_of_month"])).isoformat())
+    manual = open(os.path.join(PROJECT_ROOT, "docs", "user_manual.md"), encoding="utf-8").read()
+    assert "{stale_monthly}" in manual and "{stale_daily}" in manual and "{stale_days}" not in manual
+    assert "staleness_threshold_days" not in cfg["page_timestamps"]

@@ -567,3 +567,19 @@ def test_the_recorded_open_orders_finding_matches_the_config_flag():
         res = json.load(f)
     assert REAL_CFG["open_orders_usable"] is bool(res["usable"]), "the config flag must equal the recorded test's verdict"
     assert res["criteria"] == REAL_CFG["open_orders_test"]
+
+
+def test_the_scoped_divisions_rows_come_from_the_latest_pull_when_it_carries_revenue_type_and_nothing_falls_back(project):
+    root, cfg = project
+    cfg = copy.deepcopy(cfg)
+    cfg["backlog_channel_scope"] = {"PEM101": "Omni Channel"}
+    d = cfg["stock_pull_dir"]
+    inv = pd.read_pickle(os.path.join(root, *d.split("/"), "inventory.pkl"))
+    b = pd.read_pickle(os.path.join(root, *d.split("/"), "backlog_ces.pkl")).assign(RevenueType="Omni Channel")
+    b = pd.concat([b, pd.DataFrame([{"ContractID": "T", "ItemCode": "D101", "CustomerID": "x", "ForecastDelDate": "2026-10-21", "PlanDelDate": "2026-10-21", "ActualQty": 0, "BacklogQty": 500,
+                                     "Timestamp": "2026-10-05 07:00:00", "RevenueType": "Tendering"}])], ignore_index=True)
+    _save_pull(root, d, "2026-10-14 08:00:24", inv, b)
+    plan = op.build_plan(root, TODAY, cfg=cfg, full_cfg=op.load_full_config(root))
+    assert plan["meta"]["backlog_pull"]["scoped_rows_from"] is None                           # no saved week-3 rows are needed
+    assert plan["meta"]["counts"]["backlog_rows_dropped_by_channel_scope"] == 1                # the Tendering row of the latest pull
+    assert _row(plan, "D101", "2026-10")["backlog_due"] == 50.0                                 # the 500 Tendering units are not in the plan

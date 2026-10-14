@@ -235,10 +235,11 @@ def report_snapshot_timestamp(inv: pd.DataFrame) -> dict:
 
 def query_backlog_ces(item_codes: list) -> pd.DataFrame:
     """Pulls every Cube_CES row with Status='Backlog' for the registry codes -- METRICS.md
-    Sec.14's literal confirmed-demand source (the Cube_Backlog TABLE is never used)."""
+    Sec.14's literal confirmed-demand source (the Cube_Backlog TABLE is never used). Every channel is pulled (stock and accepted orders are shared across channels);
+    RevenueType is carried so the operation plan can apply PEM103's Omni Channel limit to the latest pull (Prompt 29)."""
     code_list = "','".join(sorted(item_codes))
     sql = f"""
-        SELECT ContractID, ItemCode, CustomerID, ForecastDelDate, PlanDelDate, ActualQty, BacklogQty, Timestamp
+        SELECT ContractID, ItemCode, CustomerID, ForecastDelDate, PlanDelDate, ActualQty, BacklogQty, Timestamp, RevenueType
         FROM {CES_TABLE}
         WHERE ItemCode IN ('{code_list}') AND Status = 'Backlog'
     """

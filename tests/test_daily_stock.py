@@ -464,3 +464,40 @@ def test_changes_under_the_shared_output_folder_are_left_out_of_the_clean_check_
     assert djob.tracked_changes(str(repo), djob.shared_output_prefixes(CONFIG_WITH_PUBLISHING)) == []
     (repo / "other.txt").write_text("a real change\n", encoding="utf-8")
     assert [l[3:] for l in djob.tracked_changes(str(repo), ("output/",))] == ["other.txt"]
+
+
+# ------------------------------------------------------------------ Prompt 29: the daily backlog pull carries RevenueType (same rows, same filters, one more column)
+def test_the_daily_backlog_query_selects_revenue_type_and_changes_no_row_or_filter(monkeypatch):
+    import build_inventory_dataset as bid
+    captured = {}
+    monkeypatch.setattr(bid, "run_query", lambda sql: captured.setdefault("sql", sql) and pd.DataFrame())
+    bid.query_backlog_ces(["A", "B"])
+    sql = " ".join(captured["sql"].split())
+    assert sql == ("SELECT ContractID, ItemCode, CustomerID, ForecastDelDate, PlanDelDate, ActualQty, BacklogQty, Timestamp, RevenueType "
+                   "FROM [salewarehouse].[dbo].[Cube_CES] WHERE ItemCode IN ('A','B') AND Status = 'Backlog'")
+
+
+def test_the_daily_job_builds_its_files_from_a_pull_whose_backlog_has_the_revenue_type_column(tmp_path, monkeypatch):
+    pull_dir, meta = _synthetic_pull(tmp_path)
+    ces = pd.read_pickle(os.path.join(pull_dir, "backlog_ces.pkl")).assign(RevenueType=["Omni Channel"])
+    ces = pd.concat([ces, ces.assign(ContractID="C2", RevenueType="Tendering", BacklogQty=9.0)], ignore_index=True)
+    ces.to_pickle(os.path.join(pull_dir, "backlog_ces.pkl"))
+
+    class _Done:
+        returncode, stderr = 0, ""
+
+    def fake_run(cmd, **kw):
+        with open(cmd[cmd.index("--out") + 1], "w", encoding="utf-8") as f:
+            json.dump({"snapshot": {"generated_at": meta["pulled_at_utc"]}}, f)
+        return _Done()
+    monkeypatch.setattr(djob.subprocess, "run", fake_run)
+    out_dir = tmp_path / "daily_out"
+    out_dir.mkdir()
+    built = djob.build_stage(PROJECT_ROOT, pull_dir, str(out_dir))
+    assert built["payload"]["format_version"] == 1 and "RevenueType" in built["backlog_ces"].columns
+    inv, cesx = _frames()
+    assert sd.dumps(sd.build_payload(inv, cesx.assign(RevenueType="Omni Channel"), "2026-10-06 08:00:05")) == sd.dumps(sd.build_payload(inv, cesx, "2026-10-06 08:00:05")), \
+        "the stock file must not change when the backlog carries one more column"
+    import build_inventory_dataset as bid
+    per_code, detail = bid.dedup_and_aggregate_ces_backlog(ces)
+    assert float(per_code["backlog"].sum()) == float(bid.dedup_and_aggregate_ces_backlog(ces.drop(columns="RevenueType"))[0]["backlog"].sum())      # every channel counts (stock panel)

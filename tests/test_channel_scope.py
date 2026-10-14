@@ -85,3 +85,27 @@ def test_load_data_all_divisions_default_query_is_unchanged(monkeypatch):
     lda.pull_raw_sales(_config(), scope)
     assert "revenue_type = 'Omni Channel'" in captured["sql"]
     assert "Tendering" not in captured["sql"]
+
+
+# ---------------------------------------------------------------- Prompt 29 (row 20): has_any_history counts Omni Channel rows only, by channel, keeping every year
+def test_the_has_any_history_pull_is_limited_to_the_omni_channel_and_adds_no_date_filter(monkeypatch):
+    captured = []
+    monkeypatch.setattr(ldf, "run_query", lambda sql: captured.append(sql) or pd.DataFrame({"itemcode": ["A"]}))
+    monkeypatch.setattr(ldf, "load_visible_product_rows", lambda path: pd.DataFrame({"code": ["A", "B"], "category": [ldf.CATEGORIES[0]] * 2, "type": ["t", "t"], "sheet": ["PEM101-Version 2"] * 2}))
+    cfg = _config()
+    cfg.update({"pricelist_path": "reference/pricelist.xlsx", "sheet_to_division": {"PEM101-Version 2": "PEM101"}})
+    scope = ldf.get_category_scope(cfg)
+    sql = captured[0]
+    assert "revenue_type = 'Omni Channel'" in sql and "SELECT DISTINCT itemcode" in sql
+    assert "createDate" not in sql and "status" not in sql.lower().replace("select distinct", "")       # years and statuses are kept: no date and no status condition
+    assert scope.set_index("code")["has_any_history"].to_dict() == {"A": True, "B": False}
+
+
+def test_the_monthly_run_reports_the_codes_that_lost_or_gained_their_history(caplog):
+    import logging
+    import monthly_refresh as mr
+    with caplog.at_level(logging.INFO, logger="monthly_refresh"):
+        out = mr._report_history_flips({"A": True, "B": True, "C": False, "D": True}, {"A": True, "B": False, "C": True, "D": True})
+    assert out == {"lost_history": ["B"], "gained_history": ["C"], "n_codes": 4}
+    assert "1 code(s) lost their history: B; 1 gained it: C" in caplog.text
+    assert mr._report_history_flips({}, {"A": True})["lost_history"] == []                              # no earlier file: nothing flips

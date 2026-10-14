@@ -121,8 +121,8 @@ def test_the_calibrated_target_note_states_the_fitted_count_from_the_ensemble_ou
 
 
 # ------------------------------------------------------------------ manual text (part 4)
-LINE_1 = "ค่าที่ตั้งในระบบ คือ Min/Max ที่บันทึกไว้ในระบบคลัง คนสั่งของใช้ดูประกอบการสั่ง แต่ยังไม่ได้ตรวจว่าตั้งไว้เหมาะสมหรือไม่ จึงใช้เป็นตัวเทียบเท่านั้น"
-LINE_2 = 'Max ที่แสดงว่า "ไม่ได้กรอก" คือรายการที่ไม่ได้ใส่ค่า Max ไว้ในระบบ'
+LINE_1 = "ค่าที่ตั้งใน DB (Cube_Inventory_Exact) คือ Min/Max ที่บันทึกไว้ใน DB (Cube_Inventory_Exact) คนสั่งของใช้ดูประกอบการสั่ง แต่ยังไม่ได้ตรวจว่าตั้งไว้เหมาะสมหรือไม่ จึงใช้เป็นตัวเทียบเท่านั้น"
+LINE_2 = 'Max ที่แสดงว่า "ไม่ได้กรอก" คือรายการที่ไม่ได้ใส่ค่า Max ไว้ใน DB (Cube_Inventory_Exact)'
 
 
 def test_both_manual_files_carry_the_two_approved_lines_and_not_the_old_note():

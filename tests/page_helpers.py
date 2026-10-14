@@ -109,8 +109,19 @@ def require_browser():
     return exe
 
 
+def profile_pids(profile: str) -> list:
+    """PIDs of every process whose command line names `profile` (the temporary folder this helper created for its own Edge). Edge starts helper
+    processes that outlive the root (a taskkill of the root PID alone left them running, 2026-10-14), and every one of them carries the profile path in its
+    command line, so the profile path identifies exactly the processes this helper started. Never matched by program name."""
+    script = ("Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -and $_.CommandLine.Contains('" + profile.replace("'", "''") +
+              "') -and $_.ProcessId -ne $PID } | ForEach-Object { $_.ProcessId }")
+    out = subprocess.run(["powershell", "-NoProfile", "-NonInteractive", "-Command", script], capture_output=True, text=True).stdout
+    return [int(x) for x in out.split() if x.strip().isdigit() and int(x) != os.getpid()]
+
+
 class Edge:
-    """Own headless Edge on a temp profile; only its own PID is closed."""
+    """Own headless Edge on a temp profile. close() ends the whole process tree this helper started (the root and every process that names its profile, by PID)
+    and deletes the profile, also when a test failed; an atexit hook does the same if the session is interrupted."""
 
     def __init__(self, exe):
         import websocket
@@ -125,6 +136,9 @@ class Edge:
              "--no-first-run", "--no-default-browser-check", "--allow-file-access-from-files", "about:blank"],
             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         self.pid = self.proc.pid
+        self._closed = False
+        import atexit
+        atexit.register(self.close)
         self.ws, self._id, self.errors, self._tab = None, 0, [], None
         for _ in range(60):
             try:
@@ -223,6 +237,23 @@ class Edge:
                 self.ws.close()
         except Exception:
             pass
+        if getattr(self, "_closed", False):
+            return
+        self._closed = True
         subprocess.run(["taskkill", "/PID", str(self.pid), "/T", "/F"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        time.sleep(1)
-        shutil.rmtree(self.profile, ignore_errors=True)
+        for _ in range(10):                                     # the helper processes named by the profile path, by PID (tree), until none is left
+            pids = profile_pids(self.profile)
+            if not pids:
+                break
+            for pid in pids:
+                subprocess.run(["taskkill", "/PID", str(pid), "/T", "/F"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            time.sleep(1)
+        for _ in range(10):
+            shutil.rmtree(self.profile, ignore_errors=True)
+            if not os.path.exists(self.profile):
+                break
+            time.sleep(1)
+
+    def leftovers(self) -> dict:
+        """What this helper's Edge left behind: the PIDs naming its profile and whether the profile folder still exists."""
+        return {"pids": profile_pids(self.profile), "profile_exists": os.path.exists(self.profile)}

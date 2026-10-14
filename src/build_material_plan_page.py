@@ -43,13 +43,15 @@ TEXT = {
     "back_link": "← กลับไปหน้าหลัก (Dashboard)",
     "notice": "แผนนี้เป็นร่าง (Draft) ยังอยู่ระหว่างตรวจสอบ ตัวเลขต้องสั่งยังใช้สั่งซื้อจริงไม่ได้ จนกว่าจะกำหนดเกณฑ์ว่าตรงกับใบสั่งซื้อจริงแค่ไหนถึงใช้ได้ (ดูแท็บสมมติฐานที่ใช้อยู่)",
     "unit_flag": "หน่วยซื้อไม่ตรงกับหน่วยใน BOM",
-    "no_unit_flag": "ไม่มีหน่วยซื้อในระบบ",
+    "no_unit_flag": "ไม่มีหน่วยซื้อใน DB (Cube_PriceList, Cube_tobe_received)",
     "demand_col": "ความต้องการ",
+    "channels": "รวมทุกช่องทาง (ยกเว้น PEM103)",
+    "channels_tip": "ปริมาณคิดจากแผนการผลิต ซึ่งนับ stock และออเดอร์ที่รับแล้วรวมทุกช่องทาง ยกเว้น PEM103 ที่นับเฉพาะช่องทาง Omni Channel",
     "divisions_label": "ฝ่ายที่รวมในแผนนี้:",
     "division_no_production": "{division} ไม่มียอดผลิตในแผน จึงไม่มีวัตถุดิบ",
-    "coverage_line": "สินค้าในแผนการผลิต {n_items} รหัส คิดวัตถุดิบ {n_exploded} รหัส ไม่ได้คิด {n_not} รหัส: ไม่มียอดผลิตใน {n_months} เดือนนี้ {n_no_demand} รหัส · ไม่มีบันทึกผลิตในระบบ {n_no_production} รหัส · ไม่มี BOM ในระบบ {n_no_bom} รหัส",
+    "coverage_line": "สินค้าในแผนการผลิต {n_items} รหัส คิดวัตถุดิบ {n_exploded} รหัส ไม่ได้คิด {n_not} รหัส: ไม่มียอดผลิตใน {n_months} เดือนนี้ {n_no_demand} รหัส · ไม่มีบันทึกผลิตใน DB (cube_final) {n_no_production} รหัส · ไม่มี BOM ใน DB (Cube_BOM_Exact) {n_no_bom} รหัส",
     "coverage_cols": ["รหัส", "ชื่อ", "ฝ่าย", "เหตุผล"],
-    "coverage_reason": {"no_demand": "ไม่มียอดผลิต", "no_production": "ไม่มีบันทึกผลิตในระบบ", "no_bom": "ไม่มี BOM ในระบบ"},
+    "coverage_reason": {"no_demand": "ไม่มียอดผลิต", "no_production": "ไม่มีบันทึกผลิตใน DB (cube_final)", "no_bom": "ไม่มี BOM ใน DB (Cube_BOM_Exact)"},
     # Remarks (METRICS.md Sec.54): every line stays in its table; a line that is not goods carries a remark and is left out of the counts of the summary line under each list.
     "summary_line": "ทั้งหมด {all} รายการ นับ {counted} รายการ · ไม่นับค่าแรง/ค่าจ้าง/ค่าบริการ/ไม่ใช่สินค้า {paid} รายการ (ไม่ใช่สินค้า ไม่ต้อง stock)",
     "summary_pending": " · รอตรวจ {pending} รายการ ยังนับรวมไว้จนกว่าจะมีคนยืนยันว่าเป็นสินค้าหรือไม่",
@@ -151,6 +153,7 @@ def compute_values(material_month: pd.DataFrame, summary: pd.DataFrame, meta: di
 
 
 CSS_EXTRA = """
+  .allch { font-size: 11px; font-weight: 400; background: #eef4fb; border: 1px solid var(--border); border-radius: 10px; padding: 0 6px; margin-left: 6px; color: var(--text-secondary); cursor: help; white-space: nowrap; }
   #coverage-details { margin: 6px 0 12px; }
   #coverage-details summary { cursor: pointer; }
   .flag.remark { display: inline-block; margin: 0 0 0 8px; font-size: 11.5px; }
@@ -185,9 +188,14 @@ def summary_html(v: dict, key: str, element_id: str) -> str:
     return f'<p class="note-line summary-line" id="{element_id}">{_e(text)}</p>'
 
 
+def _channels_badge() -> str:
+    """The label on the quantity headers: the quantities follow the operation plan's demand (Prompt 29, decision of the user, 2026-10-14)."""
+    return f' <span class="allch" title="{_e(TEXT["channels_tip"])}">{_e(TEXT["channels"])}</span>'
+
+
 def order_table(rows_df: pd.DataFrame, table_id: str) -> str:
     """One list: the approved columns; a flagged material shows a dash for its quantity and date."""
-    th = "".join(f'<th class="{"name" if i in (1, 2) else ""}">{_e(c)}</th>' for i, c in enumerate(TEXT["now_cols"]))
+    th = "".join(f'<th class="{"name" if i in (1, 2) else ""}">{_e(c)}{_channels_badge() if i == 3 else ""}</th>' for i, c in enumerate(TEXT["now_cols"]))
     rows = []
     for _, r in rows_df.iterrows():
         rows.append(f'<tr data-material="{_e(r["material"])}"><td class="code">{_e(r["material"])}{flag_html(r)}{remark_html(r)}</td><td class="name">{_e(r["name"] or DASH)}</td>'
@@ -230,7 +238,7 @@ def render(values: dict) -> str:
     parts.append(summary_html(v, "main", "main-summary"))
     head1 = "".join(f'<th rowspan="2" class="{"name" if i == 1 else ""}">{_e(c)}</th>' for i, c in enumerate(T["main_cols"]))
     head1 += "".join(f'<th colspan="2">{_e(l)}</th>' for l in v["month_labels"])
-    head2 = "".join(f'<th>{_e(T["demand_col"])}</th><th>{_e(T["net_col"])}</th>' for _ in v["month_labels"])
+    head2 = "".join(f'<th>{_e(T["demand_col"])}{_channels_badge()}</th><th>{_e(T["net_col"])}</th>' for _ in v["month_labels"])
     body = []
     for _, r in v["main"].iterrows():
         m = r["material"]

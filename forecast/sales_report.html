@@ -67,7 +67,7 @@
   
     <details class="note-box" style="margin:10px 0" id="page-data-line">
       <summary style="cursor:pointer"><!-- round = run month of vintage 2 of the forward-test log; fit_last = that vintage's last fit month; built_at = page_built_at; oldest data_pulled_at of the page: 2026-10-05 07:41 ICT (UTC+7), per section below
-        --><span id="freshness-line">Forecast (ยอดทาย) รันเมื่อ ต.ค. 69 · ใช้ยอดขายถึง ส.ค. 69 · หน้าสร้างเมื่อ 12 ต.ค. 69 15:03</span><!-- source: src/build_report.py rv.vintage_facts()/datetime.now(), this build run --></summary>
+        --><span id="freshness-line">Forecast (ยอดทาย) รันเมื่อ ต.ค. 69 · ใช้ยอดขายถึง ส.ค. 69 · หน้าสร้างเมื่อ 14 ต.ค. 69 09:07</span><!-- source: src/build_report.py rv.vintage_facts()/datetime.now(), this build run --></summary>
       <h3 style="margin-top:10px">ข้อมูลแต่ละส่วนดึงเมื่อ</h3>
       <table class="report-table" style="margin-top:8px">
         <thead><tr><th>ส่วน</th><th>ดึงเมื่อ</th><th>สถานะ</th></tr></thead>
@@ -149,7 +149,7 @@
       <h2>5. ข้อมูลที่ใช้ (Data)</h2>
       <table class="report-table">
         <tbody>
-          <tr><td>แหล่งข้อมูล (Source table)</td><td><!-- source: config.yaml, field source_table --><!-- table: [salewarehouse].[dbo].[cube_Sale_APD] -->ระบบขายของบริษัท</td></tr>
+          <tr><td>แหล่งข้อมูล (Source table)</td><td><!-- source: config.yaml, field source_table --><!-- table: [salewarehouse].[dbo].[cube_Sale_APD] -->DB (cube_Sale_APD)</td></tr>
           <!-- source: the fit window (first and last month) of vintage 2 of the forward-test log metadata, the series every figure of this page's forecast is fitted on -->
           <tr><td colspan="2" id="fit-range-line">ยอดขายที่ใช้ทาย ก.พ. 67 ถึง ส.ค. 69</td></tr>
           <!-- Split lots; STATUS.md, Locked Decisions -->
@@ -245,7 +245,7 @@
     </section>
     <section id="limitations">
       <h2>8. ข้อจำกัด (Limitations)</h2>
-      <ul><li>วันส่งตามสัญญาอาจถูกแก้หลังรับ PO ระบบไม่มีบันทึกการแก้ ตรวจจากสินค้า PEM101 (128 รหัส) แล้วกระทบประมาณ 2.5% ของรายการ</li><li>ไม่มีข้อมูลประวัติของ Price List เวอร์ชันเก่า จึงไม่สามารถตรวจสอบได้ว่าการจัดฝ่าย/ประเภท สินค้าเคยเปลี่ยนแปลงไปจากอดีตหรือไม่ (cannot be determined จากข้อมูลที่มีอยู่ในปัจจุบัน)</li><li>ยอดขายนับจาก PO ที่ลูกค้าสั่งจริงเท่านั้น จึงไม่เห็นความต้องการที่ไม่ได้กลายเป็น PO เช่น ลูกค้าที่ไม่สั่งเพราะรู้ว่าไม่มีของ</li><li>ไม่มีข้อมูลเวลาประกอบหลังได้ชิ้นส่วน ตัวเลขนี้ในการวางแผน stock เป็นค่าสมมติ</li><li>Min/Max ที่ตั้งอยู่ในระบบตอนนี้ใช้คำนวณไม่ได้ 46 จาก 128 รายการของ PEM101 ไม่ได้ตั้ง และค่าที่มีไม่สอดคล้องกัน ใช้ได้แค่เป็นตัวเทียบ</li></ul>
+      <ul><li>วันส่งตามสัญญาอาจถูกแก้หลังรับ PO DB (cube_Sale_APD) ไม่มีบันทึกการแก้ ตรวจจากสินค้า PEM101 (128 รหัส) แล้วกระทบประมาณ 2.5% ของรายการ</li><li>ไม่มีข้อมูลประวัติของ Price List เวอร์ชันเก่า จึงไม่สามารถตรวจสอบได้ว่าการจัดฝ่าย/ประเภท สินค้าเคยเปลี่ยนแปลงไปจากอดีตหรือไม่ (cannot be determined จากข้อมูลที่มีอยู่ในปัจจุบัน)</li><li>ยอดขายนับจาก PO ที่ลูกค้าสั่งจริงเท่านั้น จึงไม่เห็นความต้องการที่ไม่ได้กลายเป็น PO เช่น ลูกค้าที่ไม่สั่งเพราะรู้ว่าไม่มีของ</li><li>ไม่มีข้อมูลเวลาประกอบหลังได้ชิ้นส่วน ตัวเลขนี้ในการวางแผน stock เป็นค่าสมมติ</li><li>Min/Max ที่ตั้งอยู่ใน DB (Cube_Inventory_Exact) ตอนนี้ใช้คำนวณไม่ได้ 46 จาก 128 รายการของ PEM101 ไม่ได้ตั้ง และค่าที่มีไม่สอดคล้องกัน ใช้ได้แค่เป็นตัวเทียบ</li></ul>
     </section>
     <section id="next-steps">
       <h2>9. ขั้นตอนต่อไป (Next Steps)</h2>

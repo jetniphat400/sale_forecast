@@ -204,7 +204,7 @@ CSV_TRANSFORMS = {"phaseC_step1revised_item_status_445.csv": _more_placeholders,
 def _perturb_config(cfg):
     cfg = copy.deepcopy(cfg)
     cfg["backtest"]["min_train_months"] = cfg["backtest"]["min_train_months"] + 4
-    cfg["page_timestamps"]["staleness_threshold_days"] = 1
+    cfg["page_timestamps"]["daily_weekdays_back"] = 3
     cfg["report_statistics"]["paired_t_threshold"] = 3
     cfg["backtest"]["holdout_months"] = 5
     cfg["inventory_page"]["tier_a_ranges"]["cycle_service_level"] = [0.85, 0.97]
@@ -339,8 +339,6 @@ def test_sales_report_numbers_follow_their_sources(two_builds):
     assert fp == pytest.approx(2 * fb, abs=0.11), (fb, fp)
     # on-time 2023 value in the executive summary
     assert _first(r"ปรับตัวขึ้นจาก [\d.]+% \(ปี (\d{2})\)", b) == "66" and _first(r"ปรับตัวขึ้นจาก [\d.]+% \(ปี (\d{2})\)", p) == "67"
-    # staleness threshold from config
-    assert "เก่ากว่า 1 วัน" in p and "เก่ากว่า 1 วัน" not in b
     # the "does Top-down beat the others" block: percentages and verdicts come from topdown_significance.csv
     import build_report
     sig = pd.read_csv(os.path.join(rv.SUMMARY_DIR, "topdown_significance.csv"))
@@ -360,18 +358,19 @@ def _pilot_row(html_text):
     return m.group(1), m.group(2)
 
 
-@pytest.mark.parametrize("age_days,expect_notice", [(5, True), (0, False)])
-def test_pilot_data_age_drives_the_staleness_notice_in_both_directions(tmp_path, monkeypatch, age_days, expect_notice):
-    """With a 1-day threshold: a pilot data date 5 days old shows the notice with its date; one from now shows none.
+@pytest.mark.parametrize("days_before_cutoff,expect_notice", [(1, True), (0, False)])
+def test_pilot_data_date_against_the_monthly_cutoff_drives_the_stale_tag_in_both_directions(tmp_path, monkeypatch, days_before_cutoff, expect_notice):
+    """The sales report's sources are monthly-pulled: a pilot data date one day before the latest monthly run day is tagged old, one ON that day is fresh (Prompt 29).
     The pilot file's data date is set by the test (set_pilot_data_date), whatever the real file's age."""
     import build_report
-    stamp = set_pilot_data_date(monkeypatch, age_days)
-    monkeypatch.setattr(rv, "staleness_threshold_days", lambda config: 1)
+    from datetime import date, timedelta
+    cutoff = rv.freshness_cutoff("monthly", date.today(), build_report.load_config())
+    stamp = set_pilot_data_date(monkeypatch, (date.today() - (cutoff - timedelta(days=days_before_cutoff))).days)
     path = build_report.build_report(output_path=str(tmp_path / "sales.html"))
     with open(path, encoding="utf-8") as f:
         shown, status = _pilot_row(f.read())
     assert shown == rv.thai_datetime_short(stamp, seconds=True), "the page must show the data date the test set"
-    assert status == ("เก่ากว่า 1 วัน (Stale)" if expect_notice else "ใหม่ (Fresh)")
+    assert status == ("เก่า (Stale)" if expect_notice else "ใหม่ (Fresh)")
 
 
 # ------------------------------------------------------------------ inventory page (static text and data)
@@ -390,7 +389,7 @@ def test_inventory_page_numbers_follow_their_sources(two_builds):
     assert llp["lead_min"] == 2 and llp["lead_max"] == 45 and llb["lead_max"] != 45, "the lead range is typed, not read from the members"
     assert llp["material_lead_median_observed"] == llb["material_lead_median_observed"] + 10, "the observed material lead median is typed, not read from the per-item output"
     assert llp["n_observed"] == llb["n_observed"] and llp["n_items"] == llb["n_items"] == 92 and 0 < llb["n_observed"] <= llb["n_items"]
-    assert pert.data["staleness_threshold_days"] == 1 and base.data["staleness_threshold_days"] != 1
+    assert pert.data["freshness"]["daily_weekdays_back"] == 3 and base.data["freshness"]["daily_weekdays_back"] == 1
     # PEM107 split month is read from the alert data, with wording only for the month approved
     assert base.data["pem107_alert"]["split_label"] != pert.data["pem107_alert"]["split_label"]
 
@@ -518,7 +517,7 @@ def test_operation_plan_division_lines_follow_the_counts_of_the_plan():
     meta2["counts"]["stock_items_by_division"]["PEM102"] = 3          # a division that has stock items no longer says it has none
     pert = bp.render(bp.compute_values(im, dm, meta2, {}, "2026-10-02", SIX))
     assert "1 รหัสยังไม่มียอดทาย (ประวัติขายไม่พอ) แผนนับเฉพาะออเดอร์ที่รับแล้วแต่ยังไม่ส่ง (open orders) ตอนนี้มีออเดอร์ที่รับแล้วยังไม่ส่ง 1 รหัส" in base and "41 รหัสยังไม่มียอดทาย (ประวัติขายไม่พอ) แผนนับเฉพาะออเดอร์ที่รับแล้วแต่ยังไม่ส่ง (open orders) ตอนนี้มีออเดอร์ที่รับแล้วยังไม่ส่ง 1 รหัส" in pert and "41 รหัส" not in base
-    assert "1 รหัสไม่มีบันทึกผลิตในระบบ (ไม่ได้แปลว่ายกเลิกผลิต) ไม่นับรวมในยอดผลิตตามแผน" in base and "17 รหัสไม่มีบันทึกผลิตในระบบ (ไม่ได้แปลว่ายกเลิกผลิต) ไม่นับรวมในยอดผลิตตามแผน" in pert
+    assert "1 รหัสไม่มีบันทึกผลิตใน DB (cube_final) (ไม่ได้แปลว่ายกเลิกผลิต) ไม่นับรวมในยอดผลิตตามแผน" in base and "17 รหัสไม่มีบันทึกผลิตใน DB (cube_final) (ไม่ได้แปลว่ายกเลิกผลิต) ไม่นับรวมในยอดผลิตตามแผน" in pert
     assert "PEM102 ไม่มีสินค้าที่เข้าเกณฑ์เก็บ stock" in base and "PEM102 ไม่มีสินค้าที่เข้าเกณฑ์เก็บ stock" not in pert
 
 

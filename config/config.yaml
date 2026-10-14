@@ -1080,13 +1080,13 @@ report:
   limitations:
     # Previous wording of the next four items is in git history (commit 1f87b6e); the on-screen
     # text below is the approved Thai wording, used verbatim.
-    - "วันส่งตามสัญญาอาจถูกแก้หลังรับ PO ระบบไม่มีบันทึกการแก้ ตรวจจากสินค้า PEM101 ({n_scope_items} รหัส) แล้วกระทบประมาณ {forecast_date_revision_share_pct}% ของรายการ"
+    - "วันส่งตามสัญญาอาจถูกแก้หลังรับ PO DB (cube_Sale_APD) ไม่มีบันทึกการแก้ ตรวจจากสินค้า PEM101 ({n_scope_items} รหัส) แล้วกระทบประมาณ {forecast_date_revision_share_pct}% ของรายการ"
     - "ไม่มีข้อมูลประวัติของ Price List เวอร์ชันเก่า จึงไม่สามารถตรวจสอบได้ว่าการจัดฝ่าย/ประเภท
       สินค้าเคยเปลี่ยนแปลงไปจากอดีตหรือไม่ (cannot be determined จากข้อมูลที่มีอยู่ในปัจจุบัน)"
     - "ยอดขายนับจาก PO ที่ลูกค้าสั่งจริงเท่านั้น จึงไม่เห็นความต้องการที่ไม่ได้กลายเป็น PO เช่น ลูกค้าที่ไม่สั่งเพราะรู้ว่าไม่มีของ"
     # The significance sentence that stood here is replaced by the block in section 6, built from topdown_significance.csv.
     - "ไม่มีข้อมูลเวลาประกอบหลังได้ชิ้นส่วน ตัวเลขนี้ในการวางแผน stock เป็นค่าสมมติ"
-    - "Min/Max ที่ตั้งอยู่ในระบบตอนนี้ใช้คำนวณไม่ได้ {n_no_minmax} จาก {n_scope_items} รายการของ PEM101 ไม่ได้ตั้ง และค่าที่มีไม่สอดคล้องกัน ใช้ได้แค่เป็นตัวเทียบ"
+    - "Min/Max ที่ตั้งอยู่ใน DB (Cube_Inventory_Exact) ตอนนี้ใช้คำนวณไม่ได้ {n_no_minmax} จาก {n_scope_items} รายการของ PEM101 ไม่ได้ตั้ง และค่าที่มีไม่สอดคล้องกัน ใช้ได้แค่เป็นตัวเทียบ"
   # Standing next-step items, each pulled from an already-recorded open item in STATUS.md.
   next_steps:
     # The earlier next-step items (first forward-test scoring round, analogue codes for
@@ -1464,12 +1464,26 @@ backtest:
   train_val_test_owner: "Reused unchanged from src/evaluate_strategies.py / src/backtest_aggregate.py -- not a new figure. total_months (31) = train_months + val_months + test_months, computed by src/backtest_rekeyed.py, never stored here separately."
 
 # ============================================================
-# Page timestamps (METRICS.md Sec.26): a section whose data was pulled more than this many days
-# before the page was built is labelled stale. Read by src/build_report.py and
-# src/build_inventory_page.py.
+# Page timestamps (METRICS.md Sec.26, amended 2026-10-14, Prompt 29): freshness is judged by each source's own pull cadence, not by one threshold in days.
+#   monthly source: old when its pull date is before the latest monthly run day (the first weekday on or after the base day, monthly_refresh.run_day) that is on or before today;
+#   daily source:   old when its pull date is before the previous weekday (`daily_weekdays_back` weekdays before today).
+# Every freshness-tagged source is listed once, under the cadence of the job that pulls it; a source that is in neither list stops the build (reader_values.source_cadence).
+# Read by src/build_report.py, src/build_inventory_page.py (and its data), index.html's stock panel script and the manual (data/assumptions.json manual_values).
 # ============================================================
 page_timestamps:
-  staleness_threshold_days: 7
+  daily_weekdays_back: 1
+  monthly_sources:        # pulled by the monthly job (src/monthly_refresh.py step 1 and step 4)
+    - "ช่วงข้อมูลหลัก"
+    - "ผลทดสอบต่อฝ่าย"
+    - "กราฟ Rolling-origin"
+    - "กราฟระยะเวลาแจ้งล่วงหน้า"
+    - "กราฟ MAE โมเดลพื้นฐาน"
+    - "กราฟส่งตรงวันพอดี"
+    - "กราฟส่งทัน"
+    - "ข้อมูลขาย PEM103/PEM107 (หน้า Min-Max)"
+  daily_sources:          # pulled by the daily job (src/snapshot_daily.py, src/daily_stock_job.py)
+    - "สต็อค (หน้า Min-Max และแผงสต็อค)"
+    - "ยอดจอง (หน้า Min-Max และแผงสต็อค)"
 
 # ============================================================
 # Statistics (src/significance_topdown.py, METRICS.md Sec.41): the criteria of the sales report's "does Top-down beat
@@ -1700,7 +1714,7 @@ material_plan:
       no_master_record: true                                             # the item master (and the stock record) has no row for the item
       service_units: ["HOUR", "JOB", "LOT"]                              # a unit of measure that names work, not a thing
     pending_label: "รอตรวจ"
-    evidence_labels: {name: "จากชื่อ", code: "จากรหัส", item_group: "จากกลุ่มสินค้า", no_master: "ไม่มีข้อมูลในระบบ", unit: "หน่วยนับ", reviewed: "ชื่อเป็นชิ้นส่วน"}
+    evidence_labels: {name: "จากชื่อ", code: "จากรหัส", item_group: "จากกลุ่มสินค้า", no_master: "ไม่มีข้อมูลใน DB (Cube_ItemList)", unit: "หน่วยนับ", reviewed: "ชื่อเป็นชิ้นส่วน"}
     exceptions:                                                          # a line not named by an earlier rule, moved to รอตรวจ by a person's review: code: one-line reason (no description); evidence label "reviewed"
       02-00-R-7048: "user 2026-10-12: probably goods"
   # Items shown in the "used in" column (the finished goods that need most of the material).
@@ -1778,13 +1792,13 @@ maxmin_v1:
       value_source: "lead_time_days over the distinct members of the lead-time-free calibration, minimum and maximum (output/summary/week1_recal_control_members_PEM101_92.csv)"
     - id: production_time
       topic: "เวลาผลิตสินค้า"
-      unknown: "ระบบไม่บันทึกวันเริ่มผลิตจริง"
+      unknown: "DB (cube_final) ไม่บันทึกวันเริ่มผลิตจริง"
       used_now: "{assumed_production_days} วัน ({n_assumed_production} รายการ)"
       affects: "แผนสั่งวัตถุดิบ"
       value_source: "production_days and production_source of the items with source assumed (output/summary/item_lead_time_v1.csv)"
     - id: material_without_purchase_history
       topic: "วัตถุดิบที่ไม่มีประวัติสั่งซื้อ"
-      unknown: "ไม่มีใบสั่งซื้อในระบบ"
+      unknown: "ไม่มีใบสั่งซื้อใน DB (Cube_PO_Exact)"
       used_now: "เวลาที่ผู้ขายแจ้ง หรือค่าสูงของวัตถุดิบอื่น"
       affects: "แผนสั่งวัตถุดิบ"
       value_source: "METRICS.md Sec.5 item lead time version 1: supplier-quoted delivery time, else config lead_time_v1.fallback_material_days"
@@ -1808,7 +1822,7 @@ maxmin_v1:
       value_source: "STATUS.md, Q20: the highest sustained monthly output per division and Type, a lower bound"
     - id: open_production_orders
       topic: "ใบสั่งผลิตที่กำลังทำ"
-      unknown: "วันกำหนดเสร็จในระบบไม่ตรงกับวันเสร็จจริง"
+      unknown: "วันกำหนดเสร็จใน DB (Cube_Production_Order) ไม่ตรงกับวันเสร็จจริง"
       used_now: "ไม่นำมาหักจากแผน (Open production orders ยังไม่ถูกนับ)"
       affects: "แผนการผลิต"
       value_source: "config operation_plan.open_orders_usable (false) and output/summary/week2_open_orders_test.json: the planned finish does not hold and no way of telling an open order passed"

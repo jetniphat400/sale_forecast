@@ -114,12 +114,12 @@ def test_the_lead_range_and_distinct_members_equal_the_members_file(recorded):
 def test_the_ensemble_reproduces_the_last_tasks_figures(recorded):
     """The week 1 calibration report's figures (docs/reports/summary/week1_leadtime_calibration.md): recomputed here from the recorded files."""
     s = mm.ensemble_summary(CFG)
-    assert s["n_members"] == 36 and (s["lead_min"], s["lead_max"]) == (1, 30)
-    assert round(s["simulated_today"]["not_late_pct"], 2) == 96.95 and round(s["simulated_today"]["stock_value_thb"] / 1e6, 2) == 14.77
-    assert s["observed"]["not_late_pct"] == 98.34 and round(s["observed"]["stock_value_thb"] / 1e6, 2) == 15.49
+    assert s["n_members"] == 37 and (s["lead_min"], s["lead_max"]) == (1, 30)          # 36 before the Omni-filtered recalibration of 2026-10-14
+    assert round(s["simulated_today"]["not_late_pct"], 2) == 96.95 and round(s["simulated_today"]["stock_value_thb"] / 1e6, 2) == 14.87
+    assert s["observed"]["not_late_pct"] == 98.24 and round(s["observed"]["stock_value_thb"] / 1e6, 2) == 15.49
     t = s["tradeoff_to_99"]
-    assert round(t["median_pct"], 1) == 35.7 and round(t["min_pct"], 1) == 26.2 and round(t["max_pct"], 1) == 81.8
-    assert round(t["stock_at_98_median"] / 1e6, 2) == 15.64 and round(t["stock_at_99_median"] / 1e6, 2) == 21.23
+    assert round(t["median_pct"], 1) == 37.1 and round(t["min_pct"], 1) == 26.2 and round(t["max_pct"], 1) == 82.1
+    assert round(t["stock_at_98_median"] / 1e6, 2) == 15.77 and round(t["stock_at_99_median"] / 1e6, 2) == 21.62
 
 
 def test_the_dense_grid_follows_the_members_trade_off_points(recorded):
@@ -217,12 +217,12 @@ def test_the_assumptions_file_holds_the_approved_texts_and_the_computed_values(r
     v = mm.assumption_values(CFG)
     expected = {
         "minmax_lead_time": ("lead time ที่ใช้คำนวณ Min/Max", "ได้จากการปรับค่า (calibration) ให้ตรงผลจริง ไม่ได้วัดตรง", f"{v['lead_min']}-{v['lead_max']} วัน", "Min/Max ของ PEM101"),
-        "production_time": ("เวลาผลิตสินค้า", "ระบบไม่บันทึกวันเริ่มผลิตจริง", f"{v['assumed_production_days']} วัน ({v['n_assumed_production']} รายการ)", "แผนสั่งวัตถุดิบ"),
-        "material_without_purchase_history": ("วัตถุดิบที่ไม่มีประวัติสั่งซื้อ", "ไม่มีใบสั่งซื้อในระบบ", "เวลาที่ผู้ขายแจ้ง หรือค่าสูงของวัตถุดิบอื่น", "แผนสั่งวัตถุดิบ"),
+        "production_time": ("เวลาผลิตสินค้า", "DB (cube_final) ไม่บันทึกวันเริ่มผลิตจริง", f"{v['assumed_production_days']} วัน ({v['n_assumed_production']} รายการ)", "แผนสั่งวัตถุดิบ"),
+        "material_without_purchase_history": ("วัตถุดิบที่ไม่มีประวัติสั่งซื้อ", "ไม่มีใบสั่งซื้อใน DB (Cube_PO_Exact)", "เวลาที่ผู้ขายแจ้ง หรือค่าสูงของวัตถุดิบอื่น", "แผนสั่งวัตถุดิบ"),
         "sellable_warehouses": ("คลังที่นับว่าขายได้", "ประวัติการเคลื่อนไหวของคลังไม่พอ", v["sellable_warehouses"], "stock ที่ใช้เทียบกับ Min"),
         "pem101_undetermined_items": (f"สินค้า PEM101 {v['n_undetermined']} รหัส", "ยังไม่ชัดว่าเก็บ stock หรือผลิตตามสั่ง", "ไม่มี Min/Max", "Min/Max"),
         "production_capacity": ("กำลังผลิต", "ข้อมูลบอกได้แค่ยอดผลิตสูงสุดที่เคยทำ", "ใช้ยอดนั้นเป็นค่าต่ำสุดที่กำลังผลิตน่าจะทำได้ (Lower bound ไม่ใช่ขีดความสามารถจริง)", "แผนการผลิต"),
-        "open_production_orders": ("ใบสั่งผลิตที่กำลังทำ", "วันกำหนดเสร็จในระบบไม่ตรงกับวันเสร็จจริง", "ไม่นำมาหักจากแผน (Open production orders ยังไม่ถูกนับ)", "แผนการผลิต"),
+        "open_production_orders": ("ใบสั่งผลิตที่กำลังทำ", "วันกำหนดเสร็จใน DB (Cube_Production_Order) ไม่ตรงกับวันเสร็จจริง", "ไม่นำมาหักจากแผน (Open production orders ยังไม่ถูกนับ)", "แผนการผลิต"),
         "fmto_fmts_warehouses": ("คลัง FMTO และ FMTS", "ยังไม่รู้ว่าเป็นของพร้อมขายไหม", "ไม่นับ", "stock ที่ใช้เทียบกับ Min และแผนการผลิต"),
         "forecast_range": ("ยอดทาย", "ยังไม่มีช่วงสูง-ต่ำ", "ใช้ค่าเดียวต่อเดือน (point forecast)", "แผนการผลิต"),
         "calibration_window": ("ช่วงข้อมูลที่ใช้ปรับ Min/Max", "ถ้าใช้ช่วงสั้นลง lead time ที่ได้จะแคบลง", v["calibration_window"], "Min/Max ของ PEM101"),

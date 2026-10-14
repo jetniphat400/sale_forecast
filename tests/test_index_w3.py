@@ -157,11 +157,11 @@ def test_sop_row_labels_and_section5_heading(page):
 def test_stock_panel_available_note_and_three_labels(page):
     assert page["avail_th"]["note"] == AVAILABLE_NOTE
     assert page["avail_th"]["text"].startswith("Available")
-    assert re.search(r"ข้อมูล stock ในระบบ ณ \d{1,2} \S+ \d{2} \d{2}:\d{2}", page["stock"])
-    assert re.search(r"ยอดจองในระบบ ณ \d{1,2} \S+ \d{2} \d{2}:\d{2}", page["stock"])
+    assert re.search(r"ข้อมูล stock ใน DB \(Cube_Inventory_Exact\) ณ \d{1,2} \S+ \d{2} \d{2}:\d{2}", page["stock"])
+    assert re.search(r"ยอดจองใน DB \(Cube_CES\) ณ \d{1,2} \S+ \d{2} \d{2}:\d{2}", page["stock"])
     assert re.search(r"ดึงข้อมูลเมื่อ \d{1,2} \S+ \d{2} \d{2}:\d{2}", page["stock"])
     for gone in ("Cube_", "task 2a", "DATA_MAP", "METRICS", "config.yaml", "inventory.json"):
-        assert gone not in page["stock"], gone
+        assert gone not in re.sub(r"DB \(Cube_\w+\)", "DB", page["stock"]), gone          # a table name only inside the approved DB (<table>) form
 
 
 # ------------------------------------------------------------------ Part 3: Trend tab
@@ -174,7 +174,7 @@ def test_trend_note_is_first_in_the_tab_and_follows_the_data(page):
     assert re.fullmatch(r"\d{1,2} \S+ \d{2}", omni["meta"]["pull"])                      # the shared Thai date format (d MMM yy)
     assert "{" not in expected and "}" not in expected
     for gone in ("data_pulled_at", "62b1e81", "git blame", "DATA_MAP", "cube_Sale_APD", "pricelist_reader", "ไม่อัปเดต"):
-        assert gone not in page["trend"], gone
+        assert gone not in page["trend"].replace("DB (cube_Sale_APD)", "DB"), gone          # the table name only inside the approved DB (<table>) form
 
 
 def test_trend_values_change_when_their_sources_change(edge, tmp_path_factory):
@@ -256,7 +256,7 @@ def test_w3b_trend_numbers_follow_a_changed_source(edge, tmp_path_factory):
 
 def test_w3b_stock_status_names_are_reader_words(page):
     stock = page["stock"]
-    for shown in ("มีของ", "ของเป็นศูนย์", "ไม่มีในระบบ stock"):
+    for shown in ("มีของ", "ของเป็นศูนย์", "ไม่มีใน DB (Cube_Inventory_Exact)"):
         assert shown in stock, shown
     for gone in ("has_stock", "zero_stock", "no_db_record"):
         assert gone not in stock, gone
@@ -298,12 +298,12 @@ def test_the_manual_shows_an_unresolved_placeholder_visibly_never_blank(edge, tm
     del data["manual_values"]["trend_data_through"]
     path.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
     text = _manual_text(edge, site)
-    assert "[ค่าไม่พบ: trend_data_through]" in text and "[ค่าไม่พบ: stale_days]" not in text
+    assert "[ค่าไม่พบ: trend_data_through]" in text and "[ค่าไม่พบ: stale_monthly]" not in text
     # the file cannot be read at all: every name stays visible as unresolved
     site2 = _site(tmp_path_factory, "w3_manual_no_values")
     os.remove(site2 / "data" / "assumptions.json")
     text2 = _manual_text(edge, site2)
-    assert "[ค่าไม่พบ: stale_days]" in text2 and "[ค่าไม่พบ: run_day_base]" in text2
+    assert "[ค่าไม่พบ: stale_monthly]" in text2 and "[ค่าไม่พบ: stale_daily]" in text2 and "[ค่าไม่พบ: run_day_base]" in text2
 
 
 def test_trend_embedded_data_is_what_the_builder_makes_from_the_saved_pull():
@@ -825,3 +825,66 @@ def test_no_page_or_manual_text_outside_the_original_tab_names_erp_as_a_source_o
         assert not re.search(r"\bERP\b", t, re.I), f"{name}: ERP named as a source (say DB and the table)"
         for gone in ("เป้ารายได้", "เป้าตรงๆ", "เป้า (Revenue)", "เป้ารวมสินค้า Omni", "ไม่พบเป้า", "Cube_Target_PMIS"):
             assert gone not in t, f"{name}: revenue-target text {gone!r}"
+
+
+# ------------------------------------------------------------------ Prompt 29: the Edge helper leaves no process and no profile folder behind
+def test_the_edge_helper_leaves_no_child_process_and_no_profile_folder_after_a_browser_test_or_a_failed_one(tmp_path):
+    import page_helpers as ph
+    exe = ph.require_browser()
+    for fail in (False, True):
+        e = ph.Edge(exe)
+        profile = e.profile
+        try:
+            e.open("about:blank")
+            assert ph.profile_pids(profile), "the helper's Edge should be running"
+            if fail:
+                raise RuntimeError("a failing test")
+        except RuntimeError:
+            pass
+        finally:
+            e.close()
+        assert e.leftovers() == {"pids": [], "profile_exists": False}, e.leftovers()
+        assert ph.profile_pids(profile) == [] and not os.path.exists(profile)
+
+
+def test_no_page_or_manual_text_outside_the_original_tab_calls_a_database_table_the_system():
+    """Prompt 29: where page text names a data source that is the database it says DB (<table>); these exact phrases (a source named as ระบบ) are gone. Other meanings of ระบบ stay."""
+    import glob
+    gone = ["ในระบบ ณ", "ที่ตั้งในระบบ", "ค่าที่ตั้งในระบบ", "ไม่มีบันทึกผลิตในระบบ", "ไม่มีหน่วยซื้อในระบบ", "ไม่มี BOM ในระบบ", "ไม่มีข้อมูลในระบบ", "ระบบขายของบริษัท", "ไม่มียอดขายในระบบ",
+            "ไม่มีในระบบ stock", "ไม่มีใบสั่งซื้อในระบบ", "ป้ายในระบบ", "คีย์ช้าเข้าระบบ", "ที่บันทึกไว้ในระบบ", "ไว้ในระบบคลัง", "จากระบบ ดูอันนี้", "ระบบไม่มีบันทึกการแก้", "ระบบไม่ได้บันทึกว่า"]
+    texts = {"index.html": _outside_the_original_tab(open(INDEX, encoding="utf-8").read()), "docs/user_manual.md": open(os.path.join(PROJECT_ROOT, "docs", "user_manual.md"), encoding="utf-8").read(),
+             "config/manual_notes.yaml": open(os.path.join(PROJECT_ROOT, "config", "manual_notes.yaml"), encoding="utf-8").read()}
+    for path in glob.glob(os.path.join(PROJECT_ROOT, "forecast", "*.html")):
+        if "Chase S&OP" not in os.path.basename(path):
+            texts["forecast/" + os.path.basename(path)] = open(path, encoding="utf-8").read()
+    for name, t in texts.items():
+        t = re.sub(r"<!--.*?-->", "", t, flags=re.S)                  # an off-screen comment may quote the old wording
+        for phrase in gone:
+            assert phrase not in t, f"{name}: {phrase!r}"
+    assert "ข้อมูล stock ใน DB (Cube_Inventory_Exact) ณ" in texts["forecast/inventory.html"] and "ยอดจองใน DB (Cube_CES) ณ" in texts["forecast/inventory.html"]
+    assert "DB (cube_Sale_APD)" in texts["forecast/sales_report.html"] and "DB (cube_final)" in texts["forecast/operation_plan.html"]
+    assert "DB (Cube_BOM_Exact)" in texts["forecast/material_plan.html"] or "ไม่มี BOM ใน DB" not in texts["forecast/material_plan.html"]
+
+
+def test_the_stock_panel_script_judges_its_two_daily_sources_by_the_previous_weekday(edge, tmp_path_factory):
+    import yaml
+    cfg = yaml.safe_load(open(os.path.join(PROJECT_ROOT, "config", "config.yaml"), encoding="utf-8"))
+    assert "const INV_DAILY_WEEKDAYS_BACK = %d;" % cfg["page_timestamps"]["daily_weekdays_back"] in open(INDEX, encoding="utf-8").read()
+    base = json.load(open(os.path.join(PROJECT_ROOT, "data", "inventory.json"), encoding="utf-8"))
+    for generated, loaded, old in (("2026-10-12T02:00:00Z", "2026-10-09 21:00:00", False), ("2026-10-12T02:00:00Z", "2026-10-08 21:00:00", True),
+                                   ("2026-10-13T02:00:00Z", "2026-10-12 21:00:00", False), ("2026-10-13T02:00:00Z", "2026-10-09 21:00:00", True)):
+        inv = json.loads(json.dumps(base))
+        inv["snapshot"].update(generated_at=generated, loaded_at=loaded)
+        inv["backlog"]["loaded_at"] = loaded
+        site = _site(tmp_path_factory, "p29_fresh", inventory=inv)
+        server, url = _serve(site)
+        try:
+            edge.open(url)
+            edge.ev("omniShowTab(1); document.getElementById('invMenuRow').click(); 1")
+            assert _wait(edge, "document.getElementById('invContent') && document.getElementById('invContent').style.display !== 'none'")
+            shown = edge.ev("[document.getElementById('invStalenessNote'), document.getElementById('invBacklogStalenessNote')].map(e => getComputedStyle(e).display !== 'none' ? e.innerText : '')")
+        finally:
+            server.shutdown()
+        assert [bool(x) for x in shown] == [old, old], (generated, loaded, shown)
+        if old:
+            assert all("ข้อมูล" in x and "เก่า" in x and "ดึงก่อนวันทำการก่อนหน้า" in x and "page_built_at" not in x for x in shown)

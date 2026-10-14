@@ -48,7 +48,7 @@ SECTION_REF = re.compile(r"(?:§|\bSec\.|\bsection)\s*\d+", re.I)
 INTERNAL_NAMES = re.compile(r"\b(?:stock_policy|confirmed_to_order|finished_goods_stock|component_stock_ato)\b")
 TABLE_NAME = re.compile(r"\b[Cc]ube_\w+")
 # Decision of the user, 2026-10-14 (Prompt 28): where page text names a source that is the database, it says "DB (<table>)", so the table name inside that form is allowed; a bare table name still fails.
-DB_SOURCE = re.compile(r"DB \([Cc]ube_\w+\)")
+DB_SOURCE = re.compile(r"DB \([Cc]ube_\w+(?:, [Cc]ube_\w+)*\)")
 TASK_REF = re.compile(r"\btask\s*\d+[a-z]?\b", re.I)
 MAX_NON_THAI_LINE = 60
 

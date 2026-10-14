@@ -577,6 +577,21 @@ def apply_class_file_divisions(data: dict, config: dict) -> None:
             dd.pop("no_min_max_line", None)
 
 
+PILOT_SALES_SOURCE = "ข้อมูลขาย PEM103/PEM107 (หน้า Min-Max)"
+STOCK_SOURCE = "สต็อค (หน้า Min-Max และแผงสต็อค)"
+RESERVED_SOURCE = "ยอดจอง (หน้า Min-Max และแผงสต็อค)"
+
+
+def freshness_block(config: dict, today=None) -> dict:
+    """What the page's script needs to judge freshness by pull cadence (config page_timestamps, METRICS.md Sec.26): the cadence of each tagged source (a source config does not
+    classify stops the build), the monthly cutoff on the build date and the number of weekdays a daily source may lag."""
+    today = rv._as_date(today if today is not None else rv.date_today())
+    return {"cadence": {"pilot_sales": rv.source_cadence(config, PILOT_SALES_SOURCE), "stock": rv.source_cadence(config, STOCK_SOURCE),
+                        "reserved": rv.source_cadence(config, RESERVED_SOURCE)},
+            "monthly_cutoff": rv.freshness_cutoff("monthly", today, config).isoformat(),
+            "daily_weekdays_back": int(config["page_timestamps"]["daily_weekdays_back"])}
+
+
 def apply_reader_text(data: dict) -> dict:
     """Sets every reader-facing text/value that needs no database: disabled-division reasons, scope
     notes, the curve item-set note, the PEM107 alert block, the staleness threshold and the PEM101
@@ -587,7 +602,7 @@ def apply_reader_text(data: dict) -> dict:
     data["disabled_divisions"] = disabled_division_reasons()
     data["disabled_division_labels"] = DISABLED_DIVISION_LABELS
     data["model_calibrated_at"] = model_calibrated_at()
-    data["staleness_threshold_days"] = rv.staleness_threshold_days(config)
+    data["freshness"] = freshness_block(config)
     data["tier_a_ranges"] = config["inventory_page"]["tier_a_ranges"]
     data["service_level_chart_step"] = config["inventory_page"]["service_level_chart_step"]
     data["fulfilment_notice_days"] = rv.fulfilment_notice_threshold_days()

@@ -112,8 +112,8 @@ def test_the_three_labels_show_the_values_in_the_stock_file(edge, tmp_path_facto
     payload = {**payload, "stock_source_load_time": "2026-10-04 21:41:03", "reserved_source_load_time": "2026-10-05 07:35:30",
                "pull_time": "2026-10-06 08:00:05"}
     _open(edge, _site(tmp_path_factory, "stock_labels", payload))
-    assert edge.ev("document.getElementById('stock-label-stock').textContent") == "ข้อมูล stock ในระบบ ณ " + thai(payload["stock_source_load_time"])
-    assert edge.ev("document.getElementById('stock-label-reserved').textContent") == "ยอดจองในระบบ ณ " + thai(payload["reserved_source_load_time"])
+    assert edge.ev("document.getElementById('stock-label-stock').textContent") == "ข้อมูล stock ใน DB (Cube_Inventory_Exact) ณ " + thai(payload["stock_source_load_time"])
+    assert edge.ev("document.getElementById('stock-label-reserved').textContent") == "ยอดจองใน DB (Cube_CES) ณ " + thai(payload["reserved_source_load_time"])
     assert edge.ev("document.getElementById('stock-label-pulled').textContent") == "ดึงข้อมูลเมื่อ " + thai(payload["pull_time"])
     assert thai("2026-10-04 21:41:03") == "4 ต.ค. 69 21:41"
     # the replaced labels are gone
@@ -121,21 +121,25 @@ def test_the_three_labels_show_the_values_in_the_stock_file(edge, tmp_path_facto
     assert not [x for x in edge.errors if x.startswith("exception")], edge.errors
 
 
-def test_an_old_reserved_date_shows_the_staleness_notice_and_a_fresh_one_does_not(edge, tmp_path_factory):
-    threshold = fresh_inventory_data()["staleness_threshold_days"]
+@pytest.mark.parametrize("pull,reserved_at,old", [
+    ("2026-10-06 08:00:05", "2026-10-05 21:00:00", False),       # Tuesday pull, source loaded the evening of the previous weekday (Monday): fresh
+    ("2026-10-06 08:00:05", "2026-10-03 21:00:00", True),        # loaded on Saturday, before the previous weekday (Monday): old
+    ("2026-10-12 08:00:05", "2026-10-09 21:00:00", False),       # Monday pull, source loaded on the Friday before: fresh (the previous weekday of a Monday is the Friday)
+    ("2026-10-12 08:00:05", "2026-10-08 21:00:00", True),        # Monday pull, source loaded on the Thursday: old
+])
+def test_the_reserved_date_is_old_when_it_is_before_the_previous_weekday_of_the_pull(edge, tmp_path_factory, pull, reserved_at, old):
     base = load_stock_payload()
-    pull = pd.Timestamp("2026-10-06 08:00:05")
-    out = {}
-    for name, age in (("fresh", 1), ("stale", threshold + 1)):
-        p = {**base, "pull_time": str(pull)[:19], "stock_source_load_time": str(pull - pd.Timedelta(hours=11))[:19],
-             "reserved_source_load_time": str(pull - pd.Timedelta(days=age))[:19]}
-        _open(edge, _site(tmp_path_factory, f"stock_age_{name}", p))
-        out[name] = (edge.ev("document.getElementById('stock-label-reserved').parentElement.textContent"),
-                     edge.ev("document.getElementById('stock-label-stock').parentElement.textContent"))
-    assert "ข้อมูลเก่ากว่า" not in out["fresh"][0]
-    assert f"ข้อมูลเก่ากว่า {threshold} วัน" in out["stale"][0]
-    # the reserved age is judged on its own: the stock line has no notice in either case
-    assert out["stale"][1].count("ข้อมูลเก่ากว่า") == 1
+    stock_at = str(pd.Timestamp(pull) - pd.Timedelta(hours=11))[:19]
+    p = {**base, "pull_time": pull[:19], "stock_source_load_time": stock_at, "reserved_source_load_time": reserved_at}
+    _open(edge, _site(tmp_path_factory, "stock_age_" + pull[:10] + reserved_at[:10], p))
+    reserved = edge.ev("document.getElementById('stock-label-reserved').parentElement.textContent")
+    stock = edge.ev("document.getElementById('stock-label-stock').parentElement.textContent")
+    assert ("ข้อมูลเก่า ดึงก่อนวันทำการก่อนหน้า" in reserved) == old
+    # the reserved age is judged on its own: the stock line (loaded 11 hours before the pull) has no notice in any of the cases
+    assert reserved.count("ข้อมูลเก่า") == (1 if old else 0)                       # the container of both labels holds the one notice, after the reserved label
+    if old:
+        assert reserved.index("ข้อมูลเก่า") > reserved.index("ยอดจองใน DB (Cube_CES)")
+    assert "ข้อมูลเก่า" not in stock.split("ยอดจองใน DB")[0]                             # nothing after the stock label and before the reserved one
 
 
 # ------------------------------------------------------------------ the file cannot be loaded
@@ -190,8 +194,8 @@ def test_the_index_panel_shows_the_three_dates_from_its_data_file(edge, index_si
     edge.ev("document.getElementById('invMenuRow').click(); 1")
     assert _wait(edge, "document.getElementById('invContent') && document.getElementById('invContent').style.display !== 'none'", 30), "stock panel did not load"
     pulled = (pd.Timestamp(inv["snapshot"]["generated_at"]).tz_convert("Asia/Bangkok")).tz_localize(None)
-    assert edge.ev("document.getElementById('invSnapshotLabel').textContent") == "ข้อมูล stock ในระบบ ณ " + thai(inv["snapshot"]["loaded_at"])
-    assert edge.ev("document.getElementById('invBacklogLabel').textContent").startswith("ยอดจองในระบบ ณ " + thai(inv["backlog"]["loaded_at"]))
+    assert edge.ev("document.getElementById('invSnapshotLabel').textContent") == "ข้อมูล stock ใน DB (Cube_Inventory_Exact) ณ " + thai(inv["snapshot"]["loaded_at"])
+    assert edge.ev("document.getElementById('invBacklogLabel').textContent").startswith("ยอดจองใน DB (Cube_CES) ณ " + thai(inv["backlog"]["loaded_at"]))
     assert edge.ev("document.getElementById('invPageTimestampNote').textContent") == "ดึงข้อมูลเมื่อ " + thai(pulled)
     shown = edge.ev("document.getElementById('invSnapshotLabel').textContent + document.getElementById('invBacklogLabel').textContent")
     assert "รอบการอัปเดต" not in shown and "คนละรอบการโหลด" not in shown, "a load schedule is stated on the panel"

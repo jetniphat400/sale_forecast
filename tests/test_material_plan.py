@@ -475,11 +475,16 @@ def test_the_page_text_is_the_approved_text_and_every_braced_value_comes_from_th
     assert "ต้องสั่งทันที" not in page and page.index('id="within-title"') < page.index('id="late-title"') < page.index('id="material-table"')
 
 
+def _nb(text: str) -> str:
+    """A header without the all-channels label span (Prompt 29), which has its own test."""
+    return re.sub(r'\s*<span class="allch".*?</span>', "", text).strip()
+
+
 def test_the_two_order_lists_split_by_the_latest_order_date_with_the_approved_columns_and_source_labels(project):
     page, v = _page(project)
     heads_expected = ["รหัสวัตถุดิบ", "ชื่อ", "ใช้ในสินค้า (รหัส · +n คือมีอีก n รหัส)", "ต้องสั่งเพิ่ม (Order qty)", "สั่งภายในวันที่ (Order-by date)", "lead time (วัน)", "ที่มา lead time"]
     for table in ("within-table", "late-table"):
-        assert re.findall(r"<th(?:\s[^>]*)?>(.*?)</th>", page.split('id="%s"' % table)[1].split("</table>")[0]) == heads_expected
+        assert [_nb(h) for h in re.findall(r"<th(?:\s[^>]*)?>(.*?)</th>", page.split('id="%s"' % table)[1].split("</table>")[0])] == heads_expected
     _, sm, meta = mp.read_outputs(project)
     today = pd.Timestamp(meta["today"])
     dates = pd.to_datetime(sm.set_index("material")["latest_order_date"])
@@ -489,7 +494,7 @@ def test_the_two_order_lists_split_by_the_latest_order_date_with_the_approved_co
     within = re.findall(r'<tr data-material="([^"]+)">', page.split('id="within-table"')[1].split("</table>")[0])
     assert sorted(within) == sorted(dates[(dates >= today) & (dates <= today + pd.Timedelta(days=30))].index)
     cells = re.findall(r"<td[^>]*>(.*?)</td>", dict(rows)["RM-A"])          # the fixture holds no purchase unit for RM-A: its own flag, dashes for quantity and date, the rest as before
-    assert cells[0] == 'RM-A<span class="flag unit">ไม่มีหน่วยซื้อในระบบ</span>' and cells[1] == "Alpha part" and cells[2] == "FG1, FG2" and cells[3] == "-" and cells[4] == "-" and cells[5] == "20" and cells[6] == "จากใบสั่งซื้อที่ผ่านมา"
+    assert cells[0] == 'RM-A<span class="flag unit">ไม่มีหน่วยซื้อใน DB (Cube_PriceList, Cube_tobe_received)</span>' and cells[1] == "Alpha part" and cells[2] == "FG1, FG2" and cells[3] == "-" and cells[4] == "-" and cells[5] == "20" and cells[6] == "จากใบสั่งซื้อที่ผ่านมา"
 
 
 def test_the_main_table_has_stock_open_orders_and_the_demand_and_net_columns_per_month(project):
@@ -498,7 +503,7 @@ def test_the_main_table_has_stock_open_orders_and_the_demand_and_net_columns_per
     top = re.findall(r"<th(?:\s[^>]*)?>(.*?)</th>", block.split("</tr>")[0])
     assert top[:4] == ["รหัส", "ชื่อ", "stock ตอนนี้", "ของที่สั่งแล้วรอรับ"] and top[4:] == v["month_labels"]
     sub = re.findall(r"<th(?:\s[^>]*)?>(.*?)</th>", block.split("</tr>")[1])
-    assert sub == ["ความต้องการ", "ต้องสั่งเพิ่ม"] * 3
+    assert [_nb(x) for x in sub] == ["ความต้องการ", "ต้องสั่งเพิ่ม"] * 3
     rows = {m: re.findall(r"<td[^>]*>(.*?)</td>", r) for m, r in re.findall(r'<tr data-material="([^"]+)">(.*?)</tr>', block)}
     assert set(rows) == {"RM-A", "RM-B", "RM-C"}
     assert rows["RM-C"][:4] == ["RM-C", "-", "-", "150"] and rows["RM-C"][4:] == ["200", "200", "200", "50", "-", "-"]
@@ -642,7 +647,7 @@ def test_a_material_with_no_purchase_unit_shows_its_flag_and_dashes_and_is_count
     v = bm.compute_values(*_list_frames("2026-10-06", dates, {"M-NOUNIT": "", "M-LATE-NOUNIT": " "}), 30)
     assert v["n_no_unit"] == 2 and v["n_within_flagged"] == 1 and v["n_late_flagged"] == 1 and v["n_unit_flag"] == 0
     page = bm.render(v)
-    flag = '<span class="flag unit">ไม่มีหน่วยซื้อในระบบ</span>'
+    flag = '<span class="flag unit">ไม่มีหน่วยซื้อใน DB (Cube_PriceList, Cube_tobe_received)</span>'
     for table, material in (("within-table", "M-NOUNIT"), ("late-table", "M-LATE-NOUNIT")):
         rows = dict(re.findall(r'<tr data-material="([^"]+)">(.*?)</tr>', page.split('id="%s"' % table)[1].split("</table>")[0]))
         c = re.findall(r"<td[^>]*>(.*?)</td>", rows[material])
@@ -836,14 +841,14 @@ def test_the_page_says_how_many_plan_items_are_exploded_and_why_the_others_are_n
     mm_, sm_, meta = mp.read_outputs(project)
     assert (c["n_items"], c["n_exploded"], c["n_no_production"], c["n_no_demand"], c["n_no_bom"]) == (3, 2, 1, 0, 0)
     assert c["n_exploded"] + c["n_no_bom"] == meta["n_items_exploded"]
-    line = "สินค้าในแผนการผลิต 3 รหัส คิดวัตถุดิบ 2 รหัส ไม่ได้คิด 1 รหัส: ไม่มียอดผลิตใน 3 เดือนนี้ 0 รหัส · ไม่มีบันทึกผลิตในระบบ 1 รหัส · ไม่มี BOM ในระบบ 0 รหัส"
+    line = "สินค้าในแผนการผลิต 3 รหัส คิดวัตถุดิบ 2 รหัส ไม่ได้คิด 1 รหัส: ไม่มียอดผลิตใน 3 เดือนนี้ 0 รหัส · ไม่มีบันทึกผลิตใน DB (cube_final) 1 รหัส · ไม่มี BOM ใน DB (Cube_BOM_Exact) 0 รหัส"
     assert f'<summary class="note-line" id="coverage-line">{line}</summary>' in page
     assert '<details id="coverage-details">' in page and '<details id="coverage-details" open' not in page            # closed until opened
     head = re.findall(r'<th class="name">(.*?)</th>', page.split('id="coverage-table"')[1].split("</thead>")[0])
     assert head == ["รหัส", "ชื่อ", "ฝ่าย", "เหตุผล"]
     rows = re.findall(r'<tr data-item="([^"]+)"><td class="code">.*?</td><td class="name">(.*?)</td><td class="name">(.*?)</td><td class="name">(.*?)</td></tr>',
                       page.split('id="coverage-table"')[1])
-    assert [(r[0], r[2], r[3]) for r in rows] == [("FG9", "PEM103", "ไม่มีบันทึกผลิตในระบบ")]
+    assert [(r[0], r[2], r[3]) for r in rows] == [("FG9", "PEM103", "ไม่มีบันทึกผลิตใน DB (cube_final)")]
     assert page.index('id="divisions-covered"') < page.index('id="coverage-details"') < page.index('id="within-title"')
     assert "{" not in re.sub(r"<style.*?</style>", "", page, flags=re.S)
 
@@ -866,7 +871,7 @@ def test_the_counts_on_the_page_follow_the_plan_and_the_three_reasons_add_up_to_
     if not os.path.exists(tracked) or not os.path.exists(p):
         pytest.skip("SKIPPED, not passed: the built material plan page or the saved week 3 pulls are not on this machine")
     page = open(tracked, encoding="utf-8").read()
-    m = re.search(r"สินค้าในแผนการผลิต (\d+) รหัส คิดวัตถุดิบ (\d+) รหัส ไม่ได้คิด (\d+) รหัส: ไม่มียอดผลิตใน (\d+) เดือนนี้ (\d+) รหัส · ไม่มีบันทึกผลิตในระบบ (\d+) รหัส · ไม่มี BOM ในระบบ (\d+) รหัส", page)
+    m = re.search(r"สินค้าในแผนการผลิต (\d+) รหัส คิดวัตถุดิบ (\d+) รหัส ไม่ได้คิด (\d+) รหัส: ไม่มียอดผลิตใน (\d+) เดือนนี้ (\d+) รหัส · ไม่มีบันทึกผลิตใน DB \(cube_final\) (\d+) รหัส · ไม่มี BOM ใน DB \(Cube_BOM_Exact\) (\d+) รหัส", page)
     assert m, "the coverage line is not on the built page"
     n, mexp, k, months, a, b, c = map(int, m.groups())
     im, _dm, opmeta = op.read_outputs(PROJECT_ROOT, cfg["operation_plan"])
@@ -878,7 +883,7 @@ def test_the_counts_on_the_page_follow_the_plan_and_the_three_reasons_add_up_to_
     listed = re.findall(r'<tr data-item="([^"]+)"><td class="code">.*?</td><td class="name">.*?</td><td class="name">(\w+)</td><td class="name">(.*?)</td></tr>',
                         page.split('id="coverage-table"')[1])
     assert len(listed) == k == len({x[0] for x in listed})
-    label = {"no_demand": "ไม่มียอดผลิต", "no_production": "ไม่มีบันทึกผลิตในระบบ", "no_bom": "ไม่มี BOM ในระบบ"}
+    label = {"no_demand": "ไม่มียอดผลิต", "no_production": "ไม่มีบันทึกผลิตใน DB (cube_final)", "no_bom": "ไม่มี BOM ใน DB (Cube_BOM_Exact)"}
     assert {x[0]: x[2] for x in listed} == {i: label[r] for i, r in zip(cov["item"], cov["reason"]) if r != "exploded"}
     assert mexp + c == mp.read_outputs(PROJECT_ROOT, cfg)[2]["n_items_exploded"]
 
@@ -896,8 +901,8 @@ def test_the_coverage_line_and_the_divisions_follow_the_plan_items_given_to_the_
     l1, l2 = (bm.TEXT["coverage_line"].format(n_items=v["coverage"]["n_items"], n_exploded=v["coverage"]["n_exploded"], n_not=v["coverage"]["n_not"],
                                               n_months=v["coverage"]["n_months"], n_no_demand=v["coverage"]["n_no_demand"],
                                               n_no_production=v["coverage"]["n_no_production"], n_no_bom=v["coverage"]["n_no_bom"]) for v in (one, two))
-    assert l1 == "สินค้าในแผนการผลิต 3 รหัส คิดวัตถุดิบ 1 รหัส ไม่ได้คิด 2 รหัส: ไม่มียอดผลิตใน 2 เดือนนี้ 1 รหัส · ไม่มีบันทึกผลิตในระบบ 1 รหัส · ไม่มี BOM ในระบบ 0 รหัส"
-    assert l2 == "สินค้าในแผนการผลิต 6 รหัส คิดวัตถุดิบ 3 รหัส ไม่ได้คิด 3 รหัส: ไม่มียอดผลิตใน 2 เดือนนี้ 2 รหัส · ไม่มีบันทึกผลิตในระบบ 0 รหัส · ไม่มี BOM ในระบบ 1 รหัส"
+    assert l1 == "สินค้าในแผนการผลิต 3 รหัส คิดวัตถุดิบ 1 รหัส ไม่ได้คิด 2 รหัส: ไม่มียอดผลิตใน 2 เดือนนี้ 1 รหัส · ไม่มีบันทึกผลิตใน DB (cube_final) 1 รหัส · ไม่มี BOM ใน DB (Cube_BOM_Exact) 0 รหัส"
+    assert l2 == "สินค้าในแผนการผลิต 6 รหัส คิดวัตถุดิบ 3 รหัส ไม่ได้คิด 3 รหัส: ไม่มียอดผลิตใน 2 เดือนนี้ 2 รหัส · ไม่มีบันทึกผลิตใน DB (cube_final) 0 รหัส · ไม่มี BOM ใน DB (Cube_BOM_Exact) 1 รหัส"
     assert one["divisions"] == "PEM101" and one["coverage"]["divisions_without_production"] == ["PEM104"]
     assert two["divisions"] == "PEM101, PEM104" and two["coverage"]["divisions_without_production"] == []
     with pytest.raises(mp.MaterialPlanError):                    # a count that does not match the plan's own count of exploded items stops the page
@@ -940,7 +945,7 @@ def test_remarks_on_fixed_examples_paid_pending_none_and_a_config_exception():
     assert (c.loc["SUB-1", "remark"], c.loc["SUB-1", "evidence"]) == ("ค่าจ้าง", "จากชื่อ")             # a ค่าจ้าง name with no LABOR in the code
     assert (c.loc["FRT-1", "remark"], c.loc["FRT-1", "evidence"]) == ("ค่าบริการ", "จากชื่อ")           # freight is a service
     assert (c.loc["ODD-1", "remark"], c.loc["ODD-1", "evidence"]) == ("รอตรวจ", "จากกลุ่มสินค้า") and not bool(c.loc["ODD-1", "paid"])      # item group 2000, no keyword
-    assert (c.loc["NOM-1", "remark"], c.loc["NOM-1", "evidence"]) == ("รอตรวจ", "ไม่มีข้อมูลในระบบ")     # no item-master record
+    assert (c.loc["NOM-1", "remark"], c.loc["NOM-1", "evidence"]) == ("รอตรวจ", "ไม่มีข้อมูลใน DB (Cube_ItemList)")     # no item-master record
     assert (c.loc["WRK-1", "remark"], c.loc["WRK-1", "evidence"]) == ("รอตรวจ", "หน่วยนับ")             # a unit that names work
     assert c.loc["RAW-1", "remark"] == "" and not bool(c.loc["RAW-1", "paid"])                          # a normal raw material: no remark
     assert (c.loc["EXC-1", "remark"], c.loc["EXC-1", "evidence"]) == ("รอตรวจ", "ชื่อเป็นชิ้นส่วน")        # a (non-LABOR) code moved to รอตรวจ by an explicit config exception
@@ -1043,7 +1048,7 @@ def test_paid_remark_lines_are_left_out_of_every_summary_count_and_pending_lines
     # the remark sits beside the code in the table, with its evidence
     found_b = re.search(r'data-material="RM-B"><td class="code">RM-B.*?data-remark="ค่าแรง">ค่าแรง · จากชื่อ</span>', page, re.S)
     assert found_b, page[page.index('data-material="RM-B"'):][:600]
-    assert re.search(r'data-material="RM-C"><td class="code">RM-C.*?data-remark="รอตรวจ">รอตรวจ · ไม่มีข้อมูลในระบบ</span>', page, re.S)
+    assert re.search(r'data-material="RM-C"><td class="code">RM-C.*?data-remark="รอตรวจ">รอตรวจ · ไม่มีข้อมูลใน DB \(Cube_ItemList\)</span>', page, re.S)
     assert 'data-material="RM-A"><td class="code">RM-A</td>' in page or 'data-material="RM-A"><td class="code">RM-A<' in page
 
 

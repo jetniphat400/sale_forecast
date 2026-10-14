@@ -628,6 +628,13 @@ Every dashboard page and panel displays, near its title:
   says it is not refreshed by this pipeline.
 - If data_pulled_at is more than 7 days older than page_built_at, the
   page shows a visible staleness notice.
+- **Amended 2026-10-14 (Prompt 29, decision of the user): freshness is judged by each source's pull cadence, not by 7 days.** Every freshness-tagged source is
+  monthly-pulled or daily-pulled (config `page_timestamps.monthly_sources`, `daily_sources`; a source in neither stops the build). A monthly source is old when its pull
+  date is before the latest monthly run day (the first weekday on or after the base day, `monthly_refresh.run_day`) that is on or before today; a daily source is old when its
+  pull date is before the previous weekday (`daily_weekdays_back`, 1). Monthly: the seven sections of the sales report and the PEM103 and PEM107 sales of the Min-Max page.
+  Daily: the stock and the reserved figures of the Min-Max page and of the stock panel. The two thresholds are manual values (`stale_monthly`, `stale_daily`, replacing
+  `stale_days`). The build clock is the real clock. On 2026-10-14 the 2026-10-05 pull of every monthly source is fresh (the latest run day is 2026-10-05); under the 7-day rule
+  the same page would have shown all seven sections as old on that day.
 - The forward-test log is never refreshed or rewritten; it keeps the
   cutoff it was generated at.
 - Where a page's sections draw on inputs with different pull dates, each
@@ -1172,6 +1179,11 @@ pipeline — no new section is needed for this; it is already covered by section
   and the stock panel say so with the label "รวมทุกช่องทาง". PEM103 stays limited to Omni Channel (config `backlog_channel_scope`), unchanged, and its own page line says so. The
   pilot's data filter (revenue_type 'Omni Channel', item in the Price List) applies to sales and to the class signals; it does not apply to stock or to accepted orders.
 - **Note 2026-10-14:** the item codes with no record in the DB item master (Cube_ItemList) carry the page remark "ไม่พบรหัสนี้ใน DB (Cube_ItemList)" (`item_master_check`); no quantity changes.
+
+- **Note 2026-10-14 (Prompt 29):** the daily backlog pull carries RevenueType (same rows, same filters). PEM103's Omni-only limit is applied to the latest pull; the saved week 3
+  rows are used for PEM103 only while the latest pull lacks the column, and the page then says so under PEM103's table. The monthly run (step 7b) is the only job that rebuilds the
+  plan, so fresh PEM103 numbers appear in the 2026-11-05 run at the earliest. PEM103's demand carries the label "เฉพาะ Omni (ไม่รวมงานประมูล)"; the material plan's quantity headers
+  carry "รวมทุกช่องทาง (ยกเว้น PEM103)".
 
 ### Split of stock-item production and the planners' page (added 2026-10-06; `src/build_operation_plan_page.py`)
 

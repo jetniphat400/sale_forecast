@@ -30,7 +30,7 @@ PAGE_RELATIVE = "forecast/operation_plan.html"
 MATERIAL_PAGE_RELATIVE = "material_plan.html"        # linked from this page; both pages sit in forecast/
 THAI_MONTHS = [rv.THAI_MONTH_ABBR[m] for m in range(1, 13)]   # the abbreviations the Min-Max page uses
 CLASS_LABELS = {"stock_policy": "เก็บ stock", "confirmed_to_order": "ผลิตตามสั่ง", "conflict": "ยังไม่ชัด", "mixed": "ผสม (เก็บ stock บางส่วน)",
-                "no_production_in_system": "ไม่มีบันทึกผลิตในระบบ", "too_little_data": "ข้อมูลไม่พอจัดประเภท"}
+                "no_production_in_system": "ไม่มีบันทึกผลิตใน DB (cube_final)", "too_little_data": "ข้อมูลไม่พอจัดประเภท"}
 CLASS_ORDER = ["stock_policy", "confirmed_to_order", "conflict", "mixed", "too_little_data", "no_production_in_system"]
 SHARE_OF_BACKLOG_ITEMS = 0.80          # the items shown reach this share of the sum (approved text of 2026-10-06)
 MAX_BACKLOG_ITEMS = 3
@@ -48,18 +48,20 @@ TEXT = {
     "line_no_stock": "{division} ไม่มีสินค้าที่เข้าเกณฑ์เก็บ stock แผนจึงเป็นการผลิตตามยอดทาย + ออเดอร์ทั้งหมด",
     "line_no_forecast": "{n} รหัสยังไม่มียอดทาย (ประวัติขายไม่พอ) แผนนับเฉพาะออเดอร์ที่รับแล้วแต่ยังไม่ส่ง (open orders) ตอนนี้มีออเดอร์ที่รับแล้วยังไม่ส่ง {k} รหัส",
     "line_no_forecast_no_orders": "{n} รหัสยังไม่มียอดทาย (ประวัติขายไม่พอ) แผนนับเฉพาะออเดอร์ที่รับแล้วแต่ยังไม่ส่ง (open orders) ตอนนี้ไม่มีออเดอร์ที่รับแล้วยังไม่ส่งในกลุ่มนี้",
-    "line_no_production": "{n} รหัสไม่มีบันทึกผลิตในระบบ (ไม่ได้แปลว่ายกเลิกผลิต) ไม่นับรวมในยอดผลิตตามแผน",
+    "line_no_production": "{n} รหัสไม่มีบันทึกผลิตใน DB (cube_final) (ไม่ได้แปลว่ายกเลิกผลิต) ไม่นับรวมในยอดผลิตตามแผน",
     "line_never_sold": "{division} {n} รหัสอยู่ใน Price List แต่ไม่เคยขาย ไม่อยู่ในแผน",
     "line_pem103": "PEM103 นับเฉพาะยอด Omni Channel งานประมูลไม่อยู่ในแผนนี้",
     "units": "หน่วย", "and": " และ ",
     "item_cols": ["รหัส", "ชื่อสินค้า", "นโยบายการผลิต", "stock ตอนนี้", "Min", "Max"],
     "filter_division": "ฝ่าย", "filter_all": "ทั้งหมด",
-    "stock_note": "stock ตอนนี้ แสดงเฉพาะสินค้าเก็บ stock · คอลัมน์เดือน = จำนวนที่แผนให้ผลิตในเดือนนั้น (สินค้าที่ไม่เก็บ stock = ยอดที่ต้องผลิตตามความต้องการ) แถวที่ไม่มีบันทึกผลิตในระบบแสดงยอดความต้องการ ไม่ใช่ยอดผลิต",
+    "stock_note": "stock ตอนนี้ แสดงเฉพาะสินค้าเก็บ stock · คอลัมน์เดือน = จำนวนที่แผนให้ผลิตในเดือนนั้น (สินค้าที่ไม่เก็บ stock = ยอดที่ต้องผลิตตามความต้องการ) แถวที่ไม่มีบันทึกผลิตใน DB (cube_final)แสดงยอดความต้องการ ไม่ใช่ยอดผลิต",
     "flag_inconsistent": "ป้ายไม่ตรงกับพฤติกรรมจริง (Conflict)",
-    "flag_inconsistent_tip": "ป้าย MTS/MTO ที่บันทึกในระบบไม่ตรงกับพฤติกรรมจริงของสินค้า ใช้พฤติกรรมจริงตัดสิน และให้ฝ่ายยืนยัน",
+    "flag_inconsistent_tip": "ป้าย MTS/MTO ที่บันทึกใน DB (cube_Sale_APD) ไม่ตรงกับพฤติกรรมจริงของสินค้า ใช้พฤติกรรมจริงตัดสิน และให้ฝ่ายยืนยัน",
     "material_link": "แผนวัตถุดิบ",
-    "no_production_note": "แถวที่ขึ้นว่า ไม่มีบันทึกผลิตในระบบ ไม่ได้รวมในยอดผลิตของฝ่าย",
+    "no_production_note": "แถวที่ขึ้นว่า ไม่มีบันทึกผลิตใน DB (cube_final) ไม่ได้รวมในยอดผลิตของฝ่าย",
     "line_made_to_order": "{division} ผลิตตามสั่งทั้งหมด จึงไม่ได้ทายยอดขาย",
+    "omni_only": "เฉพาะ Omni (ไม่รวมงานประมูล)", "omni_only_tip": "ออเดอร์ของ PEM103 นับเฉพาะช่องทาง Omni Channel งานประมูลไม่อยู่ในแผนนี้",
+    "line_pem103_fallback": "ออเดอร์ของ PEM103 ในแผนนี้ใช้ข้อมูลที่ดึงไว้เมื่อ {pulled} เพราะการดึงล่าสุดยังไม่มีข้อมูลช่องทางของออเดอร์ จะใช้ข้อมูลล่าสุดเมื่อรอบดึงถัดไปมีข้อมูลช่องทาง",
     "all_channels": "รวมทุกช่องทาง", "all_channels_tip": "stock และออเดอร์ที่รับแล้วใช้ร่วมกันทุกช่องทาง",
     "no_master": "ไม่พบรหัสนี้ใน DB (Cube_ItemList)", "no_master_tip": "ไม่มีบันทึกรหัสนี้ในตาราง Cube_ItemList ของ DB ตัวเลขในแผนไม่เปลี่ยน",
     "no_master_note": "{n} รหัสไม่พบใน DB (Cube_ItemList) ดึงข้อมูลเมื่อ {pulled}",
@@ -191,6 +193,9 @@ def compute_values(item_month: pd.DataFrame, division_month: pd.DataFrame, meta:
             lines.append(TEXT["line_never_sold"].format(division=d, n=counts["never_sold_items_by_division"][d]))
         if d == "PEM103":
             lines.append(TEXT["line_pem103"])
+            fb = (meta.get("backlog_pull") or {}).get("scoped_rows_from")
+            if fb:             # the latest backlog pull has no RevenueType column: the PEM103 rows come from the saved week 3 pull, and the page says so
+                lines.append(TEXT["line_pem103_fallback"].format(pulled=thai_datetime(fb["pulled_at_local"])))
         division_lines[d] = lines
     values = {
         "n_months": len(months), "months": months, "divisions": divisions,
@@ -266,8 +271,9 @@ def render(values: dict) -> str:
     parts.append(f'<div class="links"><a class="page-link" id="material-plan-link" href="{MATERIAL_PAGE_RELATIVE}">{_e(T["material_link"])}</a></div>')
     for d in divisions:
         parts.append(f'<h2>{d}</h2>')
-        badge = f'<span class="allch" title="{_e(T["all_channels_tip"])}">{_e(T["all_channels"])}</span>'
-        head = "".join(f"<th>{_e(T[k])}{badge if (k == 'col_demand' and d != 'PEM103') else ''}</th>" for k in ("col_month", "col_demand", "col_refill", "col_mto", "col_total", "col_capacity"))
+        badge = (f'<span class="allch" title="{_e(T["omni_only_tip"])}">{_e(T["omni_only"])}</span>' if d == "PEM103"
+                 else f'<span class="allch" title="{_e(T["all_channels_tip"])}">{_e(T["all_channels"])}</span>')
+        head = "".join(f"<th>{_e(T[k])}{badge if k == 'col_demand' else ''}</th>" for k in ("col_month", "col_demand", "col_refill", "col_mto", "col_total", "col_capacity"))
         body = []
         for _, r in v["summary"][v["summary"]["division"] == d].iterrows():
             flag = f'<span class="flag">{_e(T["above_capacity"])}</span>' if r["above"] else ""
@@ -275,7 +281,7 @@ def render(values: dict) -> str:
                         f'<td>{fmt_units(r["demand_part"])}</td><td>{fmt_units(r["refill_part"])}</td><td>{fmt_units(r["mto"])}</td>'
                         f'<td>{fmt_units(r["total"])}</td><td>{fmt_pct(r["share"])}{flag}</td></tr>')
         parts.append(f'<div class="table-scroll"><table class="report-table summary-table" id="summary-{d}"><thead><tr>{head}</tr></thead><tbody>{"".join(body)}</tbody></table></div>')
-        parts.append("".join(f'<p class="note-line division-line" data-division="{d}">{_e(l)}{badge if (d != "PEM103" and "ออเดอร์ที่รับแล้ว" in l) else ""}</p>' for l in v["division_lines"][d]))
+        parts.append("".join(f'<p class="note-line division-line" data-division="{d}">{_e(l)}{badge if "ออเดอร์ที่รับแล้ว" in l else ""}</p>' for l in v["division_lines"][d]))
     lines, lines_backlog = [], None
     badge = f'<span class="allch" title="{_e(T["all_channels_tip"])}">{_e(T["all_channels"])}</span>'
     if v["refill_first"] >= 0.5:
