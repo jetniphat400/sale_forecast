@@ -1887,3 +1887,103 @@ Other meanings of "ระบบ" and "ข้อมูล" were left. A test pins
 - The new `--pull` producer has not been run; its output is untested against a real pull. — S — you, at the next recalibration.
 - Many investigation scripts still print "DATABASE ACCESS RULE" docstrings that mention `get_connection()` (comments only). — S — next cleanup.
 - A script that skips writing its output when nothing changed would now raise the Step 5 warning; none is known. — S — watch the 2026-11-05 run log.
+
+
+## Prompt 31
+
+Start (Get-Date): 2026-10-14 13:25:36 +07:00. End: 2026-10-14 13:55:19 +0700 (shell clock). No database session, no npm. Nothing deleted, moved or renamed in Part B; no new file in the repo.
+
+### Part A: code cleanup (committed and pushed on its own: 703db04)
+- **Removed** from `src/build_inventory_dataset.py`: `flag_duplicate_backlog_rows` and `BACKLOG_DEDUP_KEY` (grep over the whole repo: no caller, no test, no config entry; `is_cross_contract_duplicate` is named nowhere else).
+- **Docstring fixed:** `src/investigations/phaseJ2_explorerA_quotation_notice.py` was the only file outside `db.py` that still said `get_connection()` is called; it now says one `db.session(preflight=True)` is opened. No other investigation file mentions it.
+- **Equivalence:** all pages and `assumptions.json` built before and after (same frozen inputs): identical (build times ignored).
+- **Dry runs after the last change:** monthly `--dry-run --offline --skip-tests` exit 0; daily `--dry-run --from-pulls` exit 0; `git status` clean afterwards.
+- **Full suite after the last change:** 841 passed, 0 failed, 0 skipped (15 min 35 s); 0 database connection attempts (4 blocked, all deliberate).
+
+### Part B: inventory of leftover files (read only)
+
+**Method.** Sizes, counts and times come from the file system. "Read by" comes from a scan of every file under `output/` against the names in `src` (jobs and pipeline), `tests`, `config`, the pages, and `src/investigations` (run by hand). Classes: DELETE-SAFE needs both "read by nothing" and a stated way to regenerate; the ALWAYS KEEP set is KEEP. A file named only by a one-off investigation script, or by nothing, is USER DECIDES, never DELETE-SAFE. KEEP means a scheduled job, a page build, a test or a by-hand script of the current work (for example the recalibration) reads it. Paths are masked (`%TEMP%`, `<user>`).
+
+**D:\ top level.** 35 names. In scope (3): `sale_forecast` (the repo), `sale_forecast_publish` (the publishing clone, report only; the two scheduled tasks that name this project run its `src` after a pull), `sale_forecast_private` (named in the task). The other 32 names (21 folders, 11 files, including the loose `tmp_*.csv` files and the `tmp` folder) were left out: no code, config, test, scheduled task or run log of this repo names them (the only mentions are a worker report that searched some of them for a missing file and found nothing). Their names are not listed and none was opened.
+
+**%TEMP%.** Created by this repo's code: `db_block_*` (tests/conftest.py), `monthly_refresh_dry_*` (src/monthly_refresh.py). `page_test_edge_*`, `edge_cdp_verify_*`, `daily_stock_*`, `vintage_rehearsal_*`: 0 folders now; no process names any of them. The pytest base folder (`pytest-of-<user>`, about 595 MB) is made by pytest and shared with any project's pytest runs, so it cannot be attributed to this work and is NOT in the table (see Found, not done).
+
+**Publishing clone.** Everything it tracks, its `output` and `reference` junctions (to the repo's folders) and its `.env` hard link: KEEP, not listed. Only its git-ignored `src/__pycache__` is a candidate.
+
+**Inventory table**
+
+| path | size | files | last modified | evidence of origin | read by now | regenerable | class |
+|---|---|---|---|---|---|---|---|
+| `%TEMP%\db_block_* (43 folders, made by tests/conftest.py)` | 0.01 MB | 14 | 2026-10-14 13:32 | name pattern created by tests/conftest.py (mkdtemp prefix db_block_) | nothing (the suite reads only its own current folder while it runs; none is running) | yes, every test run makes one | **DELETE-SAFE** |
+| `%TEMP%\monthly_refresh_dry_* (117 folders, made by monthly_refresh.py --dry-run)` | 0.00 MB | 0 | 2026-10-14 13:39 | name pattern created by monthly_refresh.py (mkdtemp prefix monthly_refresh_dry_) | nothing (117 folders hold only an empty forecast subfolder; skip any folder a running process names, one was live during the check) | yes, every dry run makes one | **DELETE-SAFE** |
+| `D:\sale_forecast\.pytest_cache` | 0.07 MB | 5 | 2026-10-09 11:30 | pytest cache (git status --ignored); the suite is run with -p no:cacheprovider | nothing | yes, pytest recreates it | **DELETE-SAFE** |
+| `D:\sale_forecast\src\__pycache__, src\investigations\__pycache__, tests\__pycache__` | 5.72 MB | 151 | 2026-10-14 13:27 | Python bytecode caches; git-ignored (*.pyc, __pycache__/) | Python (rebuilds them on import) | yes, automatically | **DELETE-SAFE** |
+| `D:\sale_forecast_publish\src\__pycache__ (publishing clone, git-ignored cache only)` | 0.34 MB | 18 | 2026-10-13 08:00 | bytecode cache of the scheduled jobs, git-ignored; do not remove while a job runs | Python (rebuilds) | yes, automatically | **DELETE-SAFE** |
+| `output/charts/ PNGs whose writer script is named in code (phaseE1_*, b4_/datecol_/delivery_/hyp_/leadtime_/link_/task1_/task3_, phaseC_step2_*)` | 2.28 MB | 32 | 2026-10-05 07:42 | name is in a script's log/print or path (the writer); not screenshots | nothing (no page, test or job reads them) | yes: re-run the named script (investigation scripts: some may need a DB session, unverified) | **DELETE-SAFE** |
+| `output/runs/<timestamp>/staged/ (dry-run staging copies of pages)` | 10.15 MB | 9 | 2026-09-29 12:15 | written by monthly_refresh.py --dry-run (12 folders, 2026-09-25 to 2026-10-05; 4 hold no file) | nothing (read only inside the dry run that wrote it) | a new dry run makes new staging of the current state, not these past copies | **DELETE-SAFE** |
+| `output/runs/dryrun1.log, dryrun2_console.log` | 0.04 MB | 2 | 2026-09-25 15:35 | console logs of dry runs | nothing | yes: monthly_refresh.py --dry-run | **DELETE-SAFE** |
+| `D:\sale_forecast\forecast\Chase S&OP Plan 2026 - PEM Group.html (tracked)` | 0.44 MB | 1 | 2026-08-24 11:41 | git-tracked standalone copy of the legacy S&OP page | nothing in code, a page or a link; tests/test_index_w3.py names it only to skip it ("belongs to the user"); index.html carries its own S&OP tab | it is in git | **USER DECIDES** |
+| `D:\sale_forecast\src\ 5 tracked modules no code imports (charts_focus_items, migrate_forward_test_hash_scheme, phaseE1_current_settings_comparison, phaseE1_historical_simulation, phaseE1_maxmin_scenario)` | 0.04 MB | 5 | 2026-10-07 08:10 | git-tracked; only docs name them (each is run by hand) | no import in src, tests or the scheduled jobs (tests scan src/*.py as a whole; config comments name two) | it is in git | **USER DECIDES** |
+| `D:\sale_forecast_private\target_data.xlsx` | 13.16 MB | 1 | 2026-08-20 10:29 | folder named sale_forecast_private; the target workbook | nothing (the revenue-target comparison was removed in Prompt 27; no src, config or test names the file) | no (supplied by the business) | **USER DECIDES** |
+| `output/charts/ files cited in docs, no code reference` | 0.15 MB | 2 | 2026-10-05 08:11 | screenshots / charts cited by name in reports | nothing | unknown | **USER DECIDES** |
+| `output/charts/ screenshots and charts with no named writer (verification folders, week3, daily_stock, ...)` | 43.37 MB | 185 | 2026-10-06 13:38 | browser screenshots of past page states (inventory_verification, manual_baseline, task2c_verification and the rest) | nothing | no (they show past page states) | **USER DECIDES** |
+| `output/data/*.csv named only by investigation scripts or by nothing (old saved pulls: phase*, raw_*, processed_* of 2026-08/09)` | 147.96 MB | 82 | 2026-10-05 07:42 | saved pulls / intermediate tables of one-off investigations | only investigation scripts (some as a cache before a DB query) or nothing | re-pull needs DB sessions | **USER DECIDES** |
+| `output/data/exec_pull/ (targets.csv + meta)` | 0.01 MB | 2 | 2026-10-09 09:07 | the revenue-target pull; target comparison removed in Prompt 27 | nothing | needs the target workbook / DB | **USER DECIDES** |
+| `output/data/material_pull/ 4 files no code reads (_classification_preview, _remarks_preview, _reverify23, item_movement_types)` | 0.84 MB | 4 | 2026-10-12 09:06 | saved pulls of earlier validation work | nothing (no src, test or config reference) | re-pull needs DB | **USER DECIDES** |
+| `output/pem101_evidence/, pem107_evidence/` | 0.02 MB | 2 | 2026-10-05 16:16 | evidence files cited in docs | nothing | no | **USER DECIDES** |
+| `output/runs/step8_tail.txt, task2cfix_visual_check*.py (loose scratch files)` | 0.01 MB | 3 | 2026-09-25 15:38 | one-off check files | nothing (no reference) | no (the two .py are not tracked) | **USER DECIDES** |
+| `output/shots_p8 .. shots_p14/ (verification screenshots)` | 5.57 MB | 77 | 2026-10-09 09:49 | screenshots of past page states (7 folders) | nothing | no (past states) | **USER DECIDES** |
+| `output/snapshots/posting_delay.csv` | 0.01 MB | 1 | 2026-10-12 12:00 | snapshot_daily.py wrote it until 2026-10-12 (Prompt 27); the file no longer grows | nothing (snapshot_daily.py only mentions it in a comment) | no (history of a removed measurement) | **USER DECIDES** |
+| `output/snapshots_quarantine_future_dated/` | 0.84 MB | 4 | 2026-10-02 10:22 | snapshots moved aside as future-dated (docs name it) | nothing | no | **USER DECIDES** |
+| `output/summary/ files named by no code, config, page or test` | 51.44 MB | 520 | 2026-10-06 09:37 | name matches no reference in src, tests, config or pages; 144 of the 556 files are cited in docs | nothing | unknown (producer not found by name) | **USER DECIDES** |
+| `output/summary/ files named only by one-off investigation scripts` | 92.36 MB | 521 | 2026-10-14 09:02 | written by an investigation script under src/investigations | no job, page or test (only that script, which is run by hand) | only by re-running that script (many need a DB session) | **USER DECIDES** |
+| `D:\sale_forecast\.env (hard link to the publishing clone copy)` | 0.00 MB | 1 | 2026-09-18 10:17 | credentials file, git-ignored; the publishing clone uses the same file | db.py | no | **KEEP** |
+| `D:\sale_forecast\reference\pricelist.xlsx` | 6.36 MB | 1 | 2026-08-21 09:26 | the Price List workbook (scope of the pilot) | build_report.py, build_trend_tab.py, build_exec_summary.py, build_operation_plan_page.py, inventory dataset | no (supplied by the business) | **KEEP** |
+| `output/data/*.csv read by the pipeline (processed_*, raw_all_divisions_sales, raw_full_category_sales, ...)` | 23.76 MB | 13 | 2026-10-05 07:42 | named in src (not investigations), config or tests | load_data_*.py, monthly_refresh.py, forward_test*.py, build_report*.py, tests | yes by pipeline (DB for raw_*) | **KEEP** |
+| `output/data/.gitkeep` | 0.00 MB | 1 | 2026-08-28 17:11 | placeholder | nothing | n/a | **KEEP** |
+| `output/data/daily_stock_pull/ and inventory_pull/` | 1.90 MB | 10 | 2026-10-14 08:00 | saved pulls the daily and monthly runners write | build_inventory_dataset.py, monthly_refresh.py, operation_plan.py, tests | yes, the next job run (DB) | **KEEP** |
+| `output/data/lead_time_inputs/ (incl. ces_92.csv, inventory_92.csv, stock92.json)` | 15.48 MB | 9 | 2026-10-05 16:04 | saved inputs of lead_time_v1.py and the recalibration | lead_time_v1.py (7 files), week1_recalibration.py by hand (ces_92.csv, inventory_92.csv), config | pulls need DB (ces_92 via --pull, unverified) | **KEEP** |
+| `output/data/material_pull/ (4 files read by config)` | 41.19 MB | 4 | 2026-10-09 15:39 | config operation_plan / material plan inputs | material_plan.py, operation_plan.py, config (class_evidence.pkl: tests only) | pull needs DB | **KEEP** |
+| `output/data/trend_pull/` | 1.20 MB | 3 | 2026-10-08 17:25 | Trend tab inputs | build_trend_tab.py, monthly_refresh.py, tests | pull needs DB | **KEEP** |
+| `output/data/week2_inputs/ and week3_inputs/` | 11.33 MB | 3 | 2026-10-06 12:01 | config operation_plan input files | operation_plan.py, material_plan.py, tests, config | pull needs DB | **KEEP** |
+| `output/forward_test/` | 0.04 MB | 1 | 2026-10-09 13:21 | forward-test vintage series | forward-test scoring | no (history) | **KEEP** |
+| `output/runs/daily/ (run logs, last_success.json)` | 0.05 MB | 31 | 2026-10-14 12:39 | daily job logs; last_success.json read by the monthly gate | monthly_refresh.py, daily_stock_job.py, tests | no (audit trail) | **KEEP** |
+| `output/runs/monthly_refresh_*.json (run logs)` | 0.56 MB | 32 | 2026-10-14 12:39 | monthly run logs; monthly_refresh.py lists earlier logs | monthly_refresh.py | no (audit trail) | **KEEP** |
+| `output/snapshots/inventory_daily_* and inventory_page_pull_*` | 8.90 MB | 45 | 2026-10-14 12:54 | daily stock snapshots and page pulls | inventory_page_sources.py, daily_stock_job.py, build_inventory_page_data.py, tests | no (dated history) | **KEEP** |
+| `output/state/` | 0.00 MB | 1 | 2026-10-12 10:00 | written by monthly_refresh.py | monthly_refresh.py, tests | n/a | **KEEP** |
+| `output/summary/ files referenced by current code, config, pages or tests` | 11.29 MB | 132 | 2026-10-14 09:07 | name found in src (not investigations), config, a page or a test; some are only written there | see evidence | mostly by re-running the writing script | **KEEP** |
+| `output/summary/archive/` | 2.91 MB | 36 | 2026-10-05 07:41 | forward-test logs archived with SHA-256 (ALWAYS KEEP set) | forward-test scripts, a test | no (archive) | **KEEP** |
+| `output/summary/forward_test_* and ma_comparator_* (logs, scores, shadow, comparator, metadata)` | 1.74 MB | 11 | 2026-10-09 13:21 | forward-test, score, shadow and comparator logs (ALWAYS KEEP) | monthly_refresh.py, forward_test_*.py, pages | no (history) | **KEEP** |
+
+| class | size | files |
+|---|---|---|
+| DELETE-SAFE | 18.60 MB | 231 |
+| USER DECIDES | 356.22 MB | 1410 |
+| KEEP | 126.72 MB | 334 |
+| all | 501.54 MB | 1975 |
+
+Notes: the DELETE-SAFE `output/charts` row is PNGs written by a named script; screenshots of past page states are USER DECIDES because re-running a check shows the current page, not the old one. "Regenerable" for the old dry-run staging copies means a new dry run makes new staging, not these copies. The `output/summary` KEEP row includes files that only a by-hand script reads or writes (for example `phaseE1_*`); that is conservative. `lead_time_v1.py` reads 7 of the 9 files in `lead_time_inputs`; `ces_92.csv` and `inventory_92.csv` are read only by the by-hand recalibration script, which is why they are KEEP (a saved input a current script reads).
+
+**Validator (evaluate only, read only): first pass MISMATCH on checks 1 and 2, MATCH on check 3.** Findings and what changed:
+1. 13 screenshots in the DELETE-SAFE chart row were not regenerable (`inventory_verification`, `manual_baseline`, `task2c_verification`), and `manual_baseline` had no writer at all (matched through another script's file names): moved to USER DECIDES. The 3 `focus_*_all_candidates.png` charts (written by `charts_focus_items.py` through an f-string) moved the other way, to DELETE-SAFE.
+2. Four files in USER DECIDES are read through an f-string name (`build_inventory_page_data.py`, `phaseE2pilot_PEM103/PEM107` `1_item_policy` and `2_minmax_stockvalue_twogroup`): moved to KEEP. Other f-string families the Validator tested were write-only.
+3. A live dry run was using one temp folder at the check, so "no process names them" was true at inventory time and false at the check; the row now says to skip any folder a running process names. The 117 other folders hold only an empty `forecast` subfolder. Staging folders are 12, not 13.
+4. `%TEMP%\pytest-of-<user>` is outside the allowed scope: removed from the table.
+5. Evidence text corrected: a test names the standalone S&OP copy only to skip it ("belongs to the user"); three tests scan `src/*.py` as a whole; `class_evidence.pkl` is read by a test only.
+6. Confirmed by the Validator: nothing in the ALWAYS KEEP set is classed otherwise; exec_pull, pem101/107 evidence, `posting_delay.csv`, `snapshots_quarantine_future_dated`, `target_data.xlsx` have no reader. The corrections above were applied by me and the Validator was **not** run a second time.
+
+### Need decision (USER DECIDES)
+- `D:\sale_forecast_private\target_data.xlsx` (13.2 MB): nothing reads it since the revenue-target comparison was removed (Prompt 27).
+- `output/data/exec_pull/` (2 files): the target pull, nothing reads it.
+- `output/snapshots/posting_delay.csv`: history of the removed posting-delay measurement; no longer grows.
+- `output/data/` old saved pulls and intermediate tables named only by investigation scripts or by nothing (82 files, about 148 MB; re-pull needs DB sessions).
+- `output/data/material_pull/` 4 files no code reads (0.8 MB).
+- `output/summary/` files named only by one-off investigation scripts (522) or by nothing (523); many of the latter are cited in reports.
+- Screenshots of past page states: `output/charts/` (about 42 MB), `output/shots_p8..p14/` (about 5.6 MB); `output/snapshots_quarantine_future_dated/`; `output/pem101_evidence/`, `output/pem107_evidence/`.
+- `output/runs/step8_tail.txt` and the two untracked `task2cfix_visual_check*.py`.
+- Tracked: `forecast/Chase S&OP Plan 2026 - PEM Group.html` (a test names it as the user's own copy); 5 modules no code imports.
+
+### Found, not done
+- `%TEMP%\pytest-of-<user>` is about 595 MB and 7.7 thousand files, made by pytest for every project's runs; not attributable, not in the table. Delete only by the user's decision, with no pytest running.
+- This session's own scratch folder under `%TEMP%\claude\D--sale-forecast` (about 204 MB) is not named by any repo file, so it is outside the evidence rule; it is not listed and was not touched.
+- Deleting any `%TEMP%` folder or `output/runs` staging folder must happen with no pytest, no dry run and no scheduled job running (a dry run was live during the Validator's check).

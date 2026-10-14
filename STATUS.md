@@ -144,6 +144,10 @@ Code: `src/investigations/task2b_part2_fulfilment_segmentation.py` (`run_from_pu
 - Reader text: see SENTENCES NEEDING THAI TEXT of this task (demand column header on the material page, a label for the list of divisions covered, a line for the six PEM101 codes never sold, the approved heading for six divisions) (the user's assistant).
 - Category-level view of the two product categories and the three items' settings (brief item "settings"), storms and the other external factors, utility budgets, sales insight and EGP bids: not done (brief table).
 
+### Week 4, prompt 31 -- orphan backlog helpers removed (Part A), read-only inventory of leftover files (Part B, nothing deleted) -- DONE, 2026-10-14 (no database; the test suite made none)
+
+**Report:** `docs/reports/summary/prompt5_g2_vintage_target_map.md`, heading "Prompt 31". Part A pushed on its own (703db04), suite 841 passed, 0 skipped. Part B: DELETE-SAFE about 19 MB (caches, test temp folders, dry-run staging, writer-named charts); USER DECIDES about 356 MB listed for approval; KEEP about 127 MB. Open: the user approves the list before any deletion.
+
 ### Week 4, prompt 30 -- behaviour-preserving refactor and cleanup (exec summary split out, PEM104 reason in config, investigation scripts through db.session, dead code removed, unwritten-output warning, recalibration producer, DB source wording) -- DONE, 2026-10-14 (no database; the test suite made none)
 
 **Report:** `docs/reports/summary/prompt5_g2_vintage_target_map.md`, heading "Prompt 30". Pages equal before and after except the Step 7 wording and one manual value; one new file `src/build_exec_summary.py`; 11 scripts through `db.session(preflight=True)` (none run); a stage that exits 0 without rewriting its output now makes the monthly run partial (exit 2); `--pull` producer for the recalibration input written, not yet compared with a real pull. Full suite 841 passed, 0 skipped. Open: orphan `flag_duplicate_backlog_rows`/`BACKLOG_DEDUP_KEY`; the `--pull` output unverified.
