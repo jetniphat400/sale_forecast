@@ -144,6 +144,55 @@ Code: `src/investigations/task2b_part2_fulfilment_segmentation.py` (`run_from_pu
 - Reader text: see SENTENCES NEEDING THAI TEXT of this task (demand column header on the material page, a label for the list of divisions covered, a line for the six PEM101 codes never sold, the approved heading for six divisions) (the user's assistant).
 - Category-level view of the two product categories and the three items' settings (brief item "settings"), storms and the other external factors, utility budgets, sales insight and EGP bids: not done (brief table).
 
+### Handover (ส่งมอบงาน) -- ณ 2026-10-14
+
+ส่วนนี้เขียนให้คนที่รับช่วงต่อ อ่านจบแล้วควรรู้ว่าอะไรรันเอง อะไรต้องทำเอง และอะไรยังไม่เสร็จ (รายละเอียดทางเทคนิคอยู่ใน METRICS.md, DATA_MAP.md, CONVENTIONS.md)
+
+#### 1. อะไรรันอัตโนมัติ (Task Scheduler, รันจากโฟลเดอร์ publish `D:\sale_forecast_publish` ซึ่ง `git pull` ก่อนทุกครั้ง)
+
+| งาน | วัน / เวลา | ทำอะไร | ได้อะไรออกมา |
+|---|---|---|---|
+| `SaleForecastMonthlyRefresh` (monthly) | ทริกเกอร์ทุกวันจันทร์ถึงศุกร์ 07:00 แต่ทำงานจริงแค่วันเดียวต่อเดือน คือวันทำการแรกที่ตรงหรือหลังวันที่ 5 (2026-11-05 เป็นวันพฤหัส) วันอื่นออกทันทีโดยไม่ต่อ DB | ดึงข้อมูลจาก DB (Omni Channel เฉพาะสินค้าใน Price List) สร้างยอดทาย (vintage ใหม่) ให้คะแนนยอดทายเดือนที่ปิดแล้ว (production, shadow, moving-average comparator) สร้างแผนผลิตและแผนวัตถุดิบใหม่ สำรองไฟล์ (sha256 ตรวจแล้ว) แล้วเขียนหน้าเว็บทั้งหมดใหม่ | `index.html`, `forecast/*.html`, `data/assumptions.json`, `data/inventory.json`, log ใน `output/runs/`, ไฟล์สถานะ `output/state/monthly_run_state.json` (เขียนเฉพาะเมื่อรันสำเร็จ) |
+| `SaleForecast_PostingDelaySnapshot` (daily; ชื่อเดิม ตอนนี้ทำงาน stock รายวัน) | จันทร์ถึงศุกร์ 08:00 และ 12:00 เสาร์อาทิตย์ออกทันที | เก็บ stock รายวันต่อรายการต่อคลัง แล้วอัปเดตตัวเลข stock ที่หน้าเว็บใช้ (รอบ 12:00 ไม่ทำอะไรถ้ารอบ 08:00 สำเร็จแล้ว) | `output/snapshots/inventory_daily_*.csv`, `data/stock_daily.json`, `data/inventory.json` (push ขึ้น GitHub), log ใน `output/runs/daily/` |
+
+- ทั้งสองงานตั้ง StartWhenAvailable: ถ้าเครื่องหลับตอน 07:00 งานจะรันเมื่อเครื่องตื่น และวันทำการที่พลาดจะถูกชดเชยในวันทำการถัดไป
+- ทั้งสองงานตัดสินใจ "วันนี้ต้องรันไหม" ก่อนตรวจ lock, preflight และก่อนล็อกอิน DB ทุกครั้ง จึงไม่ต่อ DB ถ้าไม่ถึงวัน
+- ห้ามแก้ scheduled task ใด ๆ โดยไม่ตัดสินใจร่วมกัน
+
+#### 2. คนต้องทำอะไร เมื่อไร
+
+| เมื่อไร | ใคร | ทำอะไร |
+|---|---|---|
+| ก่อน 2026-11-05 07:00 | เจ้าของเครื่อง | เปิดเครื่องไว้และอยู่ในเครือข่ายองค์กร (DB เข้าถึงได้เฉพาะในเครือข่าย) ถ้าเครื่องหลับตอน 07:00 งานจะรันเมื่อเครื่องตื่น หลังรันให้เปิด log ล่าสุดใน `output/runs/` ดู exit code 0 และดูรายการ has_any_history flip ที่งานพิมพ์ออกมา (รายการที่คาดไว้: EEE-F-FL-5920-353-02600) |
+| 2026-12-07 | ผู้บริหาร | ยืนยัน (หรือแก้) เกณฑ์ที่เป็น DRAFT สำหรับตัดสินผลของ forward test ซึ่งถึงกำหนดตัดสินหลังรันรอบ 2026-12 |
+| 2027-01-05 | เจ้าของโปรเจกต์ | อนุมัติหรือปฏิเสธผล shadow ของ Surge Arrester (Holt เทียบกับโมเดลปัจจุบัน เดือน 2026-09, 10, 11) งานรันเดือนนั้นจะคำนวณตัวเลขให้ แต่ไม่ตัดสินให้ |
+| เมื่อมีโอกาส | ทีมที่ดูแล master data ใน DB | ตรวจ 38 รหัสสินค้าที่มีในแผนแต่ไม่พบใน DB (Cube_ItemList) หน้าแผนผลิตแสดงหมายเหตุไว้แล้ว เพิ่มรหัสใน DB หรือยืนยันว่าไม่ใช้ |
+| ทุกครั้งที่อยากปรับ Min/Max | คน (ไม่มีงานอัตโนมัติ) | recalibration ของ PEM101 ต้องรันเอง ขั้นตอนอยู่ในคู่มือ ("วิธีคำนวณ calibration ใหม่") และ METRICS.md (note Prompt 30) ตัวดึงข้อมูล `week1_recalibration.py --pull` ยังไม่เคยเทียบกับการดึงจริง ครั้งแรกที่ใช้ต้องเทียบไฟล์ `ces_92.csv` ที่ได้กับไฟล์เดิมก่อนใช้ผลลัพธ์ |
+| ถ้า DB ปฏิเสธ login | คน | ทุกงานหยุดทันที (exit code 3) และสร้าง lock `output/state/db_login_refused.lock` ซึ่งทำให้ทุกงานไม่พยายามล็อกอินซ้ำ (กันบัญชีโดนล็อก) แก้รหัสผ่านหรือสิทธิ์ใน `.env` ก่อน แล้วค่อยลบไฟล์ lock งานจะเริ่มใหม่รอบถัดไป ห้ามลบ lock ก่อนแก้สาเหตุ |
+
+#### 3. ข้อจำกัดที่ทราบ
+
+- ขอบเขต pilot คือสินค้าใน Price List และช่อง Omni Channel เท่านั้น ข้อยกเว้นที่ติดป้ายบนหน้าเว็บแล้ว: stock reserved/available และ backlog ในแผนผลิตนับทุกช่อง ("รวมทุกช่องทาง"), backlog ของ PEM103 เฉพาะ Omni (ไม่รวมงานประมูล)
+- PEM104 ผลิตตามสั่งทั้งหมดจึงไม่ทายยอดและไม่มี Min/Max
+- ยอดทายเป็นค่าเดียวทุกเดือนและไม่ได้โมเดล seasonality (ส่วนแบ่งพ.ค.–ต.ค. ประมาณ 52–57% ในการตรวจก่อนหน้า) ยอดทาย ส.ค. 2026 ของ PEM101 ต่ำกว่ายอดจริงราว 28% (เป็นบาท)
+- เกณฑ์ตัดสินผล forward test ยังเป็น DRAFT จนกว่าผู้บริหารยืนยัน
+- งาน monthly จะแจ้ง WARN และจบด้วย exit code 2 ถ้าขั้นตอนหนึ่งจบ exit 0 แต่ไม่ได้เขียนไฟล์ผลลัพธ์ใหม่ (Prompt 30) ขั้นตอนที่ตั้งใจไม่เขียนไฟล์เมื่อไม่มีอะไรเปลี่ยนจะทำให้เตือนผิด ยังไม่พบกรณีแบบนี้ ให้ดู log รอบ 2026-11-05
+
+#### 4. งานที่ยังค้าง (หลังเดือนตุลาคม 2026)
+
+- Seasonality: เพิ่มการโมเดล seasonality หลังตัดสินเกณฑ์ (ต้องรอผล forward test)
+- ปัจจัยภายนอกที่ต้องมีข้อมูลจากนอก DB: งบสาธารณูปโภค, EGP bids, พายุ, ปฏิทินวันหยุด (ผู้ใช้ต้องส่งข้อมูล)
+- วัดระดับบริการ (service level) จริงเทียบกับที่จำลอง และเทียบแผนวัตถุดิบกับใบสั่งซื้อ (PO) จริง
+- Prompt 26 แถว 12: ตัวเลข "สัดส่วนต่อยอดสูงสุดในอดีต" และธง "เกินกำลังผลิต" ในแผนผลิต และบรรทัด watch ของหน้าผู้บริหาร เพราะ cube_final ไม่มีคอลัมน์ revenue type ต้องตรวจข้อมูลก่อนว่าจะจำกัด Omni ได้หรือไม่ (ตอนนี้การดึง backlog รายวันมี RevenueType แล้ว)
+- รวมการดึงข้อมูลที่ซ้ำกัน (Prompt 26 แถว 22: M3 เป็นส่วนย่อยของ M1 ถูกดึงสองครั้งใน `load_data_full.py` และ `load_data_all_divisions.py`)
+- ย้ายแอปไปรันบนเซิร์ฟเวอร์ขององค์กร (ตอนนี้รันบนเครื่องเดียวผ่าน Task Scheduler)
+- ล้างสคริปต์ one-off ใน `src/investigations` และไฟล์ output ที่ไม่มีใครอ้างอิง ต่อจาก Prompt 31/32 (รายชื่ออยู่ในรายงาน Prompt 32 หัวข้อ NEED DECISION)
+
+
+### Week 4, prompt 32 -- approved cleanup executed (280 items), temp-folder leaks fixed, final end-to-end audit, handover -- DONE, 2026-10-14 (no database; the test suite made none)
+
+**Report:** `docs/reports/summary/prompt5_g2_vintage_target_map.md`, heading "Prompt 32". 280 items removed under the rule that nothing may reference them (167 permanent, 6.13 MB; 113 to the Recycle Bin, 28.47 MB; protected files unchanged by sha256); the two temp-folder leaks fixed with tests (0 folders left after the suite); suite 846 passed, 0 skipped. Final audit by fresh Validators: consistency PASS, scope PASS with findings, safety FAIL (tracked data/report files hold customer codes, contract numbers and target numbers), the 2026-11-05 rehearsal PASS 13 of 13 with 4 problems, manual FAIL (sections missing). Problems are reported, not fixed. Open: the Need decision list in the report.
+
 ### Week 4, prompt 31 -- orphan backlog helpers removed (Part A), read-only inventory of leftover files (Part B, nothing deleted) -- DONE, 2026-10-14 (no database; the test suite made none)
 
 **Report:** `docs/reports/summary/prompt5_g2_vintage_target_map.md`, heading "Prompt 31". Part A pushed on its own (703db04), suite 841 passed, 0 skipped. Part B: DELETE-SAFE about 19 MB (caches, test temp folders, dry-run staging, writer-named charts); USER DECIDES about 356 MB listed for approval; KEEP about 127 MB. Open: the user approves the list before any deletion.

@@ -539,3 +539,23 @@ def test_the_session_makes_the_preflight_first_only_when_asked_and_makes_no_logi
         with db.session():
             pass
     assert calls == ["engine"]
+
+
+# ---- Prompt 32: the test session removes the temporary folder of its database-block log (43 of them had piled up in %TEMP%)
+
+@pytest.mark.parametrize("outcome", ["passing", "failing"])
+def test_the_session_leaves_no_db_block_folder_behind(tmp_path, outcome):
+    tests_dir = os.path.dirname(os.path.abspath(__file__))
+    temp_root = tmp_path / "temp_root"
+    temp_root.mkdir()
+    work = tmp_path / "work"
+    work.mkdir()
+    (work / "pytest.ini").write_text("[pytest]\n", encoding="utf-8")
+    (work / "test_tiny.py").write_text("def test_tiny():\n    assert " + ("True" if outcome == "passing" else "False") + "\n", encoding="utf-8")
+    env = dict(os.environ, TEMP=str(temp_root), TMP=str(temp_root), TMPDIR=str(temp_root), PYTHONPATH=tests_dir)
+    env.pop("SALE_FORECAST_BLOCK_DB", None)
+    proc = subprocess.run([sys.executable, "-m", "pytest", "-p", "conftest", "-p", "no:cacheprovider", "-q", "--rootdir", str(work), "-c", str(work / "pytest.ini"),
+                           str(work / "test_tiny.py")], cwd=str(work), env=env, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=300)
+    assert proc.returncode == (0 if outcome == "passing" else 1), proc.stdout[-1500:] + proc.stderr[-1500:]
+    left = [n for n in os.listdir(str(temp_root)) if n.startswith("db_block_")]
+    assert left == [], f"the session left {left} behind"

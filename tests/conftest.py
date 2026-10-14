@@ -4,6 +4,7 @@ Adds src/ to sys.path so tests can import project modules the same way the
 scripts in src/ import each other (sys.path.insert(0, os.path.dirname(__file__))),
 without needing the project installed as a package.
 """
+import atexit
 import os
 import sys
 
@@ -19,9 +20,24 @@ import tempfile  # noqa: E402
 import pytest  # noqa: E402
 
 os.environ["SALE_FORECAST_BLOCK_DB"] = "1"                      # inherited by every Python process a test starts (src/db.py refuses when it is set)
-_BLOCK_LOG = os.path.join(tempfile.mkdtemp(prefix="db_block_"), "attempts.log")
+_BLOCK_DIR = tempfile.mkdtemp(prefix="db_block_")
+_BLOCK_LOG = os.path.join(_BLOCK_DIR, "attempts.log")
 os.environ["SALE_FORECAST_DB_BLOCK_LOG"] = _BLOCK_LOG
 os.environ["SALE_FORECAST_DB_EXPECTED"] = "0"
+
+
+def _remove_block_dir():
+    """The attempts log lives in a temporary folder of its own; it is removed when the session ends (pytest_unconfigure, after the summary and the exit-status
+    check have read it) and, as a fallback for an interrupted session, at interpreter exit. Prompt 32: 43 of these folders had piled up in %TEMP%."""
+    import shutil
+    shutil.rmtree(_BLOCK_DIR, ignore_errors=True)
+
+
+atexit.register(_remove_block_dir)
+
+
+def pytest_unconfigure(config):
+    _remove_block_dir()
 
 
 def _refuse(where):

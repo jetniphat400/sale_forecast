@@ -61,6 +61,7 @@ step's outcome, step-10's figures, and whether it pushed (and why not, if applic
 METRICS.md Sec.28's own requirement.
 """
 import argparse
+import atexit
 import contextlib
 import hashlib
 import io
@@ -70,6 +71,7 @@ import os
 import re
 import shutil
 import socket
+import stat
 import subprocess
 import sys
 import tempfile
@@ -1938,11 +1940,31 @@ def _copy_run_logs(dst: str) -> None:
         shutil.copy2(last_success, target)
 
 
+def _remove_tree(path: str) -> bool:
+    """Removes a temporary folder completely, read-only entries included (the project copy carries a read-only `forecast` folder that a plain
+    `shutil.rmtree(..., ignore_errors=True)` silently left behind, one empty folder per dry run). Tries three times; True when `path` is gone."""
+    def _clear_and_retry(func, p, *_):
+        try:
+            os.chmod(p, stat.S_IWRITE | stat.S_IREAD | stat.S_IEXEC)
+            func(p)
+        except OSError:
+            pass
+    for _ in range(3):
+        if not os.path.exists(path):
+            break
+        if sys.version_info >= (3, 12):
+            shutil.rmtree(path, onexc=_clear_and_retry)
+        else:
+            shutil.rmtree(path, onerror=_clear_and_retry)
+    return not os.path.exists(path)
+
+
 def run_dry_run_in_sandbox(force_new_vintage: bool = False, offline: bool = False, skip_tests: bool = False) -> dict:
     """A dry run: everything runs inside a temporary copy of the project; only the run log is written to the real output/runs/."""
     run_id = datetime.now().strftime("%Y%m%dT%H%M%S")
     temp_root = tempfile.mkdtemp(prefix="monthly_refresh_dry_")
     logger.info("Dry run: working in a temporary copy at %s (removed afterwards).", temp_root)
+    atexit.register(_remove_tree, temp_root)                    # also when the process ends in a way the finally below does not see
     try:
         _copy_project(temp_root)
         _copy_run_logs(temp_root)
@@ -1966,7 +1988,8 @@ def run_dry_run_in_sandbox(force_new_vintage: bool = False, offline: bool = Fals
             raise MonthlyRefreshAbort(f"Dry run exited {proc.returncode}: {proc.stderr[-2500:]}")
         return log
     finally:
-        shutil.rmtree(temp_root, ignore_errors=True)
+        if not _remove_tree(temp_root):
+            logger.warning("Dry run: the temporary copy %s could not be removed completely.", temp_root)
 
 
 def main(dry_run: bool, force_new_vintage: bool = False, sandbox: bool = False, run_id: str = None,

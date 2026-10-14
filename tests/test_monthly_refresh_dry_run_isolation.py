@@ -106,3 +106,67 @@ def test_the_temporary_copy_has_what_the_regeneration_scripts_write_into(tmp_pat
     assert (dst / "output/data/a.csv").exists() and (dst / "output/summary/b.csv").exists()
     assert (dst / "output/snapshots").is_dir() and (dst / ".env").exists()
     assert not (dst / "output/runs").exists() and not (dst / "output/summary/archive").exists()
+
+
+# ---- Prompt 32: the temporary copy of a dry run is removed when the run ends, normally or not, also its read-only folder
+
+def _fake_dry_run_environment(tmp_path, monkeypatch, behaviour):
+    import stat
+    import tempfile
+    sys.path.insert(0, os.path.join(PROJECT_ROOT, "src"))
+    import monthly_refresh as mr
+    tmp_root = tmp_path / "temp_root"
+    tmp_root.mkdir()
+    monkeypatch.setattr(tempfile, "tempdir", str(tmp_root))     # mkdtemp now makes its folder here
+    monkeypatch.setattr(mr, "RUNS_DIR", str(tmp_path / "runs"))
+    (tmp_path / "runs").mkdir()
+
+    def fake_copy(dst):                                         # like the real copy: a folder with the read-only attribute, which a plain rmtree cannot remove on Windows
+        forecast = os.path.join(dst, "forecast")
+        os.makedirs(forecast)
+        with open(os.path.join(forecast, "page.html"), "w", encoding="utf-8") as f:
+            f.write("x")
+        os.chmod(os.path.join(forecast, "page.html"), stat.S_IREAD)
+        os.chmod(forecast, stat.S_IREAD)
+    monkeypatch.setattr(mr, "_copy_project", fake_copy)
+    monkeypatch.setattr(mr, "_copy_run_logs", lambda dst: None)
+
+    def fake_run(cmd, **kwargs):
+        run_id = cmd[cmd.index("--run-id") + 1]
+        if behaviour == "crash":
+            raise RuntimeError("the child process could not be started")
+        if behaviour == "ok":
+            with open(os.path.join(mr.RUNS_DIR, f"monthly_refresh_{run_id}.json"), "w", encoding="utf-8") as f:
+                json.dump({"run_id": run_id}, f)
+
+        class Done:
+            returncode = 0 if behaviour == "ok" else 1
+            stderr = "no run log"
+        return Done()
+    monkeypatch.setattr(mr.subprocess, "run", fake_run)
+    return mr, tmp_root
+
+
+def _left_in(folder):
+    return sorted(os.listdir(str(folder)))
+
+
+def test_dry_run_leaves_no_temporary_copy_after_a_normal_run(tmp_path, monkeypatch):
+    mr, tmp_root = _fake_dry_run_environment(tmp_path, monkeypatch, "ok")
+    log = mr.run_dry_run_in_sandbox(offline=True, skip_tests=True)
+    assert "run_id" in log
+    assert _left_in(tmp_root) == [], "a monthly_refresh_dry_* folder was left behind"
+
+
+def test_dry_run_leaves_no_temporary_copy_after_an_abort(tmp_path, monkeypatch):
+    mr, tmp_root = _fake_dry_run_environment(tmp_path, monkeypatch, "abort")        # no run log: the runner raises its own abort
+    with pytest.raises(mr.MonthlyRefreshAbort):
+        mr.run_dry_run_in_sandbox(offline=True, skip_tests=True)
+    assert _left_in(tmp_root) == [], "a monthly_refresh_dry_* folder was left behind after an abort"
+
+
+def test_dry_run_leaves_no_temporary_copy_after_an_exception(tmp_path, monkeypatch):
+    mr, tmp_root = _fake_dry_run_environment(tmp_path, monkeypatch, "crash")
+    with pytest.raises(RuntimeError):
+        mr.run_dry_run_in_sandbox(offline=True, skip_tests=True)
+    assert _left_in(tmp_root) == [], "a monthly_refresh_dry_* folder was left behind after an exception"
