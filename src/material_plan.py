@@ -696,12 +696,14 @@ def pull_and_save(root: str = PROJECT_ROOT, in_open_session: bool = False) -> di
         evidence = seg.pull_class_evidence(codes)
         material = pull_material_inputs(codes, cfg["purchase_evidence_since"], int(cfg["max_bom_levels"]))
         rule = cfg.get("non_stock_rule", {})
-        attributes = pull_item_attributes(sorted(set(bom_component_lines(material["bom_tree"])["comp"]))) if rule.get("enabled") else None      # the same session: no second login
+        # the plan's own item codes are asked for with the components (the same two statements, no extra query): the operation plan page flags the ones the DB item master does not hold
+        requested = sorted(set(bom_component_lines(material["bom_tree"])["comp"]) | {str(c).strip() for c in codes})
+        attributes = pull_item_attributes(requested) if rule.get("enabled") else None      # the same session: no second login
     pulled_at = started.strftime("%Y-%m-%d %H:%M:%S")
     if attributes is not None:
         attr_path = op.path_of(root, rule["attributes_file"])
         os.makedirs(os.path.dirname(attr_path), exist_ok=True)
-        pd.to_pickle({"pulled_at_local": pulled_at, **attributes}, attr_path)
+        pd.to_pickle({"pulled_at_local": pulled_at, "codes_requested": requested, **attributes}, attr_path)
     bundle = assemble_inputs(material, evidence["p2_ces"], pulled_at, pulled_at)
     out = op.path_of(root, cfg["operation_plan"]["week3_inputs_file"])
     os.makedirs(os.path.dirname(out), exist_ok=True)

@@ -31,7 +31,7 @@ CUBE_CES_COLUMNS = [
 ]
 
 
-def pull_cube_ces_for_items(item_codes: list, columns: list = None, allow_empty: bool = False):
+def pull_cube_ces_for_items(item_codes: list, columns: list = None, allow_empty: bool = False, revenue_type: str = None):
     """Pulls Cube_CES rows for `item_codes`, with NO date filter of any kind at the SQL level --
     the scope is itemcode only. Any date window (calibration/validation periods, a specific year,
     etc.) must be applied afterward in Python against whichever date field the analysis actually
@@ -42,14 +42,19 @@ def pull_cube_ces_for_items(item_codes: list, columns: list = None, allow_empty:
     Raises `zero_row_guard.EmptyQueryResultError` if the pull returns zero rows, unless
     `allow_empty=True` is passed explicitly (this task's Part 0 zero-row guard -- see
     src/zero_row_guard.py; DATA_MAP.md Sec.4 Trap 7, the cube_final precedent this generalizes).
+
+    `revenue_type` (default None: every channel, as the investigations always pulled) adds the locked scope filter
+    `AND RevenueType = '<value>'` (Prompt 28; the class signals S2 and S3 pass 'Omni Channel'). It is a row filter on the
+    channel, never a date filter.
     """
     cols = columns or CUBE_CES_COLUMNS
     code_list = "','".join(item_codes)
     col_list = ", ".join(cols)
+    channel = f" AND RevenueType = '{revenue_type}'" if revenue_type else ""
     sql = f"""
         SELECT {col_list}
         FROM Cube_CES
-        WHERE ItemCode IN ('{code_list}')
+        WHERE ItemCode IN ('{code_list}'){channel}
     """
     df = run_query(sql)
     guard_nonempty(df, table="Cube_CES", filter_desc=f"ItemCode IN ({len(item_codes)} codes)",

@@ -452,8 +452,8 @@ def test_the_unit_switch_and_the_baht_texts_are_on_the_page_verbatim_and_default
     n_market = sum(1 for p in info["prices"].values() if p["source"] == "market_price")
     label = f"มูลค่าคิดจากราคาขายเฉลี่ยต่อชิ้นของแต่ละรหัส (Average selling price) {first} ถึง {last}" + (f" · {n_market} รหัสที่ไม่เคยขายใช้ราคาตั้ง (List price) ใน Price List แทน" if n_market else "")
     assert f'id="baht-label">{label}</p>' in sec
-    assert ("▸ ยอดทายคิดเป็นเงินเท่าไหร่ต่อเดือน ▸ ตัวเลข = ยอดทาย (ชิ้น) × ราคาขายเฉลี่ยของรหัสนั้น หน่วยบาท ▸ ถ้าราคาขายข้างหน้าต่างจากช่วงที่ใช้เฉลี่ย ยอดเงินจะคลาดตาม "
-            "▸ ยังไม่ได้ตรวจว่านับแบบเดียวกับเป้ารายได้ อย่าเพิ่งเทียบกับเป้าตรงๆ") in text
+    assert ("▸ ยอดทายคิดเป็นเงินเท่าไหร่ต่อเดือน ▸ ตัวเลข = ยอดทาย (ชิ้น) × ราคาขายเฉลี่ยของรหัสนั้น หน่วยบาท ▸ ถ้าราคาขายข้างหน้าต่างจากช่วงที่ใช้เฉลี่ย ยอดเงินจะคลาดตาม") in text
+    assert "เป้า" not in sec.split('id="baht-explanation"')[1].split("</p>")[0]            # no revenue-target sentence (Prompt 28)
     assert "ยอดทายรวมรายเดือน (บาท)" in text and "รวมทุกฝ่าย" in text
     for d in _baht_tables(h):
         assert f"รวม {d}" in text
@@ -763,3 +763,15 @@ def test_the_trend_note_and_the_chart_caption_carry_no_typed_month():
     for typed in ("เดือน ส.ค. 2026 ยังไม่จบเดือน", "ม.ค. 2024 – ก.ค. 2026", "ตรวจสอบแล้ว (2026-09-24)"):
         assert typed not in text, typed
     assert 'class="omni-month-incomplete"' in text and 'class="omni-base-first"' in text and "ตรวจสอบแล้ว (' + OMNI.meta.pull + '): ไม่มีรหัสสินค้า" in text
+
+
+# ------------------------------------------------------------------ Prompt 28 (row 24): the lead-time and delivery sections say PEM101 plainly
+def test_the_notice_and_delivery_figures_are_labelled_as_pem101_where_they_are_stated():
+    import reader_values as rv
+    text = open(os.path.join(PROJECT_ROOT, "forecast", "sales_report.html"), encoding="utf-8").read()
+    n = rv.count_no_current_minmax()[1]
+    assert f'id="business-findings-scope">ส่วนนี้ (ระยะแจ้งล่วงหน้าและการส่งมอบ) นับเฉพาะสินค้า PEM101 {n} รหัส ไม่รวมฝ่ายอื่น</p>' in text
+    assert f"ในสินค้า PEM101 ({n} รหัส) ลูกค้าให้เวลาแจ้งล่วงหน้าก่อนส่งมอบเพียง" in text and "สัดส่วนส่งตรงวันพอดี ของ PEM101" in text
+    assert "ระยะแจ้งล่วงหน้าของลูกค้า PEM101 (Customer notice)" in text
+    assert f"ตรวจจากสินค้า PEM101 ({n} รหัส) แล้วกระทบประมาณ" in text and "รายการของ PEM101 ไม่ได้ตั้ง" in text
+    assert "▸ ลูกค้า PEM101 (128 รหัส) สั่งของล่วงหน้านานแค่ไหน" in text and "▸ PEM101 (128 รหัส) ส่งของให้ลูกค้าทันวันนัดกี่ % ต่อปี" in text

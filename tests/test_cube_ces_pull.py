@@ -3,6 +3,8 @@
 unrecognizable `not_late` figure. This test fails against that old filter and passes against the
 fixed shared helper (`src/cube_ces_pull.py`), which must never add any date condition at pull time.
 """
+import os
+
 import pandas as pd
 import pytest
 
@@ -67,3 +69,51 @@ def test_pull_cube_ces_allow_empty_true_does_not_raise(monkeypatch):
     monkeypatch.setattr(cube_ces_pull, "run_query", fake_run_query)
     result = cube_ces_pull.pull_cube_ces_for_items(["A", "B"], allow_empty=True)
     assert len(result) == 0
+
+
+# ---------------------------------------------------------------- Prompt 28: the Omni Channel filter of the three Cube_CES paths (rows 8, 9, 21)
+def test_the_class_signal_pull_adds_the_omni_channel_filter_when_asked_and_never_a_date_filter(monkeypatch):
+    captured = {}
+    monkeypatch.setattr(cube_ces_pull, "run_query", lambda sql: captured.setdefault("sql", sql) and pd.DataFrame(columns=cube_ces_pull.CUBE_CES_COLUMNS))
+    cube_ces_pull.pull_cube_ces_for_items(["A"], allow_empty=True, revenue_type="Omni Channel")
+    assert "AND RevenueType = 'Omni Channel'" in captured["sql"] and "ForecastDelDate" not in captured["sql"].split("WHERE")[1] and "CtrDate" not in captured["sql"].split("WHERE")[1]
+    captured.clear()
+    cube_ces_pull.pull_cube_ces_for_items(["A"], allow_empty=True)
+    assert "RevenueType =" not in captured["sql"]                                   # the investigations' default pull is unchanged
+
+
+def test_the_class_evidence_pull_takes_omni_rows_of_every_status_and_the_backlog_rows_of_every_channel(monkeypatch):
+    import sys
+    sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "src", "investigations"))
+    import task2b_part2_fulfilment_segmentation as seg
+    sqls = []
+    import db
+    monkeypatch.setattr(db, "run_query", lambda sql: sqls.append(sql) or pd.DataFrame())
+    monkeypatch.setattr(seg, "load_week3_config", lambda: {"analysis_window_start": "2024-01-01"})
+    seg.pull_class_evidence(["A"])
+    ces = [s for s in sqls if "FROM Cube_CES" in s]
+    assert len(ces) == 1 and "AND (RevenueType = 'Omni Channel' OR Status = 'Backlog')" in ces[0]
+    assert all("revenue_type = 'Omni Channel'" in s for s in sqls if "cube_Sale_APD" in s)
+
+
+def test_the_class_signals_read_only_the_omni_rows_and_a_frame_without_the_column_is_refused():
+    import sys
+    sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "src", "investigations"))
+    import task2b_part2_fulfilment_segmentation as seg
+    ces = pd.DataFrame({"ItemCode": ["A", "A", "B", "B"], "Status": ["Actual", "Actual", "Backlog", "Actual"], "RevenueType": ["Omni Channel", "Tendering", "Tendering", None]})
+    kept = seg.omni_rows(ces)
+    assert kept["RevenueType"].tolist() == ["Omni Channel"]
+    with pytest.raises(ValueError, match="no RevenueType"):
+        seg.omni_rows(ces.drop(columns="RevenueType"))
+
+
+def test_the_observed_not_late_counts_only_omni_channel_rows(tmp_path):
+    import sys
+    sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "src", "investigations"))
+    import week1_recalibration as wr
+    ces = pd.DataFrame({"ItemCode": ["A"] * 3, "Status": ["Actual"] * 3, "ForecastDelDate": ["2026-01-10"] * 3, "ActualDelDate": ["2026-01-09", "2026-01-20", "2026-01-20"],
+                        "ActualQty": [10.0, 10.0, 80.0], "RevenueType": ["Omni Channel", "Omni Channel", "Tendering"]})
+    r = wr.observed_not_late(ces, ["A"], "2026-01-01", "2026-12-31")
+    assert r["units"] == 20.0 and r["not_late"] == 0.5                              # the 80 late Tendering units are not counted
+    with pytest.raises(ValueError, match="no RevenueType"):
+        wr.observed_not_late(ces.drop(columns="RevenueType"), ["A"], "2026-01-01")

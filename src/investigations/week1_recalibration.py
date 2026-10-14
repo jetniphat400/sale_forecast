@@ -44,6 +44,7 @@ LEAD_PATH = os.path.join(SUMMARY_DIR, "item_lead_time_v1.csv")
 CES_PATH = os.path.join(INPUT_DIR, "ces_92.csv")
 INV_PATH = os.path.join(INPUT_DIR, "inventory_92.csv")
 INTEGRITY_PATH = os.path.join(SUMMARY_DIR, "week1_recal_integrity.json")
+REVENUE_TYPE = "Omni Channel"
 STOCKDEFS = ["current", "fg_prefixed_only", "all_stockholding_except_qa_fmto_fmts"]
 DEDUP_COLS = ["r_months", "s_months", "review_interval_days"]
 
@@ -51,8 +52,11 @@ DEDUP_COLS = ["r_months", "s_months", "review_interval_days"]
 # ------------------------------------------------------------------ observed targets
 def observed_not_late(ces: pd.DataFrame, items, start: str, end: str = None) -> dict:
     """Unit-weighted not_late (METRICS.md Sec.19): sum of ActualQty delivered on or before ForecastDelDate / sum of ActualQty, over Status
-    'Actual' rows whose ForecastDelDate is in [start, end] and that have an ActualDelDate. ForecastDelDate is the due date."""
-    c = ces[ces["ItemCode"].astype(str).str.strip().isin(set(items)) & (ces["Status"].astype(str).str.strip() == "Actual")].copy()
+    'Actual' rows of the Omni Channel (the locked scope, Prompt 28) whose ForecastDelDate is in [start, end] and that have an ActualDelDate. ForecastDelDate is the due date."""
+    if "RevenueType" not in ces.columns:
+        raise ValueError("the Cube_CES frame has no RevenueType column, so the observed not_late cannot be limited to the Omni Channel")
+    c = ces[ces["ItemCode"].astype(str).str.strip().isin(set(items)) & (ces["Status"].astype(str).str.strip() == "Actual")
+            & (ces["RevenueType"].astype(str).str.strip() == REVENUE_TYPE)].copy()
     for col in ("ForecastDelDate", "ActualDelDate"):
         c[col] = pd.to_datetime(c[col], errors="coerce")
     c = c[c["ForecastDelDate"].notna() & (c["ForecastDelDate"] >= start)]

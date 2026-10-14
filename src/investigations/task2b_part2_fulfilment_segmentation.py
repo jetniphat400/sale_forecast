@@ -499,6 +499,13 @@ def universe_from_status(status: pd.DataFrame) -> pd.DataFrame:
 CLASS_EVIDENCE_NAMES = ("p2_apd", "p2_ces", "p2_final", "p2_inv", "p4_bom")
 
 
+def omni_rows(ces: pd.DataFrame) -> pd.DataFrame:
+    """The Cube_CES rows of the locked scope (RevenueType = 'Omni Channel', trimmed). Raises when the frame has no RevenueType column: a saved pull without it cannot be scoped."""
+    if "RevenueType" not in ces.columns:
+        raise ValueError("the Cube_CES frame has no RevenueType column, so it cannot be limited to the Omni Channel")
+    return ces[ces["RevenueType"].astype(str).str.strip() == REVENUE_TYPE].copy()
+
+
 def class_evidence_codes() -> list:
     """The item codes the class evidence is pulled for: every item of the universe (forecast-status and placeholder items, PEM104's items)."""
     return sorted(universe_from_status(pd.read_csv(ITEM_STATUS_FILE))["code"])
@@ -506,7 +513,8 @@ def class_evidence_codes() -> list:
 
 def pull_class_evidence(codes: list) -> dict:
     """The five pulls METRICS.md Sec.23 needs, for `codes`, through the open database session (db.run_query; the caller owns the session; read-only):
-    cube_Sale_APD lines (Omni Channel, Actual and MPS, createDate from the analysis window start), every Cube_CES row of the items, cube_final rows,
+    cube_Sale_APD lines (Omni Channel, Actual and MPS, createDate from the analysis window start), the Cube_CES rows of the items (Omni Channel rows of every status, plus
+    the Backlog rows of every channel: the class signals read the Omni rows only, the operation plan counts all channels' accepted orders, Prompt 28), cube_final rows,
     Cube_Inventory_Exact stock and Cube_BOM_Exact rows. Returns {name: DataFrame} for CLASS_EVIDENCE_NAMES."""
     from db import run_query
     w3 = load_week3_config()
@@ -516,7 +524,7 @@ def pull_class_evidence(codes: list) -> dict:
         "p2_apd": run_query(f"SELECT itemcode, manufacturing_type, qty, createDate, contractid, planid, status, forecast_date, revenue_type FROM {sale} "
                             f"WHERE itemcode IN ('{lst}') AND revenue_type = '{REVENUE_TYPE}' AND status IN ('Actual','MPS') AND createDate >= '{w3['analysis_window_start']}'"),
         "p2_ces": run_query(f"SELECT ItemCode, ContractID, PlanID, Status, CtrDate, ForecastDelDate, PlanDelDate, ActualDelDate, OLMJobCode, ActualQty, BacklogQty, PlanQty, "
-                            f"RevenueType FROM Cube_CES WHERE ItemCode IN ('{lst}')"),
+                            f"RevenueType FROM Cube_CES WHERE ItemCode IN ('{lst}') AND (RevenueType = '{REVENUE_TYPE}' OR Status = 'Backlog')"),
         "p2_final": run_query(f"SELECT itemcode, jobno, ctrno, final_date, transfer_qty, job_qty, division FROM cube_final WHERE itemcode IN ('{lst}')"),
         "p2_inv": run_query(f"SELECT warehouse, itemcode, stock, freestock, tobe_received, unit, timestamp FROM Cube_Inventory_Exact WHERE itemcode IN ('{lst}')"),
         "p4_bom": run_query(f"SELECT ItemFG, ItemRawmat, Quantity, Unit, Sequenceno, Type, Status, Warehouse, Division, ItemGroup, version, [Timestamp] FROM Cube_BOM_Exact "
@@ -538,6 +546,7 @@ def run_from_frames(frames: dict, out_item_level: str = OUT_ITEM_LEVEL, today: p
     today = pd.Timestamp(today) if today is not None else pd.Timestamp.today().normalize()
     w3 = load_week3_config()
     apd, ces, cf, inv, bom = (frames[n].copy() for n in CLASS_EVIDENCE_NAMES)
+    ces = omni_rows(ces)                       # the class signals S2, S3 and the delivered-contract counts read the Omni Channel rows only (Prompt 28)
     status = pd.read_csv(ITEM_STATUS_FILE)
     universe = universe_from_status(status)
     codes = sorted(universe["code"])
@@ -580,7 +589,7 @@ def main():
         s1_df = compute_s1(item_codes)
         ces = pull_cube_ces_for_items(
             item_codes, columns=["ItemCode", "ContractID", "Status", "CtrDate", "ActualDelDate", "OLMJobCode"],
-            allow_empty=True)
+            allow_empty=True, revenue_type=REVENUE_TYPE)
         cf = pull_cube_final_for_items(item_codes, allow_empty=True)
     except Exception as exc:
         logger.error("DATABASE ACCESS RULE: a query in this single-connection session failed. "

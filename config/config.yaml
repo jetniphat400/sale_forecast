@@ -1080,13 +1080,13 @@ report:
   limitations:
     # Previous wording of the next four items is in git history (commit 1f87b6e); the on-screen
     # text below is the approved Thai wording, used verbatim.
-    - "วันส่งตามสัญญาอาจถูกแก้หลังรับ PO ระบบไม่มีบันทึกการแก้ ตรวจแล้วกระทบประมาณ {forecast_date_revision_share_pct}% ของรายการ"
+    - "วันส่งตามสัญญาอาจถูกแก้หลังรับ PO ระบบไม่มีบันทึกการแก้ ตรวจจากสินค้า PEM101 ({n_scope_items} รหัส) แล้วกระทบประมาณ {forecast_date_revision_share_pct}% ของรายการ"
     - "ไม่มีข้อมูลประวัติของ Price List เวอร์ชันเก่า จึงไม่สามารถตรวจสอบได้ว่าการจัดฝ่าย/ประเภท
       สินค้าเคยเปลี่ยนแปลงไปจากอดีตหรือไม่ (cannot be determined จากข้อมูลที่มีอยู่ในปัจจุบัน)"
     - "ยอดขายนับจาก PO ที่ลูกค้าสั่งจริงเท่านั้น จึงไม่เห็นความต้องการที่ไม่ได้กลายเป็น PO เช่น ลูกค้าที่ไม่สั่งเพราะรู้ว่าไม่มีของ"
     # The significance sentence that stood here is replaced by the block in section 6, built from topdown_significance.csv.
     - "ไม่มีข้อมูลเวลาประกอบหลังได้ชิ้นส่วน ตัวเลขนี้ในการวางแผน stock เป็นค่าสมมติ"
-    - "Min/Max ที่ตั้งอยู่ในระบบตอนนี้ใช้คำนวณไม่ได้ {n_no_minmax} จาก {n_scope_items} รายการไม่ได้ตั้ง และค่าที่มีไม่สอดคล้องกัน ใช้ได้แค่เป็นตัวเทียบ"
+    - "Min/Max ที่ตั้งอยู่ในระบบตอนนี้ใช้คำนวณไม่ได้ {n_no_minmax} จาก {n_scope_items} รายการของ PEM101 ไม่ได้ตั้ง และค่าที่มีไม่สอดคล้องกัน ใช้ได้แค่เป็นตัวเทียบ"
   # Standing next-step items, each pulled from an already-recorded open item in STATUS.md.
   next_steps:
     # The earlier next-step items (first forward-test scoring round, analogue codes for
@@ -1138,7 +1138,7 @@ report:
   baht_summary_title: "ยอดทายรวมรายเดือน (บาท)"
   baht_all_divisions_row: "รวมทุกฝ่าย"
   baht_division_total_row: "รวม {division}"
-  baht_explanation: "▸ ยอดทายคิดเป็นเงินเท่าไหร่ต่อเดือน ▸ ตัวเลข = ยอดทาย (ชิ้น) × ราคาขายเฉลี่ยของรหัสนั้น หน่วยบาท ▸ ถ้าราคาขายข้างหน้าต่างจากช่วงที่ใช้เฉลี่ย ยอดเงินจะคลาดตาม ▸ ยังไม่ได้ตรวจว่านับแบบเดียวกับเป้ารายได้ อย่าเพิ่งเทียบกับเป้าตรงๆ"
+  baht_explanation: "▸ ยอดทายคิดเป็นเงินเท่าไหร่ต่อเดือน ▸ ตัวเลข = ยอดทาย (ชิ้น) × ราคาขายเฉลี่ยของรหัสนั้น หน่วยบาท ▸ ถ้าราคาขายข้างหน้าต่างจากช่วงที่ใช้เฉลี่ย ยอดเงินจะคลาดตาม"
   baht_no_price_line: "{n} รหัสไม่มีทั้งประวัติขายและราคาใน Price List ไม่ได้รวมในยอดบาท"
   baht_no_price_columns: ["รหัส", "ชื่อ", "ฝ่าย"]
   flat_forecast_line: "ยอดทายทุกเดือนเท่ากัน (flat forecast) เพราะวิธีทายตอนนี้ให้ค่าเดียวกับทุกเดือนข้างหน้า ยังไม่คิดช่วงขายดีขายน้อยตามฤดูกาล (seasonality)"
@@ -1854,6 +1854,10 @@ operation_plan:
   # beside it): the CES backlog with RevenueType, the BOM tree, raw-material stock, open orders, purchase history, price list, item names. The one-off file of
   # week 3 (output/data/week3_inputs) is no longer read.
   week3_inputs_file: "output/data/material_pull/material_inputs.pkl"
+  # The DB item master (Cube_ItemList) check of the plan's codes (the page's remark "ไม่พบรหัสนี้ใน DB"): the monthly pull's item attributes cover the plan items from the 2026-11-05 run
+  # (they carry `codes_requested`); until then the one-off pull of the plan items of 2026-10-09 (Prompt 21) covers them. A code no saved pull covers is shown as not checked.
+  item_master_files: ["output/data/material_pull/item_attributes.pkl"]
+  item_master_legacy_fg_file: "output/data/material_pull/item_attributes_fg.pkl"
   # PEM103 counts only its Omni Channel orders (the approved page line states it); the backlog rows of its items with another RevenueType are dropped.
   backlog_channel_scope: {PEM103: "Omni Channel"}
   # Classes of METRICS.md Sec.23 that get a Min and Max (part A) and that do not (part B, load equals demand).

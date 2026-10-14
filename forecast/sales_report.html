@@ -86,10 +86,10 @@
         เพียงพอสำหรับการพยากรณ์ <b>92</b> รหัสไม่มีประวัติเพียงพอและใช้ค่าประมาณ
         (Placeholder) แทน และ <b>18</b> รหัสถูกตัดออกจากการพยากรณ์
         <!-- source: output/summary/leadtime_overall_distribution.csv, column median -->
-        ลูกค้าให้เวลาแจ้งล่วงหน้าก่อนส่งมอบเพียง <b>6</b> วัน
+        ในสินค้า PEM101 (128 รหัส) ลูกค้าให้เวลาแจ้งล่วงหน้าก่อนส่งมอบเพียง <b>6</b> วัน
         (median) ซึ่งสั้นกว่าระยะเวลาจัดหาวัตถุดิบมาก
         <!-- source: output/summary/delivery_by_year.csv, column pct_on_time -->
-        สัดส่วนส่งตรงวันพอดี (exact-day delivery: ส่งวันนัดเป๊ะ ไม่นับส่งก่อน) ปรับตัวขึ้นจาก 57.8% (ปี 66) เป็น
+        สัดส่วนส่งตรงวันพอดี ของ PEM101 (exact-day delivery: ส่งวันนัดเป๊ะ ไม่นับส่งก่อน) ปรับตัวขึ้นจาก 57.8% (ปี 66) เป็น
         <b>73.2%</b> ในปี 69 (ข้อมูลบางส่วน)
       </p>
     </section>
@@ -98,7 +98,7 @@
       <!-- source: the Item rows of vintage 2 (the latest) of output/summary/forward_test_log_all_divisions.csv after the hash check, the same rows the Min-Max page and the operation plan read; a Type's value is the sum of its items'. -->
       <!-- baht: round(units x unit price) per item and month; unit price = sum of sale / sum of qty of the item over the months 2025-09 to 2026-08 of the saved monthly series (config report.price_basis), else over the fit window 2024-02 to 2026-08, else the Market Price of the price list (columns found per sheet: {'PEM101-Version 2': 'P', 'PEM102-Version 2': 'Q', 'PEM103-Version2': 'P', 'PEM104': 'Q', 'PEM107 CT-Version 2': 'Q', 'CI101': 'Q'}), else no price. -->
       <p class="hint baht-only" id="baht-label">มูลค่าคิดจากราคาขายเฉลี่ยต่อชิ้นของแต่ละรหัส (Average selling price) ก.ย. 68 ถึง ส.ค. 69 · 1 รหัสที่ไม่เคยขายใช้ราคาตั้ง (List price) ใน Price List แทน</p>
-      <p class="hint baht-only" id="baht-explanation">▸ ยอดทายคิดเป็นเงินเท่าไหร่ต่อเดือน ▸ ตัวเลข = ยอดทาย (ชิ้น) × ราคาขายเฉลี่ยของรหัสนั้น หน่วยบาท ▸ ถ้าราคาขายข้างหน้าต่างจากช่วงที่ใช้เฉลี่ย ยอดเงินจะคลาดตาม ▸ ยังไม่ได้ตรวจว่านับแบบเดียวกับเป้ารายได้ อย่าเพิ่งเทียบกับเป้าตรงๆ</p>
+      <p class="hint baht-only" id="baht-explanation">▸ ยอดทายคิดเป็นเงินเท่าไหร่ต่อเดือน ▸ ตัวเลข = ยอดทาย (ชิ้น) × ราคาขายเฉลี่ยของรหัสนั้น หน่วยบาท ▸ ถ้าราคาขายข้างหน้าต่างจากช่วงที่ใช้เฉลี่ย ยอดเงินจะคลาดตาม</p>
       <div class="pieces-only"><p class="hint">▸ เดือนข้างหน้าสินค้าแต่ละประเภทน่าจะขายกี่ชิ้น<br>▸ แถว = ประเภทสินค้า · คอลัมน์ = เดือน · ตัวเลข = จำนวนชิ้น<br>▸ คลิกประเภทเพื่อดูรายรหัส<br>▸ เป็นตัวเลขค่าเดียว (point forecast) ยังไม่มีช่วงสูงต่ำ ดูว่าพลาดได้แค่ไหนจากส่วนผลลัพธ์</p></div>
       <p class="hint" id="forward-missing">รหัสที่ยังไม่มียอดทาย 110 รหัส ดูเหตุผลใน<a href="#scope">ตารางขอบเขตข้อมูล</a></p>
       <div class="controls">
@@ -123,9 +123,10 @@
     </section>
     <section id="business-findings">
       <h2>4. ข้อค้นพบทางธุรกิจ (Business Findings)</h2>
+      <p class="scope-note" id="business-findings-scope">ส่วนนี้ (ระยะแจ้งล่วงหน้าและการส่งมอบ) นับเฉพาะสินค้า PEM101 128 รหัส ไม่รวมฝ่ายอื่น</p>
       <p>
         <!-- source: output/summary/leadtime_overall_distribution.csv, column median -->
-        ระยะแจ้งล่วงหน้าของลูกค้า (Customer notice) ค่ากลาง (median): <b>6</b> วัน &nbsp;|&nbsp;
+        ระยะแจ้งล่วงหน้าของลูกค้า PEM101 (Customer notice) ค่ากลาง (median): <b>6</b> วัน &nbsp;|&nbsp;
         <!-- source: output/summary/leadtime_notice_buckets_overall.csv, column pct_of_orders -->
         สัดส่วนออเดอร์ที่แจ้งล่วงหน้า &ge; 1 เดือน: <b>5.80%</b> &nbsp;|&nbsp;
         <!-- source: config.yaml, field phase_e1_assumptions.procurement_lead_time_days_grid -->
@@ -135,14 +136,14 @@
       <h3>การกระจายของระยะเวลาแจ้งล่วงหน้า (Notice period)</h3>
       <!-- source: output/summary/leadtime_notice_buckets_overall.csv, column min_notice_days / pct_of_orders -->
       <div id="chart-notice" class="plotly-chart"></div>
-      <p class="hint">▸ ลูกค้าสั่งของล่วงหน้านานแค่ไหนก่อนวันที่ต้องส่ง<br>▸ แกน X = ระยะแจ้งล่วงหน้าขั้นต่ำ (≥30 วัน, ≥60 วัน … ≥180 วัน) · แกน Y = % ของออเดอร์ทั้งหมด<br>▸ ตัวอย่าง: แท่ง ≥30 วันสูง 6% หมายถึงออเดอร์ 100 ใบ มีแค่ 6 ใบที่แจ้งล่วงหน้าเกิน 30 วัน</p>
+      <p class="hint">▸ ลูกค้า PEM101 (128 รหัส) สั่งของล่วงหน้านานแค่ไหนก่อนวันที่ต้องส่ง<br>▸ แกน X = ระยะแจ้งล่วงหน้าขั้นต่ำ (≥30 วัน, ≥60 วัน … ≥180 วัน) · แกน Y = % ของออเดอร์ทั้งหมด<br>▸ ตัวอย่าง: แท่ง ≥30 วันสูง 6% หมายถึงออเดอร์ 100 ใบ มีแค่ 6 ใบที่แจ้งล่วงหน้าเกิน 30 วัน</p>
       <h3>สัดส่วนส่งมอบตรงวันครบกำหนดเป๊ะ vs. ส่งทัน (ส่งไม่ช้ากว่าวันนัด) (ปี 66-69)</h3>
       <!-- Previous wording, kept off screen: on_time_exact = delivered exactly on the due date (PlanDelDate), counted by number of orders (row-weighted), PEM101 128 items -- src/investigations/delivery_performance.py:71-75 (classify_delay) and lines 155-161 (by_year aggregation, column pct_on_time); METRICS.md §19 forbids using this figure alone as a fill-rate benchmark (the earlier 73.2% incident), so not_late is shown alongside. not_late = delivered on or before ForecastDelDate, unit-weighted (ActualQty), not by order count; unit-weighted because METRICS.md §10 (fill_rate) is defined as unit-based, not order-based, and the figure is read alongside fill_rate/service level (src/investigations/task2a_delivery_notlate_by_year.py, computed from the same Cube_CES data as on_time_exact, no new pull). -->
       <p class="hint">เส้นส่งทันนับเป็นชิ้น เพราะสิ่งที่ลูกค้าสนใจคือได้ของครบทันไหม ไม่ใช่จำนวนใบสั่ง</p>
       <!-- source: output/summary/delivery_by_year.csv, column year / pct_on_time -->
       <!-- source: output/summary/delivery_not_late_by_year.csv, column year / not_late_pct_unit_weighted -->
       <div id="chart-ontime" class="plotly-chart"></div>
-      <p class="hint">▸ ส่งของให้ลูกค้าทันวันนัดกี่ % ต่อปี<br>▸ แกน X = ปี · แกน Y = % (0-100)<br>▸ 2 เส้น ส่งทัน (ส่งไม่ช้ากว่าวันนัด คือทันหรือก่อนวันนัด) กับ ส่งตรงวันพอดี ใช้เส้นส่งทันถ้าจะตอบว่าลูกค้าได้ของทันไหม<br>▸ เส้นส่งตรงวันพอดีต่ำกว่าเสมอเพราะไม่นับที่ส่งก่อน อย่าเอาไปรายงานเป็นอัตราส่งทัน</p>
+      <p class="hint">▸ PEM101 (128 รหัส) ส่งของให้ลูกค้าทันวันนัดกี่ % ต่อปี<br>▸ แกน X = ปี · แกน Y = % (0-100)<br>▸ 2 เส้น ส่งทัน (ส่งไม่ช้ากว่าวันนัด คือทันหรือก่อนวันนัด) กับ ส่งตรงวันพอดี ใช้เส้นส่งทันถ้าจะตอบว่าลูกค้าได้ของทันไหม<br>▸ เส้นส่งตรงวันพอดีต่ำกว่าเสมอเพราะไม่นับที่ส่งก่อน อย่าเอาไปรายงานเป็นอัตราส่งทัน</p>
     </section>
     <section id="data">
       <h2>5. ข้อมูลที่ใช้ (Data)</h2>
@@ -244,7 +245,7 @@
     </section>
     <section id="limitations">
       <h2>8. ข้อจำกัด (Limitations)</h2>
-      <ul><li>วันส่งตามสัญญาอาจถูกแก้หลังรับ PO ระบบไม่มีบันทึกการแก้ ตรวจแล้วกระทบประมาณ 2.5% ของรายการ</li><li>ไม่มีข้อมูลประวัติของ Price List เวอร์ชันเก่า จึงไม่สามารถตรวจสอบได้ว่าการจัดฝ่าย/ประเภท สินค้าเคยเปลี่ยนแปลงไปจากอดีตหรือไม่ (cannot be determined จากข้อมูลที่มีอยู่ในปัจจุบัน)</li><li>ยอดขายนับจาก PO ที่ลูกค้าสั่งจริงเท่านั้น จึงไม่เห็นความต้องการที่ไม่ได้กลายเป็น PO เช่น ลูกค้าที่ไม่สั่งเพราะรู้ว่าไม่มีของ</li><li>ไม่มีข้อมูลเวลาประกอบหลังได้ชิ้นส่วน ตัวเลขนี้ในการวางแผน stock เป็นค่าสมมติ</li><li>Min/Max ที่ตั้งอยู่ในระบบตอนนี้ใช้คำนวณไม่ได้ 46 จาก 128 รายการไม่ได้ตั้ง และค่าที่มีไม่สอดคล้องกัน ใช้ได้แค่เป็นตัวเทียบ</li></ul>
+      <ul><li>วันส่งตามสัญญาอาจถูกแก้หลังรับ PO ระบบไม่มีบันทึกการแก้ ตรวจจากสินค้า PEM101 (128 รหัส) แล้วกระทบประมาณ 2.5% ของรายการ</li><li>ไม่มีข้อมูลประวัติของ Price List เวอร์ชันเก่า จึงไม่สามารถตรวจสอบได้ว่าการจัดฝ่าย/ประเภท สินค้าเคยเปลี่ยนแปลงไปจากอดีตหรือไม่ (cannot be determined จากข้อมูลที่มีอยู่ในปัจจุบัน)</li><li>ยอดขายนับจาก PO ที่ลูกค้าสั่งจริงเท่านั้น จึงไม่เห็นความต้องการที่ไม่ได้กลายเป็น PO เช่น ลูกค้าที่ไม่สั่งเพราะรู้ว่าไม่มีของ</li><li>ไม่มีข้อมูลเวลาประกอบหลังได้ชิ้นส่วน ตัวเลขนี้ในการวางแผน stock เป็นค่าสมมติ</li><li>Min/Max ที่ตั้งอยู่ในระบบตอนนี้ใช้คำนวณไม่ได้ 46 จาก 128 รายการของ PEM101 ไม่ได้ตั้ง และค่าที่มีไม่สอดคล้องกัน ใช้ได้แค่เป็นตัวเทียบ</li></ul>
     </section>
     <section id="next-steps">
       <h2>9. ขั้นตอนต่อไป (Next Steps)</h2>

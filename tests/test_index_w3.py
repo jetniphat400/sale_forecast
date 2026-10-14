@@ -789,3 +789,39 @@ def test_no_four_digit_year_and_no_iso_date_is_shown_outside_the_sop_tab(edge, t
         assert text and len(text) > 200, f"{where} showed no text"
         assert not year4.search(text), f"{where} shows a four-digit year: {text[max(0, year4.search(text).start() - 40): year4.search(text).end() + 20]!r}"
         assert not iso.search(text), f"{where} shows an ISO date: {text[max(0, iso.search(text).start() - 40): iso.search(text).end() + 20]!r}"
+
+
+# ------------------------------------------------------------------ Prompt 28: the all-channels label, no ERP source wording, no revenue-target text
+def _outside_the_original_tab(text: str) -> str:
+    """index.html without the original S&OP tab (div#origTab up to the stock panel), which belongs to the user."""
+    return text[:text.index('<div id="origTab">')] + text[text.index('<div id="invPanel">'):]
+
+
+def test_the_stock_panel_labels_reserved_and_available_as_all_channels_with_a_tooltip(edge, tmp_path_factory):
+    site = _site(tmp_path_factory, "p28_allch")
+    server, url = _serve(site)
+    try:
+        edge.open(url)
+        edge.ev("omniShowTab(1); document.getElementById('invMenuRow').click(); 1")
+        assert _wait(edge, "document.getElementById('invContent') && document.getElementById('invContent').style.display !== 'none'")
+        badges = edge.ev("[...document.querySelectorAll('#invTable th[data-k=backlog], #invTable th[data-k=available]')].map(t=>{const b=t.querySelector('.inv-allch'); return b && [b.textContent, b.title]})")
+        assert badges == [["รวมทุกช่องทาง", "stock และออเดอร์ที่รับแล้วใช้ร่วมกันทุกช่องทาง"]] * 2
+        assert "รวมทุกช่องทาง" in edge.ev("document.getElementById('invBacklogLabel').textContent")
+        assert edge.ev("(function(){const b=document.querySelector('#invTableBody .inv-bl-btn'); if(!b) return false; b.click(); return true})()")
+        assert "รวมทุกช่องทาง" in edge.ev("document.getElementById('invBlSub').textContent")
+    finally:
+        server.shutdown()
+    assert not [x for x in edge.errors if x.startswith("exception")], edge.errors
+
+
+def test_no_page_or_manual_text_outside_the_original_tab_names_erp_as_a_source_or_a_revenue_target():
+    import glob
+    texts = {"index.html": _outside_the_original_tab(open(INDEX, encoding="utf-8").read()), "docs/user_manual.md": open(os.path.join(PROJECT_ROOT, "docs", "user_manual.md"), encoding="utf-8").read(),
+             "config/manual_notes.yaml": open(os.path.join(PROJECT_ROOT, "config", "manual_notes.yaml"), encoding="utf-8").read()}
+    for path in glob.glob(os.path.join(PROJECT_ROOT, "forecast", "*.html")):
+        if "Chase S&OP" not in os.path.basename(path):                  # the standalone copy of the original tab belongs to the user
+            texts["forecast/" + os.path.basename(path)] = open(path, encoding="utf-8").read()
+    for name, t in texts.items():
+        assert not re.search(r"\bERP\b", t, re.I), f"{name}: ERP named as a source (say DB and the table)"
+        for gone in ("เป้ารายได้", "เป้าตรงๆ", "เป้า (Revenue)", "เป้ารวมสินค้า Omni", "ไม่พบเป้า", "Cube_Target_PMIS"):
+            assert gone not in t, f"{name}: revenue-target text {gone!r}"

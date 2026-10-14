@@ -60,6 +60,10 @@ TEXT = {
     "material_link": "แผนวัตถุดิบ",
     "no_production_note": "แถวที่ขึ้นว่า ไม่มีบันทึกผลิตในระบบ ไม่ได้รวมในยอดผลิตของฝ่าย",
     "line_made_to_order": "{division} ผลิตตามสั่งทั้งหมด จึงไม่ได้ทายยอดขาย",
+    "all_channels": "รวมทุกช่องทาง", "all_channels_tip": "stock และออเดอร์ที่รับแล้วใช้ร่วมกันทุกช่องทาง",
+    "no_master": "ไม่พบรหัสนี้ใน DB (Cube_ItemList)", "no_master_tip": "ไม่มีบันทึกรหัสนี้ในตาราง Cube_ItemList ของ DB ตัวเลขในแผนไม่เปลี่ยน",
+    "no_master_note": "{n} รหัสไม่พบใน DB (Cube_ItemList) ดึงข้อมูลเมื่อ {pulled}",
+    "no_master_unchecked": "ยังไม่ได้ตรวจ {n} รหัสกับ DB (Cube_ItemList) เพราะยังไม่มีข้อมูลที่ดึงไว้ของรหัสเหล่านี้",
     "back_link": "← กลับไปหน้าหลัก (Dashboard)",       # wording of the same link on the Min-Max page
 }
 
@@ -119,10 +123,12 @@ def top_backlog_items(excess: pd.Series) -> list:
     return picked
 
 
-def compute_values(item_month: pd.DataFrame, division_month: pd.DataFrame, meta: dict, names: dict, forecast_run_date: str, divisions: list, exclusion_reasons: dict = None) -> dict:
+def compute_values(item_month: pd.DataFrame, division_month: pd.DataFrame, meta: dict, names: dict, forecast_run_date: str, divisions: list, exclusion_reasons: dict = None,
+                   master: dict = None) -> dict:
     """Every value the page shows. `item_month`, `division_month`, `meta` are the recorded plan (read back), `names` maps item code to product name,
     `forecast_run_date` is the forecast vintage's run date, `divisions` the divisions in the order shown. The summary total must equal the recorded
-    division-month total (checked); rows of items the plan does not count are in the item table but in no total."""
+    division-month total (checked); rows of items the plan does not count are in the item table but in no total. `master` (optional) is the check of the item codes against the DB item
+    master, from `item_master_check`: {"missing": codes with no record, "unchecked": codes the saved pulls do not cover, "pulled_at": text}; it adds a remark, never changes a number."""
     months = list(meta["months"])
     first = months[0]
     im = item_month.copy()
@@ -157,6 +163,7 @@ def compute_values(item_month: pd.DataFrame, division_month: pd.DataFrame, meta:
         stock = cls == "stock_policy" and bool(s["min"].notna().iloc[0])
         items.append({"division": d, "item": item, "name": names.get(item, ""), "class": cls, "label": s["class_label"].iloc[0],
                       "inconsistent": bool(s["data_inconsistent"].iloc[0]), "counted": bool(s["counted"].iloc[0]),
+                      "no_master": bool(master) and str(item).strip() in master["missing"],
                       "stock_now": float(s["opening"].iloc[0]) if stock else None,
                       "min": float(s["min"].iloc[0]) if stock else None, "max": float(s["max"].iloc[0]) if stock else None,
                       "months": [float(s["planned_production"].iloc[i]) if stock else float(s["load"].iloc[i]) for i in range(len(months))]})
@@ -195,6 +202,7 @@ def compute_values(item_month: pd.DataFrame, division_month: pd.DataFrame, meta:
         "backlog_above_forecast": fmt_units(excess.sum()), "backlog_above_forecast_value": float(excess.sum()),
         "top_backlog_items": join_items([f"{c} ({fmt_units(v)} {TEXT['units']})" for c, v in picked]) if picked else "",
         "top_backlog_picked": picked, "summary": summary, "items": items, "division_lines": division_lines, "no_forecast_with_orders": no_forecast_with_orders,
+        "master": master,
     }
     return values
 
@@ -222,6 +230,8 @@ CSS = """
   .flag { color: #8f2b2b; font-weight: 700; margin-left: 6px; white-space: nowrap; }
   .flag.tip { cursor: help; border-bottom: 1px dotted #8f2b2b; }
   tr.above td { background: #fdecea; }
+  .allch { font-size: 11px; font-weight: 400; background: #eef4fb; border: 1px solid var(--border); border-radius: 10px; padding: 0 6px; margin-left: 6px; color: var(--text-secondary); cursor: help; white-space: nowrap; }
+  .nomaster { font-size: 11px; color: #7a5b00; background: #fdf3d6; border: 1px solid #e8d9a8; border-radius: 10px; padding: 0 6px; margin-left: 6px; white-space: nowrap; cursor: help; }
   .filters { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; margin: 14px 0 6px; }
   .filters select { font-size: 14px; padding: 5px 8px; border-radius: 6px; border: 1px solid var(--border); }
   @media (max-width: 899px) { .wrap { padding: 12px 12px 60px; } }
@@ -256,7 +266,8 @@ def render(values: dict) -> str:
     parts.append(f'<div class="links"><a class="page-link" id="material-plan-link" href="{MATERIAL_PAGE_RELATIVE}">{_e(T["material_link"])}</a></div>')
     for d in divisions:
         parts.append(f'<h2>{d}</h2>')
-        head = "".join(f"<th>{_e(T[k])}</th>" for k in ("col_month", "col_demand", "col_refill", "col_mto", "col_total", "col_capacity"))
+        badge = f'<span class="allch" title="{_e(T["all_channels_tip"])}">{_e(T["all_channels"])}</span>'
+        head = "".join(f"<th>{_e(T[k])}{badge if (k == 'col_demand' and d != 'PEM103') else ''}</th>" for k in ("col_month", "col_demand", "col_refill", "col_mto", "col_total", "col_capacity"))
         body = []
         for _, r in v["summary"][v["summary"]["division"] == d].iterrows():
             flag = f'<span class="flag">{_e(T["above_capacity"])}</span>' if r["above"] else ""
@@ -264,15 +275,16 @@ def render(values: dict) -> str:
                         f'<td>{fmt_units(r["demand_part"])}</td><td>{fmt_units(r["refill_part"])}</td><td>{fmt_units(r["mto"])}</td>'
                         f'<td>{fmt_units(r["total"])}</td><td>{fmt_pct(r["share"])}{flag}</td></tr>')
         parts.append(f'<div class="table-scroll"><table class="report-table summary-table" id="summary-{d}"><thead><tr>{head}</tr></thead><tbody>{"".join(body)}</tbody></table></div>')
-        parts.append("".join(f'<p class="note-line division-line" data-division="{d}">{_e(l)}</p>' for l in v["division_lines"][d]))
-    lines = []
+        parts.append("".join(f'<p class="note-line division-line" data-division="{d}">{_e(l)}{badge if (d != "PEM103" and "ออเดอร์ที่รับแล้ว" in l) else ""}</p>' for l in v["division_lines"][d]))
+    lines, lines_backlog = [], None
+    badge = f'<span class="allch" title="{_e(T["all_channels_tip"])}">{_e(T["all_channels"])}</span>'
     if v["refill_first"] >= 0.5:
         lines.append(T["line_refill"].format(first_month=v["first_month"], refill_units=v["refill_units"]))
     if v["backlog_above_forecast_value"] >= 0.5:
-        lines.append(T["line_backlog"].format(first_month=v["first_month"], backlog_above_forecast=v["backlog_above_forecast"],
-                                              top_backlog_items=v["top_backlog_items"]))
+        lines_backlog = T["line_backlog"].format(first_month=v["first_month"], backlog_above_forecast=v["backlog_above_forecast"], top_backlog_items=v["top_backlog_items"])
+        lines.append(lines_backlog)
     lines.append(T["line_capacity"])
-    parts.append("".join(f'<p class="note-line">{_e(l)}</p>' for l in lines))
+    parts.append("".join(f'<p class="note-line">{_e(l)}{badge if l == lines_backlog else ""}</p>' for l in lines))
     div_opts = f'<option value="all">{_e(T["filter_all"])}</option>' + "".join(f'<option value="{d}">{d}</option>' for d in divisions)
     class_opts = f'<option value="all">{_e(T["filter_all"])}</option>' + "".join(f'<option value="{c}">{_e(CLASS_LABELS[c])}</option>' for c in CLASS_ORDER)
     parts.append(f'<div class="filters"><label>{_e(T["filter_division"])} <select id="filter-division">{div_opts}</select></label>'
@@ -283,13 +295,19 @@ def render(values: dict) -> str:
     rows = []
     for it in v["items"]:
         flag = f'<span class="flag tip" title="{_e(T["flag_inconsistent_tip"])}">{_e(T["flag_inconsistent"])}</span>' if it["inconsistent"] else ""
-        cells = [f'<td>{_e(it["item"])}</td>', f'<td class="name">{_e(it["name"])}</td>', f'<td class="kind">{_e(CLASS_LABELS[it["label"]])}{flag}</td>',
+        remark = f'<span class="nomaster" title="{_e(T["no_master_tip"])}">{_e(T["no_master"])}</span>' if it["no_master"] else ""
+        cells = [f'<td>{_e(it["item"])}{remark}</td>', f'<td class="name">{_e(it["name"])}</td>', f'<td class="kind">{_e(CLASS_LABELS[it["label"]])}{flag}</td>',
                  f'<td>{fmt_units(it["stock_now"]) if it["stock_now"] is not None else ""}</td>',
                  f'<td>{fmt_cell(it["min"]) if it["min"] is not None else ""}</td>', f'<td>{fmt_cell(it["max"]) if it["max"] is not None else ""}</td>']
         cells += [f"<td>{fmt_cell(x)}</td>" for x in it["months"]]
         rows.append(f'<tr data-division="{it["division"]}" data-class="{it["label"]}">{"".join(cells)}</tr>')
     parts.append(f'<div class="table-scroll"><table class="report-table" id="item-table"><thead><tr>{th}</tr></thead><tbody id="item-table-body">{"".join(rows)}</tbody></table></div>')
-    parts.append(f'<p class="table-note" id="stock-note">{_e(T["stock_note"])}</p>')
+    parts.append(f'<p class="table-note" id="stock-note">{_e(T["stock_note"])}{badge}</p>')
+    mst = v.get("master")
+    if mst and mst["missing"]:
+        parts.append(f'<p class="table-note" id="no-master-note">{_e(T["no_master_note"].format(n=len(mst["missing"]), pulled=mst["pulled_at"]))}</p>')
+    if mst and mst["unchecked"]:
+        parts.append(f'<p class="table-note" id="no-master-unchecked">{_e(T["no_master_unchecked"].format(n=len(mst["unchecked"])))}</p>')
     parts.append(f'<p class="table-note" id="no-production-note">{_e(T["no_production_note"])}</p>')
     comment = ("<!-- Source: the recorded operation plan (output/summary/operation_plan_v1_*, SHA-256 checked) and its split of stock-item production "
                "(METRICS.md Sec.42); product names from the price list; classes and flags from the Sec.23 item-level file; month columns hold planned "
@@ -322,10 +340,33 @@ def product_names(root: str) -> dict:
     return {c: " ".join(str(n).split()) if pd.notna(n) else "" for c, n in zip(df["code"], df["description"])}
 
 
+def item_master_check(root: str, cfg: dict, codes) -> dict:
+    """Which plan codes have no record in the DB item master (Cube_ItemList), from the saved item-attribute pulls: `item_master_files` (a pull covers the codes it
+    asked for, its `codes_requested`) and `item_master_legacy_fg_file` (the one-off pull of the plan items, 2026-10-09). A code no saved pull covers is `unchecked`,
+    never reported as missing. Returns {"missing": set, "unchecked": set, "pulled_at": text}; adds a remark only, no number changes."""
+    codes = {str(c).strip() for c in codes}
+    covered, have, pulled = set(), set(), []
+    files = [(p, False) for p in cfg.get("item_master_files", [])] + ([(cfg["item_master_legacy_fg_file"], True)] if cfg.get("item_master_legacy_fg_file") else [])
+    for rel, legacy in files:
+        path = op.path_of(root, rel)
+        if not os.path.exists(path):
+            continue
+        d = pd.read_pickle(path)
+        req = codes if legacy else {str(c).strip() for c in d.get("codes_requested", [])}
+        if not req:
+            continue
+        covered |= req
+        have |= set(d["master"]["ItemCode"].astype(str).str.strip())
+        pulled.append(str(d.get("pulled_at_local", ""))[:10])
+    missing = {c for c in codes if c in covered and c not in have}
+    return {"missing": missing, "unchecked": codes - covered, "pulled_at": rv.thai_date_short(min(pulled)) if pulled else ""}
+
+
 def build_values(root: str = PROJECT_ROOT, out_dir: str = None) -> dict:
     cfg = op.load_config(root)
     im, dm, meta = op.read_outputs(root, cfg, out_dir)
-    return compute_values(im, dm, meta, product_names(root), forecast_run_date(root, cfg, meta["vintage_id"]), list(cfg["divisions"]), cfg.get("exclusion_reasons", {}))
+    return compute_values(im, dm, meta, product_names(root), forecast_run_date(root, cfg, meta["vintage_id"]), list(cfg["divisions"]), cfg.get("exclusion_reasons", {}),
+                          master=item_master_check(root, cfg, im["item"].unique()))
 
 
 def build_page(root: str = PROJECT_ROOT, out_dir: str = None, out_path: str = None) -> str:

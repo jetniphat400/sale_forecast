@@ -47,6 +47,8 @@ INTERNAL_WORDS = re.compile(r"METRICS|DATA_MAP|PROJECT_GRAPH|STATUS\.md|CONVENTI
 SECTION_REF = re.compile(r"(?:§|\bSec\.|\bsection)\s*\d+", re.I)
 INTERNAL_NAMES = re.compile(r"\b(?:stock_policy|confirmed_to_order|finished_goods_stock|component_stock_ato)\b")
 TABLE_NAME = re.compile(r"\b[Cc]ube_\w+")
+# Decision of the user, 2026-10-14 (Prompt 28): where page text names a source that is the database, it says "DB (<table>)", so the table name inside that form is allowed; a bare table name still fails.
+DB_SOURCE = re.compile(r"DB \([Cc]ube_\w+\)")
 TASK_REF = re.compile(r"\btask\s*\d+[a-z]?\b", re.I)
 MAX_NON_THAI_LINE = 60
 
@@ -92,7 +94,7 @@ def violations(lines, config_keys, english_exempt=frozenset()) -> list:
         for name, pat in [("file extension", FILE_EXT), ("internal word", INTERNAL_WORDS),
                           ("section reference", SECTION_REF), ("internal status name", INTERNAL_NAMES),
                           ("table name", TABLE_NAME), ("task reference", TASK_REF), ("config key", key_re)]:
-            m = pat.search(line)
+            m = pat.search(DB_SOURCE.sub("DB", line) if name == "table name" else line)
             if m:
                 found.append(f"{name} {m.group(0)!r} in: {line[:120]}")
         # an English term or sentence is allowed where Thai would confuse, with a short Thai explanation next to it (decision of 2026-10-09): the line before or after has Thai
@@ -195,6 +197,8 @@ def test_guard_catches_each_rule():
     assert violations(["x" * 30 + " " + "y" * 40], keys)
     assert violations(["ข้อมูลจาก cube_Sale_APD"], keys)
     assert violations(["ข้อมูลจาก Cube_CES"], keys)
+    assert not violations(["ไม่พบรหัสนี้ใน DB (Cube_ItemList)"], keys)                                    # the approved form: DB plus the table name
+    assert violations(["ไม่พบรหัสนี้ใน ERP หรือ Cube_ItemList"], keys) and violations(["ข้อมูลจาก DB Cube_CES"], keys)
     assert violations(["เพิ่มเมื่อ task 2a"], keys)
     english = "Relative MAE is our MAE divided by the MAE of the Naive forecast on the same items"
     assert violations([english], keys)                                                                  # an English sentence alone still fails

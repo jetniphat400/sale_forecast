@@ -874,10 +874,10 @@ def render_page(config: dict) -> str:
         เพียงพอสำหรับการพยากรณ์ <b>{placeholder_total}</b> รหัสไม่มีประวัติเพียงพอและใช้ค่าประมาณ
         (Placeholder) แทน และ <b>{excluded_total}</b> รหัสถูกตัดออกจากการพยากรณ์
         {cite('leadtime_overall_distribution.csv', 'median')}
-        ลูกค้าให้เวลาแจ้งล่วงหน้าก่อนส่งมอบเพียง <b>{fmt_num(biz['median_notice'], 0)}</b> วัน
+        ในสินค้า PEM101 ({report_values['n_scope_items']} รหัส) ลูกค้าให้เวลาแจ้งล่วงหน้าก่อนส่งมอบเพียง <b>{fmt_num(biz['median_notice'], 0)}</b> วัน
         (median) ซึ่งสั้นกว่าระยะเวลาจัดหาวัตถุดิบมาก
         {cite('delivery_by_year.csv', 'pct_on_time')}
-        สัดส่วนส่งตรงวันพอดี (exact-day delivery: ส่งวันนัดเป๊ะ ไม่นับส่งก่อน) ปรับตัวขึ้นจาก {fmt_num(ontime_2023_val, 1)}% (ปี {rv.thai_year_short(ontime_first_year)}) เป็น
+        สัดส่วนส่งตรงวันพอดี ของ PEM101 (exact-day delivery: ส่งวันนัดเป๊ะ ไม่นับส่งก่อน) ปรับตัวขึ้นจาก {fmt_num(ontime_2023_val, 1)}% (ปี {rv.thai_year_short(ontime_first_year)}) เป็น
         <b>{fmt_num(ontime_2026_val, 1)}%</b> ในปี {rv.thai_year_short(ontime_last_year)} (ข้อมูลบางส่วน)
       </p>
     </section>"""
@@ -988,9 +988,10 @@ def render_page(config: dict) -> str:
     sec3 = f"""
     <section id="business-findings">
       <h2>4. ข้อค้นพบทางธุรกิจ (Business Findings)</h2>
+      <p class="scope-note" id="business-findings-scope">ส่วนนี้ (ระยะแจ้งล่วงหน้าและการส่งมอบ) นับเฉพาะสินค้า PEM101 {report_values['n_scope_items']} รหัส ไม่รวมฝ่ายอื่น</p>
       <p>
         {cite('leadtime_overall_distribution.csv', 'median')}
-        ระยะแจ้งล่วงหน้าของลูกค้า (Customer notice) ค่ากลาง (median): <b>{fmt_num(biz['median_notice'], 0)}</b> วัน &nbsp;|&nbsp;
+        ระยะแจ้งล่วงหน้าของลูกค้า PEM101 (Customer notice) ค่ากลาง (median): <b>{fmt_num(biz['median_notice'], 0)}</b> วัน &nbsp;|&nbsp;
         {cite('leadtime_notice_buckets_overall.csv', 'pct_of_orders')}
         สัดส่วนออเดอร์ที่แจ้งล่วงหน้า &ge; 1 เดือน: <b>{fmt_num(biz['pct_one_month'], 2)}%</b> &nbsp;|&nbsp;
         {cite_config('phase_e1_assumptions.procurement_lead_time_days_grid')}

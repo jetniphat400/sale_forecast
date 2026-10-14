@@ -114,7 +114,7 @@ def test_the_recorded_lead_time_output_hash_is_written_read_back_and_verified(tm
 def test_observed_not_late_is_unit_weighted_on_the_forecast_date_window():
     ces = pd.DataFrame({"ItemCode": ["A", "A", "A", "B"], "Status": ["Actual"] * 4, "ActualQty": [10, 30, 60, 5],
                         "ForecastDelDate": ["2026-02-01", "2026-02-10", "2025-12-31", "2026-02-01"],
-                        "ActualDelDate": ["2026-02-01", "2026-02-12", "2026-01-01", "2026-02-01"]})
+                        "ActualDelDate": ["2026-02-01", "2026-02-12", "2026-01-01", "2026-02-01"], "RevenueType": ["Omni Channel"] * 4})
     r = wr.observed_not_late(ces, ["A"], "2026-01-01", "2026-12-31")
     assert r["units"] == 40 and r["not_late"] == pytest.approx(10 / 40)         # the 2025 row is outside the window; the late 30 counts as late
 

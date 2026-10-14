@@ -166,6 +166,7 @@
 </style>
 
 <style id="invPanelCss">
+.inv-allch{display:inline-block;font-size:11px;font-weight:400;background:#eef4fb;border:1px solid var(--border);border-radius:10px;padding:0 6px;margin-left:6px;color:var(--text-secondary);cursor:help;white-space:nowrap}
 .inv-th-note{font-weight:400;font-size:11px;line-height:1.35;color:var(--muted);white-space:normal;margin-top:3px}
 tr.section[role="button"]{cursor:pointer}
 tr.section[role="button"]:hover td{background:#e9e7e0}
@@ -7503,8 +7504,8 @@ tr.section[role="button"]:focus-visible{outline:2px solid var(--series-1);outlin
         <th data-k="sellable_qty" title="ในคลังที่กำหนดว่าขายได้ของฝ่ายนั้น — เป็นสมมติฐานทางธุรกิจ ไม่ใช่ข้อเท็จจริงที่ยืนยันจากข้อมูล">Sellable (คลังที่ขายได้)</th>
         <th data-k="staging_qty" title="ในคลัง QA / FMTS / FMTO โดยเฉพาะ">Staging (QA/FMTS/FMTO ไม่นับเป็นคลังขายได้)</th>
         <th data-k="elsewhere_qty" title="ในคลังอื่นนอกเหนือจาก Sellable และ Staging">Elsewhere (คลังอื่น)</th>
-        <th data-k="backlog">Reserved (ติด PO จอง)</th>
-        <th data-k="available" title="qty − Reserved — ยังไม่ตัดคลังที่ไม่ใช่ sellable ออก">Available (stock หักที่จอง รวมคลัง QA)<div class="inv-th-note">Available ยังนับคลัง QA ด้วย จึงอาจสูงกว่าของที่หยิบส่งได้จริง ให้ดู Sellable − Reserved</div></th>
+        <th data-k="backlog">Reserved (ติด PO จอง)<span class="inv-allch" title="stock และออเดอร์ที่รับแล้วใช้ร่วมกันทุกช่องทาง">รวมทุกช่องทาง</span></th>
+        <th data-k="available" title="qty − Reserved — ยังไม่ตัดคลังที่ไม่ใช่ sellable ออก">Available (stock หักที่จอง รวมคลัง QA)<span class="inv-allch" title="stock และออเดอร์ที่รับแล้วใช้ร่วมกันทุกช่องทาง">รวมทุกช่องทาง</span><div class="inv-th-note">Available ยังนับคลัง QA ด้วย จึงอาจสูงกว่าของที่หยิบส่งได้จริง ให้ดู Sellable − Reserved</div></th>
         <th>Lead time (วัน)</th>
        </tr>
       </thead>
@@ -8211,7 +8212,8 @@ function omniShowTab(n){
       + 'สูตร Available <b>ไม่ได้เปลี่ยน</b> (ยัง = สต็อคคงเหลือ − Reserved เหมือนเดิม, ยังไม่รวมสินค้าที่กำลังจะเข้า) — '
       + '<b>Available ในตอนนี้ยังรวมสต็อคในคลังที่ไม่ได้ถูกกำหนดว่า "ขายได้" (sellable) ด้วย</b> '
       + 'ดูคอลัมน์ Sellable/Staging/Elsewhere ในตารางด้านล่างเพื่อแยกส่วนนี้ออก<br>'
-      + 'คลิกตัวเลข Reserved เพื่อดูรายการที่รวมกันเป็นยอดนั้น';
+      + 'คลิกตัวเลข Reserved เพื่อดูรายการที่รวมกันเป็นยอดนั้น '
+      + '<span class="inv-allch" title="stock และออเดอร์ที่รับแล้วใช้ร่วมกันทุกช่องทาง">รวมทุกช่องทาง</span>';
 
     // METRICS.md Sec.26 (page_timestamps), added 2026-09-25 (task 2a, Part 2). data_pulled_at
     // comes from data/inventory.json's own snapshot/backlog fields (never typed).
@@ -8544,7 +8546,7 @@ function omniShowTab(n){
       'รายการ Backlog ทั้งหมด ' + rows.length + ' รายการที่รวมกันเป็นยอด Reserved ของรหัสนี้ '
       + '(แสดงตามที่บันทึกไว้ในระบบ ไม่มีการรวบหรือตัดรายการซ้ำออก)<br>'
       + 'สต็อคคงเหลือ ' + invFmtQty(it.qty) + ' − Reserved ' + invFmtQty(it.backlog)
-      + ' = Available ' + invFmtQty(it.available);
+      + ' = Available ' + invFmtQty(it.available) + ' <span class="inv-allch" title="stock และออเดอร์ที่รับแล้วใช้ร่วมกันทุกช่องทาง">รวมทุกช่องทาง</span>';
 
     const counts = {};
     rows.forEach(r => { const k = invDupKey(r); counts[k] = (counts[k] || 0) + 1; });
