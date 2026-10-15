@@ -1073,3 +1073,38 @@ def test_the_item_attribute_pull_is_read_only_and_reads_the_master_and_the_stock
     assert set(got) == {"master", "aging"} and len(log) == 2
     assert all(s.lstrip().upper().startswith("SELECT") and not re.search(r"\b(INSERT|UPDATE|DELETE|DROP|ALTER|CREATE|EXEC|INTO)\b", s, re.I) for s in log)
     assert any("Cube_ItemList" in s and "ItemGroup" in s for s in log) and any("Cube_Inventory_Aging" in s and "GLDescription" in s for s in log)
+
+
+# ---- Prompt 35: the refresh of the material plan's current-state inputs leaves the class evidence and the backlog of the bundle alone
+
+def test_the_inputs_only_pull_refreshes_the_material_side_and_never_touches_the_class_evidence(monkeypatch, tmp_path):
+    cfg = mp.load_config()
+    real_full = op.load_full_config(PROJECT_ROOT)
+    monkeypatch.setattr(op, "load_full_config", lambda root=None: real_full)                  # the temporary root holds no config file
+    out = op.path_of(str(tmp_path), cfg["operation_plan"]["week3_inputs_file"])
+    os.makedirs(os.path.dirname(out))
+    old_backlog = pd.DataFrame({"ContractID": ["c1"], "ItemCode": ["FG1"], "ForecastDelDate": ["2026-10-30"], "PlanDelDate": ["2026-10-30"], "ActualQty": [0.0], "BacklogQty": [5.0], "RevenueType": ["Omni Channel"]})
+    pd.to_pickle({"backlog_ces": old_backlog, "backlog_pulled_at_local": "2026-10-06 14:49:00", "rm_pulled_at_local": "2026-10-06 14:49:00", "bom_tree": pd.DataFrame({"ItemFG": ["OLD"], "ItemRawmat": ["OLD"], "Quantity": [1], "Unit": ["EA"], "Sequenceno": [1], "Type": ["x"]})}, out)
+    class_evidence = os.path.join(os.path.dirname(out), "class_evidence.pkl")
+    pd.to_pickle({"pulled_at_local": "2026-10-06 14:49:00", "marker": 1}, class_evidence)
+    class_before = hashlib.sha256(open(class_evidence, "rb").read()).hexdigest()
+    material = {"bom_tree": pd.DataFrame({"ItemFG": ["FG1"], "ItemRawmat": ["RM1"], "Quantity": [2.0], "Unit": ["EA"], "Sequenceno": [1], "Type": ["x"], "Status": ["A"], "Warehouse": ["W"], "Division": ["D"], "ItemGroup": ["g"], "version": [1], "Timestamp": ["t"]}),
+                "inventory": pd.DataFrame({"warehouse": ["W121"], "itemcode": ["RM1"], "stock": [9.0], "unit": ["EA"]}),
+                "tobe": pd.DataFrame({"fulfill_date": ["2026-11-01"], "po_number": ["P1"], "itemcode": ["RM1"], "quantity": [4.0], "unit": ["EA"], "warehouse": ["W121"], "order_date": ["2026-10-01"]}),
+                "po": pd.DataFrame({"po_no": ["P1"], "item_code": ["RM1"], "po_date": ["2026-10-01"], "planed_date": ["2026-11-01"], "po_quantity": [4.0], "received_quantity": [0.0]}),
+                "receipts": pd.DataFrame({"PO": ["P0"], "Itemcode": ["RM1"], "Receive_date": ["2026-09-01"], "Items_Received": [1.0]}),
+                "price": pd.DataFrame({"ItemCode": ["RM1"], "SupplierNumber": ["S"], "Unit": ["EA"], "DeliveryTime": [30]}),
+                "item": pd.DataFrame({"ItemCode": ["RM1"], "Description": ["raw"]})}
+    monkeypatch.setattr(mp, "pull_material_inputs", lambda codes, since, max_levels=25: material)
+    monkeypatch.setattr(mp, "pull_item_attributes", lambda codes: {"master": pd.DataFrame({"ItemCode": ["RM1"]}), "aging": pd.DataFrame({"ItemCode": ["RM1"]})})
+    monkeypatch.setattr(seg, "class_evidence_codes", lambda: ["FG1"])
+    monkeypatch.setattr(seg, "pull_class_evidence", lambda codes: (_ for _ in ()).throw(AssertionError("the class evidence was pulled")))
+    monkeypatch.setattr(seg, "run_from_frames", lambda *a, **k: (_ for _ in ()).throw(AssertionError("the class file was recomputed")))
+    import db
+    monkeypatch.setattr(db, "session", lambda *a, **k: (_ for _ in ()).throw(AssertionError("a second session was opened")))
+    result = mp.pull_inputs_only(str(tmp_path), in_open_session=True)
+    bundle = pd.read_pickle(out)
+    assert list(bundle["bom_tree"]["ItemFG"]) == ["FG1"] and list(bundle["rm_inventory"]["itemcode"]) == ["RM1"] and bundle["rm_pulled_at_local"] == result["pulled_at_local"]
+    assert bundle["backlog_pulled_at_local"] == "2026-10-06 14:49:00" and bundle["backlog_ces"].equals(old_backlog)            # kept as they were
+    assert hashlib.sha256(open(class_evidence, "rb").read()).hexdigest() == class_before                                       # the class evidence is untouched
+    assert result["rows"]["bom_tree"] == 1 and result["rows"]["item_master"] == 1

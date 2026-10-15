@@ -186,9 +186,10 @@ def scope_where(codes: list, config: dict) -> str:
             f"AND itemcode IN ('{code_list}')")
 
 
-def pull(root: str = PROJECT_ROOT, queries_extra=None) -> dict:
-    """Runs the three queries in ONE session (no retry: a login failure raises), saves them under config trend_tab.pull_dir and returns them.
+def pull(root: str = PROJECT_ROOT, queries_extra=None, in_open_session: bool = False) -> dict:
+    """Runs the three queries in ONE session (no retry: a login failure raises; `in_open_session` True when the caller already holds the session, Prompt 35), saves them under config trend_tab.pull_dir and returns them.
     `queries_extra(run_query)` may run further aggregate queries inside the same session (used once, by the task that proved the VAT treatment)."""
+    import contextlib
     import db
     config = load_config(root)
     pl = pricelist_rows(root, config)
@@ -198,7 +199,7 @@ def pull(root: str = PROJECT_ROOT, queries_extra=None) -> dict:
     out_dir = os.path.join(root, *config["trend_tab"]["pull_dir"].split("/"))
     os.makedirs(out_dir, exist_ok=True)
     extra = None
-    with db.session():
+    with (contextlib.nullcontext() if in_open_session else db.session()):
         pulled_at = datetime.now().isoformat(timespec="seconds")
         daily = db.run_query(f"SELECT itemcode, CAST(createDate AS date) AS d, status, SUM(qty) AS q, SUM(sale) AS s, COUNT(*) AS n FROM {table} WHERE {where} "
                              f"GROUP BY itemcode, CAST(createDate AS date), status")

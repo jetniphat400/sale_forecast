@@ -319,7 +319,7 @@ def test_exit_code_3_from_a_stage_stops_every_later_database_stage_and_the_run(m
 def test_any_other_failure_of_an_auxiliary_pull_keeps_the_previous_file_and_warns_and_the_step_goes_on(monkeypatch):
     started = _step1_env(monkeypatch, run_rc=[0, 0, 1])                                      # the inventory pull fails, but not by a refused login
     out = mr.step1_pull_data(False, offline=False)                                           # the step completes
-    assert started == ["load_data_all_divisions.py", "load_data_full.py", "build_inventory_dataset.py", "material_plan.py", "build_trend_tab.py"]
+    assert started == ["load_data_all_divisions.py", "load_data_full.py", "build_inventory_dataset.py", "material_plan.py", "build_trend_tab.py", "cube_ces_pull.py"]
     assert out["inventory_pull"]["refreshed"] is False and "exited 1" in out["inventory_pull"]["not_refreshed_reason"]
     failed = [w for w in mr._PARTIAL_WARNINGS if "exited 1" in w]
     assert len(failed) == 1 and failed[0].startswith("WARN:") and "inventory.json pulls" in failed[0]
@@ -770,3 +770,41 @@ def test_a_held_gate_or_push_outranks_a_failed_backup_and_anything_inside_step_1
     _step11_env(monkeypatch)
     monkeypatch.setattr(mr, "check_tcp_reachable", lambda *a, **k: (_ for _ in ()).throw(OSError("socket error")))
     assert mr.step11_commit_and_push(False, *GATES_OK)["held"] is True
+
+
+# ---- Prompt 35, Step 1: the PEM107 alert pull is a stage of step 1; its failure is a WARN and a partial run
+
+def test_step_1_has_the_pem107_alert_stage_and_the_offline_dry_run_reports_it():
+    tree = _ast.parse(open(mr.__file__, encoding="utf-8").read())
+    stages = []
+    for node in _ast.walk(tree):
+        if isinstance(node, _ast.Call) and isinstance(node.func, _ast.Name) and node.func.id == "_pull_stage" and len(node.args) >= 2:
+            stages.append((_ast.unparse(node.args[1]), _ast.unparse(node)))
+    assert any(script == "'cube_ces_pull.py'" and "--pem107-alert" in call for script, call in stages), stages
+    result = mr.step1_pull_data(True, True)                                       # the offline pull step of a dry run: no database
+    assert result["pem107_alert_pull"]["refreshed"] is False and "offline" in result["pem107_alert_pull"]["not_refreshed_reason"]
+
+
+def test_a_failed_pem107_pull_is_a_warning_and_the_run_is_partial_with_exit_code_2(monkeypatch, tmp_path):
+    out = _unwritten_env(monkeypatch, tmp_path)
+    out.write_text("{}")
+    _stub_steps(monkeypatch)
+    monkeypatch.setattr(mr, "run_script", lambda script, args=None: _Proc(1))             # the pull script exits 1: not a refused login
+    monkeypatch.setattr(mr, "step1_pull_data", lambda *a, **k: {"pem107_alert_pull": mr._pull_stage("PEM107 alert pull", "cube_ces_pull.py", str(out), args=["--pem107-alert"]),
+                                                              "snapshot_pull_date": "2026-10-02 07:45:57"})
+    log = _run(monkeypatch, tmp_path)
+    assert log["steps"]["1_pull_data"]["status"] == "ok" and log["partial"] is True and "aborted_at_step" not in log
+    assert len(log["warnings"]) == 1 and "PEM107 alert pull" in log["warnings"][0] and log["warnings"][0].startswith("WARN")
+    _cli_env(monkeypatch, tmp_path, _date(2026, 12, 7), main_log=log)
+    assert mr.cli([]) == 2 and not os.path.exists(mr.MONTHLY_STATE_PATH)                  # exit code 2, not marked done: it runs again on the next weekday
+
+
+def test_the_pem107_alert_is_judged_by_the_monthly_cadence():
+    import yaml
+    import reader_values as rv
+    import build_inventory_page_data as bipd
+    cfg = yaml.safe_load(open(os.path.join(PROJECT_ROOT, "config", "config.yaml"), encoding="utf-8"))
+    assert bipd.freshness_block(cfg, _date(2026, 11, 6))["cadence"]["pem107_alert"] == "monthly"
+    assert rv.is_old("monthly", "2026-09-28", _date(2026, 10, 15), cfg) is True and rv.is_old("monthly", "2026-10-15", _date(2026, 10, 15), cfg) is False
+    page = open(os.path.join(PROJECT_ROOT, "src", "build_inventory_page.py"), encoding="utf-8").read()
+    assert "oldCutoff(DATA.freshness.cadence.pem107_alert, a.data_pulled_at" in page

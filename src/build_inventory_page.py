@@ -1060,8 +1060,11 @@ function renderPem107Alert(division) {{
     tbody.appendChild(tr);
   }}
 
+  // freshness by pull cadence (config page_timestamps): the alert is pulled by the monthly job, so it is old when it was pulled before the latest monthly round
+  const alertCut = oldCutoff(DATA.freshness.cadence.pem107_alert, a.data_pulled_at, DATA.page_built_at);
+  const alertStale = alertCut ? ' <span class="note-box" style="display:inline;padding:2px 8px;">&#9888; ข้อมูลเก่า ดึงก่อนรอบดึงรายเดือนล่าสุด (' + thaiDateShort(alertCut) + ')</span>' : '';
   document.getElementById('pem107-alert-source').innerHTML =
-    `ข้อมูลดึงเมื่อ ${{thaiDateTime(a.data_pulled_at, true)}}` +
+    `ข้อมูลดึงเมื่อ ${{thaiDateTime(a.data_pulled_at, true)}}` + alertStale +
     htmlComment('source: ' + a.source.pricelist + ' · ' + a.source.delivery + ' · ' + a.source.metric);
   const lbl = a.split_label;
   document.getElementById('pem107-alert-limitations').innerHTML =

@@ -1612,7 +1612,7 @@ Removal of out-of-scope and unused parts (the pilot covers Price List items only
 **Kept despite approval, or done differently.**
 - METRICS Sec.21 and PROJECT_GRAPH Q23 were annotated with a dated note, not deleted: Q23 is an answered finding that Q22 and other entries cite, and the prompt says not to rewrite history. The selector lines of Sec.21 were replaced by the note. NEED DECISION below.
 - `inventory.json`: the removal of M5 and M7 removes more than the one key named in the prompt, because the other keys are computed from the removed pulls: `backlog.reserved_change_report.old_codes_with_reserved`, `n_codes_changed`, `changed_codes_sample`, and `warehouses[].role` (44 entries). The tracked `data/inventory.json` was not rewritten by hand; the daily job drops these on its next run (a build from the saved pull of today differs from the tracked file only by these removals).
-- Two tests that tested only removed parts were deleted: `test_the_targets_are_split_by_category_and_a_division_without_a_row_has_no_target` (`test_index_w3.py`) and the two omni_tendering SQL tests plus the unknown-scope test in `test_channel_scope.py`. Everything else was updated, not deleted. Updated: `test_cfix_inventory_pull.py` (two-table fixture; schema assertions added), `test_cfix_runner_and_scores.py`, `test_daily_stock.py` (posting-delay test now asserts the removal), `test_operation_plan.py`, `test_material_plan.py`, `test_monthly_refresh.py` (no skip any more), `test_index_w3.py` (no target text or column, no PEMC row, no 924.4 or 106.3, removed config keys absent; the two skips that depended on the target pull are gone), `test_channel_scope.py`, `test_maxmin_v1.py` and `test_maxmin_v1_page.py` (six criteria rows).
+- Two tests that tested only removed parts were deleted: `test_the_targets_are_split_by_category_and_a_division_without_a_row_has_no_target` (`test_index_w3.py`) and the two omni_tendering SQL tests plus the unknown-scope test in `test_channel_scope.py`. Everything else was updated, not deleted. Updated: `test_cfix_inventory_pull.py` (two-table fixture; schema assertions added), `test_cfix_runner_and_scores.py`, `test_daily_stock.py` (posting-delay test now asserts the removal), `test_operation_plan.py`, `test_material_plan.py`, `test_monthly_refresh.py` (no skip any more), `test_index_w3.py` (no target text or column, no PEMC row, no <target> or <target>, removed config keys absent; the two skips that depended on the target pull are gone), `test_channel_scope.py`, `test_maxmin_v1.py` and `test_maxmin_v1_page.py` (six criteria rows).
 
 **DB statements per run** (distinct call sites, a chunked loop counts once; counted by me from the audit and by the Validator from `git show HEAD` and the working tree):
 - Monthly: 30 before, 25 after (removed Cube_Backlog, cube_inventory_tran, material "category", material "movements", Cube_Target_PMIS).
@@ -2151,3 +2151,87 @@ Monthly dry run `--dry-run --offline --skip-tests`: exit 0. Forced gate failure 
 ### Deviations
 - The saved target aggregate was kept restored until the last Validator pass (it is needed to scan), then sent back to the Recycle Bin.
 - Item 1 also covered figures of the target workbook, which are not in the database aggregate.
+
+
+## Prompt 35
+
+Start (Get-Date): 2026-10-15 11:40:15 +07:00. End: 2026-10-15 12:43:47 +0700 (shell clock). Database: read only, preflight first, one session, one login attempt, 54 statements, all plain SELECT (checked by the driver before each statement; 0 others). The lock file was absent. No target value, customer or contract is written here.
+
+### Step 0: source table (made before the pull)
+Rule (fixed): a source may be refreshed now only if (a) it is not used to fit the forecast or to score the forward test or shadow, (b) it is not an input of the Min-Max recalibration or of the class and policy assignment, (c) it describes current state or display-only history: stock, reserved and backlog, BOM, item master, open POs, the Trend tab history, the PEM107 alert. Cadence follows config page_timestamps (monthly job or daily job). "Already current" = refreshed by its own job; no extra pull was needed.
+
+| page / section | DB table(s) | local file | pull date before | cadence | refresh now | rule clause |
+|---|---|---|---|---|---|---|
+| Sales report: main data range, series for the forecast | cube_Sale_APD | output/data/processed_all_divisions_monthly_qty.csv, processed_all_divisions_monthly_sale.csv, raw_all_divisions_sales.csv | 2026-10-05 07:41 | monthly | NO | (a) fits the forecast, waits for 2026-11-05 |
+| Sales report: results per division, rolling origin, MAE of the basic models, forecast against actual | cube_Sale_APD (actuals), forward-test log | output/summary/forward_test_*, phaseC_step2_* | 2026-10-05 | monthly | NO | (a) scores the forward test |
+| Sales report: forward forecast table and price note | forward-test log vintage 2, cube_Sale_APD prices, Price List | output/summary/forward_test_log_all_divisions.csv | vintage 2 (2026-10-02) | monthly | NO | (a) |
+| Sales report: notice-time and delivery charts (on time, same day) | Cube_CES | output/data/raw_cube_ces_delivery_128items.csv, raw_order_leadtime_128items.csv, output/summary/delivery_* and leadtime_* | 2026-10-05 07:42 | monthly | NO | not in the list of clause (c); the same delivery history feeds the observed not-late of the recalibration, clause (b) |
+| Executive tab: year-to-date sales, full-year projection, accuracy, tracking signal | cube_Sale_APD, forward-test log | the same series and logs as above | 2026-10-05 | monthly | NO | (a) |
+| Executive tab: watch-outs (production above peak, late materials, PEM107 alert) | none of its own: follows the operation plan, the material plan and the PEM107 alert | their files | follows rows below | follows them | rebuilt, not pulled | follows the rows below |
+| Trend tab | cube_Sale_APD (Omni, Price List codes) | output/data/trend_pull/daily.csv, names.csv, completeness.json | 2026-10-08 17:25 | monthly | YES | (c) the Trend tab history |
+| Stock panel (index) | Cube_Inventory_Exact, Cube_CES (Backlog, all channels) | data/inventory.json, data/stock_daily.json (from output/data/daily_stock_pull) | published 2026-10-14 08:00 (the 08:00 run of the 15th saved its pulls but failed to build; the 12:00 run published) | daily | already current by the daily job; no extra pull | (c) stock, reserved |
+| Min-Max page: stock and reserved (all divisions) | Cube_Inventory_Exact, Cube_CES | latest daily snapshot output/snapshots/inventory_daily_*.csv and data/stock_daily.json | 2026-10-14 08:00 | daily | already current by the daily job; page rebuilt from the latest snapshot | (c) |
+| Min-Max page: PEM103 and PEM107 sales (their Min/Max demand) | cube_Sale_APD | output/data/raw_all_divisions_sales.csv | 2026-10-05 07:41 | monthly | NO | (a) and (b): an input of their policy |
+| Min-Max page: PEM101 curves, calibration, observed not-late (ces_92, inventory_92) | Cube_CES, Cube_Inventory_Exact | output/data/lead_time_inputs/*, output/summary/week1_recal_*, maxmin_v1_* | 2026-10-05 | manual (recalibration) | NO | (b) |
+| Min-Max page: lead times and assembly (lead_time_v1) | Cube_PO_Exact, Cube_ReceiveRM, Cube_PriceList, production orders, cube_final, Cube_BOM_Exact | output/data/lead_time_inputs/* | 2026-10-05 | manual | NO | (b) a policy input; not in the list of clause (c) |
+| Min-Max page: PEM107 delivery alert | Cube_CES (Omni) | output/summary/task2b_part4_pem107_alert.json, _items.csv | 2026-09-28 12:43 (a one-off script) | now monthly (step 1) | YES | (c) the PEM107 alert |
+| Operation plan: stock | Cube_Inventory_Exact | output/data/daily_stock_pull/inventory.pkl | 2026-10-14 08:00 (used) | daily | already current; rebuilt with the latest daily pull (2026-10-15 12:00) | (c) |
+| Operation plan: backlog (orders on the books, with RevenueType) | Cube_CES (Status Backlog, all channels) | output/data/daily_stock_pull/backlog_ces.pkl (latest of the daily and monthly pulls) | used 2026-10-14 08:00 plus a PEM103 fallback from the class-evidence copy of 2026-10-06 | daily | rebuilt from the daily pull; the class-evidence copy is no longer read | (c) and the instruction: backlog comes from the daily pull |
+| Operation plan: forecast (vintage 2) | forward-test log | output/summary/forward_test_log_all_divisions.csv | 2026-10-02 | monthly | NO | (a) |
+| Operation plan: class and policy per item | cube_Sale_APD, Cube_CES, cube_final, Cube_Inventory_Exact, Cube_BOM_Exact (class evidence) | output/summary/task2b_part2_item_level.csv, output/data/material_pull/class_evidence.pkl | 2026-10-06 14:52 | monthly | NO | (b) class evidence |
+| Operation plan: production history, peak, week 2 inputs | cube_final, production orders | output/data/week2_inputs/* | 2026-10-06 | one-off | NO | (b) the cube_final history belongs to the class evidence and the lead-time inputs |
+| Operation plan: item master remark "not found in DB (Cube_ItemList)" | Cube_ItemList, Cube_Inventory_Aging | output/data/material_pull/item_attributes.pkl (and a legacy file of 2026-10-09) | 2026-10-09 | monthly | YES | (c) item master |
+| Material plan: BOM tree, raw-material stock, open POs, PO and receipt history, price list, item names | Cube_BOM_Exact, Cube_Inventory_Exact, Cube_tobe_received, Cube_PO_Exact, Cube_ReceiveRM, Cube_PriceList, Cube_ItemList | output/data/material_pull/material_inputs.pkl | 2026-10-06 14:49 | monthly | YES | (c) BOM, stock, open POs, item master; the PO history, receipts and price list only serve this plan's purchase evidence (the Min-Max lead times read the lead_time_inputs files) |
+| Material plan: backlog copy inside the bundle (class-evidence Cube_CES) | Cube_CES | the same pickle, keys backlog_ces and backlog_pulled_at_local | 2026-10-06 14:49 | monthly | NO (kept) | (b) class evidence; read only for the operation plan's old PEM103 fallback |
+| Assumptions tab | none (derived) | data/assumptions.json | built 2026-10-14 | follows the recalibration | NO | (b) |
+| Manual tab, original S&OP tab | none (static text) | docs/user_manual.md, the original tab | - | - | NO | not data |
+
+Never refreshed: the sales and actuals of the forecast and of the executive YTD, the forward-test, shadow, score and comparator logs and the vintage snapshot, the recalibration inputs, the class-evidence pull.
+
+### Step 1: the PEM107 alert is production code
+- **Where:** `src/cube_ces_pull.py` (`compute_pem107_alert`, `pem107_pricelist_rows`, `pull_pem107_alert`, command `python src/cube_ces_pull.py --pem107-alert`); no new file. Omni Channel is in the SQL (`RevenueType = 'Omni Channel'`, no date filter, no customer column); through `db.py`; one session (`in_open_session` when the caller holds it). The output JSON carries `data_pulled_at`; the Min-Max page tags it old by the monthly cadence (new source label in config page_timestamps, `freshness.cadence.pem107_alert`, and the page script).
+- **Monthly runner:** a pull stage of step 1 (`_pull_stage("PEM107 alert pull", "cube_ces_pull.py", ..., ["--pem107-alert"])`): a failure keeps the earlier alert, is a WARN and the run is partial (exit code 2); the offline dry run reports the stage.
+- **Investigation script** `src/investigations/task2b_part4_pem107_alert.py` now only calls the production function (no copy of the logic).
+- **Also for the one-session refresh:** `build_trend_tab.pull(in_open_session=True)` and `material_plan.pull_inputs_only` (material inputs and item attributes only; no Cube_CES, class evidence and class file untouched, bundle backlog kept).
+- **Tests (fakes), PASS:** the alert numbers from fake delivered rows (Omni only, window start, delivered only); the pull takes Omni in the SQL, uses the open session, writes dated files; the investigation script holds no copy; step 1 has the stage and the offline dry run reports it; a failed PEM107 pull is a WARN, partial, exit 2; the freshness cadence; the inputs-only pull leaves the class evidence and the bundle backlog alone.
+
+### Step 2: the pull (one session, 11:48 to 11:52)
+Preflight, lock file check, one login attempt, 54 SELECT statements. Rows before → after:
+- Trend tab history: daily rows 22,796 → 22,891; item-name rows 387 → 387; rows in scope 38,298 → 38,498; data through 2026-10-08 → 2026-10-14; pulled 2026-10-08 17:25 → 2026-10-15 11:48.
+- Material plan inputs: BOM tree 25,710 → 25,849; raw-material stock 18,583 → 18,656; open orders 524 → 483; PO lines 36,262 → 36,488; receipts 49,722 → 50,007; price list 7,440 → 7,463; item names 4,844 → 4,863; pulled 2026-10-06 14:49 → 2026-10-15 11:48. Bundle backlog (class-evidence copy) 873 → 873, kept.
+- Item attributes: item master 2,268 → 5,261 rows, aging 61,041 → 100,066 rows (the new pull asks for the plan items and every BOM component); pulled 2026-10-09 → 2026-10-15.
+- PEM107 alert: Cube_CES rows 21,610 (every channel, filtered later in pandas) → 12,002 (Omni in the SQL); alert items 71 → 73; pulled 2026-09-28 12:43 → 2026-10-15 11:51.
+Not pulled: the stock and backlog (the daily job pulled them at 08:00 and at 12:00; the rebuild used the 12:00 pull after the daily job had published it), every NO row.
+
+### Step 3: pages rebuilt (vintage 2, no recalibration; the sales report and every log untouched)
+Order: Trend tab, Min-Max page from the latest daily snapshot, operation plan and page, material plan and page, vintage gate, executive tab. Key numbers before → after:
+- **Trend tab:** data through 2026-10-08 → 2026-10-14 (note shows the pull date 8 → 15 Oct); rows 38,298 → 38,498; units 3,630,615 → 3,648,800; the totals gate passed.
+- **Min-Max page:** embedded data identical except the PEM107 alert, the build time and the freshness block: alert pulled 2026-09-28 12:43 → 2026-10-15 11:51; not-late before 1 May 87.1% (n 41,495) → unchanged; from 1 May 57.7% → 58.5%; units from 1 May 2,702 → 2,888; items in the alert 71 → 73; page built 2026-10-14 12:24 → 2026-10-15 12:02. Stock figures come from `data/stock_daily.json` at run time (2026-10-14 08:00 → 2026-10-15 12:00 after the daily job's commit was pulled). No Min or Max changed.
+- **Operation plan:** stock and backlog pull 2026-10-14 08:00 → 2026-10-15 12:00; PEM103 backlog fallback from the 2026-10-06 class-evidence copy → none (the daily pull carries RevenueType; the fallback note is gone); orders dropped by the Omni scope 1 → 2; item-months with backlog above the forecast 94 → 98; items 439 → 439; items with Min/Max by division unchanged; plan meta page build time 09:06 → 12:02, equal to the page.
+- **Material plan:** raw-material stock pulled 6 Oct 14:49 → 15 Oct 11:48; order within the window: 158 → 186 lines (155 → 177 counted); late to order: 596 → 543 lines (544 → 498 counted); stock and open orders: 2,244 → 2,252 (2,110 → 2,116); items in the plan 439, costed 300, not costed 139: unchanged.
+- **Executive tab:** the four cards (year-to-date sales, projection, accuracy, watch-outs count) identical; watch-outs: PEM103 above the historical peak 119.9% → 103.2%, PEM102 244.9% → 201.5%, late materials 544 → 498 (equal to the material page), PEM107 57.7% → 58.5% (equal to the Min-Max alert); the other four lines unchanged.
+
+### Step 4
+The two target totals in the test sentence near line 1615 of this file were replaced by `<target>`: YES.
+
+### Integrity
+- Forward-test, shadow, score and comparator logs, their metadata, the vintage snapshot and series, the archive, the state file, the class evidence, the item-level class file, the lead-time and recalibration inputs, the series of the forecast, the sales report and the assumptions file: 97 files, sha256 before and after identical: YES.
+- Vintage 2 on every page: YES (Min-Max data, operation plan meta, material plan header "plan round Oct", sales report unchanged).
+- Policies unchanged: YES (the Min-Max embedded data has no policy difference; plan counts per class and Min/Max items per division identical; the class files unchanged by hash).
+- Forecast and executive year-to-date unchanged: YES (cards identical, sales report and series unchanged by hash).
+
+### Consistency
+YES: late materials 498 on the material plan = 498 on the executive tab; PEM103 and PEM102 above-peak percentages on the executive tab equal the operation plan's division table; PEM107 not-late 58.5% on the executive tab = the Min-Max alert; the operation plan meta build time of the Min-Max page equals that page; items 439 and costed 300 agree on both plans.
+
+### Freshness tags (cadence rule)
+Refreshed sources show as new: the PEM107 alert (pulled 15 Oct, no old tag), the Trend tab, the material stock, the stock and backlog (15 Oct 12:00). Monthly sources not refreshed (pulled 5 Oct) are correct for the 2026-10-05 run: 0 "old" notices on any page. One remark still shows the older date: the item-master line of the operation plan (see backlog).
+
+### Runner checks (fakes only)
+Monthly dry run `--dry-run --offline --skip-tests`: exit 0 and the run log carries the PEM107 stage; forced PEM107 pull failure (a real run with fakes): partial, one WARN, exit 2, no success state; daily dry run `--dry-run --from-pulls`: exit 0.
+
+### Full suite, browser check, Validator
+Full suite after the last change: 878 passed, 0 failed, 0 skipped (15 min 49 s); 0 database connection attempts (4 blocked, all deliberate). The first full run had 4 failures, all fixed: two tests that list the scripts of step 1 now include the PEM107 stage, and `data/assumptions.json` was regenerated by its builder because the Trend refresh moves the manual value "trend data through" (8 -> 14 Oct 69; the 10 build-date stamps of its rows changed to 2026-10-15 as the builder writes them). Browser check (headless Edge, temporary profile, pages over http): 0 script errors on index.html (S&OP, executive, Trend, assumptions, manual tabs, stock panel with 445 rows dated 15 Oct 12:00), sales report, Min-Max (the PEM107 view shows the alert pulled 15 Oct 11:51 with no old tag, headline 87.1% -> 58.5% on 2,888 units), operation plan (stock line 15 Oct 12:00, no PEM103 fallback note), material plan (stock pulled 15 Oct 11:48, 498 late lines); 0 stale notices on any page; the only console message is the missing favicon; Edge tree closed by PID, profile deleted, 0 processes and 0 profile folders left. Validator (fresh, evaluate only, after the rebuild, 1 run): PASS on C1 source table against the rule (no forbidden source refreshed: 97 protected files identical by sha256, mtimes checked for the rest; the refreshed files are exactly the YES ones; refresh driver: preflight, lock check, one session, one login, SELECT-only guard), C2 integrity, C3 consistency, C4 PEM107 integration; its notes: the monthly job's PEM107 stage is its own session (one more login per monthly run), the item-master remark keeps the older date (backlog line), the report placeholders (filled now).
+
+### Notes
+- The daily job of 08:00 on 15 Oct saved its pulls but failed in its build stage with an access error (a child python process could not be started); the 12:00 run succeeded and published, so the pages were rebuilt after it.
+- Anything else noticed is in the STATUS.md handover backlog (3 lines); nothing else was fixed.

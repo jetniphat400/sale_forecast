@@ -579,6 +579,7 @@ def apply_class_file_divisions(data: dict, config: dict) -> None:
 
 
 PILOT_SALES_SOURCE = "ข้อมูลขาย PEM103/PEM107 (หน้า Min-Max)"
+PEM107_ALERT_SOURCE = "แจ้งเตือน PEM107 (หน้า Min-Max)"
 STOCK_SOURCE = "สต็อค (หน้า Min-Max และแผงสต็อค)"
 RESERVED_SOURCE = "ยอดจอง (หน้า Min-Max และแผงสต็อค)"
 
@@ -588,7 +589,7 @@ def freshness_block(config: dict, today=None) -> dict:
     classify stops the build), the monthly cutoff on the build date and the number of weekdays a daily source may lag."""
     today = rv._as_date(today if today is not None else rv.date_today())
     return {"cadence": {"pilot_sales": rv.source_cadence(config, PILOT_SALES_SOURCE), "stock": rv.source_cadence(config, STOCK_SOURCE),
-                        "reserved": rv.source_cadence(config, RESERVED_SOURCE)},
+                        "reserved": rv.source_cadence(config, RESERVED_SOURCE), "pem107_alert": rv.source_cadence(config, PEM107_ALERT_SOURCE)},
             "monthly_cutoff": rv.freshness_cutoff("monthly", today, config).isoformat(),
             "daily_weekdays_back": int(config["page_timestamps"]["daily_weekdays_back"])}
 

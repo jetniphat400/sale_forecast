@@ -152,7 +152,7 @@ Code: `src/investigations/task2b_part2_fulfilment_segmentation.py` (`run_from_pu
 
 | งาน | วัน / เวลา | ทำอะไร | ได้อะไรออกมา |
 |---|---|---|---|
-| `SaleForecastMonthlyRefresh` (monthly) | ทริกเกอร์ทุกวันจันทร์ถึงศุกร์ 07:00 แต่ทำงานจริงแค่วันเดียวต่อเดือน คือวันทำการแรกที่ตรงหรือหลังวันที่ 5 (2026-11-05 เป็นวันพฤหัส) วันอื่นออกทันทีโดยไม่ต่อ DB | ดึงข้อมูลจาก DB (Omni Channel เฉพาะสินค้าใน Price List) สร้างยอดทาย (vintage ใหม่) ให้คะแนนยอดทายเดือนที่ปิดแล้ว (production, shadow, moving-average comparator) สร้างแผนผลิตและแผนวัตถุดิบใหม่ สำรองไฟล์ (sha256 ตรวจแล้ว) แล้วเขียนหน้าเว็บทั้งหมดใหม่ | `index.html`, `forecast/*.html`, `data/assumptions.json`, `data/inventory.json`, log ใน `output/runs/`, ไฟล์สถานะ `output/state/monthly_run_state.json` (เขียนเฉพาะเมื่อรันสำเร็จ) |
+| `SaleForecastMonthlyRefresh` (monthly) | ทริกเกอร์ทุกวันจันทร์ถึงศุกร์ 07:00 แต่ทำงานจริงแค่วันเดียวต่อเดือน คือวันทำการแรกที่ตรงหรือหลังวันที่ 5 (2026-11-05 เป็นวันพฤหัส) วันอื่นออกทันทีโดยไม่ต่อ DB | ดึงข้อมูลจาก DB (Omni Channel เฉพาะสินค้าใน Price List ซึ่งรวมการแจ้งเตือน PEM107 ของหน้า Min-Max ด้วย) สร้างยอดทาย (vintage ใหม่) ให้คะแนนยอดทายเดือนที่ปิดแล้ว (production, shadow, moving-average comparator) สร้างแผนผลิตและแผนวัตถุดิบใหม่ สำรองไฟล์ (sha256 ตรวจแล้ว) แล้วเขียนหน้าเว็บทั้งหมดใหม่ | `index.html`, `forecast/*.html`, `data/assumptions.json`, `data/inventory.json`, log ใน `output/runs/`, ไฟล์สถานะ `output/state/monthly_run_state.json` (เขียนเฉพาะเมื่อรันสำเร็จ) |
 | `SaleForecast_PostingDelaySnapshot` (daily; ชื่อเดิม ตอนนี้ทำงาน stock รายวัน) | จันทร์ถึงศุกร์ 08:00 และ 12:00 เสาร์อาทิตย์ออกทันที | เก็บ stock รายวันต่อรายการต่อคลัง แล้วอัปเดตตัวเลข stock ที่หน้าเว็บใช้ (รอบ 12:00 ไม่ทำอะไรถ้ารอบ 08:00 สำเร็จแล้ว) | `output/snapshots/inventory_daily_*.csv`, `data/stock_daily.json`, `data/inventory.json` (push ขึ้น GitHub), log ใน `output/runs/daily/` |
 
 - ทั้งสองงานตั้ง StartWhenAvailable: ถ้าเครื่องหลับตอน 07:00 งานจะรันเมื่อเครื่องตื่น และวันทำการที่พลาดจะถูกชดเชยในวันทำการถัดไป
@@ -191,8 +191,15 @@ Code: `src/investigations/task2b_part2_fulfilment_segmentation.py` (`run_from_pu
 - (Prompt 34) ขั้นตอนอื่นที่หยุดงานด้วย exit code 1 (ดึงข้อมูล, backtest, vintage, ฯลฯ) ยังนับเป็นการหยุดกลางทาง ไม่ใช่ gate: ควรทบทวนว่าข้อใดควรเป็น exit code 4
 - (Prompt 34) หน้า Min-Max มีบรรทัดขอบเขตเดียว (Price List, Omni Channel, ข้อยกเว้น stock และ Reserved รวมทุกช่องทาง) ส่วนข้อยกเว้นของ PEM103 (เฉพาะ Omni ไม่รวมงานประมูล) อยู่ที่หน้าแผนการผลิตเท่านั้น
 - (Prompt 34) การ์ดของแท็บสรุปผู้บริหารเขียนวิธี Naive ต่างจากข้อความที่ใช้ในตารางเกณฑ์ ("ใช้ยอดเดือนก่อนเป็นค่าทาย" กับ "ใช้ยอดเดือนล่าสุดเป็นยอดทาย") ควรใช้ข้อความเดียวกัน
+- (Prompt 35) งาน daily รอบ 08:00 ของ 2026-10-15 ดึงข้อมูลได้แต่ขั้นสร้างไฟล์ล้มเหลวด้วย `PermissionError` ตอนเรียก python ลูก (รอบ 12:00 สำเร็จ) ยังไม่ทราบสาเหตุ ควรดูว่าเกิดซ้ำหรือไม่
+- (Prompt 35) งาน monthly ยังเปิด session และ login แยกตามขั้นตอนดึงข้อมูล (หลายครั้งต่อรอบ) การรวมเป็น session เดียวทำเฉพาะตอนรีเฟรชครั้งนี้ (`pull_inputs_only` ของแผนวัตถุดิบ และ `pull(in_open_session=True)` ของ Trend ยังไม่ถูกเรียกจากงาน monthly)
+- (Prompt 35) หมายเหตุ "รหัสไม่พบใน DB (Cube_ItemList)" ของหน้าแผนการผลิตยังแสดงวันที่ 9 ต.ค. เพราะใช้วันที่เก่าสุดของสองไฟล์ ไฟล์เดิม `item_attributes_fg.pkl` ถอดออกจาก config ได้แล้ว เพราะการดึงรอบนี้ครอบคลุมรหัสในแผนแล้ว
 - ล้างสคริปต์ one-off ใน `src/investigations` และไฟล์ output ที่ไม่มีใครอ้างอิง ต่อจาก Prompt 31/32 (รายชื่ออยู่ในรายงาน Prompt 32 หัวข้อ NEED DECISION)
 
+
+### Week 4, prompt 35 -- current-state sources refreshed in one read-only session (Trend history, material plan inputs and item master, PEM107 alert), PEM107 alert in the monthly job, affected pages rebuilt -- DONE, 2026-10-15 (one DB session, one login, 54 SELECT statements)
+
+**Report:** `docs/reports/summary/prompt5_g2_vintage_target_map.md`, heading "Prompt 35". The PEM107 computation moved to `src/cube_ces_pull.py` (Omni in the SQL, dated output, monthly cadence tag, failure = WARN and exit 2). Pulled: Trend history, material plan inputs and item attributes (class evidence not touched), PEM107 alert. Rebuilt: Trend tab, Min-Max page, operation plan (backlog from the 2026-10-15 daily pull, no PEM103 fallback), material plan, executive watch-outs. Forecast vintage 2, logs, policies and the executive YTD unchanged (sha256). Open: the backlog lines added to the handover (part 4).
 
 ### Week 4, prompt 34 -- closed list of 12 fixes: target residue, the old label of the Naive method, exit code 4 for every gate and push, login guard, DATA_MAP path, three manual sections and fixes, scope lines, tooltip, price note, plan meta time -- DONE, 2026-10-15 (no database; the test suite made none)
 

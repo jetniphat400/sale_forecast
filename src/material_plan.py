@@ -714,6 +714,37 @@ def pull_and_save(root: str = PROJECT_ROOT, in_open_session: bool = False) -> di
             "written_to": op._display_path(out, root)}
 
 
+def pull_inputs_only(root: str = PROJECT_ROOT, in_open_session: bool = False) -> dict:
+    """Refreshes only what the material plan reads as current state (Prompt 35): the BOM tree, raw-material stock, open purchase orders, purchase orders and receipts, the price list
+    and the item names (`pull_material_inputs`), and the item master attributes. It does NOT read Cube_CES or any class evidence: `class_evidence.pkl` and the item-level class file are
+    not touched, and the bundle's `backlog_ces` and `backlog_pulled_at_local` (taken from the class evidence by `pull_and_save`) are kept as they were; the operation plan takes its
+    backlog from the latest daily pull. ONE read-only session (`in_open_session` True when the caller holds it). Returns the counts."""
+    import contextlib
+    import db
+    sys.path.insert(0, os.path.join(HERE, "investigations"))
+    import task2b_part2_fulfilment_segmentation as seg
+    cfg = load_config(root)
+    out = op.path_of(root, cfg["operation_plan"]["week3_inputs_file"])
+    previous = pd.read_pickle(out)
+    codes = seg.class_evidence_codes()                       # the plan's item codes: a local list, no query
+    started = datetime.now()
+    with (contextlib.nullcontext() if in_open_session else db.session()):
+        material = pull_material_inputs(codes, cfg["purchase_evidence_since"], int(cfg["max_bom_levels"]))
+        rule = cfg.get("non_stock_rule", {})
+        requested = sorted(set(bom_component_lines(material["bom_tree"])["comp"]) | {str(c).strip() for c in codes})
+        attributes = pull_item_attributes(requested) if rule.get("enabled") else None
+    pulled_at = started.strftime("%Y-%m-%d %H:%M:%S")
+    if attributes is not None:
+        attr_path = op.path_of(root, rule["attributes_file"])
+        os.makedirs(os.path.dirname(attr_path), exist_ok=True)
+        pd.to_pickle({"pulled_at_local": pulled_at, "codes_requested": requested, **attributes}, attr_path)
+    fresh = assemble_inputs(material, pd.DataFrame(columns=["Status", "ContractID", "ItemCode", "ForecastDelDate", "PlanDelDate", "ActualQty", "BacklogQty", "RevenueType"]), previous["backlog_pulled_at_local"], pulled_at)
+    bundle = {**fresh, "backlog_ces": previous["backlog_ces"], "backlog_pulled_at_local": previous["backlog_pulled_at_local"]}
+    pd.to_pickle(bundle, out)
+    return {"pulled_at_local": pulled_at, "rows": {k: int(len(v)) for k, v in {**material, **({"item_master": attributes["master"], "item_aging": attributes["aging"]} if attributes else {})}.items()},
+            "written_to": op._display_path(out, root)}
+
+
 # ------------------------------------------------------------------ the saved pulls (offline use, tests and the one-off bundle of week 3)
 def build_inputs_bundle(pull_dir: str, pulled_at: dict) -> dict:
     """The dict of DataFrames the offline plan reads, from pulls saved in `pull_dir` (csv files named as the pulls were: p2_ces, p6_bom_tree_rows,

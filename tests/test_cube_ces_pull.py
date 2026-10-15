@@ -151,3 +151,63 @@ def test_the_recalibration_input_producer_writes_the_saved_files_schema_through_
     assert "CtrDate >=" not in seen["sql"] and "WHERE ItemCode IN" in seen["sql"]
     written = pd.read_csv(out)
     assert list(written.columns) == expected and res == {"rows": 1, "items": 2, "path": str(out)}       # exactly the saved schema; the extra column is dropped
+
+
+# ---- Prompt 35, Step 1: the PEM107 alert is production code of the monthly job
+
+def _fake_pem107_inputs():
+    pl = pd.DataFrame({"code": ["A1", "B1"], "type": ["Type A", "Type B"], "description": ["item a", "item b"]})
+    rows = []
+    # item A1: before the split (2026-05-01): 10 on time, 10 late; from it: 5 on time, 15 late. item B1: before: 20 on time; from it: 10 on time.
+    def add(code, forecast, actual, qty, status="Actual", rtype="Omni Channel"):
+        rows.append({"ItemCode": code, "ContractID": "X", "Status": status, "RevenueType": rtype, "ForecastDelDate": forecast, "ActualDelDate": actual, "ActualQty": qty})
+    add("A1", "2026-01-10", "2026-01-10", 10)
+    add("A1", "2026-02-10", "2026-02-20", 10)
+    add("A1", "2026-06-10", "2026-06-10", 5)
+    add("A1", "2026-07-10", "2026-07-30", 15)
+    add("B1", "2026-03-10", "2026-03-01", 20)
+    add("B1", "2026-08-10", "2026-08-10", 10)
+    add("A1", "2026-06-12", "2026-06-30", 99, rtype="Tendering")          # another channel: not counted
+    add("A1", "2026-06-12", None, 99, status="Backlog")                   # not delivered: not counted
+    add("A1", "2023-06-12", "2023-06-30", 99)                             # before the window start: not counted
+    return pl, pd.DataFrame(rows)
+
+
+def test_the_pem107_alert_is_computed_from_delivered_omni_rows_only():
+    pl, ces = _fake_pem107_inputs()
+    alert, items = cube_ces_pull.compute_pem107_alert(ces, pl, ["A1", "B1"], "2026-11-05 07:00:00")
+    assert alert["data_pulled_at"] == "2026-11-05 07:00:00"                                  # dated
+    assert alert["units_before_may_2026"] == 40 and alert["units_from_may_2026"] == 30
+    assert alert["not_late_before_may_2026_pct"] == pytest.approx(100 * 30 / 40) and alert["not_late_from_may_2026_pct"] == pytest.approx(100 * 15 / 30)
+    top = items.iloc[0]
+    assert top["product_code"] == "A1" and top["units_late"] == 15 and top["share_of_all_late_units_pct"] == pytest.approx(100.0)
+    assert alert["split_date"] == "2026-05-01" and alert["before_window_start"] == "2024-01-01"
+    assert "customer" not in " ".join(items.columns).lower() and set(items.columns) >= {"product_type", "product_description", "product_code"}
+
+
+def test_the_pem107_pull_filters_omni_in_the_sql_goes_through_the_open_session_and_writes_dated_files(monkeypatch, tmp_path):
+    from datetime import datetime
+    import json
+    pl, ces = _fake_pem107_inputs()
+    seen = {}
+
+    def fake_run_query(sql):
+        seen["sql"] = sql
+        return ces[ces["RevenueType"] == "Omni Channel"].reset_index(drop=True)
+    monkeypatch.setattr(cube_ces_pull, "run_query", fake_run_query)
+    monkeypatch.setattr(cube_ces_pull, "pem107_pricelist_rows", lambda root=None: (pl, ["A1", "B1"]))
+    import db
+    monkeypatch.setattr(db, "session", lambda *a, **k: (_ for _ in ()).throw(AssertionError("a second session was opened")))
+    result = cube_ces_pull.pull_pem107_alert(root=str(tmp_path), in_open_session=True, now=datetime(2026, 11, 5, 7, 0, 0))
+    sql = seen["sql"]
+    assert "FROM Cube_CES" in sql and "RevenueType = 'Omni Channel'" in sql and "ItemCode IN ('A1','B1')" in sql and "SELECT" in sql.upper()
+    assert not any(w in sql.upper() for w in ("INSERT", "UPDATE", "DELETE", "CUSTOMER"))
+    alert = json.load(open(tmp_path / "output" / "summary" / "task2b_part4_pem107_alert.json", encoding="utf-8"))
+    assert alert["data_pulled_at"] == "2026-11-05 07:00:00" and result["pulled_at_local"] == "2026-11-05 07:00:00"
+    assert (tmp_path / "output" / "summary" / "task2b_part4_pem107_alert_items.csv").exists() and result["rows"]["items_in_alert"] == 2
+    assert result["rows"]["cube_ces_omni"] == len(ces[ces["RevenueType"] == "Omni Channel"])
+
+
+def test_the_investigation_script_calls_the_production_code_and_holds_no_copy_of_it():
+    src = open(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "src", "investigations", "task2b_part4_pem107_alert.py"), encoding="utf-8").read()
+    assert "pull_pem107_alert" in src and "not_late_unit_weighted" not in src and "groupby" not in src and "run_query" not in src

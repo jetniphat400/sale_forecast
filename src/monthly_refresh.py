@@ -335,6 +335,7 @@ def step1_pull_data(dry_run: bool, offline: bool = False) -> dict:
                 "inventory_pull": {"refreshed": False, "not_refreshed_reason": "offline mode: no database connection"},
                 "material_plan_pull": {"refreshed": False, "not_refreshed_reason": "offline mode: no database connection"},
                 "trend_tab_pull": {"refreshed": False, "not_refreshed_reason": "offline mode: no database connection"},
+                "pem107_alert_pull": {"refreshed": False, "not_refreshed_reason": "offline mode: no database connection"},
                 "snapshot_pull_date": str(monthly["snapshot_pull_date"].iloc[0]),
                 "n_items": monthly["itemcode"].nunique(), "n_divisions": monthly["division"].nunique()}
     from dotenv import load_dotenv
@@ -392,6 +393,10 @@ def step1_pull_data(dry_run: bool, offline: bool = False) -> dict:
     # the Trend tab of index.html: its own session (src/build_trend_tab.py --pull); a failure leaves the earlier pull in place and the log says so
     result["trend_tab_pull"] = _pull_stage("Trend tab pull", "build_trend_tab.py", os.path.join(PROJECT_ROOT, *load_config()["trend_tab"]["pull_dir"].split("/"), "completeness.json"),
                                            args=["--pull"])
+    # the PEM107 delivery-decline alert of the Min-Max page (src/cube_ces_pull.py, Prompt 35): Cube_CES, Omni Channel in the SQL, in its own session; its output carries its pull time, so the page
+    # judges its freshness by the monthly cadence. A failure keeps the earlier alert, is a WARN and makes the run partial (exit code 2).
+    result["pem107_alert_pull"] = _pull_stage("PEM107 alert pull", "cube_ces_pull.py", os.path.join(PROJECT_ROOT, "output", "summary", "task2b_part4_pem107_alert.json"),
+                                              args=["--pem107-alert"])
     _abort_if_a_database_stage_failed("Step 1 (pull data)")
     return result
 

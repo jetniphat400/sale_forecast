@@ -1493,6 +1493,7 @@ page_timestamps:
     - "กราฟส่งตรงวันพอดี"
     - "กราฟส่งทัน"
     - "ข้อมูลขาย PEM103/PEM107 (หน้า Min-Max)"
+    - "แจ้งเตือน PEM107 (หน้า Min-Max)"     # the PEM107 delivery alert, pulled by the monthly job from Cube_CES (Prompt 35)
   daily_sources:          # pulled by the daily job (src/snapshot_daily.py, src/daily_stock_job.py)
     - "สต็อค (หน้า Min-Max และแผงสต็อค)"
     - "ยอดจอง (หน้า Min-Max และแผงสต็อค)"
