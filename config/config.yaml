@@ -1879,10 +1879,9 @@ operation_plan:
   # beside it): the CES backlog with RevenueType, the BOM tree, raw-material stock, open orders, purchase history, price list, item names. The one-off file of
   # week 3 (output/data/week3_inputs) is no longer read.
   week3_inputs_file: "output/data/material_pull/material_inputs.pkl"
-  # The DB item master (Cube_ItemList) check of the plan's codes (the page's remark "ไม่พบรหัสนี้ใน DB"): the monthly pull's item attributes cover the plan items from the 2026-11-05 run
-  # (they carry `codes_requested`); until then the one-off pull of the plan items of 2026-10-09 (Prompt 21) covers them. A code no saved pull covers is shown as not checked.
+  # The DB item master (Cube_ItemList) check of the plan's codes (the page's remark "ไม่พบรหัสนี้ใน DB"): the item attributes pulled with the material plan's inputs (they carry `codes_requested`, which
+  # include every code of the plan); the remark's date is that pull's date. A code the pull did not ask for is shown as not checked. The one-off file of 2026-10-09 (item_attributes_fg.pkl) is no longer read (Prompt 36).
   item_master_files: ["output/data/material_pull/item_attributes.pkl"]
-  item_master_legacy_fg_file: "output/data/material_pull/item_attributes_fg.pkl"
   # PEM103 counts only its Omni Channel orders (the approved page line states it); the backlog rows of its items with another RevenueType are dropped.
   backlog_channel_scope: {PEM103: "Omni Channel"}
   # Classes of METRICS.md Sec.23 that get a Min and Max (part A) and that do not (part B, load equals demand).

@@ -2235,3 +2235,36 @@ Full suite after the last change: 878 passed, 0 failed, 0 skipped (15 min 49 s);
 ### Notes
 - The daily job of 08:00 on 15 Oct saved its pulls but failed in its build stage with an access error (a child python process could not be started); the 12:00 run succeeded and published, so the pages were rebuilt after it.
 - Anything else noticed is in the STATUS.md handover backlog (3 lines); nothing else was fixed.
+
+
+## Prompt 36
+
+Start (Get-Date): 2026-10-15 13:08:17 +07:00. End: 2026-10-15 13:31:58 +0700 (shell clock). No database session. The daily job was not running (last run 12:00, next 07:00 on the 16th).
+
+### The fix
+- **Reader check (grep over src, tests, config, pages, data):** the only reader of `item_attributes_fg.pkl` was `build_operation_plan_page.item_master_check` through the config key `operation_plan.item_master_legacy_fg_file`; a test passes the key by itself with its own fake file. Nothing else reads the file, so the work went ahead. The file itself was not deleted.
+- **Config:** `item_master_legacy_fg_file` removed from `operation_plan`; `item_master_files` stays `["output/data/material_pull/item_attributes.pkl"]`; the comment now says the remark's date is that pull's date and the one-off file is no longer read.
+- **Why it works:** `item_attributes.pkl` (pulled 2026-10-15 11:48 with the material plan's inputs) carries `codes_requested`, and all 439 plan codes are among them, so 0 codes are "not checked".
+
+### Result
+- **Remark date:** 9 Oct 69 -> 15 Oct 69 (the date of the item-master pull).
+- **Missing from DB (Cube_ItemList):** 38 -> 38. Codes now found: none. Newly missing: none (the two sets are identical).
+- **Plan quantities unchanged: YES.** The operation plan was rebuilt from the saved inputs (no pull) together with the material plan and the executive tab that follow it: the two plan CSVs have the same sha256 before and after; the recorded plan meta differs only by its build time.
+
+### Numeric gate
+Every page and data JSON, numeric tokens of the visible text and embedded data, HEAD against the working tree: the operation plan page has exactly one difference, the remark date token 9 -> 15. The sales report, the Min-Max page, the material plan, index.html (executive tab included: the four cards and the eight watch-outs) and the data JSON files: 0 differences.
+
+### Data gate
+Forward-test, shadow, score and comparator logs, the vintage snapshot, the class files, the lead-time and recalibration inputs: 97 files, sha256 before and after identical.
+
+### Tests (fakes, no database)
+Two new tests in `tests/test_operation_plan_page_builder.py`: no legacy input is configured and the remark date is the date of the one pull and the missing count is what that pull lacks (an older file in the same folder is not read); the remark and count recorded on the page equal the saved item-master pull (date) and the codes it lacks (count).
+
+### Runner checks
+Monthly dry run `--dry-run --offline --skip-tests`: exit 0; daily dry run `--dry-run --from-pulls`: exit 0.
+
+### Full suite, browser check, Validator
+Full suite (final run, after the last change): 880 passed, 0 failed, 0 skipped. Browser check (headless Edge, temporary profile, own process closed by PID, profile deleted, no leftovers): the operation plan page shows 38 รหัสไม่พบใน DB (Cube_ItemList) ดึงข้อมูลเมื่อ 15 ต.ค. 69, 0 script exceptions (1 other console message, not a script error). Validator (fresh, evaluate-only): PASS on the date source, the missing-code count (38 with or without the legacy file, identical sets) and unchanged quantities (plan CSV hashes, page tokens differ only by 9 -> 15).
+
+### Backlog line added (STATUS.md handover, nothing fixed)
+The optional legacy-file branch of `item_master_check` and its test can now be removed.

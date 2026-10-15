@@ -860,3 +860,31 @@ def test_the_material_plan_quantity_headers_carry_the_all_channels_except_pem103
     assert 'class="allch"' in badge and tip in badge and "รวมทุกช่องทาง (ยกเว้น PEM103)" in badge
     page = open(os.path.join(PROJECT_ROOT, "forecast", "material_plan.html"), encoding="utf-8").read()
     assert page.count('class="allch"') >= 3 and "รวมทุกช่องทาง (ยกเว้น PEM103)" in page          # the demand header of each month and the order qty header of the two lists
+
+
+# ---- Prompt 36: the remark of the codes missing from the DB item master uses the latest item-master pull and only that
+
+def test_no_legacy_item_master_input_is_configured_and_the_remark_date_is_the_date_of_the_pull(tmp_path):
+    import yaml
+    cfg = yaml.safe_load(open(os.path.join(PROJECT_ROOT, "config", "config.yaml"), encoding="utf-8"))["operation_plan"]
+    assert cfg["item_master_files"] == ["output/data/material_pull/item_attributes.pkl"] and "item_master_legacy_fg_file" not in cfg
+    root = str(tmp_path)
+    os.makedirs(tmp_path / "pulls")
+    pd.to_pickle({"pulled_at_local": "2026-10-15 11:48:11", "codes_requested": ["A", "B", "C", "D"], "master": pd.DataFrame({"ItemCode": ["A", "B  "]})}, str(tmp_path / "pulls" / "now.pkl"))
+    pd.to_pickle({"pulled_at_local": "2026-10-09 15:39:00", "master": pd.DataFrame({"ItemCode": ["A", "B", "C", "D"]})}, str(tmp_path / "pulls" / "old.pkl"))      # an older file nobody reads
+    r = bp.item_master_check(root, {"item_master_files": ["pulls/now.pkl"]}, ["A", "B", "C", "D"])
+    assert r["pulled_at"] == "15 ต.ค. 69" and r["missing"] == {"C", "D"} and r["unchecked"] == set()                  # the date of the one pull; the missing count is what that pull lacks
+
+
+def test_the_recorded_remark_of_the_page_equals_the_saved_item_master_pull():
+    import re
+    attributes = op.path_of(PROJECT_ROOT, "output/data/material_pull/item_attributes.pkl")
+    assert os.path.exists(attributes), "the saved item-master pull is not on this machine"
+    cfg = op.load_config(PROJECT_ROOT)
+    im, _, _ = op.read_outputs(PROJECT_ROOT, cfg)
+    check = bp.item_master_check(PROJECT_ROOT, cfg, im["item"].unique())
+    page = open(os.path.join(PROJECT_ROOT, "forecast", "operation_plan.html"), encoding="utf-8").read()
+    m = re.search(r"(\d+) รหัสไม่พบใน DB \(Cube_ItemList\) ดึงข้อมูลเมื่อ ([^<]+)<", page)
+    assert m, "the page carries no missing-code note"
+    pulled = str(pd.read_pickle(attributes)["pulled_at_local"])[:10]
+    assert int(m.group(1)) == len(check["missing"]) and m.group(2).strip() == check["pulled_at"] == bp.rv.thai_date_short(pulled)
