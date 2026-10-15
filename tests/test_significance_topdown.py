@@ -122,7 +122,7 @@ def _rows(**by_div):
 
 def test_line_for_each_verdict_combination():
     heading = br.SIGNIFICANCE_LINES["Direct"]
-    assert heading == "เทียบกับการทายรายรหัสตรงๆ:" and br.SIGNIFICANCE_LINES["Naive"] == "เทียบกับการใช้ยอดเดือนล่าสุดเป็นค่าทาย:"
+    assert heading == "เทียบกับการทายรายรหัสตรงๆ:" and br.SIGNIFICANCE_LINES["Naive"] == "เทียบกับ Naive (ใช้ยอดเดือนล่าสุดเป็น Forecast ทุกเดือน):"
     assert br.SIGNIFICANCE_HEADING == "ใช้วิธี Top-down ดีกว่าวิธีอื่นไหม"
     assert br.SIGNIFICANCE_CLOSING == "ที่เลือกใช้ Top-down เพราะแม่นใกล้เคียงหรือดีกว่าวิธีอื่น และใช้วิธีเดียวได้ทุกฝ่าย"
     # all unclear: one phrase, divisions joined by ", "

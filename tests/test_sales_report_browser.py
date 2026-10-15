@@ -93,7 +93,7 @@ def test_the_unit_switch_shows_pieces_by_default_and_baht_on_request_and_keeps_t
     # default: pieces, the current view
     assert edge.ev("Array.from(document.querySelectorAll('#unitSwitch button')).map(b => b.getAttribute('aria-pressed')).join()") == "true,false"
     assert _shown(edge, ".fwd-table-wrap:not([hidden])") and not _shown(edge, "#baht-label") and not _shown(edge, "#baht-summary-table")
-    assert "ยอดทายรวมรายเดือน (บาท)" not in text and "มูลค่าคิดจากราคาขายเฉลี่ยต่อชิ้นของแต่ละรหัส" not in text
+    assert "Forecast รวมรายเดือน (บาท)" not in text and "มูลค่าคิดจากราคาขายเฉลี่ยต่อชิ้นของแต่ละรหัส" not in text
     divisions = edge.ev("Array.from(document.querySelectorAll('#fwdDivision option')).map(o => o.value)")
     assert len(divisions) >= 2
     second = divisions[1]
@@ -102,8 +102,8 @@ def test_the_unit_switch_shows_pieces_by_default_and_baht_on_request_and_keeps_t
     # baht mode: label, explanation, summary table, the baht table of the SAME division with its total row; the pieces table is hidden
     assert edge.ev("document.getElementById('fwdDivision').value") == second
     text = _visible_block(edge, "#forward-forecast")
-    assert "มูลค่าคิดจากราคาขายเฉลี่ยต่อชิ้นของแต่ละรหัส" in text and "ยอดทายรวมรายเดือน (บาท)" in text and "รวมทุกฝ่าย" in text
-    assert "▸ ยอดทายคิดเป็นเงินเท่าไหร่ต่อเดือน ▸ ตัวเลข = ยอดทาย (ชิ้น) × ราคาขายเฉลี่ยของรหัสนั้น หน่วยบาท" in text
+    assert "มูลค่าคิดจากราคาขายเฉลี่ยต่อชิ้นของแต่ละรหัส" in text and "Forecast รวมรายเดือน (บาท)" in text and "รวมทุกฝ่าย" in text
+    assert "▸ Forecast คิดเป็นเงินเท่าไหร่ต่อเดือน ▸ ตัวเลข = Forecast (ชิ้น) × ราคาขายเฉลี่ยของรหัสนั้น หน่วยบาท" in text
     assert "▸ แถว = ประเภทสินค้า · คอลัมน์ = เดือน · ตัวเลข = จำนวนชิ้น" not in text                      # the pieces explanation is not shown over baht
     assert not _shown(edge, ".fwd-table-wrap") and _shown(edge, f".fwd-baht-wrap[data-division={second}]")
     assert edge.ev("document.querySelectorAll('.fwd-baht-wrap:not([hidden])').length") == 1
@@ -132,7 +132,7 @@ def test_no_horizontal_page_scroll_at_phone_width_in_both_modes(edge, page_path)
 
 
 def test_the_flat_forecast_line_is_visible_under_the_tables_in_both_unit_modes(edge, page_path):
-    line = "ยอดทายทุกเดือนเท่ากัน (flat forecast) เพราะวิธีทายตอนนี้ให้ค่าเดียวกับทุกเดือนข้างหน้า ยังไม่คิดช่วงขายดีขายน้อยตามฤดูกาล (seasonality)"
+    line = "Forecast เท่ากันทุกเดือน (flat forecast) · เพราะวิธีที่ใช้ตอนนี้ให้ค่าเดียวกับทุกเดือนข้างหน้า · และยังไม่คิดช่วงขายดีขายน้อยตามฤดูกาล (seasonality)"
     edge.open(page_path, cdn="stub")
     for unit in ("pieces", "baht"):
         _click_unit(edge, unit)

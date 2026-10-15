@@ -229,7 +229,7 @@ def gather_model_chart() -> pd.DataFrame:
 # The two comparisons of the significance block, in the order shown, with the approved line openings.
 SIGNIFICANCE_LINES = {
     "Direct": "เทียบกับการทายรายรหัสตรงๆ:",
-    "Naive": "เทียบกับการใช้ยอดเดือนล่าสุดเป็นค่าทาย:",
+    "Naive": "เทียบกับ Naive (ใช้ยอดเดือนล่าสุดเป็น Forecast ทุกเดือน):",
 }
 SIGNIFICANCE_HEADING = "ใช้วิธี Top-down ดีกว่าวิธีอื่นไหม"
 SIGNIFICANCE_CLOSING = "ที่เลือกใช้ Top-down เพราะแม่นใกล้เคียงหรือดีกว่าวิธีอื่น และใช้วิธีเดียวได้ทุกฝ่าย"
@@ -1004,7 +1004,7 @@ def render_page(config: dict) -> str:
       {cite('leadtime_notice_buckets_overall.csv', 'min_notice_days / pct_of_orders')}
       <div id="chart-notice" class="plotly-chart"></div>
       {render_notes_html('sales_report.html', 'chart-notice', values=note_values)}
-      <h3>สัดส่วนส่งมอบตรงวันครบกำหนดเป๊ะ vs. ส่งทัน (ส่งไม่ช้ากว่าวันนัด) (ปี {rv.thai_year_short(ontime_first_year)}-{rv.thai_year_short(ontime_last_year)})</h3>
+      <h3>สัดส่วนส่งมอบตรงวันครบกำหนดเป๊ะ vs. ส่งทัน (Not-late: ส่งไม่ช้ากว่าวันนัด) (ปี {rv.thai_year_short(ontime_first_year)}-{rv.thai_year_short(ontime_last_year)})</h3>
       <!-- Previous wording, kept off screen: on_time_exact = delivered exactly on the due date (PlanDelDate), counted by number of orders (row-weighted), PEM101 128 items -- src/investigations/delivery_performance.py:71-75 (classify_delay) and lines 155-161 (by_year aggregation, column pct_on_time); METRICS.md §19 forbids using this figure alone as a fill-rate benchmark (the earlier 73.2% incident), so not_late is shown alongside. not_late = delivered on or before ForecastDelDate, unit-weighted (ActualQty), not by order count; unit-weighted because METRICS.md §10 (fill_rate) is defined as unit-based, not order-based, and the figure is read alongside fill_rate/service level (src/investigations/task2a_delivery_notlate_by_year.py, computed from the same Cube_CES data as on_time_exact, no new pull). -->
       <p class="hint">เส้นส่งทันนับเป็นชิ้น เพราะสิ่งที่ลูกค้าสนใจคือได้ของครบทันไหม ไม่ใช่จำนวนใบสั่ง</p>
       {cite('delivery_by_year.csv', 'year / pct_on_time')}
@@ -1119,7 +1119,7 @@ def render_page(config: dict) -> str:
       {cite('phaseC_step2_transferability_per_division.csv', 'MAE / RMSE / Bias / MASE / n_scored')}
       <!-- filtered to rows where approach == 'Top-down' -->
       <table class="report-table" id="primary-results-table">
-        <thead><tr><th>ฝ่าย</th><th>MAE</th><th>RMSE</th><th>Bias</th><th>MASE (เทียบกับวิธีเดาง่าย ยิ่งต่ำยิ่งดี)</th><th>จำนวนที่ใช้คำนวณ (สินค้า × รอบทดสอบ)</th></tr></thead>
+        <thead><tr><th>ฝ่าย</th><th>MAE</th><th>RMSE</th><th>Bias</th><th>MASE (เทียบกับ Naive; ต่ำกว่า 1 = ดีกว่า Naive)</th><th>จำนวนที่ใช้คำนวณ (สินค้า × รอบทดสอบ)</th></tr></thead>
         <tbody></tbody>
       </table>
       <h3>ตารางรอง — วิธี Combination ระดับประเภทสินค้า</h3>

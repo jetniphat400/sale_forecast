@@ -190,13 +190,23 @@ Code: `src/investigations/task2b_part2_fulfilment_segmentation.py` (`run_from_pu
 - ย้ายแอปไปรันบนเซิร์ฟเวอร์ขององค์กร (ตอนนี้รันบนเครื่องเดียวผ่าน Task Scheduler)
 - (Prompt 34) ขั้นตอนอื่นที่หยุดงานด้วย exit code 1 (ดึงข้อมูล, backtest, vintage, ฯลฯ) ยังนับเป็นการหยุดกลางทาง ไม่ใช่ gate: ควรทบทวนว่าข้อใดควรเป็น exit code 4
 - (Prompt 34) หน้า Min-Max มีบรรทัดขอบเขตเดียว (Price List, Omni Channel, ข้อยกเว้น stock และ Reserved รวมทุกช่องทาง) ส่วนข้อยกเว้นของ PEM103 (เฉพาะ Omni ไม่รวมงานประมูล) อยู่ที่หน้าแผนการผลิตเท่านั้น
-- (Prompt 34) การ์ดของแท็บสรุปผู้บริหารเขียนวิธี Naive ต่างจากข้อความที่ใช้ในตารางเกณฑ์ ("ใช้ยอดเดือนก่อนเป็นค่าทาย" กับ "ใช้ยอดเดือนล่าสุดเป็นยอดทาย") ควรใช้ข้อความเดียวกัน
+- (Prompt 34) การ์ดของแท็บสรุปผู้บริหารเขียนวิธี Naive ต่างจากข้อความที่ใช้ในตารางเกณฑ์ ("ใช้ยอดเดือนก่อนเป็นค่าทาย" กับ "ใช้ยอดเดือนล่าสุดเป็นยอดทาย") ควรใช้ข้อความเดียวกัน (แก้แล้วใน Prompt 38: ใช้ "Naive (ใช้ยอดเดือนล่าสุดเป็น Forecast ทุกเดือน)" ทุกที่)
 - (Prompt 35) งาน daily รอบ 08:00 ของ 2026-10-15 ดึงข้อมูลได้แต่ขั้นสร้างไฟล์ล้มเหลวด้วย `PermissionError` ตอนเรียก python ลูก (รอบ 12:00 สำเร็จ) ยังไม่ทราบสาเหตุ ควรดูว่าเกิดซ้ำหรือไม่
 - (Prompt 35) งาน monthly ยังเปิด session และ login แยกตามขั้นตอนดึงข้อมูล (หลายครั้งต่อรอบ) การรวมเป็น session เดียวทำเฉพาะตอนรีเฟรชครั้งนี้ (`pull_inputs_only` ของแผนวัตถุดิบ และ `pull(in_open_session=True)` ของ Trend ยังไม่ถูกเรียกจากงาน monthly)
 - (Prompt 35) หมายเหตุ "รหัสไม่พบใน DB (Cube_ItemList)" ของหน้าแผนการผลิตยังแสดงวันที่ 9 ต.ค. เพราะใช้วันที่เก่าสุดของสองไฟล์ ไฟล์เดิม `item_attributes_fg.pkl` ถอดออกจาก config ได้แล้ว เพราะการดึงรอบนี้ครอบคลุมรหัสในแผนแล้ว (แก้แล้วใน Prompt 36)
 - (Prompt 36) โค้ดใน `build_operation_plan_page.item_master_check` ยังรองรับไฟล์เดิมแบบเลือกได้ (`item_master_legacy_fg_file`) แต่ไม่มีใครตั้งค่าแล้ว ควรถอดโค้ดและเทสต์ส่วนนั้นออก
+- (Prompt 38) แผงควบคุมด้านซ้ายของหน้า Min-Max ติดอยู่กับหน้าจอและไม่มีที่ว่างเหลือ: ข้อความที่ยาวขึ้นหนึ่งบรรทัดทำให้แผงต้องเลื่อนที่ 1440x900 จึงวางคำอธิบายครั้งแรกของ Not-late และ Excess stock ไว้นอกแผง (หัวแบนเนอร์ PEM107, หัวข้อเลือกเป้า PEM101 และบรรทัดนิยาม Excess stock) ควรตัดสินว่าจะขยายแผงหรือคงแบบนี้
+- (Prompt 38) แถบแท็บบนสุดของ index.html ที่ความกว้าง 1366 ขึ้นแถวที่สอง (แท็บ "คู่มือการใช้งาน") เพราะป้ายใหม่ของแท็บ Production Plan ยาวขึ้น ที่ 1920 อยู่แถวเดียว ไม่ได้แก้ถ้อยคำเพื่อให้พอดี
+- (Prompt 38) คำว่า "แผนการผลิต" ในหัวหน้าแผนการผลิต หน้าแผนวัตถุดิบ และแท็บสมมติฐาน (คอลัมน์ กระทบอะไร) ยังเป็นชื่อเดิม ต่างจากป้ายแท็บใหม่ "Production Plan" ส่วนคำกริยา "ทาย" / "วิธีทาย" ยังใช้อยู่ (ไม่อยู่ในรายการคำต้องห้าม)
+- (Prompt 38) ท้ายแท็บสรุปผู้บริหารยังเป็นย่อหน้าเดียวที่คั่นด้วย " · " (นิยามยอดขาย / เดือนข้อมูล / สูตรคาดการณ์) ถ้าต้องการแยกเป็นบรรทัดจริงต้องแก้ตัวสร้างหน้า (เลย์เอาต์)
+- (Prompt 38) แถวของส่วนที่ 1 ในแท็บ S&OP Plan (เดิม) ยังใช้ป้ายเดิม "Inventory — แผนสต็อค" และคำว่า สต็อค ในข้อความช่วยอ่าน (ไม่แตะแท็บเดิมตามคำสั่ง) คู่มือจึงอ้างถึงแถวนี้ว่า "Inventory" เท่านั้น
+- (Prompt 38) ผลตรวจ VAT ของคอลัมน์ `sale` (cube_Sale_APD) ยังสรุปไม่ได้ (UNDETERMINED) ดูรายงาน Prompt 38 ข้อความ "ไม่รวม VAT" บนหน้าจึงยังไม่ได้แก้ ต้องให้ฝ่ายที่ดูแลข้อมูลยืนยัน
 - ล้างสคริปต์ one-off ใน `src/investigations` และไฟล์ output ที่ไม่มีใครอ้างอิง ต่อจาก Prompt 31/32 (รายชื่ออยู่ในรายงาน Prompt 32 หัวข้อ NEED DECISION)
 
+
+### Week 4, prompt 38 -- page wording: 12 approved items (Forecast, Production Plan, Naive, Tracking Signal, Historical peak, Demand-driven, Build to Max, Excess stock, Not-late, stock and Min-Max, Price List, two long lines, the manual's DB tables), a guard for eight banned words, and a read-only VAT check -- DONE, 2026-10-15 (the wording work made no database connection; the VAT check made one session and one login)
+
+**Report:** `docs/reports/summary/prompt5_g2_vintage_target_map.md`, heading "Prompt 38". The text was changed at its sources (config, manual notes, builders, the manual, the static tab bar and panel of index.html), then the sales report, Min-Max page, operation plan, assumptions and the executive tab were rebuilt from the saved data. The eight banned words are 0 in the rendered text of every page and tab (136 before). The numbers in the rendered text are unchanged except the page build times and the "1" in the approved MASE header. `tests/test_guards.py` holds the new guard (proven to fail on an injected word in a temporary copy). VAT: UNDETERMINED (see the report). Open: the backlog lines added to the handover (part 4).
 
 ### Week 4, prompt 36 -- the operation plan's item-master remark uses only the latest item-master pull -- DONE, 2026-10-15 (no database)
 

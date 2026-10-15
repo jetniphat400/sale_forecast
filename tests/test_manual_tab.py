@@ -57,7 +57,7 @@ def test_manual_tab_fetches_the_real_source_file_not_a_copy():
     # Guard against a future regression to a hand-pasted copy: no long run of the manual's own
     # distinctive prose should appear anywhere else in index.html outside this fetch-based path.
     distinctive_lines = [
-        "MASE — ดีกว่าวิธีเดาง่ายๆ ไหม",
+        "MASE (เทียบกับ Naive; ต่ำกว่า 1 = ดีกว่า Naive)",
         "PEM107 | ยังไม่ calibrate ระบบเปลี่ยนเมื่อ พ.ค. 2569",
     ]
     for line in distinctive_lines:

@@ -418,7 +418,7 @@ def test_numbers_from_the_remaining_typed_list_follow_their_sources(two_builds):
     # first scoring month from the forward-test log
     with open(os.path.join(rv.PROJECT_ROOT, "config", "config.yaml"), encoding="utf-8") as f:
         real_cfg = yaml.safe_load(f)
-    assert "ทุกต้นเดือนระบบเทียบยอดทายกับยอดขายจริงของเดือนที่ผ่านมา และเพิ่มผลในตารางนี้" in b and "ผลรอบแรกต้นเดือน" not in b
+    assert "ทุกต้นเดือนระบบเทียบ Forecast กับยอดขายจริงของเดือนที่ผ่านมา และเพิ่มผลในตารางนี้" in b and "ผลรอบแรกต้นเดือน" not in b
     # the |t| and Wilcoxon thresholds are applied when topdown_significance.csv is written (METRICS.md Sec.41), not typed in the page;
     # the report only states them in an HTML comment read from that file
     assert "|t| &gt;= 2" in b and "Wilcoxon p &lt; 0.05" in b
@@ -494,7 +494,7 @@ def test_operation_plan_page_numbers_dates_and_items_follow_their_sources():
     pert = bp.render(bp.compute_values(im2, dm2, meta2, {}, "2027-01-04", ["PEM101", "PEM107"]))
     lines = lambda page: _re.findall(r'<p class="note-line">(.*?)</p>', page)
     assert "6 ต.ค. 69 08:00" in base and "15 ม.ค. 70 17:45" in pert and "6 ต.ค. 69" not in pert
-    assert "Forecast (ยอดทาย) รันเมื่อ ต.ค. 69" in base and "Forecast (ยอดทาย) รันเมื่อ ม.ค. 70" in pert
+    assert "Forecast = ยอดขายที่ระบบคาดการณ์ · รอบ Forecast รันเมื่อ ต.ค. 69" in base and "Forecast = ยอดขายที่ระบบคาดการณ์ · รอบ Forecast รันเมื่อ ม.ค. 70" in pert
     lb, lp = lines(base), lines(pert)
     assert lb[0].startswith("ต.ค. 69 PEM101") and lp[0].startswith("ก.พ. 70 PEM101")
     assert "A7" in lb[1] and "Z9" in lp[1] and "Z9" not in lb[1] and "A7" not in lp[1]
@@ -516,7 +516,7 @@ def test_operation_plan_division_lines_follow_the_counts_of_the_plan():
     meta2["counts"]["no_production_items_by_division"]["PEM103"] = 17
     meta2["counts"]["stock_items_by_division"]["PEM102"] = 3          # a division that has stock items no longer says it has none
     pert = bp.render(bp.compute_values(im, dm, meta2, {}, "2026-10-02", SIX))
-    assert "1 รหัสยังไม่มียอดทาย (ประวัติขายไม่พอ) แผนนับเฉพาะออเดอร์ที่รับแล้วแต่ยังไม่ส่ง (open orders) ตอนนี้มีออเดอร์ที่รับแล้วยังไม่ส่ง 1 รหัส" in base and "41 รหัสยังไม่มียอดทาย (ประวัติขายไม่พอ) แผนนับเฉพาะออเดอร์ที่รับแล้วแต่ยังไม่ส่ง (open orders) ตอนนี้มีออเดอร์ที่รับแล้วยังไม่ส่ง 1 รหัส" in pert and "41 รหัส" not in base
+    assert "1 รหัสยังไม่มี Forecast (ประวัติขายไม่พอ) แผนนับเฉพาะออเดอร์ที่รับแล้วแต่ยังไม่ส่ง (open orders) ตอนนี้มีออเดอร์ที่รับแล้วยังไม่ส่ง 1 รหัส" in base and "41 รหัสยังไม่มี Forecast (ประวัติขายไม่พอ) แผนนับเฉพาะออเดอร์ที่รับแล้วแต่ยังไม่ส่ง (open orders) ตอนนี้มีออเดอร์ที่รับแล้วยังไม่ส่ง 1 รหัส" in pert and "41 รหัส" not in base
     assert "1 รหัสไม่มีบันทึกผลิตใน DB (cube_final) (ไม่ได้แปลว่ายกเลิกผลิต) ไม่นับรวมในยอดผลิตตามแผน" in base and "17 รหัสไม่มีบันทึกผลิตใน DB (cube_final) (ไม่ได้แปลว่ายกเลิกผลิต) ไม่นับรวมในยอดผลิตตามแผน" in pert
     assert "PEM102 ไม่มีสินค้าที่เข้าเกณฑ์เก็บ stock" in base and "PEM102 ไม่มีสินค้าที่เข้าเกณฑ์เก็บ stock" not in pert
 
@@ -562,15 +562,15 @@ def test_new_sales_report_lines_and_tables_follow_their_sources(two_builds):
     b, p = base.sales_html, pert.sales_html
     # the round, the last month of the sales used and the build time come from the vintage and the clock
     fb, fp = _first(r'id="freshness-line">(.*?)</span>', b), _first(r'id="freshness-line">(.*?)</span>', p)
-    assert fb != fp and fp.startswith("Forecast (ยอดทาย) รันเมื่อ ม.ค. 70 · ใช้ยอดขายถึง พ.ย. 69 · หน้าสร้างเมื่อ ")
-    assert re.fullmatch(r"Forecast \(ยอดทาย\) รันเมื่อ \S+ \d\d · ใช้ยอดขายถึง \S+ \d\d · หน้าสร้างเมื่อ \d{1,2} \S+ \d\d \d\d:\d\d", fb)
+    assert fb != fp and fp.startswith("Forecast = ยอดขายที่ระบบคาดการณ์ · รอบ Forecast รันเมื่อ ม.ค. 70 · ใช้ยอดขายถึง พ.ย. 69 · หน้าสร้างเมื่อ ")
+    assert re.fullmatch(r"Forecast = ยอดขายที่ระบบคาดการณ์ · รอบ Forecast รันเมื่อ \S+ \d\d · ใช้ยอดขายถึง \S+ \d\d · หน้าสร้างเมื่อ \d{1,2} \S+ \d\d \d\d:\d\d", fb)
     # the fit window, the forecast months
     rb, rp = _first(r'id="fit-range-line">(.*?)</td>', b), _first(r'id="fit-range-line">(.*?)</td>', p)
     assert rb != rp and rp == "ยอดขายที่ใช้ทาย พ.ค. 67 ถึง พ.ย. 69"
     hb, hp = _first(r"<h2>2\. (.*?)</h2>", b), _first(r"<h2>2\. (.*?)</h2>", p)
-    assert hb != hp and hp == "ยอดทาย ธ.ค. 69 ถึง พ.ค. 70"
+    assert hb != hp and hp == "Forecast ธ.ค. 69 ถึง พ.ค. 70"
     # the count of codes with no forecast follows the scope table (seven codes moved from forecast to placeholder)
-    nb, np_ = int(_first(r"รหัสที่ยังไม่มียอดทาย (\d+) รหัส", b)), int(_first(r"รหัสที่ยังไม่มียอดทาย (\d+) รหัส", p))
+    nb, np_ = int(_first(r"รหัสที่ยังไม่มี Forecast (\d+) รหัส", b)), int(_first(r"รหัสที่ยังไม่มี Forecast (\d+) รหัส", p))
     assert np_ == nb + 7
     # the forward forecast follows the vintage: every forecast doubled in the second build
     cb, vb = _forward_cells(b)

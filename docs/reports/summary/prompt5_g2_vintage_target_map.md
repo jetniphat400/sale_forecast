@@ -2268,3 +2268,50 @@ Full suite (final run, after the last change): 880 passed, 0 failed, 0 skipped. 
 
 ### Backlog line added (STATUS.md handover, nothing fixed)
 The optional legacy-file branch of `item_master_check` and its test can now be removed.
+
+
+## Prompt 38
+
+Start (Get-Date): 2026-10-15 14:35:06 +0700. End: 2026-10-15 16:23:35 +0700 (shell clock). HEAD before: 6e6273d. The wording work made no database connection. Part B (VAT) made one session and one login (read-only SELECT).
+
+### Part A: the 12 approved items
+Every change is at the generating source (config/config.yaml, config/manual_notes.yaml, the builders src/build_operation_plan_page.py, src/build_inventory_page.py, src/build_inventory_page_data.py, src/build_report.py, docs/user_manual.md, and the static parts of index.html outside the original S&OP tab); then `build_report.build_report()`, `build_inventory_page.build_page()`, `build_operation_plan_page.build_page()`, `maxmin_v1.write_assumptions()` and `build_exec_summary.run_exec_build()` rebuilt the pages from the saved data (no pull, no forecast run). The plan CSVs, the logs and the data JSON files other than the assumptions file were not rebuilt.
+
+| Item | Result | Rendered occurrences changed (from the headless-Edge extraction, before -> after) |
+|---|---|---|
+| 1. Forecast for the old word, explanation once per page | DONE | 72 -> 0 (sales 16, operation plan 16, manual 19, executive 8, assumptions 7, Min-Max 5, tab bar 1). "Forecast = ยอดขายที่ระบบคาดการณ์" appears exactly once on the sales report, Min-Max (all three divisions checked), operation plan, executive tab, assumptions tab and manual tab. |
+| 2. Tab bar label and the manual's references | DONE | tab bar 1, manual 7 (the table row, the section heading, the opening line, the later page reference, the dated-sources line and the two update-step mentions) |
+| 3. Naive, one wording | DONE | "Naive (ใช้ยอดเดือนล่าสุดเป็น Forecast ทุกเดือน)" in the executive card, decision lists, assumptions, model description, significance line, manual notes and manual; the old-wording words 4 -> 0 |
+| 4. Tracking Signal explanation | DONE | 4 -> 0 |
+| 5. Historical peak | DONE | the four phrasings now read "Historical peak (ยอดผลิตเสร็จสูงสุดต่อเดือนในอดีต ไม่ใช่กำลังผลิตเต็มที่)" at the operation plan column header, the executive watch-out, the assumptions row and the manual; the flag in a table cell and the note under the tables use the plain term |
+| 6. Operation plan headers | DONE | Demand-driven and Build to Max headers (6 tables each) and the two lines that said the plan follows the old word plus orders |
+| 7. Excess stock | DONE | 11 -> 0 |
+| 8. Not-late | DONE | "ส่งทัน (Not-late: ส่งไม่ช้ากว่าวันนัด)" at the first mention outside the Min-Max control panel; the variants "not-late", "not_late" and "(ส่งไม่ช้ากว่าวันนัด)" after it became "ส่งทัน" (the three preset buttons read "Today's ส่งทัน, lowest stock", "Highest ส่งทัน at today's stock", "Stretch: ส่งทัน 99%"); internal keys unchanged |
+| 9. stock, Min-Max | DONE | 16 -> 0 (the page title is now "Min-Max — Inventory Min/Max Scenario"); the original S&OP tab's row label was not touched (see NEED DECISION) |
+| 10. Price List | DONE | 25 -> 0 (tab bar, Trend tab note and tooltip, stock panel note, manual) |
+| 11. Two long lines | DONE | the flat-forecast line and the executive footer, split into short segments (see NEED DECISION: they are segments of one paragraph, not separate lines) |
+| 12. The manual's source line | DONE | "DB (cube_Sale_APD) สำหรับยอดขาย, DB (Cube_CES) สำหรับการส่งของ และ DB (Cube_Inventory_Exact) สำหรับ stock ของหน้า Min-Max"; proven from `config.yaml` source_table, `build_report.py` (the delivery charts read the Cube_CES pull) and the Min-Max data line |
+
+Banned words in the rendered text of every page and tab: 0 for each of the eight (136 before: the old forecast word 72, Pricelist 25, สต็อค 14, ของค้าง 11, วิธีเดาง่าย 4, ความคลาดสะสม 4, ค่าทาย 4, สต็อก 2). Collision with DB product names: none (the rendered text, product-name cells included, has 0 hits for each word).
+
+### Verification
+- **Number invariance (rendered text, headless Edge, before vs after):** PASS for the tab bar, executive, Trend, assumptions, manual, stock panel, operation plan and material plan (identical lists, same order). Sales report and Min-Max differ only by the page build time (14 Oct 09:07 -> 15 Oct 14:44 on the sales report; 12:02 -> 15:38 on Min-Max) and, on the sales report, one "1" that is inside the approved header text "MASE (เทียบกับ Naive; ต่ำกว่า 1 = ดีกว่า Naive)"; with those masked the lists are identical.
+- **Executive tab dry run (step 7f path):** `run_exec_build` into a temporary copy of index.html with the gate: PASS (4 months, 5 divisions, 335 items checked); the block equals the tracked rebuild. The test that the block is what the builder renders passes.
+- **Guard:** `tests/test_guards.py::test_none_of_the_eight_banned_wordings_is_in_the_reader_text_of_the_pages_or_in_the_user_text_sources` passes on the repo; `..._guard_fails_when_one_word_is_injected_into_a_temporary_copy_and_ignores_comments_and_the_original_tab` copies the pages and sources to a temporary folder, injects one word and shows the guard fails for 7 files, and ignores the same word in an HTML comment, a script comment and the original S&OP tab.
+- **Layout found by the tests:** the Min-Max control panel is sticky and has no spare height; a longer note there made the PEM107 view need inner scrolling (919 px against 860). Those notes are plain again and the explanations sit outside the panel (banner title of the PEM107 alert, the heading of the PEM101 target section, the definition line of Excess stock). Heights are back to 818 and 853.
+- **Tab bar:** at 1366 px width the seven tabs take two rows (the last tab wraps), no horizontal overflow; at 1920 px one row.
+
+### Part B: the VAT check (read-only, no page text changed from it)
+**Verdict: UNDETERMINED** (the evidence leans to EXCLUDES_VAT but does not prove it). Preflight reachable; no lock file; one login (login attempts in the process: 1); SELECT only; the page text "ไม่รวม VAT" was not changed.
+
+Evidence kept:
+- `cube_Sale_APD` (the source table of the sales loader, `source_table` in the config) has no column named for VAT, tax, incl or excl. The only name match in that table is `tradeGrossMarginPercent` (matched by "gross"). Its money columns are `sale`, `saleGM` and `cost`.
+- The database does name its VAT-inclusive columns elsewhere: `Cube_Invoice_Report_PMIS` has `vat_amount`, `line_total_incl_vat`, `invoice_total_incl_vat`, `cumulative_vat`; `cube_po` and `cube_po_bom` have `price_incvat`. `sale` carries no such suffix (inferred, not proven).
+- Column descriptions (extended properties) of the table: 7 columns described, all with empty text; none for `sale`.
+- Aggregate over the pilot filter (Omni Channel, the configured statuses, since the configured start date; 48,454 rows): `saleGM` / `sale` = 0.2832 and `cost` / `sale` = 0.7168, which add to 1.0000 (to six digits). So `saleGM` equals `sale` minus `cost`: `sale` is on the same basis as `cost`. Whether that basis excludes VAT is not shown by the table.
+- Per-row ratios of `sale` to the other numeric columns gave no stable ratio such as 1.07 (the ranges are wide: no unit-price column exists).
+
+Not done: a comparison of `sale` with the VAT-exclusive total of the same documents in `Cube_Invoice_Report_PMIS` (needs a join key and a second look at the table definition). The first part of my own output (table type, view flags) was cut off by a `tail` in my command and was not saved; a second login would break the one-login rule, so it was not repeated. **Who can answer:** the team that owns cube_Sale_APD (or the invoice table's owner) can confirm whether `sale` is before VAT.
+
+### Tests, Validator
+Full suite (final run, after the last change): 882 passed, 0 failed, 0 skipped (880 before; the two new tests are the guard and its injection proof in tests/test_guards.py). No test was deleted or skipped; 8 test files had expected-text strings changed (test_build_report, test_dynamic_values, test_index_w3, test_inventory_page_browser, test_manual_notes_sync, test_operation_plan_page_builder, test_sales_report_browser, test_significance_topdown) plus single strings in test_inventory_parity, test_manual_tab, test_maxmin_v1 and test_reader_text. Two helpers in tests/test_manual_notes_sync.py changed with the new rule: the manual explains Not-late at its first use (before: in every section) and the page check skips the Min-Max control panel. Validator (fresh, evaluate-only): the first pass found 5 wording defects and 2 accepted gaps; the glued 'stock' (14 places) and the awkward MASE line were fixed, then a second fresh pass: PASS on all 5 checks (defects fixed, banned words 0, diff reads naturally, tests changed only in expected strings and none deleted or skipped, guard and sync tests pass). Accepted and reported: the tab bar label mentions Forecast without the explanation; the first Not-late mention on the sales report is the label inside the collapsed data-date table; the Min-Max control panel is plain (no spare height).

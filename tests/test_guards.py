@@ -426,3 +426,158 @@ def test_no_windows_login_or_db_login_appears_in_a_tracked_file():
         if kind in missing:
             continue
         assert not locations, f"a {kind} appears in: " + ", ".join(locations[:20])
+
+
+# ====================================================================================================
+# Prompt 38: eight wordings the readers must never see again: they are not in the visible text of index.html (outside the original S&OP tab), forecast/sales_report.html,
+# inventory.html, operation_plan.html, material_plan.html, nor in the user-text sources (config/config.yaml and config/manual_notes.yaml string values,
+# data/assumptions.json string values, docs/user_manual.md). Visible text = the text a reader sees in the static HTML (scripts, styles and comments dropped) plus the
+# quoted strings of its scripts (script comments dropped) plus title/aria-label/placeholder/alt attributes. The words are built from parts so that this file does not hold them.
+# DB product names: none of the eight words is in a product name of the saved pulls (collision count 0 when this was written); a collision would show here as a hit.
+# ====================================================================================================
+from html.parser import HTMLParser
+
+BANNED_WORDS = ("ยอด" + "ทาย", "วิธี" + "เดาง่าย", "ของ" + "ค้าง", "สต็อ" + "ค", "สต็อ" + "ก", "Price" + "list", "ความคลาด" + "สะสม", "ค่า" + "ทาย")
+BANNED_PAGES = ("index.html", "forecast/sales_report.html", "forecast/inventory.html", "forecast/operation_plan.html", "forecast/material_plan.html")
+BANNED_SOURCES = ("config/config.yaml", "config/manual_notes.yaml", "data/assumptions.json", "docs/user_manual.md")
+ORIG_TAB_OPEN = '<div id="origTab">'
+ORIG_TAB_CLOSE = "</div><!--/origTab-->"
+
+
+class _PageText(HTMLParser):
+    """Visible text and the text attributes of a static page; the content of <script> is kept apart, the content of <style> is dropped."""
+
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.texts, self.scripts, self._in = [], [], None
+        self._buf = []
+
+    def handle_starttag(self, tag, attrs):
+        for name, value in attrs:
+            if name in ("title", "aria-label", "placeholder", "alt") and value:
+                self.texts.append(value)
+        if tag in ("script", "style"):
+            self._in, self._buf = tag, []
+
+    def handle_endtag(self, tag):
+        if tag == self._in:
+            if tag == "script":
+                self.scripts.append("".join(self._buf))
+            self._in = None
+
+    def handle_data(self, data):
+        if self._in is None:
+            if data.strip():
+                self.texts.append(data)
+        else:
+            self._buf.append(data)
+
+
+def _js_strings(code: str) -> list:
+    """The quoted strings of a script, comments dropped."""
+    out, i, n = [], 0, len(code)
+    while i < n:
+        c = code[i]
+        if c == "/" and code[i + 1:i + 2] == "/":
+            j = code.find("\n", i)
+            i = n if j < 0 else j
+        elif c == "/" and code[i + 1:i + 2] == "*":
+            j = code.find("*/", i + 2)
+            i = n if j < 0 else j + 2
+        elif c in "'\"`":
+            j, buf = i + 1, []
+            while j < n and code[j] != c:
+                if code[j] == "\\":
+                    buf.append(code[j:j + 2])
+                    j += 2
+                    continue
+                buf.append(code[j])
+                j += 1
+            out.append("".join(buf))
+            i = j + 1
+        else:
+            i += 1
+    return out
+
+
+def _page_texts(html_text: str, name: str) -> list:
+    if name == "index.html":
+        assert html_text.count(ORIG_TAB_OPEN) == 1 and html_text.count(ORIG_TAB_CLOSE) == 1, "the markers of the original S&OP tab are not where the guard expects them"
+        html_text = html_text.split(ORIG_TAB_OPEN)[0] + html_text.split(ORIG_TAB_CLOSE)[1]
+    p = _PageText()
+    p.feed(html_text)
+    p.close()
+    return p.texts + [t for code in p.scripts for t in _js_strings(code)]
+
+
+def _source_strings(text: str, path: str) -> list:
+    import json as _json
+    import yaml as _yaml
+
+    def walk(o):
+        if isinstance(o, str):
+            yield o
+        elif isinstance(o, dict):
+            for k, v in o.items():
+                yield from walk(k)
+                yield from walk(v)
+        elif isinstance(o, (list, tuple)):
+            for v in o:
+                yield from walk(v)
+
+    if path.endswith(".yaml"):
+        return list(walk(_yaml.safe_load(text)))
+    if path.endswith(".json"):
+        return list(walk(_json.loads(text)))
+    return [text]
+
+
+def banned_wording_hits(root: str) -> list:
+    """(file, word, 40 characters around it) for every banned word in the pages' reader text and in the user-text sources under `root`."""
+    found = []
+    for rel_path, kind in [(p, "page") for p in BANNED_PAGES] + [(p, "source") for p in BANNED_SOURCES]:
+        with open(os.path.join(root, rel_path), encoding="utf-8") as f:
+            text = f.read()
+        pieces = _page_texts(text, rel_path) if kind == "page" else _source_strings(text, rel_path)
+        for piece in pieces:
+            for word in BANNED_WORDS:
+                i = piece.find(word)
+                if i >= 0:
+                    found.append((rel_path, word, piece[max(0, i - 20):i + len(word) + 20].replace("\n", " ")))
+    return found
+
+
+def test_none_of_the_eight_banned_wordings_is_in_the_reader_text_of_the_pages_or_in_the_user_text_sources():
+    hits = banned_wording_hits(PROJECT_ROOT)
+    assert not hits, f"banned wording found: {[(f, w) for f, w, _ in hits][:20]}"
+
+
+def test_the_banned_wording_guard_fails_when_one_word_is_injected_into_a_temporary_copy_and_ignores_comments_and_the_original_tab(tmp_path):
+    import shutil
+    for rel_path in BANNED_PAGES + BANNED_SOURCES:
+        os.makedirs(os.path.dirname(os.path.join(str(tmp_path), rel_path)) or str(tmp_path), exist_ok=True)
+        shutil.copyfile(os.path.join(PROJECT_ROOT, rel_path), os.path.join(str(tmp_path), rel_path))
+    assert banned_wording_hits(str(tmp_path)) == [], "the copy must start clean"
+    word = BANNED_WORDS[0]
+
+    def edit(rel_path, fn):
+        p = os.path.join(str(tmp_path), rel_path)
+        with open(p, encoding="utf-8", newline="") as f:
+            s = f.read()
+        with open(p, "w", encoding="utf-8", newline="") as f:
+            f.write(fn(s))
+
+    # not seen by a reader: an HTML comment, a script comment, the original S&OP tab
+    edit("forecast/operation_plan.html", lambda s: s.replace("</body>", "<!-- " + word + " --><script>// " + word + "\n</script></body>", 1))
+    edit("index.html", lambda s: s.replace(ORIG_TAB_OPEN, ORIG_TAB_OPEN + "<p>" + word + "</p>", 1))
+    assert banned_wording_hits(str(tmp_path)) == []
+    # seen by a reader: page text, a script string, a title attribute, a yaml value, a json value, the manual, the executive tab of index.html
+    edit("forecast/material_plan.html", lambda s: s.replace("</body>", "<p>" + word + "</p></body>", 1))
+    edit("forecast/inventory.html", lambda s: s.replace("</body>", "<script>var t = '" + word + "';</script></body>", 1))
+    edit("forecast/sales_report.html", lambda s: s.replace("</body>", '<span title="' + word + '">x</span></body>', 1))
+    edit("config/manual_notes.yaml", lambda s: s.rstrip("\n") + '\nextra_key:\n  - "' + word + '"\n')
+    edit("data/assumptions.json", lambda s: s.rstrip().rstrip("}").rstrip() + ', "extra": "' + word + '"}')
+    edit("docs/user_manual.md", lambda s: s + "\n" + word + "\n")
+    edit("index.html", lambda s: s.replace('<div id="execTab">', '<div id="execTab"><p>' + word + "</p>", 1))
+    got = sorted({f for f, _, _ in banned_wording_hits(str(tmp_path))})
+    assert got == sorted(["forecast/material_plan.html", "forecast/inventory.html", "forecast/sales_report.html", "config/manual_notes.yaml", "data/assumptions.json", "docs/user_manual.md", "index.html"])

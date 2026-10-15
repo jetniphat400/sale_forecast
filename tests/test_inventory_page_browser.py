@@ -114,7 +114,7 @@ def test_totals_tables_and_summary_are_filled_on_load(desktop):
     assert len(s["minmax"]) > 0, "item table is empty on load"
     assert desktop.ev("document.querySelector('#summary-box .summary-title').textContent") == "ผลจากตัวควบคุม"
     assert desktop.ev("document.getElementById('control-scope').textContent") == (
-        "ตัวควบคุมชุดนี้มีผลกับ Min/Max ผลรวม ตาราง และกราฟด้านขวา · ไม่มีผลกับกราฟเป้าการส่งทัน (ส่งไม่ช้ากว่าวันนัด) ของ PEM101")
+        "ตัวควบคุมชุดนี้มีผลกับ Min/Max ผลรวม ตาราง และกราฟด้านขวา · ไม่มีผลกับกราฟเป้าการส่งทัน ของ PEM101")
     assert not desktop.errors, desktop.errors
 
 
@@ -419,7 +419,7 @@ def test_the_data_line_shows_the_round_and_the_stock_pull_time_and_the_script_fo
     import reader_values as rv
     from page_helpers import load_stock_payload
     payload = load_stock_payload()
-    expected = f"Forecast (ยอดทาย) รันเมื่อ {rv.thai_month_short(rv.vintage_facts()['run_date'])} · ข้อมูล stock จาก DB (Cube_Inventory_Exact) ดึงเมื่อ {rv.thai_datetime_short(payload['pull_time'])}"
+    expected = f"Forecast = ยอดขายที่ระบบคาดการณ์ · รอบ Forecast รันเมื่อ {rv.thai_month_short(rv.vintage_facts()['run_date'])} · ข้อมูล stock จาก DB (Cube_Inventory_Exact) ดึงเมื่อ {rv.thai_datetime_short(payload['pull_time'])}"
     assert desktop.ev("document.getElementById('data-line').innerText") == expected
     assert desktop.ev("document.getElementById('page-title').nextElementSibling.id") == "data-line"
     for stamp in ("2026-10-08 08:01:01", "2027-01-05 00:09:59", "2026-12-31 23:59:00", "2026-03-09 12:00:00"):
@@ -435,7 +435,7 @@ def test_the_pem101_section_says_its_min_and_max_come_from_sales_history(desktop
     with open(__import__("os").path.join(__import__("page_helpers").PROJECT_ROOT, "config", "config.yaml"), encoding="utf-8") as f:
         template = yaml.safe_load(f)["inventory_page"]["pem101_demand_note"]
     expected = template.format(first_month=rv.thai_month_short(first), last_month=rv.thai_month_short(last))
-    assert expected.startswith("Min/Max ส่วนนี้คิดจากยอดขายจริงย้อนหลัง ") and expected.endswith("ยังไม่ได้คิดจากยอดทาย ถ้ายอดขายข้างหน้าเพิ่มหรือลดมาก ค่านี้จะยังไม่ขยับตาม")
+    assert expected.startswith("Min/Max ส่วนนี้คิดจากยอดขายจริงย้อนหลัง ") and expected.endswith("ยังไม่ได้คิดจาก Forecast ถ้ายอดขายข้างหน้าเพิ่มหรือลดมาก ค่านี้จะยังไม่ขยับตาม")
     assert desktop.ev("document.getElementById('curve-demand-note').textContent") == expected
     assert desktop.ev("document.getElementById('curve-demand-note').previousElementSibling.tagName") == "H2"
     assert "{" not in expected and "}" not in expected

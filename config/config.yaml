@@ -1053,9 +1053,9 @@ report:
   # Plain-language description of Top-down combination forecasting, for a non-technical reader.
   # Source: STATUS.md Locked Decisions, "Final forecasting method: Top-down combination".
   model_description: >-
-    วิธีที่ใช้ประกอบด้วยสองส่วน Combination คือเฉลี่ยผลของโมเดลพยากรณ์ {n_base_models} แบบ
-    (Naive = ใช้ยอดเดือนก่อน, MA3/MA6/MA12 = ค่าเฉลี่ยเคลื่อนที่ตามจำนวนเดือน, Croston และ SBA = วิธีสำหรับสินค้าที่ขายห่างๆ) เพื่อทายยอดรวมของแต่ละ "Type" (กลุ่มสินค้าที่ขายในลักษณะเดียวกัน
-    เช่น High Voltage Distribution Fuse Cutout) Top-down คือการแบ่งยอดทายของ Type นั้นลงสินค้าแต่ละรายการ (Item)
+    วิธีที่ใช้ประกอบด้วยสองส่วน Combination คือเฉลี่ยผลของโมเดลพยากรณ์ {n_base_models} แบบ ได้แก่
+    Naive (ใช้ยอดเดือนล่าสุดเป็น Forecast ทุกเดือน), MA3/MA6/MA12 (ค่าเฉลี่ยเคลื่อนที่ตามจำนวนเดือน), Croston และ SBA (วิธีสำหรับสินค้าที่ขายห่างๆ) เพื่อทายยอดรวมของแต่ละ "Type" (กลุ่มสินค้าที่ขายในลักษณะเดียวกัน
+    เช่น High Voltage Distribution Fuse Cutout) Top-down คือการแบ่ง Forecast ของ Type นั้นลงสินค้าแต่ละรายการ (Item)
     ตามสัดส่วนยอดขายจริงในอดีตของสินค้านั้นเทียบกับยอดขายรวมของ Type ทั้งหมด
 
   # Source: STATUS.md Current Status Summary, "Phase 2 -- Model Selection" (high confidence).
@@ -1092,14 +1092,14 @@ report:
     # The earlier next-step items (first forward-test scoring round, analogue codes for
     # placeholders, service-level definition, database password reset policy) are project-team
     # items, not reader items; they remain in git history (commit 1f87b6e) and STATUS.md.
-    - "ทุกต้นเดือนระบบเทียบยอดทายกับยอดขายจริงของเดือนที่ผ่านมา และเพิ่มผลในตารางนี้"
+    - "ทุกต้นเดือนระบบเทียบ Forecast กับยอดขายจริงของเดือนที่ผ่านมา และเพิ่มผลในตารางนี้"
 
   # Approved Thai text of the 2026-10-08 task (verbatim); {braced} names are filled at build time by src/build_report.py from the forward-test log,
   # its metadata, the scope table, the pilot-category view and the recorded forward-test scores. The unconditional "▸" lines are in config/manual_notes.yaml.
-  freshness_line: "Forecast (ยอดทาย) รันเมื่อ {round} · ใช้ยอดขายถึง {fit_last} · หน้าสร้างเมื่อ {built_at}"
+  freshness_line: "Forecast = ยอดขายที่ระบบคาดการณ์ · รอบ Forecast รันเมื่อ {round} · ใช้ยอดขายถึง {fit_last} · หน้าสร้างเมื่อ {built_at}"
   fit_range_line: "ยอดขายที่ใช้ทาย {first_month} ถึง {last_month}"
-  forward_heading: "ยอดทาย {first_month} ถึง {last_month}"
-  forward_missing_line: "รหัสที่ยังไม่มียอดทาย {n} รหัส ดูเหตุผลใน{scope_link}"
+  forward_heading: "Forecast {first_month} ถึง {last_month}"
+  forward_missing_line: "รหัสที่ยังไม่มี Forecast {n} รหัส ดูเหตุผลใน{scope_link}"
   forward_scope_link_text: "ตารางขอบเขตข้อมูล"
   forward_table_head: "ประเภทสินค้า"
   forward_division_label: "ฝ่าย"
@@ -1108,10 +1108,10 @@ report:
   pilot_columns: ["ประเภทสินค้า (Type)", "MAE (ชิ้นต่อเดือน)", "Bias"]
   pilot_labels: {fuse_cutout: "Fuse Cutout", surge_arrester: "Surge Arrester"}
   pilot_group_line: "▸ {group} ทายต่ำกว่าจริงเฉลี่ยเดือนละ {x} ชิ้น"
-  pilot_warn_line: "▸ ถ้าใช้ยอดทายของสองกลุ่มนี้วางแผน ให้ระวังว่ามักทายต่ำ"
+  pilot_warn_line: "▸ ถ้าใช้ Forecast ของสองกลุ่มนี้วางแผน ให้ระวังว่ามักทายต่ำ"
   pilot_scope_note: "Surge Arrester ในตารางนี้นับเฉพาะ Medium Voltage"
   # Shadow forecast line under the pilot table (METRICS.md Sec.51); {braced} names are filled at build time from the score record and the leakage guard.
-  shadow_head: "▸ {group} shadow forecast (ยอดทายทดลองที่คำนวณคู่กับยอดทายจริง) ใช้วิธี {method} (ทายตามแนวโน้มยอดขายที่ขึ้นหรือลง)"
+  shadow_head: "▸ {group} shadow forecast (Forecast ทดลองที่คำนวณคู่กับ Forecast จริง) ใช้วิธี {method} (ทายตามแนวโน้มยอดขายที่ขึ้นหรือลง)"
   shadow_status_pending: "สถานะ: ยังไม่มีเดือนที่เทียบได้ ผลเดือนแรกออกในรอบวันที่ {first_run}"
   shadow_status_partial: "สถานะ: เทียบแล้ว {n} จาก {total} เดือน"
   shadow_status_recommend_switch: "สถานะ: เทียบครบ ผลแนะนำให้เปลี่ยนเป็น {method} รอการอนุมัติ"
@@ -1119,8 +1119,8 @@ report:
   shadow_month: "{month} MAE {method} {h} เทียบกับวิธีปัจจุบัน {c}"
   shadow_next: "เดือน{month}ผลออกในรอบวันที่ {run}"
   shadow_not_in_plan: "ยังไม่ได้ใช้ในแผน"
-  scored_heading: "ยอดทายเทียบยอดขายจริง"
-  scored_columns: ["ฝ่าย", "เดือน", "MAE", "MAE (Naive)", "Relative MAE", "Bias", "MAE ในการทดสอบย้อนหลัง", "ยอดทาย (บาท)", "ยอดจริง (บาท)", "ต่าง (บาท)"]
+  scored_heading: "Forecast เทียบยอดขายจริง"
+  scored_columns: ["ฝ่าย", "เดือน", "MAE", "MAE (Naive)", "Relative MAE", "Bias", "MAE ในการทดสอบย้อนหลัง", "Forecast (บาท)", "ยอดจริง (บาท)", "ต่าง (บาท)"]
   # Block "เทียบกับร่างเกณฑ์" of the Results section (approved text of 2026-10-09, verbatim; the lines under the table are in config/manual_notes.yaml, criteria-comparison).
   criteria_heading: "เทียบกับร่างเกณฑ์"
   # The words of the verdict columns: they say a result meets the DRAFT criteria, never that it is proven better than Naive.
@@ -1138,14 +1138,14 @@ report:
   baht_label: "มูลค่าคิดจากราคาขายเฉลี่ยต่อชิ้นของแต่ละรหัส (Average selling price) 12 เดือนล่าสุด {first_month} ถึง {last_month}"
   baht_label_fit_part: " · {n} รหัสที่ไม่ได้ขายใน 12 เดือนนั้นใช้ราคาขายเฉลี่ยของทั้งช่วงที่ใช้ทายยอด ({fit_first} ถึง {fit_last}) แทน"
   baht_label_market_part: " · {m} รหัสที่ไม่มียอดขายเลยในช่วงที่ใช้ทายใช้ราคาตั้ง (List price) ใน Price List แทน"
-  baht_summary_title: "ยอดทายรวมรายเดือน (บาท)"
+  baht_summary_title: "Forecast รวมรายเดือน (บาท)"
   baht_all_divisions_row: "รวมทุกฝ่าย"
   baht_division_total_row: "รวม {division}"
-  baht_explanation: "▸ ยอดทายคิดเป็นเงินเท่าไหร่ต่อเดือน ▸ ตัวเลข = ยอดทาย (ชิ้น) × ราคาขายเฉลี่ยของรหัสนั้น หน่วยบาท ▸ ถ้าราคาขายข้างหน้าต่างจากช่วงที่ใช้เฉลี่ย ยอดเงินจะคลาดตาม"
+  baht_explanation: "▸ Forecast คิดเป็นเงินเท่าไหร่ต่อเดือน ▸ ตัวเลข = Forecast (ชิ้น) × ราคาขายเฉลี่ยของรหัสนั้น หน่วยบาท ▸ ถ้าราคาขายข้างหน้าต่างจากช่วงที่ใช้เฉลี่ย ยอดเงินจะคลาดตาม"
   baht_no_price_line: "{n} รหัสไม่มีทั้งประวัติขายและราคาใน Price List ไม่ได้รวมในยอดบาท"
   baht_no_price_columns: ["รหัส", "ชื่อ", "ฝ่าย"]
-  flat_forecast_line: "ยอดทายทุกเดือนเท่ากัน (flat forecast) เพราะวิธีทายตอนนี้ให้ค่าเดียวกับทุกเดือนข้างหน้า ยังไม่คิดช่วงขายดีขายน้อยตามฤดูกาล (seasonality)"
-  scored_baht_note: "ตัวเลขบาทคิดทั้งยอดทายและยอดจริงด้วยราคาขายเฉลี่ยเดียวกัน (ยอดจริงคือจำนวนที่ขายจริง × ราคาขายเฉลี่ย ไม่ใช่รายได้ตามบัญชี) เพื่อดูว่าทายจำนวนพลาดคิดเป็นเงินเท่าไหร่ ต่างติดลบ = ทายต่ำกว่าจริง"
+  flat_forecast_line: "Forecast เท่ากันทุกเดือน (flat forecast) · เพราะวิธีที่ใช้ตอนนี้ให้ค่าเดียวกับทุกเดือนข้างหน้า · และยังไม่คิดช่วงขายดีขายน้อยตามฤดูกาล (seasonality)"
+  scored_baht_note: "ตัวเลขบาทคิดทั้ง Forecast และยอดจริงด้วยราคาขายเฉลี่ยเดียวกัน (ยอดจริงคือจำนวนที่ขายจริง × ราคาขายเฉลี่ย ไม่ใช่รายได้ตามบัญชี) เพื่อดูว่าทายจำนวนพลาดคิดเป็นเงินเท่าไหร่ ต่างติดลบ = ทายต่ำกว่าจริง"
 
   # Unit price per item for the baht view (decisions of the user, 2026-10-08). Tried in this order; the first rule that gives a price is used.
   #   sales_recent_window : sum of sale / sum of qty over the most recent `window_months` complete months inside the fit window of the vintage the page uses
@@ -1193,9 +1193,9 @@ exec_summary:
     card1_label: "ยอดขาย ม.ค.–{data_month}"
     card1_sub: "เทียบช่วงเดียวกันปีก่อน {change}"
     card2_label: "คาดการณ์ทั้งปี {year} (สินค้าใน Price List)"
-    card3_label: "ความแม่นของยอดทาย"
+    card3_label: "ความแม่นของ Forecast"
     card3_value: "{n} จาก {N} ฝ่าย"
-    card3_sub: "Relative MAE ต่ำกว่าวิธีเทียบ Naive (ใช้ยอดเดือนก่อนเป็นค่าทาย) ตามเกณฑ์ร่าง · ฝ่ายที่พิสูจน์แล้วว่าดีกว่าจริงดูในหน้ายอดขาย · ยืนยันเกณฑ์หลังรอบ {decision_date}"
+    card3_sub: "Forecast = ยอดขายที่ระบบคาดการณ์ · Relative MAE ต่ำกว่าวิธีเทียบ Naive (ใช้ยอดเดือนล่าสุดเป็น Forecast ทุกเดือน) ตามเกณฑ์ร่าง · ฝ่ายที่พิสูจน์แล้วว่าดีกว่าจริงดูในหน้ายอดขาย · ยืนยันเกณฑ์หลังรอบ {decision_date}"
     card4_label: "เรื่องที่ต้องระวัง"
     card4_value: "{n} เรื่อง"
     card4_sub: "ดูรายการด้านล่าง"
@@ -1207,12 +1207,12 @@ exec_summary:
     watch_heading: "เรื่องที่ต้องระวัง"
     watch_low: "{group} ทายต่ำกว่าจริงต่อเนื่อง (Tracking Signal {value}) คาดการณ์ทั้งปีของกลุ่มนี้อาจต่ำกว่าที่จะเกิดจริง"
     watch_high: "{group} ทายสูงกว่าจริงต่อเนื่อง (Tracking Signal {value}) คาดการณ์ทั้งปีของกลุ่มนี้อาจสูงกว่าที่จะเกิดจริง"
-    watch_plan: "แผนผลิต {division} เดือน {month} สูงกว่ายอดผลิตสูงสุดรายเดือนในอดีต (Historical peak ไม่ใช่ขีดความสามารถผลิต) ({pct})"
+    watch_plan: "แผนผลิต {division} เดือน {month} สูงกว่า Historical peak (ยอดผลิตเสร็จสูงสุดต่อเดือนในอดีต ไม่ใช่กำลังผลิตเต็มที่) ({pct})"
     watch_material: "วัตถุดิบ {n} รายการเลยกำหนดสั่ง (Late to order) สั่งวันนี้ของมาไม่ทันแผน"
-    watch_pem107: "PEM107 ส่งของช่องทาง Omni ทันน้อยลงตั้งแต่ {since} ({pct} ส่งทัน คือ ส่งไม่ช้ากว่าวันนัด)"
+    watch_pem107: "PEM107 ส่งของช่องทาง Omni ส่งทัน (Not-late: ส่งไม่ช้ากว่าวันนัด) น้อยลงตั้งแต่ {since} ({pct})"
     decide_heading: "เรื่องที่รอผู้บริหารตัดสิน"
     decide_link: "สมมติฐานที่ใช้อยู่"
-    footer: "ยอดขายนับตามเดือนที่ต้องส่งของ รวม PO ที่รับแล้วแต่ยังไม่ส่ง (MPS) · ไม่รวม VAT · คาดการณ์ = ยอดจริงถึง {data_month} + เดือนที่เหลือใช้ค่าที่มากกว่าระหว่างยอดทายกับออเดอร์ที่รับแล้ว × ราคาขายเฉลี่ยจริง · ยอดขายและคาดการณ์นับเฉพาะสินค้าใน Price List ช่อง Omni Channel"
+    footer: "ยอดขาย = ยอดตามเดือนที่ต้องส่งของ รวม PO ที่รับแล้วแต่ยังไม่ส่ง (MPS) ไม่รวม VAT · ยอดจริงมีถึง {data_month} · คาดการณ์ทั้งปี = ยอดจริงที่มีทั้งหมดข้างต้น + ยอดเดือนที่เหลือ · ยอดเดือนที่เหลือ = ค่าที่มากกว่าระหว่าง Forecast กับออเดอร์ที่รับแล้ว × ราคาขายเฉลี่ยจริง · ยอดขายและคาดการณ์นับเฉพาะสินค้าใน Price List ช่อง Omni Channel"
 
 # Forecast model experiment of 2026-10 (src/investigations/model_experiment_2026_10.py, METRICS.md Sec.50). PRE-REGISTERED 2026-10-09 BEFORE any candidate was computed: the
 # candidates, the parameters and the selection rule below were fixed by the user's decisions of that day and are not changed after a result is seen. Report only: the production
@@ -1495,8 +1495,8 @@ page_timestamps:
     - "ข้อมูลขาย PEM103/PEM107 (หน้า Min-Max)"
     - "แจ้งเตือน PEM107 (หน้า Min-Max)"     # the PEM107 delivery alert, pulled by the monthly job from Cube_CES (Prompt 35)
   daily_sources:          # pulled by the daily job (src/snapshot_daily.py, src/daily_stock_job.py)
-    - "สต็อค (หน้า Min-Max และแผงสต็อค)"
-    - "ยอดจอง (หน้า Min-Max และแผงสต็อค)"
+    - "stock (หน้า Min-Max และแผง stock)"
+    - "ยอดจอง (หน้า Min-Max และแผง stock)"
 
 # ============================================================
 # Statistics (src/significance_topdown.py, METRICS.md Sec.41): the criteria of the sales report's "does Top-down beat
@@ -1517,7 +1517,7 @@ inventory_page:
   # One scope line under the page heading (Prompt 34, item 10): the scope of the page and its labelled exceptions.
   scope_line: "ขอบเขต: สินค้าใน Price List ช่อง Omni Channel · ข้อยกเว้นที่มีป้ายกำกับ: stock และออเดอร์ที่รับแล้ว (Reserved) นับรวมทุกช่องทาง เพราะใช้ร่วมกันทุกช่องทาง"
   # Approved text of 2026-10-08 (verbatim), under the heading of the PEM101 section; the months are the window of the sales history the section's Min and Max use.
-  pem101_demand_note: "Min/Max ส่วนนี้คิดจากยอดขายจริงย้อนหลัง {first_month} ถึง {last_month} ยังไม่ได้คิดจากยอดทาย ถ้ายอดขายข้างหน้าเพิ่มหรือลดมาก ค่านี้จะยังไม่ขยับตาม"
+  pem101_demand_note: "Min/Max ส่วนนี้คิดจากยอดขายจริงย้อนหลัง {first_month} ถึง {last_month} ยังไม่ได้คิดจาก Forecast ถ้ายอดขายข้างหน้าเพิ่มหรือลดมาก ค่านี้จะยังไม่ขยับตาม"
   # Decision of the user, 2026-10-06: these divisions follow METRICS.md Sec.23 (the item-level file's class_used) in place of the older policy of Sec.15, so a
   # division with no stock_policy item shows no Min and Max rows. PEM103 has no stock_policy item (0 of its 87 items).
   class_file_divisions: [PEM103]
@@ -1792,10 +1792,10 @@ maxmin_v1:
   pending_criteria_values: {relative_mae_pass: 1, relative_mae_good: 0.7, tracking_signal_limit: 4, decision_month: "2026-12"}
   # Approved text of 2026-10-08 (verbatim); {braces} are filled from pending_criteria_values (the date with the shared Thai date formatter).
   pending_criteria_rows:
-    - {topic: "ยอดทายดีกว่า Naive (ใช้ยอดเดือนล่าสุดเป็นยอดทาย) ไหม", to_decide: "Relative MAE ต่ำแค่ไหนถึงนับว่าถึงเกณฑ์ (MAE ของเรา ÷ MAE ของ Naive)", now_used: "ร่าง: ต่ำกว่า {relative_mae_pass} ถึงเกณฑ์ผ่าน, ต่ำกว่า {relative_mae_good} ถึงเกณฑ์ดี", who: "ผู้บริหาร", when: "หลังรอบ {decision_date}"}
-    - {topic: "ยอดทายเอียงไปทางเดียวต่อเนื่อง (Bias)", to_decide: "Tracking Signal (ความคลาดสะสม ÷ ความคลาดเฉลี่ย) เกินเท่าไหร่ถึงเตือน", now_used: "ร่าง: ±{tracking_signal_limit} (ไม่มีหน่วย)", who: "ผู้บริหาร", when: "ทุกเดือน"}
-    - {topic: "ฝ่ายที่ยอดทายไม่ชนะ Naive (ใช้ยอดเดือนล่าสุดเป็นยอดทาย)", to_decide: "ใช้ Naive (ใช้ยอดเดือนล่าสุดเป็นยอดทาย) แทนไหม", now_used: "ยังใช้วิธีเดิม และแสดงผลเทียบ", who: "ผู้บริหาร", when: "หลังรอบ {decision_date}"}
-    - {topic: "เป้าการส่งทัน (not-late คือ ส่งไม่ช้ากว่าวันนัด)", to_decide: "บริษัทต้องการกี่ %", now_used: "ให้เลือกเองบนหน้าแผนสต็อก", who: "ผู้บริหาร", when: "ยังไม่กำหนด"}
+    - {topic: "Forecast ดีกว่า Naive (ใช้ยอดเดือนล่าสุดเป็น Forecast ทุกเดือน) ไหม", to_decide: "Relative MAE ต่ำแค่ไหนถึงนับว่าถึงเกณฑ์ (MAE ของเรา ÷ MAE ของ Naive)", now_used: "ร่าง: ต่ำกว่า {relative_mae_pass} ถึงเกณฑ์ผ่าน, ต่ำกว่า {relative_mae_good} ถึงเกณฑ์ดี", who: "ผู้บริหาร", when: "หลังรอบ {decision_date}"}
+    - {topic: "Forecast เอียงไปทางเดียวต่อเนื่อง (Bias)", to_decide: "Tracking Signal (ตัวชี้ว่า Forecast เอียงไปทางเดียวต่อเนื่อง) เกินเท่าไหร่ถึงเตือน", now_used: "ร่าง: ±{tracking_signal_limit} (ไม่มีหน่วย)", who: "ผู้บริหาร", when: "ทุกเดือน"}
+    - {topic: "ฝ่ายที่ Forecast ไม่ชนะ Naive (ใช้ยอดเดือนล่าสุดเป็น Forecast ทุกเดือน)", to_decide: "ใช้ Naive (ใช้ยอดเดือนล่าสุดเป็น Forecast ทุกเดือน) แทนไหม", now_used: "ยังใช้วิธีเดิม และแสดงผลเทียบ", who: "ผู้บริหาร", when: "หลังรอบ {decision_date}"}
+    - {topic: "เป้าการส่งทัน (Not-late: ส่งไม่ช้ากว่าวันนัด)", to_decide: "บริษัทต้องการกี่ %", now_used: "ให้เลือกเองบนหน้า Min-Max", who: "ผู้บริหาร", when: "ยังไม่กำหนด"}
     - {topic: "Min/Max ที่จำลอง", to_decide: "การส่งทันที่จำลองห่างจากผลจริงได้แค่ไหน", now_used: "ยังไม่กำหนด", who: "ฝ่ายวางแผน", when: "หลังรอบ {decision_date}"}
     - {topic: "แผนวัตถุดิบ", to_decide: "ตรงกับใบสั่งซื้อจริงแค่ไหนถึงใช้สั่งของได้", now_used: "ยังไม่กำหนด หน้าขึ้นว่ายังอยู่ระหว่างตรวจสอบ", who: "ฝ่ายจัดซื้อ", when: "ยังไม่กำหนด"}
   assumptions:
@@ -1831,8 +1831,8 @@ maxmin_v1:
       value_source: "items of class conflict under METRICS.md Sec.23 after config fulfilment_class_decisions (output/summary/task2b_part2_item_level.csv)"
     - id: production_capacity
       topic: "กำลังผลิต"
-      unknown: "ข้อมูลบอกได้แค่ยอดผลิตสูงสุดที่เคยทำ"
-      used_now: "ใช้ยอดนั้นเป็นค่าต่ำสุดที่กำลังผลิตน่าจะทำได้ (Lower bound ไม่ใช่ขีดความสามารถจริง)"
+      unknown: "ข้อมูลบอกได้แค่ Historical peak (ยอดผลิตเสร็จสูงสุดต่อเดือนในอดีต ไม่ใช่กำลังผลิตเต็มที่)"
+      used_now: "ใช้ Historical peak เป็นค่าต่ำสุดที่กำลังผลิตน่าจะทำได้ (Lower bound ไม่ใช่ขีดความสามารถจริง)"
       affects: "แผนการผลิต"
       value_source: "STATUS.md, Q20: the highest sustained monthly output per division and Type, a lower bound"
     - id: open_production_orders
@@ -1848,8 +1848,8 @@ maxmin_v1:
       affects: "stock ที่ใช้เทียบกับ Min และแผนการผลิต"
       value_source: "config phase_e1_assumptions.sellable_warehouse_codes does not list FMTO or FMTS; week 2 October decomposition (STATUS.md): 4,054 units of the items below Min"
     - id: forecast_range
-      topic: "ยอดทาย"
-      unknown: "ยังไม่มีช่วงสูง-ต่ำ"
+      topic: "Forecast"
+      unknown: "Forecast = ยอดขายที่ระบบคาดการณ์ · ยังไม่มีช่วงสูง-ต่ำ"
       used_now: "ใช้ค่าเดียวต่อเดือน (point forecast)"
       affects: "แผนการผลิต"
       value_source: "the forward-test log holds one forecast per item and month (METRICS.md Sec.27), no interval"

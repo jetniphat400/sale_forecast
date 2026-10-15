@@ -177,17 +177,17 @@ def test_one_term_for_on_time_delivery_and_its_explanation_at_the_first_use():
             end = start + m.end()
             break
     assert end > start and not old.search(index[:start] + index[end:])                  # the original S&OP tab is not touched and not checked
-    # the manual: every heading block that uses the term explains it
+    # the manual (Prompt 38): the first use of the term on the manual tab is explained, with the approved wording; later uses are the plain term
     with open(USER_MANUAL, "r", encoding="utf-8") as f:
-        blocks = re.split(r"(?m)^#{2,3} ", f.read())
-    for block in blocks:
-        if "ส่งทัน" in block:
-            assert explanation in block, f"a manual section uses ส่งทัน without explaining it: {block[:50]!r}"
+        manual_text = f.read()
+    first = manual_text.index("ส่งทัน")
+    assert "ส่งทัน (Not-late: ส่งไม่ช้ากว่าวันนัด)" in manual_text[first: first + 60], f"the first ส่งทัน of the manual is not followed by its explanation: {manual_text[first - 20: first + 60]!r}"
     # the pages: the first use outside the closed data-date table is followed by the explanation
     for rel in ("forecast/sales_report.html", "forecast/inventory.html"):
         with open(os.path.join(PROJECT_ROOT, rel), "r", encoding="utf-8") as f:
             page = f.read()
         page = re.sub(r"<details.*?</details>", " ", page, flags=re.S)
         page = re.sub(r"<(script|style)\b.*?</\1>|<!--.*?-->", " ", page, flags=re.S)
+        page = re.sub(r"<aside\b.*?</aside>", " ", page, flags=re.S)           # Prompt 38: the sticky control panel has no room for a longer text (a line more makes it scroll at 1440x900), so the first use after it carries the explanation
         first = page.index("ส่งทัน")
         assert explanation in page[first: first + 60], f"{rel}: the first ส่งทัน is not followed by its explanation: {page[first - 20: first + 60]!r}"

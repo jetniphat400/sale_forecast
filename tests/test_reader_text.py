@@ -410,7 +410,7 @@ def test_no_brace_is_left_in_the_visible_text_of_a_built_page(name):
     assert "{" not in text and "}" not in text, f"{name}: a placeholder or a brace is left in the visible text"
 
 
-# ---- Prompt 34, item 2: the plain-method wording of the forecast comparison is "Naive (ใช้ยอดเดือนล่าสุดเป็นยอดทาย)", never the old label
+# ---- Prompt 34, item 2: the plain-method wording of the forecast comparison is "Naive (ใช้ยอดเดือนล่าสุดเป็น Forecast ทุกเดือน)", never the old label
 
 def test_the_old_label_for_the_naive_method_appears_nowhere_a_reader_or_the_builders_can_see_it():
     old = "วิธี" + "ง่าย"

@@ -179,7 +179,7 @@ def _drop_forecast_of_three_items(data):
 
 
 def test_the_no_forecast_rule_is_the_same_in_js_and_python_and_selects_items_with_stock_and_no_forecast_month(tmp_path):
-    """The list "สินค้าที่มีของแต่ไม่มียอดทาย" is the items with no positive forecast month in the page's vintage and a positive sellable stock: an item with a forecast
+    """The list "สินค้าที่มีของแต่ไม่มี Forecast" is the items with no positive forecast month in the page's vintage and a positive sellable stock: an item with a forecast
     is never in it, whatever its class, and an item with no forecast but no stock is not either."""
     payload = load_stock_payload()
     base = stock_daily.apply_to_data(_extract_embedded_data(), payload)

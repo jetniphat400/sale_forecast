@@ -580,8 +580,8 @@ def apply_class_file_divisions(data: dict, config: dict) -> None:
 
 PILOT_SALES_SOURCE = "ข้อมูลขาย PEM103/PEM107 (หน้า Min-Max)"
 PEM107_ALERT_SOURCE = "แจ้งเตือน PEM107 (หน้า Min-Max)"
-STOCK_SOURCE = "สต็อค (หน้า Min-Max และแผงสต็อค)"
-RESERVED_SOURCE = "ยอดจอง (หน้า Min-Max และแผงสต็อค)"
+STOCK_SOURCE = "stock (หน้า Min-Max และแผง stock)"
+RESERVED_SOURCE = "ยอดจอง (หน้า Min-Max และแผง stock)"
 
 
 def freshness_block(config: dict, today=None) -> dict:

@@ -49,8 +49,8 @@
   {
    "id": "production_capacity",
    "topic": "กำลังผลิต",
-   "unknown": "ข้อมูลบอกได้แค่ยอดผลิตสูงสุดที่เคยทำ",
-   "used_now": "ใช้ยอดนั้นเป็นค่าต่ำสุดที่กำลังผลิตน่าจะทำได้ (Lower bound ไม่ใช่ขีดความสามารถจริง)",
+   "unknown": "ข้อมูลบอกได้แค่ Historical peak (ยอดผลิตเสร็จสูงสุดต่อเดือนในอดีต ไม่ใช่กำลังผลิตเต็มที่)",
+   "used_now": "ใช้ Historical peak เป็นค่าต่ำสุดที่กำลังผลิตน่าจะทำได้ (Lower bound ไม่ใช่ขีดความสามารถจริง)",
    "affects": "แผนการผลิต",
    "value_source": "STATUS.md, Q20: the highest sustained monthly output per division and Type, a lower bound",
    "updated_date": "2026-10-15"
@@ -75,8 +75,8 @@
   },
   {
    "id": "forecast_range",
-   "topic": "ยอดทาย",
-   "unknown": "ยังไม่มีช่วงสูง-ต่ำ",
+   "topic": "Forecast",
+   "unknown": "Forecast = ยอดขายที่ระบบคาดการณ์ · ยังไม่มีช่วงสูง-ต่ำ",
    "used_now": "ใช้ค่าเดียวต่อเดือน (point forecast)",
    "affects": "แผนการผลิต",
    "value_source": "the forward-test log holds one forecast per item and month (METRICS.md Sec.27), no interval",
@@ -94,30 +94,30 @@
  ],
  "pending_criteria": [
   {
-   "topic": "ยอดทายดีกว่า Naive (ใช้ยอดเดือนล่าสุดเป็นยอดทาย) ไหม",
+   "topic": "Forecast ดีกว่า Naive (ใช้ยอดเดือนล่าสุดเป็น Forecast ทุกเดือน) ไหม",
    "to_decide": "Relative MAE ต่ำแค่ไหนถึงนับว่าถึงเกณฑ์ (MAE ของเรา ÷ MAE ของ Naive)",
    "now_used": "ร่าง: ต่ำกว่า 1 ถึงเกณฑ์ผ่าน, ต่ำกว่า 0.7 ถึงเกณฑ์ดี",
    "who": "ผู้บริหาร",
    "when": "หลังรอบ 7 ธ.ค. 69"
   },
   {
-   "topic": "ยอดทายเอียงไปทางเดียวต่อเนื่อง (Bias)",
-   "to_decide": "Tracking Signal (ความคลาดสะสม ÷ ความคลาดเฉลี่ย) เกินเท่าไหร่ถึงเตือน",
+   "topic": "Forecast เอียงไปทางเดียวต่อเนื่อง (Bias)",
+   "to_decide": "Tracking Signal (ตัวชี้ว่า Forecast เอียงไปทางเดียวต่อเนื่อง) เกินเท่าไหร่ถึงเตือน",
    "now_used": "ร่าง: ±4 (ไม่มีหน่วย)",
    "who": "ผู้บริหาร",
    "when": "ทุกเดือน"
   },
   {
-   "topic": "ฝ่ายที่ยอดทายไม่ชนะ Naive (ใช้ยอดเดือนล่าสุดเป็นยอดทาย)",
-   "to_decide": "ใช้ Naive (ใช้ยอดเดือนล่าสุดเป็นยอดทาย) แทนไหม",
+   "topic": "ฝ่ายที่ Forecast ไม่ชนะ Naive (ใช้ยอดเดือนล่าสุดเป็น Forecast ทุกเดือน)",
+   "to_decide": "ใช้ Naive (ใช้ยอดเดือนล่าสุดเป็น Forecast ทุกเดือน) แทนไหม",
    "now_used": "ยังใช้วิธีเดิม และแสดงผลเทียบ",
    "who": "ผู้บริหาร",
    "when": "หลังรอบ 7 ธ.ค. 69"
   },
   {
-   "topic": "เป้าการส่งทัน (not-late คือ ส่งไม่ช้ากว่าวันนัด)",
+   "topic": "เป้าการส่งทัน (Not-late: ส่งไม่ช้ากว่าวันนัด)",
    "to_decide": "บริษัทต้องการกี่ %",
-   "now_used": "ให้เลือกเองบนหน้าแผนสต็อก",
+   "now_used": "ให้เลือกเองบนหน้า Min-Max",
    "who": "ผู้บริหาร",
    "when": "ยังไม่กำหนด"
   },
