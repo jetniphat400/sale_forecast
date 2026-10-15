@@ -48,7 +48,7 @@ traceable and match.
 
 **Checks performed directly on the file:**
 - 27,479 rows. 0 null `createDate`. **1 null `forecast_date`** (0.0036% of rows) —
-  `EEE-F-FL-1040030002`, `CTR-2024-02887`, createDate 2024-05-20, qty=3, sale=135 — matches
+  `EEE-F-FL-1040030002`, `<contract>`, createDate 2024-05-20, qty=3, sale=135 — matches
   STATUS.md's "1 row has no forecast_date" exactly.
 - `createDate` range: **2024-01-03 to 2026-08-31**. `forecast_date` range (excluding the 1
   null): **2024-01-04 to 2027-05-31**.
@@ -59,7 +59,7 @@ traceable and match.
   (`forecast_date < createDate`) — matches STATUS.md's previously reported "15 rows (0.05%)"
   exactly. Sample inspected (see script output): these are small-quantity rows (mostly qty=3-4
   units) where `forecast_date` predates `createDate` by anywhere from 3 days to over a year
-  (e.g. `CTR-2025-03513`: createDate 2025-07-03, forecast_date 2024-07-09, an 11-month negative
+  (e.g. `<contract>`: createDate 2025-07-03, forecast_date 2024-07-09, an 11-month negative
   gap). None of the 3 focus items appear among these 15 rows.
 - 0 negative `qty`, 0 negative `sale`.
 - **53 rows are exact full-column duplicates** (same itemcode+contractid+customerid+createDate+

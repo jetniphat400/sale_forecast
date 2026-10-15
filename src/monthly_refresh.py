@@ -141,7 +141,7 @@ STEP_ORDER = ["1_pull_data", "2_validate", "3_frozen_snapshot", "4_backtest", "5
               "10_change_magnitude", "11_commit_and_push"]
 
 
-EXIT_OK, EXIT_ABORTED, EXIT_PARTIAL, EXIT_LOGIN_REFUSED = 0, 1, 2, 3
+EXIT_OK, EXIT_ABORTED, EXIT_PARTIAL, EXIT_LOGIN_REFUSED, EXIT_GATE_HELD = 0, 1, 2, 3, 4
 MONTHLY_STATE_PATH = os.path.join(PROJECT_ROOT, "output", "state", "monthly_run_state.json")      # not in git: the month of the last successful monthly run
 
 
@@ -2073,6 +2073,12 @@ def main(dry_run: bool, force_new_vintage: bool = False, sandbox: bool = False, 
     if _PARTIAL_WARNINGS:
         run_log["warnings"], run_log["partial"] = list(_PARTIAL_WARNINGS), True
     run_log["gate_outcomes"] = gate_outcomes(step8, step9, step10, step7d, step7e, step7f)
+    # A gate that failed holds the push (step 11). The run must not look successful: the failed gates and their reasons are in the run log, and a real run ends with exit code 4 without
+    # writing the success state, so the next weekday start runs again (Prompt 33).
+    failed = {name: g.get("reason", "") for name, g in run_log["gate_outcomes"]["gates"].items() if g["status"] == GATE_FAILED}
+    if failed:
+        run_log["gates_failed"] = failed
+        run_log["push_held"] = {"held": True, "gates": sorted(failed), "reason": step11.get("reason", "")}
     run_log["finished_at"] = datetime.now().isoformat(timespec="seconds")
     _write_run_log(run_log, run_id, run_log_dir)
     return run_log
@@ -2111,7 +2117,8 @@ def _runner_lock(real_run: bool):
 def cli(argv=None) -> int:
     """Command line entry. Exit codes: 0 a run that completed every step (or a start that was not due: a weekend, before this month's run day, or already done this month: nothing is done, before the
     lock check, the preflight or any login); 1 an abort or failure; 2 a run that completed but with an auxiliary pull that failed (a WARN line, the previous file kept); 3 the database login was refused (the
-    lock file is written; no job logs in until it is deleted). The run log has already been written by main()."""
+    lock file is written; no job logs in until it is deleted); 4 a real run in which a gate failed (tests, sensitive-content scan, change-magnitude gates): the push is held for human review, the
+    run log names the failed gates (`gates_failed`), the success state is NOT written, so the next weekday start runs again. The run log has already been written by main()."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--dry-run", action="store_true",
                          help="Exercise every step's logic without writing/committing/pushing anything tracked.")
@@ -2162,6 +2169,10 @@ def cli(argv=None) -> int:
     print(json.dumps(log, indent=2, default=str))
     if "aborted_at_step" in log or log.get("backup", {}).get("status") == "FAILED":
         return EXIT_ABORTED
+    if log.get("gates_failed") and real_run:
+        logger.error("MONTHLY REFRESH HELD: gate(s) failed (%s); the push is held for human review, the success state is not written and the next weekday start runs again.",
+                     ", ".join(sorted(log["gates_failed"])))
+        return EXIT_GATE_HELD
     if log.get("partial"):
         return EXIT_PARTIAL
     if real_run:

@@ -130,7 +130,7 @@ difference from one customer with a small net-negative 2026 value, immaterial).
 
 - **127 customers who bought in Jan-Jul 2024 show zero Jan-Jul activity in *both* 2025 and 2026** —
   ฿46.24M gross, 71% of the gross 2024→2025 decline before new-customer additions offset it. One
-  customer, **`CS07977`, alone accounts for -฿15.27M (23.6% of the whole net -฿64.77M decline)**
+  customer, **`<customer>`, alone accounts for -฿15.27M (23.6% of the whole net -฿64.77M decline)**
   spread across 17 orders and ≥6 different item codes in H1 2024 — not a single one-off
   transaction.
 - **22 customers dipped out entirely in Jan-Jul 2025 and partially returned in Jan-Jul 2026**
@@ -192,23 +192,23 @@ division, any revenue_type) for 2025-2026**
 - **26 of 127 customers (20% by count) have real activity elsewhere in 2025/2026** — representing
   **฿27.05M of their combined ฿46.24M 2024 value (58.5% of the value)**. The larger "dropped"
   customers are disproportionately represented in this reclassified group.
-- **The single largest example: `CS07977`** (-฿15.27M of the total decline, see Section 2). Its
+- **The single largest example: `<customer>`** (-฿15.27M of the total decline, see Section 2). Its
   full company-wide record shows Omni-Channel activity in 4 divisions in 2024 (~฿132M combined) that
   becomes **zero** Omni-Channel activity anywhere in 2025, while its **Tendering**-classified
   activity (mostly `PEM103`, `PEM101`, `PEM107`) rises to **~฿263M** — the underlying business
   relationship *grew*, it was relabelled out of this project's Omni-Channel/PEM101 scope, not lost.
-  A second case, `CS00477`, shows the identical pattern at smaller scale (฿26.1M Omni Channel 2024
+  A second case, `<customer>`, shows the identical pattern at smaller scale (฿26.1M Omni Channel 2024
   → ฿0 Omni Channel / ฿12.3M Tendering 2025).
 - Of the 26 reclassified customers' elsewhere-activity, **฿85.79M sits specifically in `PEM101` +
   `Tendering`** (same division, different revenue_type — the exact mechanism the 2022/2023 break
   used, just in reverse direction), and the rest sits under other divisions (`PTS`, `PEM103`,
   `PEMCSA`, `PSP102`, ...) — but that "other division" total is dominated by a couple of large
-  accounts (e.g. `CS01191`'s primary relationship is with `PEMCSA`, a different division entirely,
+  accounts (e.g. `<customer>`'s primary relationship is with `PEMCSA`, a different division entirely,
   where its business also grew 2024→2026; its small `PEM101` slice simply didn't recur — this
-  looks like a one-off order that didn't repeat, not the same relabelling mechanism as `CS07977`).
+  looks like a one-off order that didn't repeat, not the same relabelling mechanism as `<customer>`).
 - **The remaining 101 of 127 customers (80% by count, 41.5% of the ฿46.24M value, ฿19.19M) show
-  zero activity anywhere in the table in 2025 or 2026** — spot-checked individually (`CS07521`,
-  `CS05938`, `CS05574`, `CS04917`, `CS05050`, `CS01493`, `CS09067`, ...), each confirmed to have no
+  zero activity anywhere in the table in 2025 or 2026** — spot-checked individually (`<customer>`,
+  `<customer>`, `<customer>`, `<customer>`, `<customer>`, `<customer>`, `<customer>`, ...), each confirmed to have no
   rows at all post-2024, under any division/revenue_type/status. **This is consistent with genuine
   customer loss**, not relabelling, for this majority-by-count group.
 - **Conclusion**: reclassification is real and quantified but **partial** — it explains a
@@ -272,9 +272,9 @@ this investigation to test a stock-out or contract-renewal hypothesis.
 - **Whether the ~101 customers with zero activity anywhere post-2024 are genuinely lost accounts
   or simply have not re-ordered yet** — the data can only show absence, not intent. **What the
   business would need to supply**: account-status confirmation (closed, dormant, or still
-  active-but-not-yet-reordered) for at least the largest few of these 101 (e.g. `CS07521`
-  -฿5.88M, `CS01191`'s PEM101 slice -฿4.59M, `CS05938` -฿3.25M).
-- **The specific mechanism behind `CS07977`'s and `CS00477`'s revenue_type relabelling** (why their
+  active-but-not-yet-reordered) for at least the largest few of these 101 (e.g. `<customer>`
+  -฿5.88M, `<customer>`'s PEM101 slice -฿4.59M, `<customer>` -฿3.25M).
+- **The specific mechanism behind `<customer>`'s and `<customer>`'s revenue_type relabelling** (why their
   business moved from Omni Channel to Tendering) — no audit trail exists in the database (confirmed
   by the same table-name search done for the 2022/2023 break, per STATUS.md Part 6), so this cannot
   be determined from data alone. **What the business would need to supply**: whether these two

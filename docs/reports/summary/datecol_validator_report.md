@@ -52,7 +52,7 @@ Source: `datecol_p1b_range_nulls_distinct.csv`, `datecol_p1b_status_revenuetype_
 **Note, not silently glossed over**: the task brief cited PODate as having "an identical
 observed range" to createDate. Directly measured, the ranges are close but **not identical** —
 PODate's minimum (2023-11-22) is 42 days earlier than createDate's minimum (2024-01-03), entirely
-explained by 3 rows on one contract (`CTR-2023-08885`, see 1c below). A minor correction to the
+explained by 3 rows on one contract (`<contract>`, see 1c below). A minor correction to the
 prior informal note, not a contradiction of substance.
 
 **Non-transaction date columns, established from behavior (moderate-high confidence)**:
@@ -249,7 +249,7 @@ TRAIN (2024-01 to 2025-07, 19mo) / VAL (2025-08 to 2026-01, 6mo) / TEST (2026-02
 **No batch of back-dated entries found in the TEST window — high confidence in this negative
 finding.** The TEST window's affected share (0.069%) is not even the highest of the three
 windows (TRAIN's is 0.072%); VAL shows zero such rows at all. All 4 TEST-window-affected rows
-trace to a single contract (`CTR-2026-00744`, 4 different items, each with a 22-day
+trace to a single contract (`<contract>`, 4 different items, each with a 22-day
 createDate-after-PODate gap) — 18 units and ₿38,835 out of the window's total 755,046 units and
 ₿164.0 million (a ~0.002-0.024% share). **This is many orders of magnitude too small to plausibly
 explain the previously-recorded 10-46% MAE divergence between createDate-keyed and

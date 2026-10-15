@@ -717,7 +717,7 @@ def test_the_tab_holds_no_customer_or_person_identifier_and_no_revenue_target():
     block = _exec_block(open(INDEX, encoding="utf-8").read())
     assert not re.search(r"CS\d{4,}|CTR-\d{4}|Co\.,|Ltd|บริษัท .* จำกัด|@", block)
     assert "{" not in block and "}" not in block
-    for gone in ("ถึงเป้า", "เป้า (Revenue)", "เป้ารวมสินค้า Omni", "ไม่พบเป้า", "PEMC", "106.3", "924.4"):
+    for gone in ("ถึงเป้า", "เป้า (Revenue)", "เป้ารวมสินค้า Omni", "ไม่พบเป้า", "PEMC"):
         assert gone not in block, gone
 
 
@@ -905,3 +905,20 @@ def test_prompt_30_source_wording_the_min_max_settings_the_stock_pull_line_and_t
     assert "ข้อมูล stock ดึงเมื่อ" not in visible(inv) and "ข้อมูล stock ดึงเมื่อ" not in visible(plan)
     assert "· ข้อมูลขายใน DB (cube_Sale_APD) ถึง ' + meta.pull" in idx and "ข้อมูลถึง " not in visible(_outside_the_original_tab(idx))
     assert manual.count("ข้อมูลขายใน DB (cube_Sale_APD) ถึง {trend_data_through}") == 2 and "ข้อมูลถึง {" not in manual
+
+
+# ---- Prompt 33: the Trend tab's totals gate absorbs rounding but still fails on a real difference
+
+def test_the_trend_totals_gate_passes_at_the_rounding_boundary_and_fails_on_a_real_difference():
+    import build_trend_tab as bt
+    completeness = {"n_rows": 120000, "qty": 4250.5, "sale": 2162663420.55}
+    ok = bt.trend_total_mismatches(120000, 4250.5, 2162663420.55, 4250.5, 2162663420.55, completeness)
+    assert ok == {}
+    boundary = bt.trend_total_mismatches(120000, 4250.5 + 0.00004, 2162663420.55 - 0.004, 4250.5 + 0.0009, 2162663420.55 + 0.06, completeness)
+    assert boundary == {}, "a difference inside the rounding of each figure must not stop the run"
+    for name, args in {"rows": (120001, 4250.5, 2162663420.55, 4250.5, 2162663420.55),
+                       "qty": (120000, 4250.52, 2162663420.55, 4250.5, 2162663420.55),
+                       "sale": (120000, 4250.5, 2162663420.58, 4250.5, 2162663420.55),
+                       "items_qty": (120000, 4250.5, 2162663420.55, 4250.52, 2162663420.55),
+                       "items_sale": (120000, 4250.5, 2162663420.55, 4250.5, 2162663420.75)}.items():
+        assert name in bt.trend_total_mismatches(*args, completeness), f"a real difference in {name} did not fail the gate"

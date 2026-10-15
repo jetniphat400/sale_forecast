@@ -69,7 +69,7 @@ settling it:
   customers who appear to have "dropped" after Jan-Jul 2024, 26 (20% by count, but 58.5% of that
   cohort's ฿46.24M value) in fact continued doing business at growing scale, just relabeled from
   Omni-Channel/PEM101 to `Tendering` or another division — driven by 2-3 large accounts, notably
-  `CS07977` (-฿15.27M of the -฿64.77M headline decline, 23.6% of it alone), whose company-wide
+  `<customer>` (-฿15.27M of the -฿64.77M headline decline, 23.6% of it alone), whose company-wide
   Omni-Channel activity fell to zero while its Tendering activity rose to ~฿263M. This is a genuine
   scope-boundary artifact, not lost demand.
 
@@ -194,7 +194,7 @@ being blocked by A1's unresolved revision question.
   -7.2% for calendar 2025 vs. 2024; the -25.7%/-26% figure is specific to the Jan-Jul window); 51%
   of the decline traces to one item's real, flat-price volume collapse-then-recovery; no aggregate
   classification/reporting artifact found, but a real, quantified, partial customer-reclassification
-  effect exists for a minority of large accounts (driven by 2-3 accounts, notably `CS07977`); root
+  effect exists for a minority of large accounts (driven by 2-3 accounts, notably `<customer>`); root
   cause of the dominant item's buyer-base pause is unresolved and needs business input (stock,
   supply, or contract-cycle data this project cannot see).
 
@@ -233,8 +233,8 @@ STATUS.md.** Confidence: high (both reports were read in full specifically to ch
 | 2 | The ~2.3-3.2%-of-rows `forecast_date` vs. `PlanDelDate` disagreement's cause (A1) — direction is mixed, no pattern found | Business-side explanation of why these two fields, both meant to represent planned delivery, occasionally diverge by up to hundreds of days | The business/IT team owning `Cube_CES` and `cube_Sale_APD`'s source systems |
 | 3 | 2 of A1's 6 ambiguous `Backlog`-status multi-`PlanID` pairs, equal `PlanQty`, ~5 weeks apart, no `ActualDelDate` yet | Wait for these to deliver (an `ActualDelDate` will appear) and re-check, or business confirmation of whether these specific contracts are known to have had a reschedule | Time (re-check later) or the business |
 | 4 | Root cause of why ~36 buyers of `EEE-F-FC-1040010002` paused in H1 2025 and ~30 resumed in H1 2026 — the single largest driver of the whole "26% decline" (A2) | Stock-availability/stock-out history, supply/production disruption records, or contract-renewal cycle information for this item in H1 2025 | The business (stock, supply, or sales/contract team) — no stock-level or supply table exists in this database (confirmed, Phase 4 groundwork) |
-| 5 | Whether the 101 of 127 "dropped" customers with zero activity anywhere post-2024 are genuinely lost or simply dormant (A2) | Account-status confirmation for at least the largest few (`CS07521` -฿5.88M, `CS01191`'s PEM101 slice -฿4.59M, `CS05938` -฿3.25M) | The sales/account-management team |
-| 6 | The specific mechanism behind `CS07977`'s and `CS00477`'s Omni Channel → Tendering relabeling (A2) | No audit trail exists (confirmed, same 108-table search as the 2022/2023 break) — needs direct confirmation of whether the underlying purchasing basis genuinely changed or this is a classification-convention change | The sales team who classifies `revenue_type` |
+| 5 | Whether the 101 of 127 "dropped" customers with zero activity anywhere post-2024 are genuinely lost or simply dormant (A2) | Account-status confirmation for at least the largest few (`<customer>` -฿5.88M, `<customer>`'s PEM101 slice -฿4.59M, `<customer>` -฿3.25M) | The sales/account-management team |
+| 6 | The specific mechanism behind `<customer>`'s and `<customer>`'s Omni Channel → Tendering relabeling (A2) | No audit trail exists (confirmed, same 108-table search as the 2022/2023 break) — needs direct confirmation of whether the underlying purchasing basis genuinely changed or this is a classification-convention change | The sales team who classifies `revenue_type` |
 | 7 | How much of the Phase 2/3.1 measured forecasting bias is attributable to the `EEE-F-FC-1040010002` collapse-recovery cycle landing inside the backtest's test window, vs. a general demand-shape property (my own synthesis gap, §2b/§1 above — not tested by any of A1/A2/A3) | Re-run/decompose the existing bias calculation with this item (and/or its Type) held out or isolated, and check whether its per-model bias is disproportionate to the rest of the scope | The Modeler (this is model/backtest work, outside Analyst/Validator/Synthesizer scope) |
 | 8 | How a real Max-Min/safety-stock policy would actually respond to A3's measured re-keying shift (A3) | Simulate both keyings against a candidate policy | The Modeler, in Phase E (explicitly out of Validator/Synthesizer scope) |
 | 9 | Whether A3's 53 exact-duplicate rows (in this specific 8-column extract) overlap with the project's previously-classified duplicate-vs-split-lot sets (A3) | A targeted join on `contractid`+`itemcode` against `task7_final_revised_classification.csv` | Explorer/Validator, a small targeted follow-up if the Orchestrator wants it — not chased here per the stopping rule |

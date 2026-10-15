@@ -75,7 +75,7 @@ Output: `output/summary/phaseE0_validator2_cancel_rows_tablewide.csv`.
   pricelist (the project's item universe) — the rest (1,870 rows, ฿9.83
   billion of the ฿9.90 billion total) are for item codes such as
   `SBP101-EG`, `BP-0001`, `NSPC_M` that never appear in the pricelist at all,
-  including a single outlier row (`CTR-2023-05384`/`SBP101-EG`) worth ~79.7
+  including a single outlier row (`<contract>`/`SBP101-EG`) worth ~79.7
   million qty / ฿405 million alone. **Only the 553 pricelist-scope rows can
   ever be relevant to this project's demand series**, since
   `src/load_data_full.py` requires every item to resolve to a pricelist

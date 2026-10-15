@@ -156,7 +156,7 @@ identical conclusion).
 
 **Sub-finding, minor discrepancy in an underlying count (does not change the classification):**
 the Validator's fresh `cube_final` join found 1 linked contract for `HS-F-99-2301N`
-(`CTR-2024-06786`, `OLMJobCode=LB240227`, `cube_final.final_date` 2024-11-26, one day after
+(`<contract>`, `OLMJobCode=LB240227`, `cube_final.final_date` 2024-11-26, one day after
 `CtrDate` 2024-11-25 — so still not pre-existing) where this report's source file
 (`task2b_part2_item_level.csv`) records `n_cube_final_linked=0`. This does not affect S2 (still
 0% pre-existing either way, far below the 50% threshold) or the classification, but is a genuine,

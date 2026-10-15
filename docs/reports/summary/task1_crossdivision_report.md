@@ -225,14 +225,14 @@ Electric Manufacturing Co., Ltd.").
 **Join and match rate against the 128-item scope's observed division codes — confirmed,
 high confidence:**
 
-| Division code (128-item scope) | Sale value (Method A) | In `Cube_PMIS_Organize`? | DivisionName | Company | CompanyName |
+| <customer> | Sale value (Method A) | In `Cube_PMIS_Organize`? | <customer> | Company | CompanyName |
 |---|---|---|---|---|---|
-| PEM101 | ₿716.6M | Yes | Polymer Product & Electrical Equipment Business (PEM 101) | PEM | Precise Electric Manufacturing Co., Ltd. |
+| PEM101 | ₿716.6M | Yes | <customer> | PEM | <customer> |
 | PPS | ₿71.6M | **No** | — | — | — |
 | PSS | ₿4.70M | **No** | — | — | — |
-| PPD101 | ₿4.37M | Yes | KA & Channel Member Management (PPD101) | PPD | Pacific Prosperity Development Co., Ltd. |
+| PPD101 | ₿4.37M | Yes | <customer> | PPD | <customer> |
 | PTS | ₿3.82M | **No** | — | — | — |
-| PCE101 | ₿0.88M | Yes | Power Plant Operation and Maintenance Division (CEP101) | PCE | Precise Clean Energy Co., Ltd. |
+| PCE101 | ₿0.88M | Yes | <customer> | PCE | <customer> |
 | PDEMO | ₿0.11M | **No** | — | — | — |
 
 CSV: `output/summary/task1_division_master_match.csv`. **Match rate: 2 of 6 "other" division
@@ -246,7 +246,7 @@ Cross-checked `cube_Sale_APD`'s own `cmp`/`sale_company` columns for the four un
 ('PPS','PTS','PDEMO','PSS', ...)`): `PPS→PPS`, `PTS→PTS`, `PSS→PSS` (own, self-named company
 codes, and none of `PPS`/`PTS`/`PSS` appear anywhere in `Cube_PMIS_Organize`'s `Company` column
 either — genuinely absent at both levels); `PDEMO→PDE`, and `PDE` **is** a company in the master
-("Precise Digital Economy Co., Ltd.") even though `PDEMO` itself is not one of that company's
+("<customer> Co., Ltd.") even though `PDEMO` itself is not one of that company's
 listed `DivisionCode` values there (closest are `PDE101`-`PDE106`) — a partial, not exact,
 resolution.
 
@@ -324,7 +324,7 @@ Combining Section 2's master-table join with `Cube_Inventory_Aging`'s `Company` 
 only ever shows `PEM` or `CI` for this scope, confirmed): **`PCE101` belongs to Company `PCE`
 ("Precise Clean Energy Co., Ltd.") and `PPD101` to Company `PPD` ("Pacific Prosperity
 Development Co., Ltd.") — both DIFFERENT legal entities from `PEM101`'s Company `PEM`
-("Precise Electric Manufacturing Co., Ltd."), per `Cube_PMIS_Organize`.** `PPS`/`PTS`/`PSS`
+("<customer>"), per `Cube_PMIS_Organize`.** `PPS`/`PTS`/`PSS`
 cannot be checked this way since they are absent from the master entirely (Section 2).
 
 **Confirmed, high confidence, that this company mismatch exists as recorded data.

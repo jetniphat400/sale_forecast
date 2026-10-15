@@ -55,7 +55,7 @@ filter (`division='PEM101'`, `revenue_type='Omni Channel'`, `status IN ('Actual'
 `PlanID` added (`ManuDivision='PEM101'`, `RevenueType='Omni Channel'`, `Status IN ('Actual',
 'Backlog')`, `CtrDate>=2023-01-01`, 36,444 rows). Joined on `contractid=ContractID,
 itemcode=ItemCode`. Because `Cube_CES` has a finer `PlanID` grain (one contract+item pair can carry
-several tranches with different dates — confirmed directly, e.g. `CTR-2024-05379` has 3 tranches
+several tranches with different dates — confirmed directly, e.g. `<contract>` has 3 tranches
 per item, each with its own `PlanDelDate=ForecastDelDate` and a distinct, close `ActualDelDate`), a
 naive row-by-row cross-join manufactures spurious large "disagreements" whenever an APD row is
 compared against the wrong tranche. **This was caught and fixed during the investigation**: an
@@ -63,7 +63,7 @@ early pass reported some diffs up to 729 days, which on manual inspection of the
 turned out to be cross-join artifacts, not real disagreements. The corrected method matches every
 APD row to its single best-matching `Cube_CES` row (smallest `|forecast_date - ForecastDelDate|`)
 before comparing `PlanDelDate`/`ActualDelDate` from that same row — verified by hand against
-`CTR-2024-05379`'s 3-tranche structure before being adopted.
+`<contract>`'s 3-tranche structure before being adopted.
 
 **Result** (`phaseA_a1_task2_join_match_summary.csv`, `phaseA_a1_task2_date_diff_distribution.csv`):
 
@@ -86,9 +86,9 @@ the same reconciliation).
 (`phaseA_a1_task2_plandeldate_disagreement_rows.csv`): mixed, not systematic — 64.0% of
 disagreements have `forecast_date` EARLIER than `PlanDelDate`, 36.0% LATER (median -2 days, but a
 long tail both directions: min -429, max +729 days). Manual inspection of several large-gap
-examples (e.g. `CTR-2024-05463`: `forecast_date`/`ForecastDelDate`=2024-09-27 close to
+examples (e.g. `<contract>`: `forecast_date`/`ForecastDelDate`=2024-09-27 close to
 `ActualDelDate`=2024-11-08, while `PlanDelDate`=2025-11-30 is over a year later and does not track
-the actual outcome at all; vs. `CTR-2024-02637`: the opposite pattern, `PlanDelDate` tracks
+the actual outcome at all; vs. `<contract>`: the opposite pattern, `PlanDelDate` tracks
 `ActualDelDate` closely while `forecast_date`/`ForecastDelDate` is the outlier) shows **no
 consistent story about which field is "more correct" or "more original"** — sometimes
 `ForecastDelDate` tracks the eventual real delivery, sometimes `PlanDelDate` does, sometimes
@@ -117,8 +117,8 @@ established normal pattern in this project — STATUS.md's duplicate-vs-split-lo
 **Result** (`phaseA_a1_task3a_summary.csv`, `phaseA_a1_task3a_same_createdate_diff_forecast.csv`):
 68 of 27,421 groups (0.25%, 158 rows) have >1 distinct `forecast_date` for the same
 `(contractid, itemcode, createDate)`. **Every flagged group inspected has a different `qty`/`sale`
-value across its rows** (e.g. `CTR-2024-00427`: 5 units/₿9,000 with `forecast_date`=2024-01-26 vs.
-3 units/₿5,400 with `forecast_date`=2024-02-23; `CTR-2024-03524`: 1,000 units vs. 970 units on two
+value across its rows** (e.g. `<contract>`: 5 units/₿9,000 with `forecast_date`=2024-01-26 vs.
+3 units/₿5,400 with `forecast_date`=2024-02-23; `<contract>`: 1,000 units vs. 970 units on two
 different dates a month apart). This is the exact signature STATUS.md already established as
 "legitimate multi-tranche delivery lots recorded on the same PO-intake date," not a duplicated or
 re-entered single promise. **None of the 3 focus codes appear in this flagged set at all.**
@@ -139,7 +139,7 @@ distinct `PlanID`.
 
 An early classification pass used "identical `PlanQty` across PlanIDs" as the revision signal, but
 this was **rejected on inspection**: several genuine multi-tranche orders split into equal-sized
-batches (e.g. 500 units delivered in July + 500 more booked for October, `CTR-2026-01277`/
+batches (e.g. 500 units delivered in July + 500 more booked for October, `<contract>`/
 `EEE-F-FL-1040030002`) have identical `PlanQty` across PlanIDs purely because the split happened to
 be even — normal, not evidence of revision. The revised, decisive test instead uses
 `ActualDelDate` — a real, already-happened event: if two PlanIDs for the same pair carry **different**
@@ -161,10 +161,10 @@ Only **6 pairs (12 rows, 0.033% of all rows)** fall into the ambiguous bucket: s
 across PlanIDs, and either a single shared `ActualDelDate` or none at all (still `Backlog`), but
 `ForecastDelDate`/`PlanDelDate` disagree across the PlanIDs. **Manually inspecting all 6**:
 4 of 6 involve a 1-day date discrepancy between two otherwise near-identical rows (e.g.
-`CTR-2026-01446`/`HS-F-99-0241`: `PlanDelDate` 2026-04-09 vs. 2026-04-10, same `ActualDelDate`
+`<contract>`/`HS-F-99-0241`: `PlanDelDate` 2026-04-09 vs. 2026-04-10, same `ActualDelDate`
 2026-04-09 for both) — plausibly a minor duplicate/rounding artifact rather than a meaningful
 revision. The other 2 are pairs of `Backlog` rows (not yet delivered) with equal `PlanQty` but
-dates ~5 weeks apart (e.g. `CTR-2026-02611`/`EEE-F-LT-1040020100`: 500 units planned 2026-09-10 and
+dates ~5 weeks apart (e.g. `<contract>`/`EEE-F-LT-1040020100`: 500 units planned 2026-09-10 and
 500 more planned 2026-10-15) — this is **structurally indistinguishable** from either "one pending
 order's date was pushed back and re-recorded under a new `PlanID`" or "two separate orders of
 coincidentally equal size," because neither has an `ActualDelDate` yet to check against.

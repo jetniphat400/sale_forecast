@@ -246,6 +246,22 @@ def top_names(names: pd.DataFrame) -> tuple:
     return best, ties
 
 
+# The gate compared round(sum, 1) of 2-decimal sales with the completeness query, so two sums that differed by a hair across a rounding boundary failed it (Prompt 32 rehearsal, 4.4 problem 2).
+# Unrounded values are compared with a tolerance of one rounding unit of the compared figure: rows exactly, qty within 0.0001 and sale within 0.01 (the unit of the stored data), and the sums
+# of the tab's rounded cells (qty 4 decimals, sale 2) within 0.001 and 0.1. A real difference (a missing row, a lost or doubled amount) is larger and still fails.
+TREND_TOLERANCE = {"qty": 0.0001, "sale": 0.01, "items_qty": 0.001, "items_sale": 0.1}
+
+
+def trend_total_mismatches(tot_n, tot_q, tot_s, items_q, items_s, completeness: dict) -> dict:
+    """{check: (tab value, query value)} for every total of the Trend tab that differs from the completeness query by more than its tolerance; empty when they agree."""
+    checks = {"rows": (int(tot_n), int(completeness["n_rows"]), 0),
+              "qty": (float(tot_q), float(completeness["qty"]), TREND_TOLERANCE["qty"]),
+              "sale": (float(tot_s), float(completeness["sale"]), TREND_TOLERANCE["sale"]),
+              "items_qty": (float(items_q), float(completeness["qty"]), TREND_TOLERANCE["items_qty"]),
+              "items_sale": (float(items_s), float(completeness["sale"]), TREND_TOLERANCE["items_sale"])}
+    return {k: (a, b) for k, (a, b, tol) in checks.items() if abs(a - b) > tol + 1e-6}
+
+
 def build_data(daily: pd.DataFrame, names: pd.DataFrame, completeness: dict, pl: pd.DataFrame, config: dict, pricelist_quarter: str) -> tuple:
     """(OMNI dict, MATCH dict, report dict) from the saved pull and the price list. Stops (TrendTabError) when the totals of the data differ from the completeness
     query, when a daily row falls outside the months, or when a day's rows do not sum to the item's months."""
@@ -321,11 +337,9 @@ def build_data(daily: pd.DataFrame, names: pd.DataFrame, completeness: dict, pl:
         if status == "conflict":
             entry["pl_spec"], entry["db_spec"] = format_specs(sp_pl), format_specs(sp_db)
         match[code] = entry
-    # the tab's totals equal the completeness query, exactly (rows; qty to 4 decimals; sale to the cent)
+    # the tab's totals equal the completeness query (rows exactly; qty and sale within the rounding of their own unit, see trend_total_mismatches)
     items_q = sum(sum(i["qa"]) + sum(i["qm"]) for i in items); items_s = sum(sum(i["sa"]) + sum(i["sm"]) for i in items)
-    checks = {"rows": (int(tot_n), completeness["n_rows"]), "qty": (round(tot_q, 4), round(completeness["qty"], 4)), "sale": (round(tot_s, 2), round(completeness["sale"], 2)),
-              "items_qty": (round(items_q, 3), round(completeness["qty"], 3)), "items_sale": (round(items_s, 1), round(completeness["sale"], 1))}
-    bad = {k: v for k, v in checks.items() if v[0] != v[1]}
+    bad = trend_total_mismatches(tot_n, tot_q, tot_s, items_q, items_s, completeness)
     if bad:
         raise TrendTabError(f"the Trend tab's totals differ from the completeness query: {bad}")
     omni = {"months": months, "n31": n_complete, "cates": sorted({i["cat"] for i in items}), "types": sorted({i["pt"] for i in items}), "items": items,

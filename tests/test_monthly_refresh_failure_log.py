@@ -571,3 +571,49 @@ def test_the_run_with_such_a_stage_is_partial_and_the_command_ends_with_exit_cod
     assert log["partial"] is True and "aborted_at_step" not in log and len(log["warnings"]) == 1 and "was not rewritten" in log["warnings"][0]
     _cli_env(monkeypatch, tmp_path, _date(2026, 12, 7), main_log=log)
     assert mr.cli([]) == 2 and not os.path.exists(mr.MONTHLY_STATE_PATH)              # not marked done: it runs again on the next weekday
+
+
+# ---- Prompt 33: a failed gate must not look like a success
+
+def _held_gate_log(monkeypatch, tmp_path, failing="tests"):
+    """A run (fakes only) in which one gate fails: step 8 (tests) or a change-magnitude gate of step 10."""
+    _stub_steps(monkeypatch)
+    if failing == "tests":
+        monkeypatch.setattr(mr, "step8_run_tests", lambda *a, **k: {"passed": False, "summary_line": "2 failed, 800 passed"})
+    else:
+        monkeypatch.setattr(mr, "step10_change_magnitude", lambda *a, **k: {"passed": False, "gates": {"six_month_forecast": {"status": "failed", "reason": "a division moved more than the limit"}}})
+    return _run(monkeypatch, tmp_path)
+
+
+def test_a_failed_gate_is_named_in_the_run_log_with_its_reason(monkeypatch, tmp_path):
+    log = _held_gate_log(monkeypatch, tmp_path, "tests")
+    assert log["gates_failed"] == {"tests": "2 failed, 800 passed"} and log["push_held"]["held"] is True and log["push_held"]["gates"] == ["tests"]
+    log2 = _held_gate_log(monkeypatch, tmp_path, "step10")
+    assert log2["gates_failed"] == {"step10_six_month_forecast": "a division moved more than the limit"}
+
+
+def test_a_held_gate_ends_with_exit_code_4_writes_no_state_and_the_next_weekday_runs_again(monkeypatch, tmp_path):
+    assert mr.EXIT_GATE_HELD == 4 and len({mr.EXIT_OK, mr.EXIT_ABORTED, mr.EXIT_PARTIAL, mr.EXIT_LOGIN_REFUSED, mr.EXIT_GATE_HELD}) == 5
+    log = _held_gate_log(monkeypatch, tmp_path, "tests")
+    calls = _cli_env(monkeypatch, tmp_path, _date(2026, 12, 7), main_log=log)
+    assert mr.cli([]) == 4 and len(calls) == 1
+    assert not os.path.exists(mr.MONTHLY_STATE_PATH), "a held gate wrote the success state"
+    calls = _cli_env(monkeypatch, tmp_path, _date(2026, 12, 8), main_log=log)               # the next weekday: the run is due again
+    assert mr.monthly_run_due(_date(2026, 12, 8), mr.read_monthly_state())[0] is True
+    assert mr.cli([]) == 4 and len(calls) == 1 and not os.path.exists(mr.MONTHLY_STATE_PATH)
+    _cli_env(monkeypatch, tmp_path, _date(2026, 12, 9), main_log={"run_id": "r2", "steps": {}})       # a later run whose gates pass is a normal success
+    assert mr.cli([]) == 0 and mr.read_monthly_state()["last_success_month"] == "2026-12"
+
+
+def test_a_normal_run_still_writes_the_state_and_exits_0(monkeypatch, tmp_path):
+    _stub_steps(monkeypatch)
+    log = _run(monkeypatch, tmp_path)
+    assert "gates_failed" not in log and "push_held" not in log
+    _cli_env(monkeypatch, tmp_path, _date(2026, 12, 7), main_log=log)
+    assert mr.cli([]) == 0 and mr.read_monthly_state()["last_success_month"] == "2026-12"
+
+
+def test_a_dry_run_reports_a_failed_gate_in_its_log_but_never_exits_4(monkeypatch, tmp_path):
+    log = _held_gate_log(monkeypatch, tmp_path, "tests")
+    _cli_env(monkeypatch, tmp_path, _date(2026, 12, 7), main_log=log)
+    assert mr.cli(["--dry-run"]) == 0 and not os.path.exists(mr.MONTHLY_STATE_PATH)

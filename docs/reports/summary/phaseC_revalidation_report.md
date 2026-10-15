@@ -63,7 +63,7 @@ otherwise it is a distinct order or instalment, not a double count.
 - **11 candidate `(contractid, itemcode)` row-pairs found** — all involving `PEM102`↔`PEM107-OLD`
   or `PEM107`↔`PEM102-OLD`, consistent with the already-known mirror pattern.
 - **0 of 11 are CONFIRMED DUPLICATES.** Every candidate pair differs on at least one of qty, sale,
-  or `forecast_date` — most commonly `forecast_date` (e.g. contract `CTR-2024-06014`, item
+  or `forecast_date` — most commonly `forecast_date` (e.g. contract `<contract>`, item
   `VT-F-99-010721`: identical qty=1/sale=44,000 under both tags, but `forecast_date` 2024-11-29
   vs. 2024-12-06 — a different delivery tranche, not the same order recorded twice). Full detail:
   `phaseC_revalidation_03_old_tag_candidates.csv` (11 rows, all `distinct_order_or_instalment`);

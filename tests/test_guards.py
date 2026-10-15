@@ -113,7 +113,9 @@ def test_verify_consistency_refuses_to_score_on_approach_mismatch():
 # Guard for CONVENTIONS.md "Customer and contract identifiers" (decided by the user, 2026-10-06): customer IDs, customer names, contract numbers and personal login
 # names never appear in documentation, config, source or tests (pages under forecast/ and index.html may show them).
 #
-# Scope: the project's markdown documents (STATUS, DATA_MAP, METRICS, PROJECT_GRAPH, AGENTS, CONVENTIONS), everything under config/, src/ and tests/ (.py .yaml .yml .md .json).
+# Scope: the project's markdown documents (STATUS, DATA_MAP, METRICS, PROJECT_GRAPH, AGENTS, CONVENTIONS), everything under docs/, config/, src/ and tests/ (.py .yaml .yml .md .json .csv .txt),
+# and the JSON files under data/ (Prompt 33, 2026-10-15). The pages (index.html, forecast/*.html) may show identifiers and are not scanned. data/inventory.json is the stock panel's runtime
+# data: the three fields the panel's backlog pop-up DISPLAYS (doc_id, job, customer) are allowed there, every other part of every data file is scanned like a document.
 #
 # Formats, as observed in the saved pulls (output/data and output/summary, which are untracked):
 #   * customer ID   : two capital letters then five digits (the CustomerID / customerid columns of Cube_CES, cube_Sale_APD and Cube_Quotation);
@@ -121,8 +123,10 @@ def test_verify_consistency_refuses_to_score_on_approach_mismatch():
 #                     numbers share this shape);
 #   * customer name : exact match against the values of the customer-name columns (cusname, customer_name, CustomerName) of the saved pulls, when those files are present;
 #   * login name    : the user folder of a Windows path (Users, then a folder other than the placeholder <user>), and the login recorded in .env (DB_USER), when .env is present.
-# The test reads files only; it holds no real identifier (the examples below are built from parts), and it modifies no tracked file. Where the saved pulls are absent the
-# exact-match part is skipped with a message, never passed silently; the format part always runs.
+# The test reads files only; it holds no real identifier or value (the examples below are built from parts), and it modifies no tracked file. The exact-match part reads the saved pulls
+# when they are present; when they are absent the format checks alone run (the test is never skipped).
+#   * target values : the revenue target (Cube_Target_PMIS, the workbook target_data.xlsx) is never written in a tracked document, config, source or test: an exact-match check against
+#                     the saved aggregate output/data/exec_pull/targets.csv when it exists, and a format check that always runs (a line that talks about the revenue target carries no amount).
 # ====================================================================================================
 import glob
 import os
@@ -130,7 +134,10 @@ import re
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DOCS = ["STATUS.md", "DATA_MAP.md", "METRICS.md", "PROJECT_GRAPH.md", "AGENTS.md", "CONVENTIONS.md"]
-SUFFIXES = (".py", ".yaml", ".yml", ".md", ".json")
+SUFFIXES = (".py", ".yaml", ".yml", ".md", ".json", ".csv", ".txt")
+DISPLAYED_BACKLOG_FIELDS = ("doc_id", "job", "customer")     # the fields the stock panel's backlog pop-up shows (index.html invOpenBacklogDetail)
+REVENUE_TARGET_LINE = re.compile(r"revenue target|target by division|target aggregate|target table|target workbook|target version|Cube_Target|TARGET_PMIS|target_data|TargetC1005|divisions' target|million target|saved target|against the [^.]{0,40}target|year-end projection|เป้า", re.I)
+AMOUNT = re.compile(r"(?<![\w.\-/])(\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d+\.\d+)(?![\w\-/])|(?<![\w.\-/])\d[\d,]*(?:\.\d+)?\s?[MB]\b")      # an amount: thousands separators, decimals, or a million / billion suffix
 CUSTOMER_ID = re.compile(r"(?<![A-Za-z0-9])[A-Z]{2}\d{5}(?![A-Za-z0-9])")
 CONTRACT_NO = re.compile(r"(?<![A-Za-z0-9])[A-Z]{2,5}-\d{4}-\d{5}(?![A-Za-z0-9])")
 WINDOWS_USER = re.compile(r"Users[\\/]([^\\/\s`'\"]+)")
@@ -140,7 +147,7 @@ MIN_NAME_LENGTH = 8
 
 def scope_files() -> list:
     files = [os.path.join(PROJECT_ROOT, d) for d in DOCS]
-    for top in ("config", "src", "tests"):
+    for top in ("docs", "config", "src", "tests"):
         for folder, dirs, names in os.walk(os.path.join(PROJECT_ROOT, top)):
             dirs[:] = [d for d in dirs if d != "__pycache__"]
             files += [os.path.join(folder, n) for n in names if n.endswith(SUFFIXES)]
@@ -179,6 +186,7 @@ def test_the_guard_recognises_each_format_using_made_up_values_built_from_parts(
 def test_no_customer_id_or_contract_number_in_documents_config_source_or_tests():
     files = scope_files()
     assert len(files) > 100, "the scope looks empty"
+    assert any(rel(f).startswith("docs/") for f in files), "docs/ is not in the scope"
     found = hits(CUSTOMER_ID, files) + hits(CONTRACT_NO, files)
     assert not found, "customer IDs or contract numbers (CONVENTIONS.md): " + ", ".join(found[:20])
 
@@ -199,41 +207,138 @@ def test_no_personal_login_name_in_a_path_in_documents_config_source_or_tests():
                 assert not [f for f in scope_files() if name in read(f)], "the database login name appears in a file of the scope"
 
 
-def _customer_names() -> set:
+def _saved_pull_columns(kinds: dict) -> dict:
+    """{kind: set of values} read from the saved pulls under output/ (CSV files; empty sets when none is present). Columns are matched by lower-case name."""
     import pandas as pd
-    names = set()
-    for f in glob.glob(os.path.join(PROJECT_ROOT, "output", "data", "*.csv")):
+    out = {k: set() for k in kinds}
+    for f in glob.glob(os.path.join(PROJECT_ROOT, "output", "data", "*.csv")) + glob.glob(os.path.join(PROJECT_ROOT, "output", "summary", "*.csv")):
         try:
             cols = pd.read_csv(f, nrows=0).columns
         except Exception:
             continue
         for c in cols:
-            if c.lower() in CUSTOMER_NAME_COLUMNS:
-                names |= set(pd.read_csv(f, usecols=[c], dtype=str)[c].dropna().str.strip().unique())
+            for kind, names in kinds.items():
+                if c.lower() in names:
+                    try:
+                        out[kind] |= set(pd.read_csv(f, usecols=[c], dtype=str)[c].dropna().str.strip().unique())
+                    except Exception:
+                        pass
+    return out
+
+
+def _customer_names() -> set:
+    names = _saved_pull_columns({"n": CUSTOMER_NAME_COLUMNS})["n"]
     return {n for n in names if len(n) >= MIN_NAME_LENGTH and " " in n}
 
 
 def _customer_ids() -> set:
-    import pandas as pd
-    ids = set()
-    for f in glob.glob(os.path.join(PROJECT_ROOT, "output", "data", "*.csv")):
-        try:
-            cols = pd.read_csv(f, nrows=0).columns
-        except Exception:
-            continue
-        for c in cols:
-            if c.lower() in ("customerid", "customer_id", "end_customerid"):
-                ids |= set(pd.read_csv(f, usecols=[c], dtype=str)[c].dropna().str.strip().unique())
+    ids = _saved_pull_columns({"i": ("customerid", "customer_id", "end_customerid")})["i"]
     return {i for i in ids if len(i) >= 6}
 
 
-def test_no_customer_name_or_id_from_the_saved_pulls_appears_by_exact_match():
-    names, ids = _customer_names(), _customer_ids()
-    if not names and not ids:
-        pytest.skip("SKIPPED, not passed: the saved pulls are not on this machine, so the exact-match check could not run (the format checks above did)")
-    texts = {f: read(f) for f in scope_files()}
-    found = sorted({rel(f) for f, t in texts.items() for n in names if n in t} | {rel(f) for f, t in texts.items() for i in ids if i in t})
-    assert not found, "a customer name or ID from the saved pulls appears in: " + ", ".join(found[:20])
+def _contract_numbers() -> set:
+    vals = _saved_pull_columns({"c": ("contractid", "docid", "doc_id", "quotationid")})["c"]
+    return {v for v in vals if len(v) >= 8}
+
+
+def data_scan_texts() -> dict:
+    """{relative path: text} of every JSON file under data/ with the displayed backlog fields (doc_id, job, customer) of data/inventory.json blanked: those, and only those, may show identifiers."""
+    import json
+    out = {}
+    for f in sorted(glob.glob(os.path.join(PROJECT_ROOT, "data", "*.json"))):
+        text = read(f)
+        if os.path.basename(f) == "inventory.json":
+            data = json.loads(text)
+            for item in data.get("items", []):
+                for row in item.get("backlog_rows", []):
+                    for k in DISPLAYED_BACKLOG_FIELDS:
+                        row[k] = ""
+            text = json.dumps(data, ensure_ascii=False, indent=1)
+        out[rel(f)] = text
+    return out
+
+
+def test_no_customer_id_or_contract_number_in_data_json_except_the_displayed_fields():
+    texts = data_scan_texts()
+    assert "data/inventory.json" in texts and len(texts) >= 3
+    found = [f"{name}:{n}" for name, text in texts.items() for n, line in enumerate(text.splitlines(), 1)
+             if CUSTOMER_ID.search(line) or CONTRACT_NO.search(line)]
+    assert not found, "a customer ID or contract number outside the displayed fields of data/*.json: " + ", ".join(found[:20])
+
+
+def test_the_customer_and_contract_fields_of_inventory_json_are_exactly_those_the_stock_panel_displays():
+    """A field that holds a customer or contract identifier may be in data/inventory.json only while the page shows it (Prompt 33): if the panel stops displaying one, the
+    generator must stop writing it."""
+    import json
+    with open(os.path.join(PROJECT_ROOT, "data", "inventory.json"), encoding="utf-8") as fh:
+        data = json.load(fh)
+    page = read(os.path.join(PROJECT_ROOT, "index.html"))
+    rows = [row for item in data["items"] for row in item["backlog_rows"]]
+    fields = {k for row in rows for k in row}
+    holding_identifiers = {k for k in fields if any(CUSTOMER_ID.search(str(row.get(k, ""))) or CONTRACT_NO.search(str(row.get(k, ""))) for row in rows)}
+    assert holding_identifiers <= set(DISPLAYED_BACKLOG_FIELDS), sorted(holding_identifiers - set(DISPLAYED_BACKLOG_FIELDS))
+    for k in DISPLAYED_BACKLOG_FIELDS:
+        assert f"r.{k}" in page, f"the stock panel no longer shows the field {k}: remove it from data/inventory.json (its generator, src/build_inventory_dataset.py)"
+
+
+def test_no_customer_name_or_id_or_contract_from_the_saved_pulls_appears_by_exact_match():
+    """Runs always. With the saved pulls on this machine it also compares exact values; without them the format checks (above and below) still run."""
+    names, ids, contracts = _customer_names(), _customer_ids(), _contract_numbers()
+    texts = {rel(f): read(f) for f in scope_files()}
+    texts.update(data_scan_texts())
+    tokens = {name: set(re.findall(r"[A-Za-z0-9][A-Za-z0-9\-_./]*", t)) for name, t in texts.items()}
+    found = sorted({name for name, tk in tokens.items() if (tk & ids) or (tk & contracts)} | {name for name, t in texts.items() for n in names if n in t})
+    assert not found, "a customer name, ID or contract number from the saved pulls appears in: " + ", ".join(found[:20])
+
+
+def _target_forms() -> tuple:
+    """(whole-number forms, million forms) of the revenue-target sums of output/data/exec_pull/targets.csv, built in memory; two empty sets when the file is not on this machine."""
+    path = os.path.join(PROJECT_ROOT, "output", "data", "exec_pull", "targets.csv")
+    if not os.path.exists(path):
+        return set(), set()
+    import itertools
+    import pandas as pd
+    t = pd.read_csv(path)
+    cols = [c for c in ("division", "revenue_type", "category", "product_type", "yr") if c in t.columns]
+    sums = {float(t["amount"].sum())}
+    for r in range(1, len(cols) + 1):
+        for sub in itertools.combinations(cols, r):
+            for _, g in t.groupby(list(sub), dropna=True):
+                sums.add(float(g["amount"].sum()))
+    sums |= {float(a) for a in t["amount"].dropna()}
+    big, mil = set(), set()
+    for v in sums:
+        if v >= 1e6:
+            big |= {f"{v:.0f}", f"{v:,.0f}"}
+            mil |= {f"{v / 1e6:.1f}", f"{v / 1e6:.2f}", f"{v / 1e6:,.1f}"}
+    return {b for b in big if len(re.sub(r"\D", "", b)) >= 7}, mil
+
+
+def test_no_revenue_target_value_in_documents_config_source_or_tests():
+    """Format check (always runs): a line that talks about the revenue target carries no amount. Exact check (when targets.csv is present): none of its sums appears."""
+    big, mil = _target_forms()
+    token = re.compile(r"(?<![\d.,])(\d{1,3}(?:,\d{3})+|\d{7,})(?![\d]|[.,]\d)")
+    mil_token = re.compile(r"(?<![\d.,])(\d{1,3}(?:,\d{3})*\.\d{1,2})(?![\d]|[.,]\d)")
+    found = []
+    for f in scope_files():
+        for n, line in enumerate(read(f).splitlines(), 1):
+            is_target_line = bool(REVENUE_TARGET_LINE.search(line))
+            if is_target_line and AMOUNT.search(line):
+                found.append(f"{rel(f)}:{n}")
+            elif big and any(m in big for m in token.findall(line)):
+                found.append(f"{rel(f)}:{n}")
+            elif mil and is_target_line and any(m in mil for m in mil_token.findall(line)):
+                found.append(f"{rel(f)}:{n}")
+    assert not found, "a revenue-target amount in: " + ", ".join(found[:20])
+
+
+def test_the_target_format_check_recognises_what_it_must():
+    """Made-up values only, built from parts."""
+    amount = "1" + "23" + "," + "456"
+    assert REVENUE_TARGET_LINE.search("the 2026 revenue target by division is " + amount) and AMOUNT.search("is " + amount)
+    assert AMOUNT.search("the 2026 revenue target is THB " + "12" + "M") and AMOUNT.search("THB " + "9" + "," + "999" + "M")
+    assert not AMOUNT.search("the revenue target was removed (Prompt 27)")
+    assert not REVENUE_TARGET_LINE.search("the service level for not late is 98.24 percent")
 
 
 # ---------------------------------------------------------------------------
