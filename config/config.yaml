@@ -1133,8 +1133,11 @@ report:
   unit_switch_baht: "บาท"
   unit_switch_separator: "·"
   unit_switch_hint: "มีผลกับตารางในส่วนนี้เท่านั้น"
-  baht_label: "มูลค่าคิดจากราคาขายเฉลี่ยต่อชิ้นของแต่ละรหัส (Average selling price) {first_month} ถึง {last_month}"
-  baht_label_market_part: " · {m} รหัสที่ไม่เคยขายใช้ราคาตั้ง (List price) ใน Price List แทน"
+  # The price chain of reader_values.unit_prices (config report.price_basis.order): the average selling price of the last 12 months of the fit window; an item with no sale in those 12 months
+  # takes the average of the whole fit window; an item with no sale in the fit window takes the Market Price (List price) of the Price List.
+  baht_label: "มูลค่าคิดจากราคาขายเฉลี่ยต่อชิ้นของแต่ละรหัส (Average selling price) 12 เดือนล่าสุด {first_month} ถึง {last_month}"
+  baht_label_fit_part: " · {n} รหัสที่ไม่ได้ขายใน 12 เดือนนั้นใช้ราคาขายเฉลี่ยของทั้งช่วงที่ใช้ทายยอด ({fit_first} ถึง {fit_last}) แทน"
+  baht_label_market_part: " · {m} รหัสที่ไม่มียอดขายเลยในช่วงที่ใช้ทายใช้ราคาตั้ง (List price) ใน Price List แทน"
   baht_summary_title: "ยอดทายรวมรายเดือน (บาท)"
   baht_all_divisions_row: "รวมทุกฝ่าย"
   baht_division_total_row: "รวม {division}"
@@ -1209,7 +1212,7 @@ exec_summary:
     watch_pem107: "PEM107 ส่งของช่องทาง Omni ทันน้อยลงตั้งแต่ {since} ({pct} ส่งทัน คือ ส่งไม่ช้ากว่าวันนัด)"
     decide_heading: "เรื่องที่รอผู้บริหารตัดสิน"
     decide_link: "สมมติฐานที่ใช้อยู่"
-    footer: "ยอดขายนับตามเดือนที่ต้องส่งของ รวม PO ที่รับแล้วแต่ยังไม่ส่ง (MPS) · ไม่รวม VAT · คาดการณ์ = ยอดจริงถึง {data_month} + เดือนที่เหลือใช้ค่าที่มากกว่าระหว่างยอดทายกับออเดอร์ที่รับแล้ว × ราคาขายเฉลี่ยจริง · ยอดขายและคาดการณ์นับเฉพาะสินค้าใน Price List"
+    footer: "ยอดขายนับตามเดือนที่ต้องส่งของ รวม PO ที่รับแล้วแต่ยังไม่ส่ง (MPS) · ไม่รวม VAT · คาดการณ์ = ยอดจริงถึง {data_month} + เดือนที่เหลือใช้ค่าที่มากกว่าระหว่างยอดทายกับออเดอร์ที่รับแล้ว × ราคาขายเฉลี่ยจริง · ยอดขายและคาดการณ์นับเฉพาะสินค้าใน Price List ช่อง Omni Channel"
 
 # Forecast model experiment of 2026-10 (src/investigations/model_experiment_2026_10.py, METRICS.md Sec.50). PRE-REGISTERED 2026-10-09 BEFORE any candidate was computed: the
 # candidates, the parameters and the selection rule below were fixed by the user's decisions of that day and are not changed after a result is seen. Report only: the production
@@ -1510,6 +1513,8 @@ report_statistics:
 # exists); read by src/build_inventory_page_data.py, and the page's chart and notes follow them.
 # ============================================================
 inventory_page:
+  # One scope line under the page heading (Prompt 34, item 10): the scope of the page and its labelled exceptions.
+  scope_line: "ขอบเขต: สินค้าใน Price List ช่อง Omni Channel · ข้อยกเว้นที่มีป้ายกำกับ: stock และออเดอร์ที่รับแล้ว (Reserved) นับรวมทุกช่องทาง เพราะใช้ร่วมกันทุกช่องทาง"
   # Approved text of 2026-10-08 (verbatim), under the heading of the PEM101 section; the months are the window of the sales history the section's Min and Max use.
   pem101_demand_note: "Min/Max ส่วนนี้คิดจากยอดขายจริงย้อนหลัง {first_month} ถึง {last_month} ยังไม่ได้คิดจากยอดทาย ถ้ายอดขายข้างหน้าเพิ่มหรือลดมาก ค่านี้จะยังไม่ขยับตาม"
   # Decision of the user, 2026-10-06: these divisions follow METRICS.md Sec.23 (the item-level file's class_used) in place of the older policy of Sec.15, so a
@@ -1786,9 +1791,9 @@ maxmin_v1:
   pending_criteria_values: {relative_mae_pass: 1, relative_mae_good: 0.7, tracking_signal_limit: 4, decision_month: "2026-12"}
   # Approved text of 2026-10-08 (verbatim); {braces} are filled from pending_criteria_values (the date with the shared Thai date formatter).
   pending_criteria_rows:
-    - {topic: "ยอดทายดีกว่าวิธีง่ายไหม", to_decide: "Relative MAE ต่ำแค่ไหนถึงนับว่าถึงเกณฑ์ (MAE ของเรา ÷ MAE ของ Naive)", now_used: "ร่าง: ต่ำกว่า {relative_mae_pass} ถึงเกณฑ์ผ่าน, ต่ำกว่า {relative_mae_good} ถึงเกณฑ์ดี", who: "ผู้บริหาร", when: "หลังรอบ {decision_date}"}
+    - {topic: "ยอดทายดีกว่า Naive (ใช้ยอดเดือนล่าสุดเป็นยอดทาย) ไหม", to_decide: "Relative MAE ต่ำแค่ไหนถึงนับว่าถึงเกณฑ์ (MAE ของเรา ÷ MAE ของ Naive)", now_used: "ร่าง: ต่ำกว่า {relative_mae_pass} ถึงเกณฑ์ผ่าน, ต่ำกว่า {relative_mae_good} ถึงเกณฑ์ดี", who: "ผู้บริหาร", when: "หลังรอบ {decision_date}"}
     - {topic: "ยอดทายเอียงไปทางเดียวต่อเนื่อง (Bias)", to_decide: "Tracking Signal (ความคลาดสะสม ÷ ความคลาดเฉลี่ย) เกินเท่าไหร่ถึงเตือน", now_used: "ร่าง: ±{tracking_signal_limit} (ไม่มีหน่วย)", who: "ผู้บริหาร", when: "ทุกเดือน"}
-    - {topic: "ฝ่ายที่ยอดทายไม่ชนะวิธีง่าย", to_decide: "ใช้วิธีง่ายแทนไหม", now_used: "ยังใช้วิธีเดิม และแสดงผลเทียบ", who: "ผู้บริหาร", when: "หลังรอบ {decision_date}"}
+    - {topic: "ฝ่ายที่ยอดทายไม่ชนะ Naive (ใช้ยอดเดือนล่าสุดเป็นยอดทาย)", to_decide: "ใช้ Naive (ใช้ยอดเดือนล่าสุดเป็นยอดทาย) แทนไหม", now_used: "ยังใช้วิธีเดิม และแสดงผลเทียบ", who: "ผู้บริหาร", when: "หลังรอบ {decision_date}"}
     - {topic: "เป้าการส่งทัน (not-late คือ ส่งไม่ช้ากว่าวันนัด)", to_decide: "บริษัทต้องการกี่ %", now_used: "ให้เลือกเองบนหน้าแผนสต็อก", who: "ผู้บริหาร", when: "ยังไม่กำหนด"}
     - {topic: "Min/Max ที่จำลอง", to_decide: "การส่งทันที่จำลองห่างจากผลจริงได้แค่ไหน", now_used: "ยังไม่กำหนด", who: "ฝ่ายวางแผน", when: "หลังรอบ {decision_date}"}
     - {topic: "แผนวัตถุดิบ", to_decide: "ตรงกับใบสั่งซื้อจริงแค่ไหนถึงใช้สั่งของได้", now_used: "ยังไม่กำหนด หน้าขึ้นว่ายังอยู่ระหว่างตรวจสอบ", who: "ฝ่ายจัดซื้อ", when: "ยังไม่กำหนด"}

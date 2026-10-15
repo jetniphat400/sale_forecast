@@ -140,7 +140,7 @@ REVENUE_TARGET_LINE = re.compile(r"revenue target|target by division|target aggr
 AMOUNT = re.compile(r"(?<![\w.\-/])(\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d+\.\d+)(?![\w\-/])|(?<![\w.\-/])\d[\d,]*(?:\.\d+)?\s?[MB]\b")      # an amount: thousands separators, decimals, or a million / billion suffix
 CUSTOMER_ID = re.compile(r"(?<![A-Za-z0-9])[A-Z]{2}\d{5}(?![A-Za-z0-9])")
 CONTRACT_NO = re.compile(r"(?<![A-Za-z0-9])[A-Z]{2,5}-\d{4}-\d{5}(?![A-Za-z0-9])")
-WINDOWS_USER = re.compile(r"Users[\\/]([^\\/\s`'\"]+)")
+WINDOWS_USER = re.compile(r"Users[\\/]+([^\\/\s`'\"]+)", re.I)       # any number of separators (a doubled backslash in a Python or JSON string), either slash, any case (Users or users)
 CUSTOMER_NAME_COLUMNS = ("cusname", "customer_name", "customername", "end_cusname")
 MIN_NAME_LENGTH = 8
 
@@ -181,6 +181,10 @@ def test_the_guard_recognises_each_format_using_made_up_values_built_from_parts(
     assert not CUSTOMER_ID.search("ABC12345678") and not CONTRACT_NO.search("EEE-F-FL-1040030002")
     assert WINDOWS_USER.search("C:" + chr(92) + "Users" + chr(92) + "someone" + chr(92) + "AppData").group(1) == "someone"
     assert WINDOWS_USER.search("C:" + chr(92) + "Users" + chr(92) + "<user>" + chr(92) + "AppData").group(1) == "<user>"
+    # the forms the first version of the pattern missed (Prompt 34): doubled backslashes, forward slashes, lower case
+    assert WINDOWS_USER.search("C:" + chr(92) * 2 + "Users" + chr(92) * 2 + "someone" + chr(92) * 2 + "x").group(1) == "someone"
+    assert WINDOWS_USER.search("c:/" + "users" + "/someone/AppData").group(1) == "someone"
+    assert WINDOWS_USER.search("C:/" + "Users" + "/" + "<user>" + "/x").group(1) == "<user>"
 
 
 def test_no_customer_id_or_contract_number_in_documents_config_source_or_tests():
@@ -196,7 +200,7 @@ def test_no_personal_login_name_in_a_path_in_documents_config_source_or_tests():
     for f in scope_files():
         for n, line in enumerate(read(f).splitlines(), 1):
             for m in WINDOWS_USER.finditer(line):
-                if m.group(1) not in ("<user>", "Public", "Default", "All"):
+                if m.group(1).lower() not in ("<user>", "public", "default", "all"):
                     found.append(f"{rel(f)}:{n}")
     assert not found, "a personal login name in a path (write <user>): " + ", ".join(found[:20])
     env = os.path.join(PROJECT_ROOT, ".env")

@@ -391,7 +391,7 @@ def gather_baht(forward: dict, price_info: dict) -> dict:
     `market_first_month_baht` = the first forecast month's baht that comes from them."""
     prices = price_info["prices"]
     n = len(forward["months"])
-    divisions, no_price, market_items, market_first = {}, [], [], 0
+    divisions, no_price, market_items, market_first, fit_items = {}, [], [], 0, []
     grand = [0] * n
     for d, types in forward["divisions"].items():
         d_tot, d_types = [0] * n, []
@@ -407,13 +407,15 @@ def gather_baht(forward: dict, price_info: dict) -> dict:
                 if pr["source"] == "market_price":
                     market_items.append(it["item"])
                     market_first += vals[0]
+                elif pr["source"] == "sales_fit_window":
+                    fit_items.append(it["item"])
                 t_items.append({"item": it["item"], "name": it["name"], "values": vals})
                 t_tot = [a + b for a, b in zip(t_tot, vals)]
             d_tot = [a + b for a, b in zip(d_tot, t_tot)]
             d_types.append({"type": t["type"], "values": t_tot, "items": t_items})
         divisions[d] = {"types": d_types, "total": d_tot}
         grand = [a + b for a, b in zip(grand, d_tot)]
-    return {"divisions": divisions, "all": grand, "no_price": no_price, "market_items": market_items, "market_first_month_baht": market_first}
+    return {"divisions": divisions, "all": grand, "no_price": no_price, "market_items": market_items, "fit_items": fit_items, "market_first_month_baht": market_first}
 
 
 def attach_scored_baht(scored: pd.DataFrame, prices: dict) -> pd.DataFrame:
@@ -928,6 +930,8 @@ def render_page(config: dict) -> str:
                     f'<tbody>{summary_rows}</tbody></table></div>')
     n_market = len(baht["market_items"])
     baht_label = report["baht_label"].format(first_month=rv.thai_month_short(price_info["recent"][0]), last_month=rv.thai_month_short(price_info["recent"][-1]))
+    if baht["fit_items"]:
+        baht_label += report["baht_label_fit_part"].format(n=len(baht["fit_items"]), fit_first=rv.thai_month_short(price_info["fit"][0]), fit_last=rv.thai_month_short(price_info["fit"][-1]))
     if n_market:
         baht_label += report["baht_label_market_part"].format(m=n_market)
     no_price_html = ""

@@ -62,7 +62,7 @@ TEXT = {
     "omni_only": "เฉพาะ Omni (ไม่รวมงานประมูล)", "omni_only_tip": "ออเดอร์ของ PEM103 นับเฉพาะช่องทาง Omni Channel งานประมูลไม่อยู่ในแผนนี้",
     "line_pem103_fallback": "ออเดอร์ของ PEM103 ในแผนนี้ใช้ข้อมูลที่ดึงไว้เมื่อ {pulled} เพราะการดึงล่าสุดยังไม่มีข้อมูลช่องทางของออเดอร์ จะใช้ข้อมูลล่าสุดเมื่อรอบดึงถัดไปมีข้อมูลช่องทาง",
     "all_channels": "รวมทุกช่องทาง", "all_channels_tip": "stock และออเดอร์ที่รับแล้วใช้ร่วมกันทุกช่องทาง",
-    "no_master": "ไม่พบรหัสนี้ใน DB (Cube_ItemList)", "no_master_tip": "ไม่มีบันทึกรหัสนี้ในตาราง Cube_ItemList ของ DB ตัวเลขในแผนไม่เปลี่ยน",
+    "no_master": "ไม่พบรหัสนี้ใน DB (Cube_ItemList)", "no_master_tip": "ไม่พบรหัสนี้ใน DB (Cube_ItemList) ตัวเลขในแผนไม่เปลี่ยน",
     "no_master_note": "{n} รหัสไม่พบใน DB (Cube_ItemList) ดึงข้อมูลเมื่อ {pulled}",
     "no_master_unchecked": "ยังไม่ได้ตรวจ {n} รหัสกับ DB (Cube_ItemList) เพราะยังไม่มีข้อมูลที่ดึงไว้ของรหัสเหล่านี้",
     "back_link": "← กลับไปหน้าหลัก (Dashboard)",       # wording of the same link on the Min-Max page

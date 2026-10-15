@@ -510,7 +510,24 @@ def read_outputs(root: str = PROJECT_ROOT, cfg: dict = None, out_dir: str = None
         return os.path.join(out_dir, os.path.basename(p)) if out_dir else p
     with open(target("output_meta_file"), encoding="utf-8") as f:
         meta = json.load(f)
+    if not out_dir:
+        meta = with_actual_page_built_at(meta, root, cfg)
     return (pd.read_csv(target("output_item_month_file")), pd.read_csv(target("output_division_month_file")), meta)
+
+
+def with_actual_page_built_at(meta: dict, root: str, cfg: dict) -> dict:
+    """The Min-Max page's build time as the page itself says it (its embedded `page_built_at`), not the copy recorded in the meta when the plan was computed: the page can be rebuilt after
+    the plan (a page rebuild does not recompute the plan, and the recorded file is hash-checked, so it is never edited), and a recorded 09:06 against a page built at 12:24 must not be what a
+    reader of the meta sees (Prompt 34, item 13). The recorded value stays in `built_at_recorded`. The meta file on disk is not changed."""
+    page_path = path_of(root, cfg["inventory_page_file"])
+    if not os.path.exists(page_path):
+        return meta                                  # no page to read (a plan read back without its page): the recorded value is all there is
+    actual = read_page_data(page_path).get("page_built_at")
+    page = dict(meta.get("page") or {})
+    if actual and page.get("built_at") != actual:
+        page["built_at_recorded"] = page.get("built_at")
+        page["built_at"] = actual
+    return {**meta, "page": page}
 
 
 def _display_path(path: str, root: str) -> str:

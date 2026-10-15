@@ -617,3 +617,156 @@ def test_a_dry_run_reports_a_failed_gate_in_its_log_but_never_exits_4(monkeypatc
     log = _held_gate_log(monkeypatch, tmp_path, "tests")
     _cli_env(monkeypatch, tmp_path, _date(2026, 12, 7), main_log=log)
     assert mr.cli(["--dry-run"]) == 0 and not os.path.exists(mr.MONTHLY_STATE_PATH)
+
+
+# ---- Prompt 34, item 3: every gate failure and every failed or held push ends a real run with exit code 4 and writes no success state
+
+import ast as _ast
+import subprocess as _subprocess
+
+GATE_MARKERS = ["Step 2 (validate) ABORTED", "Step 7d STOPPED", "Step 5 ABORTED: leakage guard refused", "Step 11 STOPPED before staging",
+                "Step 7e (Trend tab) gate FAILED", "Step 7f (executive summary) gate FAILED"]
+
+
+def test_every_gate_raise_site_uses_the_gate_exception():
+    tree = _ast.parse(open(mr.__file__, encoding="utf-8").read())
+    seen = {m: [] for m in GATE_MARKERS}
+    for node in _ast.walk(tree):
+        if isinstance(node, _ast.Raise) and isinstance(node.exc, _ast.Call) and node.exc.args and isinstance(node.exc.func, _ast.Name):
+            text = _ast.unparse(node.exc.args[0])
+            for m in GATE_MARKERS:
+                if m in text:
+                    seen[m].append(node.exc.func.id)
+    assert all(seen[m] for m in GATE_MARKERS), {m: v for m, v in seen.items() if not v}
+    assert all(set(v) == {"MonthlyGateFailed"} for v in seen.values()), seen
+    assert issubclass(mr.MonthlyGateFailed, mr.MonthlyRefreshAbort)
+
+
+def _stub_all(monkeypatch):
+    pushed = _stub_steps(monkeypatch)
+    monkeypatch.setattr(mr, "step7d_vintage_gate", lambda *a, **k: {"vintage_id": 2})
+    return pushed
+
+
+@pytest.mark.parametrize("step,fn", [("2_validate", "step2_validate"), ("5_new_forward_test_vintage", "step5_new_vintage"), ("7d_vintage_gate", "step7d_vintage_gate"),
+                                     ("7e_trend_tab", "step7e_trend_tab"), ("7f_exec_summary", "step7f_exec_summary")])
+def test_a_failed_gate_step_names_itself_in_the_run_log_and_a_real_run_ends_with_exit_code_4_and_no_state(monkeypatch, tmp_path, step, fn):
+    _stub_all(monkeypatch)
+    exc = mr.MonthlyGateFailed(f"{step} gate failed for the test")
+    monkeypatch.setattr(mr, fn, lambda *a, **k: (_ for _ in ()).throw(exc))
+    with pytest.raises(mr.MonthlyGateFailed):
+        _run(monkeypatch, tmp_path)
+    log = json.loads((tmp_path / "logs" / "monthly_refresh_t1.json").read_text(encoding="utf-8"))
+    assert log["failed_step"] == step and "gate failed for the test" in log["error"]["message"]
+    calls = _cli_env(monkeypatch, tmp_path, _date(2026, 12, 7), main_exc=exc)
+    assert mr.cli([]) == 4 and len(calls) == 1 and not os.path.exists(mr.MONTHLY_STATE_PATH)
+    _cli_env(monkeypatch, tmp_path, _date(2026, 12, 7), main_exc=exc)
+    assert mr.cli(["--dry-run"]) == 1                                                       # a dry run keeps its behaviour: a plain failure
+    assert mr.monthly_run_due(_date(2026, 12, 8), mr.read_monthly_state())[0] is True
+
+
+def test_only_the_gate_errors_of_the_trend_and_executive_steps_are_gate_failures(monkeypatch, tmp_path):
+    import build_exec_summary as bx
+    import build_trend_tab as bt
+    staged = str(tmp_path / "staged")
+    os.makedirs(staged)
+    monkeypatch.setattr(mr, "IN_SANDBOX", True)
+    monkeypatch.setattr(bt, "run_build", lambda *a, **k: (_ for _ in ()).throw(bt.TrendTotalsMismatch("totals differ")))
+    with pytest.raises(mr.MonthlyGateFailed):
+        mr.step7e_trend_tab(False, staged)
+    monkeypatch.setattr(bt, "run_build", lambda *a, **k: (_ for _ in ()).throw(bt.TrendTabError("the saved pull is missing")))
+    with pytest.raises(mr.MonthlyRefreshAbort) as e1:
+        mr.step7e_trend_tab(False, staged)
+    assert not isinstance(e1.value, mr.MonthlyGateFailed)
+    monkeypatch.setattr(bx, "run_exec_build", lambda *a, **k: (_ for _ in ()).throw(bx.ExecSummaryError("the total row differs")))
+    with pytest.raises(mr.MonthlyGateFailed):
+        mr.step7f_exec_summary(False, staged)
+    monkeypatch.setattr(bx, "run_exec_build", lambda *a, **k: (_ for _ in ()).throw(bt.TrendTabError("markers missing")))
+    with pytest.raises(mr.MonthlyRefreshAbort) as e2:
+        mr.step7f_exec_summary(False, staged)
+    assert not isinstance(e2.value, mr.MonthlyGateFailed)
+
+
+class _Done:
+    def __init__(self, rc=0, out="", err=""):
+        self.returncode, self.stdout, self.stderr = rc, out, err
+
+
+def _step11_env(monkeypatch, github=True, stray=(), changed=True, add_fails=False, commit_fails=False, push_rc=0):
+    import daily_stock_job
+    monkeypatch.setattr(daily_stock_job, "check_publishing_setup", lambda *a, **k: {})
+    monkeypatch.setattr(mr, "check_tcp_reachable", lambda *a, **k: (github, "unreachable" if not github else None))
+    monkeypatch.setattr(mr, "stray_changes_outside_generated_list", lambda: list(stray))
+    monkeypatch.setattr(mr, "_git_path_changed", lambda p: changed and p == mr.GENERATED_PATHS[0])
+
+    def fake_run(cmd, **k):
+        if (cmd[:2] == ["git", "add"] and add_fails) or (cmd[:2] == ["git", "commit"] and commit_fails):
+            raise _subprocess.CalledProcessError(1, cmd, stderr="refused")
+        return _Done(push_rc if cmd[:2] == ["git", "push"] else 0, "", "rejected" if cmd[:2] == ["git", "push"] and push_rc else "")
+    monkeypatch.setattr(mr.subprocess, "run", fake_run)
+
+
+GATES_OK = ({"passed": True}, {"passed": True}, {"passed": True})
+
+
+def test_every_held_or_failed_push_is_marked_held(monkeypatch):
+    _step11_env(monkeypatch, github=False)
+    assert mr.step11_commit_and_push(False, *GATES_OK)["held"] is True                       # GitHub unreachable
+    _step11_env(monkeypatch, push_rc=1)
+    r = mr.step11_commit_and_push(False, *GATES_OK)
+    assert r["held"] is True and r["pushed"] is False and r["committed"] is True              # the push was refused
+    _step11_env(monkeypatch, commit_fails=True)
+    r = mr.step11_commit_and_push(False, *GATES_OK)
+    assert r["held"] is True and r["committed"] is False                                      # the commit was refused
+    _step11_env(monkeypatch, add_fails=True)
+    assert mr.step11_commit_and_push(False, *GATES_OK)["held"] is True
+    _step11_env(monkeypatch, stray=["forecast/other.html"])
+    with pytest.raises(mr.MonthlyGateFailed):
+        mr.step11_commit_and_push(False, *GATES_OK)                                           # tracked changes outside the generated list
+    assert mr.step11_commit_and_push(False, {"passed": False}, {"passed": True}, {"passed": True})["held"] is True      # a failed gate
+    _step11_env(monkeypatch)
+    ok = mr.step11_commit_and_push(False, *GATES_OK)
+    assert ok["pushed"] is True and "held" not in ok
+    _step11_env(monkeypatch, changed=False)
+    assert "held" not in mr.step11_commit_and_push(False, *GATES_OK)                          # nothing to commit is not a failure
+
+
+@pytest.mark.parametrize("held_result", [{"pushed": False, "held": True, "reason": "GitHub unreachable"}, {"pushed": False, "held": True, "committed": True, "reason": "git push failed: rejected"}])
+def test_a_held_or_failed_push_ends_a_real_run_with_exit_code_4_and_writes_no_state(monkeypatch, tmp_path, held_result):
+    _stub_all(monkeypatch)
+    monkeypatch.setattr(mr, "step11_commit_and_push", lambda *a, **k: held_result)
+    monkeypatch.setattr(mr, "RUNS_DIR", str(tmp_path / "runs"))
+    log = mr.main(dry_run=False, sandbox=False, run_id="t3", run_log_dir=str(tmp_path / "logs"), offline=True, skip_tests=True)
+    assert log["push_held"]["held"] is True and held_result["reason"] in log["push_held"]["reason"]
+    calls = _cli_env(monkeypatch, tmp_path, _date(2026, 12, 7), main_log=log)
+    assert mr.cli([]) == 4 and len(calls) == 1 and not os.path.exists(mr.MONTHLY_STATE_PATH)
+    assert mr.cli(["--dry-run"]) == 0                                                         # a dry run reports it in its log and exits 0
+    monkeypatch.undo()
+    _stub_all(monkeypatch)
+    monkeypatch.setattr(mr, "step11_commit_and_push", lambda *a, **k: {"pushed": True})
+    monkeypatch.setattr(mr, "RUNS_DIR", str(tmp_path / "runs"))
+    pushed_ok = mr.main(dry_run=False, sandbox=False, run_id="t4", run_log_dir=str(tmp_path / "logs"), offline=True, skip_tests=True)
+    assert "push_held" not in pushed_ok
+    _cli_env(monkeypatch, tmp_path, _date(2026, 12, 8), main_log=pushed_ok)
+    assert mr.cli([]) == 0 and mr.read_monthly_state()["last_success_month"] == "2026-12"
+
+
+def test_a_held_gate_or_push_outranks_a_failed_backup_and_anything_inside_step_11_is_a_held_push(monkeypatch, tmp_path):
+    import daily_stock_job
+    held = {"run_id": "r9", "steps": {}, "gates_failed": {"tests": "2 failed"}, "push_held": {"held": True, "gates": ["tests"], "reason": ""}, "backup": {"status": "FAILED"}}
+    _cli_env(monkeypatch, tmp_path, _date(2026, 12, 7), main_log=held)
+    assert mr.cli([]) == 4 and not os.path.exists(mr.MONTHLY_STATE_PATH)                    # the held push is exit code 4 also when the backup failed too
+    _cli_env(monkeypatch, tmp_path, _date(2026, 12, 7), main_log={"run_id": "r9", "steps": {}, "backup": {"status": "FAILED"}})
+    assert mr.cli([]) == 1                                                                   # a failed backup alone keeps its exit code
+    _cli_env(monkeypatch, tmp_path, _date(2026, 12, 7), main_log={"run_id": "r9", "steps": {}, "aborted_at_step": "6_fill_and_score", "gates_failed": {"x": "y"}})
+    assert mr.cli([]) == 1                                                                   # an abort stays an abort
+    _step11_env(monkeypatch)
+    monkeypatch.setattr(daily_stock_job, "check_publishing_setup", lambda *a, **k: (_ for _ in ()).throw(daily_stock_job.DailyStop("setup", "this is not the publishing clone")))
+    r = mr.step11_commit_and_push(False, *GATES_OK)
+    assert r["held"] is True and r["pushed"] is False and "could not publish" in r["reason"]
+    _step11_env(monkeypatch)
+    monkeypatch.setattr(mr, "stray_changes_outside_generated_list", lambda: (_ for _ in ()).throw(_subprocess.CalledProcessError(128, ["git", "status"], stderr="not a git repository")))
+    assert mr.step11_commit_and_push(False, *GATES_OK)["held"] is True
+    _step11_env(monkeypatch)
+    monkeypatch.setattr(mr, "check_tcp_reachable", lambda *a, **k: (_ for _ in ()).throw(OSError("socket error")))
+    assert mr.step11_commit_and_push(False, *GATES_OK)["held"] is True

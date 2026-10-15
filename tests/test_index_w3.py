@@ -922,3 +922,23 @@ def test_the_trend_totals_gate_passes_at_the_rounding_boundary_and_fails_on_a_re
                        "items_qty": (120000, 4250.5, 2162663420.55, 4250.52, 2162663420.55),
                        "items_sale": (120000, 4250.5, 2162663420.55, 4250.5, 2162663420.75)}.items():
         assert name in bt.trend_total_mismatches(*args, completeness), f"a real difference in {name} did not fail the gate"
+
+
+# ---- Prompt 34, item 10: scope lines
+
+def test_the_executive_tab_and_the_min_max_page_state_their_scope():
+    import yaml
+    root = PROJECT_ROOT
+    cfg = yaml.safe_load(open(os.path.join(root, "config", "config.yaml"), encoding="utf-8"))
+    footer = cfg["exec_summary"]["text"]["footer"]
+    assert "Price List" in footer and "Omni Channel" in footer
+    index = open(os.path.join(root, "index.html"), encoding="utf-8").read()
+    assert footer.split("{data_month}")[-1].strip(" ·") in index, "the executive tab of index.html does not carry the footer of the config"
+    scope = cfg["inventory_page"]["scope_line"]
+    assert "Price List" in scope and "Omni Channel" in scope and "รวมทุกช่องทาง" in scope
+    page = open(os.path.join(root, "forecast", "inventory.html"), encoding="utf-8").read()
+    assert 'id="scope-line"' in page and "document.getElementById('scope-line').textContent = DATA.scope_line;" in page
+    data = json.loads(re.search(r'<script type="application/json" id="inventory-data">(.*?)</script>', page, re.S).group(1))
+    assert data["scope_line"] == scope
+    template = open(os.path.join(root, "src", "build_inventory_page.py"), encoding="utf-8").read()
+    assert 'id="scope-line"' in template and "DATA.scope_line" in template

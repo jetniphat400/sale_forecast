@@ -39,6 +39,10 @@ class TrendTabError(Exception):
     """The Trend tab's data could not be built or failed its check; nothing is written."""
 
 
+class TrendTotalsMismatch(TrendTabError):
+    """The Trend tab's totals differ from the completeness query: the gate of step 7e of the monthly run (exit code 4 there)."""
+
+
 # ---------------------------------------------------------------------------------------------------------------------------------------------
 # Spec remark (August 2026 logic, used as given)
 # ---------------------------------------------------------------------------------------------------------------------------------------------
@@ -328,7 +332,7 @@ def build_data(daily: pd.DataFrame, names: pd.DataFrame, completeness: dict, pl:
         # the daily rows of the item sum to its months, exactly (to the cent / to 4 decimals)
         dq = sum(d[1] + d[3] for d in dd_list); ds = sum(d[2] + d[4] for d in dd_list)
         if abs(dq - sum(qty_all)) > 1e-3 or abs(ds - (sum(sa) + sum(sm))) > 0.05:
-            raise TrendTabError(f"{code}: the daily rows do not sum to the months")
+            raise TrendTotalsMismatch(f"{code}: the daily rows do not sum to the months")
         items.append(item)
         status, sp_pl, sp_db = spec_status(list(dict.fromkeys(rows["description"])), item.get("dbn"), has_sales)
         entry = {"s": status}
@@ -341,7 +345,7 @@ def build_data(daily: pd.DataFrame, names: pd.DataFrame, completeness: dict, pl:
     items_q = sum(sum(i["qa"]) + sum(i["qm"]) for i in items); items_s = sum(sum(i["sa"]) + sum(i["sm"]) for i in items)
     bad = trend_total_mismatches(tot_n, tot_q, tot_s, items_q, items_s, completeness)
     if bad:
-        raise TrendTabError(f"the Trend tab's totals differ from the completeness query: {bad}")
+        raise TrendTotalsMismatch(f"the Trend tab's totals differ from the completeness query: {bad}")
     omni = {"months": months, "n31": n_complete, "cates": sorted({i["cat"] for i in items}), "types": sorted({i["pt"] for i in items}), "items": items,
             "meta": {"pull": rv.thai_date_short(completeness["pulled_at"]), "pull_iso": completeness["pulled_at"][:10], "pricelist": pricelist_quarter,
                      "first_year": int(months[0][:4]), "last_year": int(months[-1][:4]),

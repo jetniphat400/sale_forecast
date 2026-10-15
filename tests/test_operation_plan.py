@@ -583,3 +583,25 @@ def test_the_scoped_divisions_rows_come_from_the_latest_pull_when_it_carries_rev
     assert plan["meta"]["backlog_pull"]["scoped_rows_from"] is None                           # no saved week-3 rows are needed
     assert plan["meta"]["counts"]["backlog_rows_dropped_by_channel_scope"] == 1                # the Tendering row of the latest pull
     assert _row(plan, "D101", "2026-10")["backlog_due"] == 50.0                                 # the 500 Tendering units are not in the plan
+
+
+# ---- Prompt 34, item 13: the meta shows the page's actual build time
+
+def test_the_meta_takes_the_build_time_of_the_page_from_the_page_itself(tmp_path):
+    page_dir = tmp_path / "forecast"
+    page_dir.mkdir()
+    (page_dir / "inventory.html").write_text('<html><script type="application/json" id="inventory-data">{"page_built_at": "2026-10-14 12:24 ICT (UTC+7)"}</script></html>', encoding="utf-8")
+    cfg = {"inventory_page_file": "forecast/inventory.html"}
+    stale = {"months": ["2026-10"], "page": {"file": "forecast/inventory.html", "built_at": "2026-10-14 09:06 ICT (UTC+7)", "default_not_late_pct": 98.0}}
+    out = op.with_actual_page_built_at(stale, str(tmp_path), cfg)
+    assert out["page"]["built_at"] == "2026-10-14 12:24 ICT (UTC+7)" and out["page"]["built_at_recorded"] == "2026-10-14 09:06 ICT (UTC+7)"
+    assert out["page"]["default_not_late_pct"] == 98.0 and out["months"] == ["2026-10"] and stale["page"]["built_at"].startswith("2026-10-14 09:06")      # the input is not edited
+    same = {"page": {"built_at": "2026-10-14 12:24 ICT (UTC+7)"}}
+    assert op.with_actual_page_built_at(same, str(tmp_path), cfg)["page"] == {"built_at": "2026-10-14 12:24 ICT (UTC+7)"}
+
+
+def test_the_recorded_plan_read_back_carries_the_build_time_the_page_on_disk_says():
+    _recorded()
+    _, _, meta = op.read_outputs(PROJECT_ROOT)
+    actual = op.read_page_data(op.path_of(PROJECT_ROOT, REAL_CFG["inventory_page_file"]))["page_built_at"]
+    assert meta["page"]["built_at"] == actual

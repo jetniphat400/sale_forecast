@@ -193,6 +193,11 @@ class MonthlyRefreshAbort(Exception):
     rule: never retry the database)."""
 
 
+class MonthlyGateFailed(MonthlyRefreshAbort):
+    """A gate of the run failed (the data validation of step 2, the leakage guard, the vintage gate 7d, the Trend totals gate 7e, the executive gate 7f, or a held step 11). A real run
+    ends with exit code 4, the run log names the failed step and the reason, and the monthly success state is not written, so the next weekday start runs again (Prompt 34, item 3)."""
+
+
 class MonthlyLoginRefused(MonthlyRefreshAbort):
     """A database stage ended with exit code 3: the server refused the login. The run stops (exit code 3) and no later stage logs in."""
 
@@ -402,31 +407,31 @@ def step2_validate() -> dict:
 
     checks = {}
     if len(monthly_qty) == 0:
-        raise MonthlyRefreshAbort("Step 2 (validate) ABORTED: processed_all_divisions_monthly_qty.csv has 0 rows.")
+        raise MonthlyGateFailed("Step 2 (validate) ABORTED: processed_all_divisions_monthly_qty.csv has 0 rows.")
     checks["zero_row_guard_qty"] = "passed (nonzero rows)"
 
     if (monthly_qty["qty"] < 0).any():
-        raise MonthlyRefreshAbort("Step 2 (validate) ABORTED: negative qty found in the freshly pulled monthly series.")
+        raise MonthlyGateFailed("Step 2 (validate) ABORTED: negative qty found in the freshly pulled monthly series.")
     checks["no_negative_qty"] = "passed"
 
     if (monthly_sale["sale"] < 0).any():
-        raise MonthlyRefreshAbort("Step 2 (validate) ABORTED: negative sale found in the freshly pulled monthly series.")
+        raise MonthlyGateFailed("Step 2 (validate) ABORTED: negative sale found in the freshly pulled monthly series.")
     checks["no_negative_sale"] = "passed"
 
     dupes = monthly_qty.duplicated(subset=["itemcode", "year_month"]).sum()
     if dupes:
-        raise MonthlyRefreshAbort(f"Step 2 (validate) ABORTED: {dupes} duplicate (itemcode, year_month) rows.")
+        raise MonthlyGateFailed(f"Step 2 (validate) ABORTED: {dupes} duplicate (itemcode, year_month) rows.")
     checks["no_duplicate_item_month_rows"] = "passed"
 
     unmatched = set(monthly_qty["itemcode"].unique()) - set(scope["code"].unique())
     if unmatched:
-        raise MonthlyRefreshAbort(f"Step 2 (validate) ABORTED: {len(unmatched)} itemcodes in the monthly "
+        raise MonthlyGateFailed(f"Step 2 (validate) ABORTED: {len(unmatched)} itemcodes in the monthly "
                                   f"series have no match in the scope file: {sorted(unmatched)[:10]}...")
     checks["all_itemcodes_matched_to_scope"] = "passed"
 
     n_months = monthly_qty.groupby("itemcode")["year_month"].nunique()
     if n_months.nunique() != 1:
-        raise MonthlyRefreshAbort(f"Step 2 (validate) ABORTED: not every item has the same number of "
+        raise MonthlyGateFailed(f"Step 2 (validate) ABORTED: not every item has the same number of "
                                   f"months in the monthly grid: {n_months.value_counts().to_dict()}")
     checks["every_item_has_equal_month_count"] = f"passed ({n_months.iloc[0]} months each)"
 
@@ -901,7 +906,7 @@ def step5_new_vintage(dry_run: bool, force_new_vintage: bool = False) -> dict:
     try:
         computed = compute_new_vintage()
     except LeakageGuardError as e:
-        raise MonthlyRefreshAbort(f"Step 5 ABORTED: leakage guard refused the new vintage's fit window: {e}")
+        raise MonthlyGateFailed(f"Step 5 ABORTED: leakage guard refused the new vintage's fit window: {e}")
     _LAST_COMPUTED_VINTAGE = computed
 
     result = {"skipped": False, "vintage_id": computed["vintage_id"], "n_rows_computed": computed["n_rows"],
@@ -1094,7 +1099,7 @@ def _short_path(path: str) -> str:
 
 def _mask(message: str, root: str = None) -> str:
     """No resolved backup path and no Windows login in any message or log line, in any form: the OneDrive root and the user profile folder as written with back or forward slashes, doubled
-    back slashes, any letter case, the bare user name, and any C:\\Users\\<name> path. The root becomes %OneDriveCommercial%, the rest <windows-login>."""
+    back slashes, any letter case, the bare user name, and any C:\\Users\\<user> path. The root becomes %OneDriveCommercial%, the rest <windows-login>."""
     env = load_config()["backup"]["env_var"]
     root = root or os.environ.get(env) or ""
     user = os.environ.get("USERNAME") or ""
@@ -1534,7 +1539,7 @@ def vintage_gate(g1: dict, g2: dict, g3: dict, material: dict) -> dict:
     stages = {"G1 (latest vintage of the forward-test log)": g1, "G2 (Max-Min page data)": g2, "G3 (operation plan)": g3, "material plan": material}
     ids = {name: s.get("vintage_id") for name, s in stages.items()}
     if None in ids.values() or len(set(ids.values())) != 1:
-        raise MonthlyRefreshAbort("Step 7d STOPPED: the stages do not carry one forecast vintage: " + "; ".join(
+        raise MonthlyGateFailed("Step 7d STOPPED: the stages do not carry one forecast vintage: " + "; ".join(
             f"{n} = {v if v is not None else 'none recorded'} ({stages[n].get('source', '?')})" for n, v in ids.items()))
     return {"vintage_id": next(iter(ids.values())), "stages": {n: stages[n].get("source") for n in stages}}
 
@@ -1579,6 +1584,8 @@ def step7e_trend_tab(dry_run: bool, staged_dir: str) -> dict:
         shutil.copyfile(os.path.join(PROJECT_ROOT, "index.html"), index_path)
     try:
         report = build_trend_tab.run_build(PROJECT_ROOT, index_path=index_path)
+    except build_trend_tab.TrendTotalsMismatch as e:
+        raise MonthlyGateFailed(f"Step 7e (Trend tab) gate FAILED: {e}") from e
     except build_trend_tab.TrendTabError as e:
         raise MonthlyRefreshAbort(f"Step 7e (Trend tab) STOPPED: {e}") from e
     report["gate"] = "the tab's totals equal the completeness query"
@@ -1604,6 +1611,8 @@ def step7f_exec_summary(dry_run: bool, staged_dir: str, step7_result: dict = Non
     sales_path = (step7_result or {}).get("rendered_path")
     try:
         report = build_exec_summary.run_exec_build(PROJECT_ROOT, index_path=index_path, sales_report_path=sales_path, plan_dir=plan_dir)
+    except build_exec_summary.ExecSummaryError as e:
+        raise MonthlyGateFailed(f"Step 7f (executive summary) gate FAILED: {e}") from e
     except TrendTabError as e:
         raise MonthlyRefreshAbort(f"Step 7f (executive summary) STOPPED: {e}") from e
     report["written_to_tracked_path"] = False if index_path else not dry_run
@@ -1864,20 +1873,29 @@ def step11_commit_and_push(dry_run: bool, step8: dict, step9: dict, step10: dict
                                   "step9_sensitive_scan_passed": step9["passed"],
                                   "step10_change_magnitude_passed": step10["passed"]}}
     if not gates_passed:
-        return {"pushed": False, "reason": "one or more gates (steps 8-10) failed -- held for human review.",
+        return {"pushed": False, "held": True, "reason": "one or more gates (steps 8-10) failed -- held for human review.",
                 "gate_results": {"step8_tests_passed": step8["passed"],
                                   "step9_sensitive_scan_passed": step9["passed"],
                                   "step10_change_magnitude_passed": step10["passed"]}}
+    try:
+        return _commit_and_push(gates_passed)
+    except MonthlyGateFailed:
+        raise
+    except Exception as e:      # noqa: BLE001 -- a publishing setup that is refused, a git status that fails, a reachability check that raises: the push is held (exit code 4), never a plain failure
+        return {"pushed": False, "held": True, "reason": _mask(f"step 11 could not publish: {type(e).__name__}: {e}")[:800]}
+
+
+def _commit_and_push(gates_passed: bool) -> dict:
     # Real commit+push logic (never exercised by --dry-run, and never invoked by this project's
     # own tooling without an explicit, human-approved real run -- see this task's own scope note).
     import daily_stock_job
     daily_stock_job.check_publishing_setup(PROJECT_ROOT, load_config())          # decision D1: only the publishing clone publishes
     github_reachable, github_err = check_tcp_reachable("github.com", 443)
     if not github_reachable:
-        return {"pushed": False, "reason": f"GitHub unreachable ({github_err}) -- held, not pushed."}
+        return {"pushed": False, "held": True, "reason": f"GitHub unreachable ({github_err}) -- held, not pushed."}
     stray = stray_changes_outside_generated_list()
     if stray:
-        raise MonthlyRefreshAbort(
+        raise MonthlyGateFailed(
             "Step 11 STOPPED before staging: these paths are staged or modified but are not on the list of files the "
             "run generates (GENERATED_PATHS): " + ", ".join(stray) + ". Nothing was staged, committed or pushed; "
             "a person must look at them.")
@@ -1885,10 +1903,15 @@ def step11_commit_and_push(dry_run: bool, step8: dict, step9: dict, step10: dict
     if not to_stage:
         return {"pushed": False, "committed": False, "nothing_to_commit": True,
                 "reason": "nothing the run generates has changed -- no commit."}
-    subprocess.run(["git", "add", "--"] + to_stage, cwd=PROJECT_ROOT, check=True)
-    subprocess.run(["git", "commit", "-m", "Automated monthly refresh"], cwd=PROJECT_ROOT, check=True)
+    try:
+        subprocess.run(["git", "add", "--"] + to_stage, cwd=PROJECT_ROOT, check=True, capture_output=True, text=True, encoding="utf-8", errors="replace")
+        subprocess.run(["git", "commit", "-m", "Automated monthly refresh"], cwd=PROJECT_ROOT, check=True, capture_output=True, text=True, encoding="utf-8", errors="replace")
+    except subprocess.CalledProcessError as e:
+        return {"pushed": False, "held": True, "committed": False, "reason": _mask(f"git {e.cmd[1]} failed (exit {e.returncode}): {(e.stderr or '')[-800:]}")}
     push = subprocess.run(["git", "push", "origin", "main"], cwd=PROJECT_ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace")
-    return {"pushed": push.returncode == 0, "reason": push.stdout + push.stderr}
+    if push.returncode != 0:
+        return {"pushed": False, "held": True, "committed": True, "reason": _mask("git push failed: " + (push.stdout + push.stderr)[-800:])}
+    return {"pushed": True, "reason": push.stdout + push.stderr}
 
 
 # ---------------------------------------------------------------------------------------------
@@ -2078,6 +2101,7 @@ def main(dry_run: bool, force_new_vintage: bool = False, sandbox: bool = False, 
     failed = {name: g.get("reason", "") for name, g in run_log["gate_outcomes"]["gates"].items() if g["status"] == GATE_FAILED}
     if failed:
         run_log["gates_failed"] = failed
+    if failed or (step11.get("held") and not (dry_run or sandbox)):
         run_log["push_held"] = {"held": True, "gates": sorted(failed), "reason": step11.get("reason", "")}
     run_log["finished_at"] = datetime.now().isoformat(timespec="seconds")
     _write_run_log(run_log, run_id, run_log_dir)
@@ -2117,8 +2141,8 @@ def _runner_lock(real_run: bool):
 def cli(argv=None) -> int:
     """Command line entry. Exit codes: 0 a run that completed every step (or a start that was not due: a weekend, before this month's run day, or already done this month: nothing is done, before the
     lock check, the preflight or any login); 1 an abort or failure; 2 a run that completed but with an auxiliary pull that failed (a WARN line, the previous file kept); 3 the database login was refused (the
-    lock file is written; no job logs in until it is deleted); 4 a real run in which a gate failed (tests, sensitive-content scan, change-magnitude gates): the push is held for human review, the
-    run log names the failed gates (`gates_failed`), the success state is NOT written, so the next weekday start runs again. The run log has already been written by main()."""
+    lock file is written; no job logs in until it is deleted); 4 a real run in which a gate failed (step 2 validation, leakage guard, vintage, Trend totals, executive, tests, sensitive-content scan, change-magnitude gates) or the push was held or failed (GitHub
+    unreachable, commit or push refused): the run log names the failed step or gates and the reason, the success state is NOT written, so the next weekday start runs again. The run log has already been written by main()."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--dry-run", action="store_true",
                          help="Exercise every step's logic without writing/committing/pushing anything tracked.")
@@ -2163,16 +2187,21 @@ def cli(argv=None) -> int:
         db_module_for_exit.write_refused_lock("monthly_refresh.py")
         logger.error("MONTHLY REFRESH STOPPED, the database login was refused: %s", e)
         return EXIT_LOGIN_REFUSED
+    except MonthlyGateFailed as e:      # a gate of the run failed: the run log names the step and the reason (record()); a real run ends with exit code 4 and writes no success state
+        logger.error("MONTHLY REFRESH HELD, a gate failed: %s", e)
+        return EXIT_GATE_HELD if real_run else EXIT_ABORTED
     except Exception as e:      # noqa: BLE001 -- the run log was written where the failure happened
         logger.error("MONTHLY REFRESH FAILED: %s: %s", type(e).__name__, e)
         return EXIT_ABORTED
     print(json.dumps(log, indent=2, default=str))
-    if "aborted_at_step" in log or log.get("backup", {}).get("status") == "FAILED":
+    if "aborted_at_step" in log:
         return EXIT_ABORTED
-    if log.get("gates_failed") and real_run:
-        logger.error("MONTHLY REFRESH HELD: gate(s) failed (%s); the push is held for human review, the success state is not written and the next weekday start runs again.",
-                     ", ".join(sorted(log["gates_failed"])))
+    if (log.get("gates_failed") or log.get("push_held")) and real_run:
+        logger.error("MONTHLY REFRESH HELD: gate(s) failed (%s) or the push was held or failed (%s); the success state is not written and the next weekday start runs again.",
+                     ", ".join(sorted(log.get("gates_failed", {}))) or "none", (log.get("push_held") or {}).get("reason", "")[:200])
         return EXIT_GATE_HELD
+    if log.get("backup", {}).get("status") == "FAILED":
+        return EXIT_ABORTED
     if log.get("partial"):
         return EXIT_PARTIAL
     if real_run:

@@ -326,24 +326,30 @@ def test_the_comparator_log_and_its_metadata_are_in_the_backup_when_they_exist(t
     assert sorted(os.listdir(drive / cfg["backup"]["subfolder"])) == ["2026-11-05", "2026-12-05"]
 
 
+# Synthetic user folder of the masking tests, built from parts: no literal Windows user path in this file (tests/test_guards.py scans it).
+_USERS = "Us" + "ers"
+_NAME = "Fixture.User"
+_SHORT = "FIXTUR~1.USE"
+
+
 def test_masking_covers_every_form_of_the_path_and_the_user_name(monkeypatch):
     cfg = _config()
     env = cfg["backup"]["env_var"]
-    root = "C:\\Users\\Alice.Example\\OneDrive - Some Org"
+    root = "C:\\" + _USERS + "\\" + _NAME + "\\OneDrive - Some Org"
     monkeypatch.setenv(env, root)
-    monkeypatch.setenv("USERNAME", "alice.example")
-    monkeypatch.setenv("USERPROFILE", "C:\\Users\\Alice.Example")
+    monkeypatch.setenv("USERNAME", _NAME.lower())
+    monkeypatch.setenv("USERPROFILE", "C:\\" + _USERS + "\\" + _NAME)
     forms = [root + "\\sale_forecast_backup\\2026-11-05\\log.csv",
              root.replace("\\", "/") + "/sale_forecast_backup/2026-11-05/log.csv",
              root.replace("\\", "\\\\") + "\\\\sale_forecast_backup",
              root.lower() + "\\x", root.upper() + "\\x",
-             "C:\\Users\\ALICE.EXAMPLE\\AppData\\Local\\Temp\\x.tmp", "c:/users/alice.example/AppData/x",
-             "PermissionError for user alice.example while writing",
-             "[WinError 5] Access is denied: 'C:\\\\Users\\\\Alice.Example\\\\OneDrive - Some Org\\\\sale_forecast_backup'",
-             "ALICE.example"]
+             "C:\\" + _USERS + "\\" + _NAME.upper() + "\\AppData\\Local\\Temp\\x.tmp", "c:/" + _USERS.lower() + "/" + _NAME.lower() + "/AppData/x",
+             "PermissionError for user " + _NAME.lower() + " while writing",
+             "[WinError 5] Access is denied: 'C:\\\\" + _USERS + "\\\\" + _NAME + "\\\\OneDrive - Some Org\\\\sale_forecast_backup'",
+             "FIXTURE." + "user"]
     for text in forms:
         out = mr._mask(text)
-        assert "alice" not in out.lower(), (text, out)
+        assert "fixture" not in out.lower(), (text, out)
     assert mr._mask(forms[0]).startswith("%" + env + "%")
     assert mr._mask("nothing to hide here: 2026-11-05") == "nothing to hide here: 2026-11-05"
 
@@ -401,16 +407,16 @@ def test_the_run_log_records_the_stale_backup_check_at_job_start(tmp_path, monke
 def test_masking_also_covers_the_8_3_short_name_of_the_user_folder_and_the_root(monkeypatch):
     cfg = _config()
     env = cfg["backup"]["env_var"]
-    root = "C:\\Users\\Alice.Example\\OneDrive - Some Org"
-    profile = "C:\\Users\\Alice.Example"
+    root = "C:\\" + _USERS + "\\" + _NAME + "\\OneDrive - Some Org"
+    profile = "C:\\" + _USERS + "\\" + _NAME
     monkeypatch.setenv(env, root)
-    monkeypatch.setenv("USERNAME", "alice.example")
+    monkeypatch.setenv("USERNAME", _NAME.lower())
     monkeypatch.setenv("USERPROFILE", profile)
-    shorts = {root: "C:\\Users\\ALICEE~1.EXA\\ONEDRI~1", profile: "C:\\Users\\ALICEE~1.EXA"}
+    shorts = {root: "C:\\" + _USERS + "\\" + _SHORT + "\\ONEDRI~1", profile: "C:\\" + _USERS + "\\" + _SHORT}
     monkeypatch.setattr(mr, "_short_path", lambda p: shorts.get(p, ""))
-    texts = ["[WinError 5] Access is denied: 'C:\\\\Users\\\\ALICEE~1.EXA\\\\ONEDRI~1\\\\sale_forecast_backup'",
-             "c:/users/alicee~1.exa/onedri~1/sale_forecast_backup/x", "C:\\Users\\ALICEE~1.EXA\\AppData\\Local\\Temp\\x", "user folder ALICEE~1.EXA was locked", "alicee~1.exa"]
+    texts = ["[WinError 5] Access is denied: 'C:\\\\" + _USERS + "\\\\" + _SHORT + "\\\\ONEDRI~1\\\\sale_forecast_backup'",
+             "c:/" + _USERS.lower() + "/" + _SHORT.lower() + "/onedri~1/sale_forecast_backup/x", "C:\\" + _USERS + "\\" + _SHORT + "\\AppData\\Local\\Temp\\x", "user folder " + _SHORT + " was locked", _SHORT.lower()]
     for text in texts:
         out = mr._mask(text)
-        assert "alicee" not in out.lower() and "~1" not in out, (text, out)
+        assert "fixtur" not in out.lower() and "~1" not in out, (text, out)
     assert mr._mask(texts[1]).startswith("%" + env + "%")

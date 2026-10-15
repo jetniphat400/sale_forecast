@@ -408,3 +408,16 @@ def test_no_brace_is_left_in_the_visible_text_of_a_built_page(name):
     with open(path, encoding="utf-8") as f:
         text = " ".join(visible_lines(f.read()))
     assert "{" not in text and "}" not in text, f"{name}: a placeholder or a brace is left in the visible text"
+
+
+# ---- Prompt 34, item 2: the plain-method wording of the forecast comparison is "Naive (ใช้ยอดเดือนล่าสุดเป็นยอดทาย)", never the old label
+
+def test_the_old_label_for_the_naive_method_appears_nowhere_a_reader_or_the_builders_can_see_it():
+    old = "วิธี" + "ง่าย"
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    paths = [os.path.join(root, "index.html"), os.path.join(root, "docs", "user_manual.md"), os.path.join(root, "config", "manual_notes.yaml"), os.path.join(root, "config", "config.yaml")]
+    for folder in ("forecast", "data"):
+        paths += [os.path.join(root, folder, n) for n in sorted(os.listdir(os.path.join(root, folder))) if n.endswith((".html", ".json"))]
+    assert len(paths) >= 10
+    found = [os.path.relpath(p, root).replace("\\", "/") for p in paths if old in open(p, encoding="utf-8", errors="ignore").read()]
+    assert not found, f"the old label for the Naive method is still in: {found}"

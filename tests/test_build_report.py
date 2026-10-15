@@ -450,7 +450,11 @@ def test_the_unit_switch_and_the_baht_texts_are_on_the_page_verbatim_and_default
     vf, info = _page_prices()
     first, last = rv.thai_month_short(info["recent"][0]), rv.thai_month_short(info["recent"][-1])
     n_market = sum(1 for p in info["prices"].values() if p["source"] == "market_price")
-    label = f"มูลค่าคิดจากราคาขายเฉลี่ยต่อชิ้นของแต่ละรหัส (Average selling price) {first} ถึง {last}" + (f" · {n_market} รหัสที่ไม่เคยขายใช้ราคาตั้ง (List price) ใน Price List แทน" if n_market else "")
+    n_fit = sum(1 for p in info["prices"].values() if p["source"] == "sales_fit_window")
+    fit_first, fit_last = rv.thai_month_short(info["fit"][0]), rv.thai_month_short(info["fit"][-1])
+    label = (f"มูลค่าคิดจากราคาขายเฉลี่ยต่อชิ้นของแต่ละรหัส (Average selling price) 12 เดือนล่าสุด {first} ถึง {last}"
+             + (f" · {n_fit} รหัสที่ไม่ได้ขายใน 12 เดือนนั้นใช้ราคาขายเฉลี่ยของทั้งช่วงที่ใช้ทายยอด ({fit_first} ถึง {fit_last}) แทน" if n_fit else "")
+             + (f" · {n_market} รหัสที่ไม่มียอดขายเลยในช่วงที่ใช้ทายใช้ราคาตั้ง (List price) ใน Price List แทน" if n_market else ""))
     assert f'id="baht-label">{label}</p>' in sec
     assert ("▸ ยอดทายคิดเป็นเงินเท่าไหร่ต่อเดือน ▸ ตัวเลข = ยอดทาย (ชิ้น) × ราคาขายเฉลี่ยของรหัสนั้น หน่วยบาท ▸ ถ้าราคาขายข้างหน้าต่างจากช่วงที่ใช้เฉลี่ย ยอดเงินจะคลาดตาม") in text
     assert "เป้า" not in sec.split('id="baht-explanation"')[1].split("</p>")[0]            # no revenue-target sentence (Prompt 28)
@@ -775,3 +779,24 @@ def test_the_notice_and_delivery_figures_are_labelled_as_pem101_where_they_are_s
     assert "ระยะแจ้งล่วงหน้าของลูกค้า PEM101 (Customer notice)" in text
     assert f"ตรวจจากสินค้า PEM101 ({n} รหัส) แล้วกระทบประมาณ" in text and "รายการของ PEM101 ไม่ได้ตั้ง" in text
     assert "▸ ลูกค้า PEM101 (128 รหัส) สั่งของล่วงหน้านานแค่ไหน" in text and "▸ PEM101 (128 รหัส) ส่งของให้ลูกค้าทันวันนัดกี่ % ต่อปี" in text
+
+
+# ---- Prompt 34, item 12: the price note states the price chain of the code
+
+def test_the_baht_price_note_states_the_price_chain_of_the_code_and_the_page_carries_it():
+    cfg = load_config()
+    assert cfg["report"]["price_basis"]["order"][:3] == ["sales_recent_window", "sales_fit_window", "market_price"]
+    report = cfg["report"]
+    recent = report["baht_label"].format(first_month="A", last_month="B")
+    fit = report["baht_label_fit_part"].format(n=7, fit_first="C", fit_last="D")
+    market = report["baht_label_market_part"].format(m=3)
+    assert "12 เดือนล่าสุด" in recent and "ไม่ได้ขายใน 12 เดือนนั้น" in fit and "ทั้งช่วงที่ใช้ทายยอด" in fit and "Price List" in market and "List price" in market
+    forward = {"months": ["2026-09", "2026-10"], "divisions": {"D": [{"type": "T", "items": [{"item": "a", "name": "", "values": [1, 1]}, {"item": "b", "name": "", "values": [1, 1]},
+                                                                                              {"item": "c", "name": "", "values": [1, 1]}, {"item": "d", "name": "", "values": [1, 1]}]}]}}
+    prices = {"a": {"price": 10.0, "source": "sales_recent_window"}, "b": {"price": 11.0, "source": "sales_fit_window"}, "c": {"price": 12.0, "source": "market_price"},
+              "d": {"price": None, "source": "none"}}
+    baht = build_report.gather_baht(forward, {"prices": prices})
+    assert baht["fit_items"] == ["b"] and baht["market_items"] == ["c"] and [r["item"] for r in baht["no_price"]] == ["d"]
+    page = open(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "forecast", "sales_report.html"), encoding="utf-8").read()
+    label = re.search(r'id="baht-label">(.*?)</p>', page, re.S).group(1)
+    assert "12 เดือนล่าสุด" in label and "ไม่ได้ขายใน 12 เดือนนั้นใช้ราคาขายเฉลี่ยของทั้งช่วงที่ใช้ทายยอด" in label and "ใช้ราคาตั้ง (List price) ใน Price List" in label

@@ -375,6 +375,7 @@ def build_page(**data_sources) -> str:
   <h1 id="page-title">แผนสต็อค — Inventory Min/Max Scenario</h1>
   <p class="scope-note" id="data-line"></p>
   <p class="scope-note" id="page-timestamps-note"></p>
+  <p class="scope-note" id="scope-line"></p>
 
   <div class="layout">
   <aside id="control-panel" class="control-panel">
@@ -1175,6 +1176,7 @@ function renderStockLabels() {{
 function renderDataLine() {{
   document.getElementById('data-line').textContent =
     'Forecast (ยอดทาย) รันเมื่อ ' + DATA.forecast_round_label + ' · ข้อมูล stock จาก DB (Cube_Inventory_Exact) ดึงเมื่อ ' + (STOCK_OK ? thaiDateTime(STOCK.pull_time) : STOCK_UNKNOWN);
+  document.getElementById('scope-line').textContent = DATA.scope_line;
 }}
 
 function startPage() {{

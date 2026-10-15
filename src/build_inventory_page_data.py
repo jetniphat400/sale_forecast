@@ -658,6 +658,7 @@ def build_data(inventory_source=None, sales_source=None, pull_labels: dict = Non
         # fields touched on this page this task; Min/Max logic, segmentation, PEM107 alert etc.
         # are explicitly out of scope, per task instruction, for a separate task 2b).
         "page_built_at": datetime.now().strftime("%Y-%m-%d %H:%M") + " ICT (UTC+7) -- this build run's own clock",
+        "scope_line": config["inventory_page"]["scope_line"],          # one scope line under the page heading (Prompt 34, item 10)
         "model_calibrated_at": model_calibrated_at(),
         "division_order": PILOT_DIVISIONS,
         "default_division": "PEM101",

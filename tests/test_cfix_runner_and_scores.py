@@ -302,8 +302,8 @@ def test_a_real_run_and_step_11_refuse_outside_the_publishing_clone(tmp_path, mo
     monkeypatch.setattr(mr, "main", lambda *a, **k: (_ for _ in ()).throw(AssertionError("step 1 must not start")))
     monkeypatch.setattr(mr, "monthly_run_due", lambda *a, **k: (True, "run day"))          # the run-day gate is tested elsewhere; here the run is due
     assert mr.cli([]) == 1                                                                 # refused before any step
-    with pytest.raises(daily_stock_job.DailyStop, match="only from the publishing clone"):
-        mr.step11_commit_and_push(False, *GATES)
+    held = mr.step11_commit_and_push(False, *GATES)                                        # step 11 refuses too: a held push (exit code 4 of a real run), nothing is staged or pushed (Prompt 34, item 3)
+    assert held["held"] is True and held["pushed"] is False and "only from the publishing clone" in held["reason"]
 
 
 # ------------------------------------------------------------------ the pilot view's recorded data (week 4, computed only)
