@@ -373,9 +373,9 @@ def test_the_tracked_page_equals_a_fresh_build_from_the_recorded_plan(tmp_path):
 
 # ------------------------------------------------------------------ assumptions
 NEW_ASSUMPTIONS = [
-    ("open_production_orders", "ใบสั่งผลิตที่กำลังทำ", "วันกำหนดเสร็จใน DB (Cube_Production_Order) ไม่ตรงกับวันเสร็จจริง", "ไม่นำมาหักจากแผน (Open production orders ยังไม่ถูกนับ)", "แผนการผลิต"),
-    ("fmto_fmts_warehouses", "คลัง FMTO และ FMTS", "ยังไม่รู้ว่าเป็นของพร้อมขายไหม", "ไม่นับ", "stock ที่ใช้เทียบกับ Min และแผนการผลิต"),
-    ("forecast_range", "Forecast", "Forecast = ยอดขายที่ระบบคาดการณ์ · ยังไม่มีช่วงสูง-ต่ำ", "ใช้ค่าเดียวต่อเดือน (point forecast)", "แผนการผลิต"),
+    ("open_production_orders", "ใบสั่งผลิตที่กำลังทำ", "วันกำหนดเสร็จใน DB (Cube_Production_Order) ไม่ตรงกับวันเสร็จจริง", "ไม่นำมาหักจากแผน (Open production orders ยังไม่ถูกนับ)", "Production Plan"),
+    ("fmto_fmts_warehouses", "คลัง FMTO และ FMTS", "ยังไม่รู้ว่าเป็นของพร้อมขายไหม", "ไม่นับ", "stock ที่ใช้เทียบกับ Min และ Production Plan"),
+    ("forecast_range", "Forecast", "Forecast = ยอดขายที่ระบบคาดการณ์ · ยังไม่มีช่วงสูง-ต่ำ", "ใช้ค่าเดียวต่อเดือน (point forecast)", "Production Plan"),
     ("calibration_window", "ช่วงข้อมูลที่ใช้ปรับ Min/Max", "ถ้าใช้ช่วงสั้นลง lead time ที่ได้จะแคบลง", "{window}", "Min/Max ของ PEM101"),
 ]
 
@@ -546,7 +546,7 @@ def test_the_two_min_max_texts_the_link_and_the_heading_suffix_show(edge, site):
     # the note sits directly under the main item table
     assert edge.ev("document.getElementById('item-table').parentElement.nextElementSibling.id") == "item-table-note"
     link = edge.ev("(function(){const a=document.getElementById('plan-link'); return [a.innerText.trim(), a.getAttribute('href')]})()")
-    assert link == ["แผนการผลิต", "operation_plan.html"]
+    assert link == ["Production Plan", "operation_plan.html"]
     edge.ev("document.getElementById('division-select').value='PEM107'; onDivisionChange(); 1")
     edge.pump(0.4)
     assert edge.ev("getComputedStyle(document.getElementById('item-table-note')).display") == "none"
@@ -616,7 +616,7 @@ def test_the_material_plan_page_shows_its_approved_text_sections_and_tables(edge
     edge.open(site + "/forecast/material_plan.html")
     assert _wait(edge, "document.querySelectorAll('#material-table tbody tr').length > 0")
     assert edge.ev("document.getElementById('page-title').innerText") == f"แผนวัตถุดิบ {v['n_months']} เดือน"
-    assert edge.ev("document.getElementById('data-line').innerText") == f"จากแผนการผลิตรอบ {v['plan_month']} · stock วัตถุดิบดึงเมื่อ {v['pull_time']}"
+    assert edge.ev("document.getElementById('data-line').innerText") == f"จาก Production Plan รอบ {v['plan_month']} · stock วัตถุดิบดึงเมื่อ {v['pull_time']}"
     n = v["n_days"]
     assert n == 30
     assert edge.ev("document.getElementById('within-title').innerText") == f"ต้องสั่งภายใน {n} วัน"

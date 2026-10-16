@@ -444,4 +444,4 @@ def test_the_pem101_section_says_its_min_and_max_come_from_sales_history(desktop
 def test_the_page_has_no_bar_and_keeps_its_back_link_and_its_link_to_the_operation_plan(desktop):
     assert desktop.ev("document.getElementById('page-nav')") is None
     assert desktop.ev("document.querySelector('a.back-link').nextElementSibling.id") == "plan-link"
-    assert desktop.ev("(function(){const a=document.getElementById('plan-link'); return [a.innerText.trim(), a.getAttribute('href')]})()") == ["แผนการผลิต", "operation_plan.html"]
+    assert desktop.ev("(function(){const a=document.getElementById('plan-link'); return [a.innerText.trim(), a.getAttribute('href')]})()") == ["Production Plan", "operation_plan.html"]

@@ -371,7 +371,7 @@ def build_page(**data_sources) -> str:
 </head>
 <body>
 <div class="wrap">
-  <a class="back-link" href="../index.html">&larr; กลับไปหน้าหลัก (Dashboard)</a> &nbsp;·&nbsp; <a class="back-link" id="plan-link" href="operation_plan.html">แผนการผลิต</a>
+  <a class="back-link" href="../index.html">&larr; กลับไปหน้าหลัก (Dashboard)</a> &nbsp;·&nbsp; <a class="back-link" id="plan-link" href="operation_plan.html">Production Plan</a>
   <h1 id="page-title">Min-Max — Inventory Min/Max Scenario</h1>
   <p class="scope-note" id="data-line"></p>
   <p class="scope-note" id="page-timestamps-note"></p>

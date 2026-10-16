@@ -429,7 +429,7 @@ def test_no_windows_login_or_db_login_appears_in_a_tracked_file():
 
 
 # ====================================================================================================
-# Prompt 38 (eight wordings) and Prompt 39 (the verb "to guess", the plain three-letter string, added as the ninth entry): wordings the readers must never see again: they are not in the visible text of index.html (outside the original S&OP tab), forecast/sales_report.html,
+# Prompt 38 (eight wordings) and Prompt 39 (the verb "to guess", the plain three-letter string, added as the ninth entry) and Prompt 40 (the old name of the Production Plan, the tenth entry; the original S&OP tab is skipped as for the others): wordings the readers must never see again: they are not in the visible text of index.html (outside the original S&OP tab), forecast/sales_report.html,
 # inventory.html, operation_plan.html, material_plan.html, nor in the user-text sources (config/config.yaml and config/manual_notes.yaml string values,
 # data/assumptions.json string values, docs/user_manual.md). Visible text = the text a reader sees in the static HTML (scripts, styles and comments dropped) plus the
 # quoted strings of its scripts (script comments dropped) plus title/aria-label/placeholder/alt attributes. The words are built from parts so that this file does not hold them.
@@ -437,7 +437,7 @@ def test_no_windows_login_or_db_login_appears_in_a_tracked_file():
 # ====================================================================================================
 from html.parser import HTMLParser
 
-BANNED_WORDS = ("ยอด" + "ทาย", "วิธี" + "เดาง่าย", "ของ" + "ค้าง", "สต็อ" + "ค", "สต็อ" + "ก", "Price" + "list", "ความคลาด" + "สะสม", "ค่า" + "ทาย", "ท" + "าย")
+BANNED_WORDS = ("ยอด" + "ทาย", "วิธี" + "เดาง่าย", "ของ" + "ค้าง", "สต็อ" + "ค", "สต็อ" + "ก", "Price" + "list", "ความคลาด" + "สะสม", "ค่า" + "ทาย", "ท" + "าย", "แผน" + "การผลิต")
 BANNED_PAGES = ("index.html", "forecast/sales_report.html", "forecast/inventory.html", "forecast/operation_plan.html", "forecast/material_plan.html")
 BANNED_SOURCES = ("config/config.yaml", "config/manual_notes.yaml", "data/assumptions.json", "docs/user_manual.md")
 # Words and DB product-name text that contain the letters of the verb without being it (found in the saved pulls: a paint colour in product names; the others are ordinary Thai words).

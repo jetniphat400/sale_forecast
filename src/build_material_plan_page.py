@@ -28,7 +28,7 @@ DASH = "-"
 # Approved Thai text, verbatim. {braces} are computed values.
 TEXT = {
     "heading": "แผนวัตถุดิบ {n_months} เดือน",
-    "data_line": "จากแผนการผลิตรอบ {plan_month} · stock วัตถุดิบดึงเมื่อ {pull_time}",
+    "data_line": "จาก Production Plan รอบ {plan_month} · stock วัตถุดิบดึงเมื่อ {pull_time}",
     "within_title": "ต้องสั่งภายใน {n_days} วัน",
     "within_line": "วัตถุดิบที่ต้องสั่งภายใน {n_days} วันข้างหน้า ถึงจะได้ของทันตามแผน",
     "late_title": "เลยกำหนดสั่ง (Late to order) สั่งวันนี้ของมาไม่ทันแผน",
@@ -46,10 +46,10 @@ TEXT = {
     "no_unit_flag": "ไม่มีหน่วยซื้อใน DB (Cube_PriceList, Cube_tobe_received)",
     "demand_col": "ความต้องการ",
     "channels": "รวมทุกช่องทาง (ยกเว้น PEM103)",
-    "channels_tip": "ปริมาณคิดจากแผนการผลิต ซึ่งนับ stock และออเดอร์ที่รับแล้วรวมทุกช่องทาง ยกเว้น PEM103 ที่นับเฉพาะช่องทาง Omni Channel",
+    "channels_tip": "ปริมาณคิดจาก Production Plan ซึ่งนับ stock และออเดอร์ที่รับแล้วรวมทุกช่องทาง ยกเว้น PEM103 ที่นับเฉพาะช่องทาง Omni Channel",
     "divisions_label": "ฝ่ายที่รวมในแผนนี้:",
     "division_no_production": "{division} ไม่มียอดผลิตในแผน จึงไม่มีวัตถุดิบ",
-    "coverage_line": "สินค้าในแผนการผลิต {n_items} รหัส คิดวัตถุดิบ {n_exploded} รหัส ไม่ได้คิด {n_not} รหัส: ไม่มียอดผลิตใน {n_months} เดือนนี้ {n_no_demand} รหัส · ไม่มีบันทึกผลิตใน DB (cube_final) {n_no_production} รหัส · ไม่มี BOM ใน DB (Cube_BOM_Exact) {n_no_bom} รหัส",
+    "coverage_line": "สินค้าใน Production Plan {n_items} รหัส คิดวัตถุดิบ {n_exploded} รหัส ไม่ได้คิด {n_not} รหัส: ไม่มียอดผลิตใน {n_months} เดือนนี้ {n_no_demand} รหัส · ไม่มีบันทึกผลิตใน DB (cube_final) {n_no_production} รหัส · ไม่มี BOM ใน DB (Cube_BOM_Exact) {n_no_bom} รหัส",
     "coverage_cols": ["รหัส", "ชื่อ", "ฝ่าย", "เหตุผล"],
     "coverage_reason": {"no_demand": "ไม่มียอดผลิต", "no_production": "ไม่มีบันทึกผลิตใน DB (cube_final)", "no_bom": "ไม่มี BOM ใน DB (Cube_BOM_Exact)"},
     # Remarks (METRICS.md Sec.54): every line stays in its table; a line that is not goods carries a remark and is left out of the counts of the summary line under each list.

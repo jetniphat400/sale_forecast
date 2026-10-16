@@ -242,7 +242,7 @@ def test_the_pem104_reason_and_every_page_line_that_states_it_come_from_one_conf
     text = "ผลิตตามสั่งทั้งหมด"
     for path in glob.glob(os.path.join(PROJECT_ROOT, "src", "*.py")):
         assert text not in open(path, encoding="utf-8").read(), path
-    assert open(os.path.join(PROJECT_ROOT, "config", "config.yaml"), encoding="utf-8").read().count(text) == 2          # the two lines of the one entry
+    assert open(os.path.join(PROJECT_ROOT, "config", "config.yaml"), encoding="utf-8").read().count(text) == 3          # the three lines of the one entry (line, min_max_line, chart_line)
     assert "remark_PEM104" not in cfg["exec_summary"]["text"] and "exclusion_reasons" not in cfg["operation_plan"]
     # every page that states it shows the configured wording
     sales_exec = open(os.path.join(PROJECT_ROOT, "index.html"), encoding="utf-8").read()

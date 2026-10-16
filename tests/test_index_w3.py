@@ -397,7 +397,7 @@ def test_the_four_working_pages_have_no_bar_and_keep_their_back_link_and_in_page
         assert "page-nav" not in text and "data-nav" not in text, name
         assert re.search(r'<a class="back-link" href="\.\./index\.html">(&larr;|←) กลับ', text), name
     inv = open(os.path.join(PROJECT_ROOT, "forecast", PAGE_FILES["inventory"]), encoding="utf-8").read()
-    assert '<a class="back-link" id="plan-link" href="operation_plan.html">แผนการผลิต</a>' in inv
+    assert '<a class="back-link" id="plan-link" href="operation_plan.html">Production Plan</a>' in inv
     op_page = open(os.path.join(PROJECT_ROOT, "forecast", PAGE_FILES["operation"]), encoding="utf-8").read()
     assert '<a class="page-link" id="material-plan-link" href="material_plan.html">แผนวัตถุดิบ</a>' in op_page
 
@@ -575,7 +575,9 @@ def _fixed_exec_data():
             {"division": "BBB", "ytd": 30e6, "last_ytd": 40e6, "change": -0.25, "forecast_remaining": 10e6, "projection": 40e6, "relative_mae": 1.2}]
     tot = {"ytd": 130e6, "last_ytd": 120e6, "forecast_remaining": 60e6, "projection": 190e6, "change": 130 / 120 - 1}
     return {"data_month": "2026-08", "data_month_label": "ส.ค. 69", "year": 2026, "year_be": 69, "remaining_months": ["2026-09"], "rows": rows, "total": tot, "n_forecast_divisions": 2,
-            "n_beat_naive": 1, "thresholds": {"good": 0.7, "pass": 1.0, "limit": 4.0}, "watch": [], "pending": [{"topic": "หัวข้อ", "to_decide": "ต้องตัดสินอะไร"}]}
+            "n_beat_naive": 1, "thresholds": {"good": 0.7, "pass": 1.0, "limit": 4.0}, "watch": [], "pending": [{"topic": "หัวข้อ", "to_decide": "ต้องตัดสินอะไร"}],
+            "monthly": {"actual": {f"2026-{m:02d}": v * 1e6 for m, v in zip(range(1, 9), [10, 12, 14, 16, 18, 20, 20, 20])},
+                        "last_year": {f"2025-{m:02d}": v * 1e6 for m, v in zip(range(1, 13), [15] * 8 + [10] * 4)}, "projection": {"2026-09": 60e6}}}
 
 
 def test_the_executive_tab_is_wired_into_the_tab_switch_and_is_a_tab_of_this_page():
@@ -591,6 +593,50 @@ def test_the_s_and_op_pointer_line_is_under_the_kpi_cards_and_links_to_the_new_t
     m = re.search(r'</div>\s*(<p class="desc" id="sopExecPointer">.*?</p>)\s*<section>', sop, re.S)
     assert m and sop.index('<div class="kpi-row">') < sop.index(m.group(1))
     assert m.group(1) == '<p class="desc" id="sopExecPointer">ตัวเลขจริงดูที่แท็บ<a href="#" onclick="omniShowTab(5);return false">สรุปผู้บริหาร</a></p>'
+
+
+def _chart_values(block: str) -> dict:
+    """The numbers the two charts of a rendered block show: the tooltips of chart 1 by series, the value labels of chart 2, the threshold line and the table's Relative MAE column."""
+    def tips(cls):
+        return re.findall(r'<circle class="' + cls + r'"[^>]*><title>(.*?)</title>', block)
+    return {"actual": tips("ec-dot-actual"), "proj": tips("ec-dot-proj"), "last": tips("ec-dot-last"), "bars": re.findall(r'<text class="ec-val"[^>]*>(.*?)</text>', block),
+            "table": [m for m in re.findall(r'<tr data-division="[^"]*"><td>[^<]*</td><td>[^<]*</td><td>[^<]*</td><td>[^<]*</td><td>[^<]*</td><td>([^<]*)</td>', block) if m != "–"]}
+
+
+def test_the_two_exec_charts_reconcile_with_the_cards_and_the_table_on_the_saved_data():
+    """Not a run gate (nothing here is called by exec_gate or the monthly run): Chart 1's monthly actuals add up to the YTD of the rows, last year's months to the last-year YTD, YTD plus the
+    dashed months to the full-year projection; Chart 2's bar values are the table's Relative MAE column."""
+    import build_trend_tab as bt
+    import build_exec_summary as bx
+    cfg = bt.load_config()
+    d = bx.exec_data(PROJECT_ROOT)
+    mo, tot, mnum = d["monthly"], d["total"], int(d["data_month"][5:7])
+    assert list(mo["actual"]) == [f"{d['year']}-{m:02d}" for m in range(1, mnum + 1)] and list(mo["projection"]) == d["remaining_months"] and len(mo["last_year"]) == 12
+    assert abs(sum(mo["actual"].values()) - tot["ytd"]) < 1e-6
+    assert abs(sum(v for k, v in mo["last_year"].items() if int(k[5:7]) <= mnum) - tot["last_ytd"]) < 1e-6
+    assert abs(sum(mo["actual"].values()) + sum(mo["projection"].values()) - tot["projection"]) < 1e-6
+    shown = _chart_values(bx.exec_render(d, cfg))
+    assert len(shown["actual"]) == mnum and len(shown["proj"]) == len(d["remaining_months"]) and len(shown["last"]) == 12
+    assert shown["bars"] == shown["table"] and len(shown["bars"]) == sum(1 for r in d["rows"] if r["relative_mae"] is not None)
+
+
+def test_exec_render_handles_a_division_with_no_relative_mae_and_a_data_month_other_than_august():
+    import build_trend_tab as bt
+    import build_exec_summary as bx
+    cfg = bt.load_config()
+    d = _fixed_exec_data()
+    d["rows"][1]["relative_mae"] = None
+    d.update(data_month="2026-10", data_month_label="ต.ค. 69", remaining_months=["2026-11", "2026-12"])
+    d["monthly"] = {"actual": {f"2026-{m:02d}": 10e6 for m in range(1, 11)}, "last_year": {f"2025-{m:02d}": 9e6 for m in range(1, 13)}, "projection": {"2026-11": 15e6, "2026-12": 15e6}}
+    block = bx.exec_render(d, cfg)
+    shown = _chart_values(block)
+    assert len(shown["actual"]) == 10 and shown["actual"][-1] == "ต.ค. 69: 10.0 ล้านบาท" and shown["proj"] == ["พ.ย. 69: 15.0 ล้านบาท", "ธ.ค. 69: 15.0 ล้านบาท"]
+    assert shown["bars"] == ["0.60"] and "PEM104 ไม่ได้ทำ Forecast (ผลิตตามสั่งทั้งหมด)" in block and "{" not in block and "}" not in block
+    assert 'class="ec-bar-pass"' in block and 'class="ec-bar-above"' not in block                      # the one value (0.60) is below the pass threshold of 1.0
+    d["monthly"]["projection"] = {}                                                                     # the data month is December: nothing remaining, no dashed line, no error
+    d.update(data_month="2026-12", remaining_months=[])
+    d["monthly"]["actual"] = {f"2026-{m:02d}": 10e6 for m in range(1, 13)}
+    assert '<polyline class="ec-proj"' not in bx.exec_render(d, cfg)
 
 
 def test_the_exec_tab_texts_cards_table_and_remarks_are_verbatim_from_fixed_data():

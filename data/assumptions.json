@@ -51,7 +51,7 @@
    "topic": "กำลังผลิต",
    "unknown": "ข้อมูลบอกได้แค่ Historical peak (ยอดผลิตเสร็จสูงสุดต่อเดือนในอดีต ไม่ใช่กำลังผลิตเต็มที่)",
    "used_now": "ใช้ Historical peak เป็นค่าต่ำสุดที่กำลังผลิตน่าจะทำได้ (Lower bound ไม่ใช่ขีดความสามารถจริง)",
-   "affects": "แผนการผลิต",
+   "affects": "Production Plan",
    "value_source": "STATUS.md, Q20: the highest sustained monthly output per division and Type, a lower bound",
    "updated_date": "2026-10-15"
   },
@@ -60,7 +60,7 @@
    "topic": "ใบสั่งผลิตที่กำลังทำ",
    "unknown": "วันกำหนดเสร็จใน DB (Cube_Production_Order) ไม่ตรงกับวันเสร็จจริง",
    "used_now": "ไม่นำมาหักจากแผน (Open production orders ยังไม่ถูกนับ)",
-   "affects": "แผนการผลิต",
+   "affects": "Production Plan",
    "value_source": "config operation_plan.open_orders_usable (false) and output/summary/week2_open_orders_test.json: the planned finish does not hold and no way of telling an open order passed",
    "updated_date": "2026-10-15"
   },
@@ -69,7 +69,7 @@
    "topic": "คลัง FMTO และ FMTS",
    "unknown": "ยังไม่รู้ว่าเป็นของพร้อมขายไหม",
    "used_now": "ไม่นับ",
-   "affects": "stock ที่ใช้เทียบกับ Min และแผนการผลิต",
+   "affects": "stock ที่ใช้เทียบกับ Min และ Production Plan",
    "value_source": "config phase_e1_assumptions.sellable_warehouse_codes does not list FMTO or FMTS; week 2 October decomposition (STATUS.md): 4,054 units of the items below Min",
    "updated_date": "2026-10-15"
   },
@@ -78,7 +78,7 @@
    "topic": "Forecast",
    "unknown": "Forecast = ยอดขายที่ระบบคาดการณ์ · ยังไม่มีช่วงสูง-ต่ำ",
    "used_now": "ใช้ค่าเดียวต่อเดือน (point forecast)",
-   "affects": "แผนการผลิต",
+   "affects": "Production Plan",
    "value_source": "the forward-test log holds one forecast per item and month (METRICS.md Sec.27), no interval",
    "updated_date": "2026-10-15"
   },

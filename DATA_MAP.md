@@ -21,6 +21,8 @@ Built 2026-09-24, from files already in the repository — **no database access 
 ## 1. Tables
 
 ### cube_Sale_APD
+- **VAT:** the sales column `sale` in DB (`cube_Sale_APD`) excludes VAT. Confirmed by the user on 2026-10-16 (user statement, not derived from data; the Prompt 38 read-only check could not decide it). **A.**
+
 Primary demand-history source (Omni Channel sales order lines). **Grain**: one row per order
 line-item — confirmed via `INFORMATION_SCHEMA.COLUMNS` (62 columns) and cross-table row-count
 checks (STATUS.md:1326). **Date coverage**: whole-table history from 2021-01-11 (STATUS.md:1894);

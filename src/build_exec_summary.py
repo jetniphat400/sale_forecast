@@ -126,6 +126,10 @@ def exec_data(root: str = PROJECT_ROOT, plan_dir: str = None) -> dict:
         rows.append({"division": d, "ytd": ytd, "last_ytd": ly, "change": (ytd / ly - 1) if ly else None, "forecast_remaining": fc_rem, "projection": proj,
                      "relative_mae": rel.get(d), "projection_page_only": ytd + float(sum(old_by_month.values())),
                      "by_month": {m: {"page": int(old_by_month[m]), "used": int(new_by_month[m])} for m in remaining}})
+    by_ym = sale[sale["division"].isin([r["division"] for r in rows])].groupby("year_month")["sale"].sum()          # the divisions of the table: the monthly series add up to its YTD rows
+    monthly = {"actual": {f"{year}-{m:02d}": float(by_ym.get(f"{year}-{m:02d}", 0.0)) for m in range(1, mnum + 1)},
+               "last_year": {f"{year - 1}-{m:02d}": float(by_ym.get(f"{year - 1}-{m:02d}", 0.0)) for m in range(1, 13)},
+               "projection": {m: float(sum(r["by_month"][m]["used"] for r in rows)) for m in remaining}}
     tot = {k: sum(r[k] for r in rows) for k in ("ytd", "last_ytd", "forecast_remaining", "projection")}
     tot["change"] = (tot["ytd"] / tot["last_ytd"] - 1) if tot["last_ytd"] else None
     cfg_op = op.load_config(root)
@@ -137,7 +141,7 @@ def exec_data(root: str = PROJECT_ROOT, plan_dir: str = None) -> dict:
     watch = exec_watch([{"group": r["label"], "value": r["tracking_signal"]} for r in acc["rows"]], th["limit"], plan_above, n_late,
                        None if alert.get("not_late_from_may_2026_pct") is None else {"since": rv.thai_month_year(alert["split_date"]), "pct": f"{float(alert['not_late_from_may_2026_pct']):.1f}%"})
     pending = [r for r in maxmin_v1.pending_criteria_rows() if r["who"] == "ผู้บริหาร"]
-    return {"data_month": data_month, "data_month_label": rv.thai_month_short(data_month), "year": year, "year_be": int(rv.thai_year_short(year)), "remaining_months": remaining, "booked_baht": booked_baht, "rows": rows, "total": tot,
+    return {"data_month": data_month, "data_month_label": rv.thai_month_short(data_month), "year": year, "year_be": int(rv.thai_year_short(year)), "remaining_months": remaining, "booked_baht": booked_baht, "rows": rows, "total": tot, "monthly": monthly,
             "n_forecast_divisions": len(rows), "n_beat_naive": sum(1 for r in rows if r["relative_mae"] is not None and r["relative_mae"] < th["pass"]), "thresholds": th,
             "watch": watch, "pending": pending, "vintage_id": vf["vintage_id"]}
 
@@ -148,6 +152,84 @@ def _money(x) -> str:
 
 def _signed_pct(x) -> str:
     return f"{100 * x:+.1f}%"
+
+
+def _nice_step(top: float, n: int = 5) -> float:
+    """A round axis step (1, 2, 2.5, 5 times a power of ten) giving at most about `n` ticks up to `top`."""
+    raw = max(top, 1e-9) / n
+    mag = 10 ** math.floor(math.log10(raw))
+    return next(m * mag for m in (1, 2, 2.5, 5, 10) if raw <= m * mag)
+
+
+def _chart_monthly(d: dict, T: dict) -> str:
+    """Chart 1 (inline SVG): monthly sales in million baht, this year's actual (solid), its projection for the remaining months (dashed, from the last actual point) and last
+    year's 12 months (thin, muted). Every value comes from d["monthly"]; each point carries a <title> tooltip; the colors and widths come from the classes of index.html."""
+    import reader_values as rv
+    year, mo = d["year"], d["monthly"]
+    W, H, L, R, TOP, BOT = 640, 300, 52, 14, 26, 62
+    pw, ph = W - L - R, H - TOP - BOT
+    vals = [v / 1e6 for part in mo.values() for v in part.values()]
+    step = _nice_step(max(vals))
+    ymax = step * math.ceil(max(vals) / step)
+    X = lambda i: L + pw * i / 11
+    Y = lambda v: TOP + ph * (1 - v / ymax)
+    month_label = lambda ym: rv.thai_month_short(ym)
+    idx = lambda ym: int(ym[5:7]) - 1
+    out = [f'<text class="ec-txt" x="{L - 8}" y="{TOP - 12}">{html.escape(T["chart1_unit"])}</text>']
+    for k in range(int(round(ymax / step)) + 1):
+        out.append(f'<line class="ec-grid" x1="{L}" y1="{Y(k * step):.1f}" x2="{W - R}" y2="{Y(k * step):.1f}"/><text class="ec-txt ec-end" x="{L - 8}" y="{Y(k * step) + 4:.1f}">{k * step:,.1f}</text>')
+    for i in range(12):
+        out.append(f'<text class="ec-txt ec-mid" x="{X(i):.1f}" y="{TOP + ph + 16}">{html.escape(month_label(f"{year}-{i + 1:02d}").split(" ")[0])}</text>')
+
+    def series(part, line_cls, dot_cls, start=None):
+        coords = ([start] if start else []) + [(X(idx(ym)), Y(v / 1e6)) for ym, v in part.items()]
+        line = f'<polyline class="{line_cls}" points="{" ".join(f"{x:.1f},{y:.1f}" for x, y in coords)}"/>' if len(coords) > 1 else ""
+        dots = "".join(f'<circle class="{dot_cls}" cx="{X(idx(ym)):.1f}" cy="{Y(v / 1e6):.1f}" r="3.5"><title>{html.escape(T["chart1_tip"].format(month=month_label(ym), value=_money(v)))}</title></circle>' for ym, v in part.items())
+        return line + dots
+    last_ym, last_v = list(mo["actual"].items())[-1]
+    out.append(series(mo["last_year"], "ec-last", "ec-dot-last"))
+    out.append(series(mo["actual"], "ec-actual", "ec-dot-actual"))
+    if mo["projection"]:
+        out.append(series(mo["projection"], "ec-proj", "ec-dot-proj", start=(X(idx(last_ym)), Y(last_v / 1e6))))
+    ly = H - 14
+    for j, (cls, key, yr) in enumerate((("ec-actual", "chart1_legend_actual", year), ("ec-proj", "chart1_legend_proj", year), ("ec-last", "chart1_legend_last", year - 1))):
+        x0 = L + j * 170
+        out.append(f'<line class="{cls}" x1="{x0}" y1="{ly - 4}" x2="{x0 + 26}" y2="{ly - 4}"/><text class="ec-txt" x="{x0 + 32}" y="{ly}">{html.escape(T[key].format(year=rv.thai_year_short(yr)))}</text>')
+    proj_months = f"{month_label(next(iter(mo['projection'])))}–{month_label(next(reversed(mo['projection'])))}" if mo["projection"] else T["dash"]
+    aria = T["chart1_aria"].format(year=d["year_be"], last_year=int(rv.thai_year_short(year - 1)), first=month_label(next(iter(mo["actual"]))), last=d["data_month_label"],
+                                   ytd=_money(sum(mo["actual"].values())), projection_months=proj_months, total=_money(d["total"]["projection"]), last_total=_money(sum(mo["last_year"].values())))
+    return f'<svg id="execChartMonthly" role="img" aria-label="{html.escape(aria)}" viewBox="0 0 {W} {H}">{"".join(out)}</svg>'
+
+
+def _chart_relative_mae(d: dict, T: dict, config: dict) -> str:
+    """Chart 2 (inline SVG): Relative MAE per division as horizontal bars in the table's order, the value at each bar end, a vertical line at the pass threshold
+    (d["thresholds"]["pass"]); a division with no value has no bar (a dash); a division that is not forecast shows its reason as text; the total row has none."""
+    import reader_values as rv
+    th = d["thresholds"]["pass"]
+    rows = [(r["division"], r.get("relative_mae")) for r in d["rows"]]
+    reasons = list(rv.division_reason_codes(config).items())
+    W, L, R, TOP, RH = 440, 64, 52, 34, 30
+    top = max([v for _d, v in rows if v is not None] + [th]) * 1.1
+    step = 0.5 if top <= 3 else 1.0
+    xmax = step * math.ceil(top / step)
+    pw = W - L - R
+    X = lambda v: L + pw * v / xmax
+    H = TOP + RH * (len(rows) + len(reasons)) + 10
+    out = [f'<line class="ec-grid" x1="{X(k * step):.1f}" y1="{TOP - 6}" x2="{X(k * step):.1f}" y2="{H - 10}"/><text class="ec-txt ec-mid" x="{X(k * step):.1f}" y="{H + 2}">{k * step:.1f}</text>' for k in range(int(round(xmax / step)) + 1)]
+    out.append(f'<line class="ec-ref" x1="{X(th):.1f}" y1="{TOP - 6}" x2="{X(th):.1f}" y2="{TOP + RH * len(rows)}"/><text class="ec-txt ec-mid" x="{X(th):.1f}" y="{TOP - 12}">{html.escape(T["chart2_ref"])}</text>')
+    for i, (division, v) in enumerate(rows):
+        y = TOP + RH * i
+        out.append(f'<text class="ec-txt ec-end" x="{L - 8}" y="{y + 19}">{html.escape(division)}</text>')
+        if v is None:
+            out.append(f'<text class="ec-txt" x="{L + 6}" y="{y + 19}">{T["dash"]}</text>')
+        else:
+            out.append(f'<rect class="{"ec-bar-pass" if v <= th else "ec-bar-above"}" x="{L}" y="{y + 5}" width="{X(v) - L:.1f}" height="{RH - 10}"/><text class="ec-val" x="{X(v) + 6:.1f}" y="{y + 19}">{v:.2f}</text>')
+    for j, (division, code) in enumerate(reasons):
+        entry = rv.not_forecast_reasons(config)[code]
+        text = entry.get("chart_line", entry["line"]).format(division=division)
+        out.append(f'<text class="ec-txt" x="0" y="{TOP + RH * (len(rows) + j) + 19}">{html.escape(text)}</text>')
+    aria = T["chart2_aria"].format(values=", ".join(f"{dv} {'–' if v is None else format(v, '.2f')}" for dv, v in rows), threshold=f"{th:.2f}")
+    return f'<svg id="execChartMae" role="img" aria-label="{html.escape(aria)}" viewBox="0 0 {W} {H + 8}">{"".join(out)}</svg>'
 
 
 def exec_render(data: dict, config: dict) -> str:
@@ -194,7 +276,10 @@ def exec_render(data: dict, config: dict) -> str:
             watch_lines.append(T["watch_pem107"].format(since=w["since"], pct=w["pct"]))
     watch_html = "".join(f"<li>{esc(x)}</li>" for x in watch_lines)
     decide_html = "".join(f"<li>{esc(r['topic'])} · {esc(r['to_decide'])}</li>" for r in d["pending"])
+    charts_html = (f'<div class="ec-row" id="execCharts"><div class="ec-chart ec-chart1"><h3>{esc(T["chart1_title"])}</h3>{_chart_monthly(d, T)}<p class="hint">{esc(T["chart1_note"])}</p></div>'
+                   f'<div class="ec-chart ec-chart2"><h3>{esc(T["chart2_title"])}</h3>{_chart_relative_mae(d, T, config)}</div></div>')
     return (f'<div class="kpis" id="execCards">{cards_html}</div>'
+            f'{charts_html}'
             f'<p class="hint" id="execUnit">{esc(T["unit_note"])}</p>'
             f'<div class="table-scroll"><table id="execTable"><thead><tr>{head}</tr></thead><tbody>{"".join(body)}</tbody></table></div>'
             f'<h3 id="execWatchTitle">{esc(T["watch_heading"])}</h3><ul id="execWatch">{watch_html}</ul>'

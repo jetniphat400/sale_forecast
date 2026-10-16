@@ -197,12 +197,16 @@ Code: `src/investigations/task2b_part2_fulfilment_segmentation.py` (`run_from_pu
 - (Prompt 36) โค้ดใน `build_operation_plan_page.item_master_check` ยังรองรับไฟล์เดิมแบบเลือกได้ (`item_master_legacy_fg_file`) แต่ไม่มีใครตั้งค่าแล้ว ควรถอดโค้ดและเทสต์ส่วนนั้นออก
 - (Prompt 38) แผงควบคุมด้านซ้ายของหน้า Min-Max ติดอยู่กับหน้าจอและไม่มีที่ว่างเหลือ: ข้อความที่ยาวขึ้นหนึ่งบรรทัดทำให้แผงต้องเลื่อนที่ 1440x900 จึงวางคำอธิบายครั้งแรกของ Not-late และ Excess stock ไว้นอกแผง (หัวแบนเนอร์ PEM107, หัวข้อเลือกเป้า PEM101 และบรรทัดนิยาม Excess stock) ควรตัดสินว่าจะขยายแผงหรือคงแบบนี้
 - (Prompt 38, ปิดแล้วใน Prompt 39) แถบแท็บบนสุดของ index.html ที่ความกว้าง 1366 เคยขึ้นแถวที่สอง ป้ายแท็บ Production Plan สั้นลงเป็น "Production Plan (แผนผลิต)" ตอนนี้แถวเดียวทั้งที่ 1366 และ 1920
-- (Prompt 38, แก้บางส่วนใน Prompt 39) หัวและ <title> ของหน้า Production Plan เป็น "Production Plan {n} เดือน · ทุกฝ่าย" แล้ว คำว่า "แผนการผลิต" ที่เหลือ (หน้าแผนวัตถุดิบ แท็บสมมติฐานคอลัมน์ กระทบอะไร ลิงก์กลับของหน้า Min-Max คู่มือ) ยังเป็นชื่อเดิม รอการตัดสินว่าจะเปลี่ยนด้วยหรือไม่ คำกริยา "ทาย" ถอดออกจากข้อความที่ผู้อ่านเห็นทั้งหมดแล้ว และอยู่ในรายการคำต้องห้ามของ guard
+- (Prompt 38, ปิดแล้วใน Prompt 40) คำว่า "แผนการผลิต" ที่เหลือในข้อความที่ผู้อ่านเห็น (แท็บสมมติฐาน คู่มือ ลิงก์ของหน้า Min-Max หน้าแผนวัตถุดิบ) เปลี่ยนเป็น "Production Plan" แล้ว และอยู่ในรายการคำต้องห้ามของ guard (แท็บ S&OP เดิมไม่ถูกแตะ: ป้ายแถว "Operations — แผนการผลิต" ยังเหมือนเดิม)
 - (Prompt 38) ท้ายแท็บสรุปผู้บริหารยังเป็นย่อหน้าเดียวที่คั่นด้วย " · " (นิยามยอดขาย / เดือนข้อมูล / สูตรคาดการณ์) ถ้าต้องการแยกเป็นบรรทัดจริงต้องแก้ตัวสร้างหน้า (เลย์เอาต์)
 - (Prompt 38) แถวของส่วนที่ 1 ในแท็บ S&OP Plan (เดิม) ยังใช้ป้ายเดิม "Inventory — แผนสต็อค" และคำว่า สต็อค ในข้อความช่วยอ่าน (ไม่แตะแท็บเดิมตามคำสั่ง) คู่มือจึงอ้างถึงแถวนี้ว่า "Inventory" เท่านั้น
 - (Prompt 38, ปิดแล้วใน Prompt 39) VAT ของคอลัมน์ `sale` (cube_Sale_APD): ผู้ใช้ยืนยันเมื่อ 2026-10-16 ว่า **ไม่รวม VAT** (คำยืนยันของผู้ใช้ ไม่ได้พิสูจน์จากข้อมูลในฐานข้อมูล) แทนสถานะ UNDETERMINED ของ Prompt 38 ข้อความ "ไม่รวม VAT" บนหน้าคงเดิม
 - ล้างสคริปต์ one-off ใน `src/investigations` และไฟล์ output ที่ไม่มีใครอ้างอิง ต่อจาก Prompt 31/32 (รายชื่ออยู่ในรายงาน Prompt 32 หัวข้อ NEED DECISION)
 
+
+### Week 4, prompt 40 -- executive tab: two charts (monthly sales; Relative MAE per division), the remaining old name of the Production Plan, the VAT line in DATA_MAP -- DONE, 2026-10-16 (no database)
+
+**Report:** `docs/reports/summary/prompt5_g2_vintage_target_map.md`, heading "Prompt 40". `exec_data` now also returns `monthly` (this year's actual months, last year's 12 months, the dashed months = the sum of each division's `used` baht); `exec_render` draws both charts as inline SVG between the markers (classes in the `execTabCss` style of index.html, no braces inside the markers); the gate and the monthly run are unchanged. The chart texts are in `config.yaml` `exec_summary.text` (`chart1_*`, `chart2_*`). Chart 2's reference line is `thresholds["pass"]` of the accuracy table. "แผนการผลิต" is now "Production Plan" in every reader text outside the original S&OP tab and is the tenth entry of the banned-word guard. DATA_MAP.md holds the VAT line (level A, the user's statement of 2026-10-16).
 
 ### Week 4, prompt 39 -- wording follow-up: the verb "to guess" removed from every reader text, Production Plan heading and tab label, VAT note -- DONE, 2026-10-16 (no database)
 

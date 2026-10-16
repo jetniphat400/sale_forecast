@@ -464,8 +464,8 @@ def test_the_page_text_is_the_approved_text_and_every_braced_value_comes_from_th
     page, v = _page(project)
     mm, sm, meta = mp.read_outputs(project)
     assert f"แผนวัตถุดิบ {len(meta['months'])} เดือน" in page and v["n_months"] == 3
-    assert f"จากแผนการผลิตรอบ {bp.thai_month(meta['operation_plan_today'][:7])} · stock วัตถุดิบดึงเมื่อ {bp.thai_datetime(meta['rm_pulled_at_local'])}" in page
-    assert "จากแผนการผลิตรอบ ต.ค. 69 · stock วัตถุดิบดึงเมื่อ 6 ต.ค. 69 07:30" in page
+    assert f"จาก Production Plan รอบ {bp.thai_month(meta['operation_plan_today'][:7])} · stock วัตถุดิบดึงเมื่อ {bp.thai_datetime(meta['rm_pulled_at_local'])}" in page
+    assert "จาก Production Plan รอบ ต.ค. 69 · stock วัตถุดิบดึงเมื่อ 6 ต.ค. 69 07:30" in page
     assert "stock วัตถุดิบนับจากคลัง WH21, WH22" in page and "นับของที่สั่งแล้วรอรับตามวันที่คาดว่าจะได้" in page and "ยังไม่นับของที่สั่งแล้วรอรับ" not in page
     n = int(mp.load_config(project)["order_window_days"])
     assert n == 30 and v["n_days"] == n
@@ -841,7 +841,7 @@ def test_the_page_says_how_many_plan_items_are_exploded_and_why_the_others_are_n
     mm_, sm_, meta = mp.read_outputs(project)
     assert (c["n_items"], c["n_exploded"], c["n_no_production"], c["n_no_demand"], c["n_no_bom"]) == (3, 2, 1, 0, 0)
     assert c["n_exploded"] + c["n_no_bom"] == meta["n_items_exploded"]
-    line = "สินค้าในแผนการผลิต 3 รหัส คิดวัตถุดิบ 2 รหัส ไม่ได้คิด 1 รหัส: ไม่มียอดผลิตใน 3 เดือนนี้ 0 รหัส · ไม่มีบันทึกผลิตใน DB (cube_final) 1 รหัส · ไม่มี BOM ใน DB (Cube_BOM_Exact) 0 รหัส"
+    line = "สินค้าใน Production Plan 3 รหัส คิดวัตถุดิบ 2 รหัส ไม่ได้คิด 1 รหัส: ไม่มียอดผลิตใน 3 เดือนนี้ 0 รหัส · ไม่มีบันทึกผลิตใน DB (cube_final) 1 รหัส · ไม่มี BOM ใน DB (Cube_BOM_Exact) 0 รหัส"
     assert f'<summary class="note-line" id="coverage-line">{line}</summary>' in page
     assert '<details id="coverage-details">' in page and '<details id="coverage-details" open' not in page            # closed until opened
     head = re.findall(r'<th class="name">(.*?)</th>', page.split('id="coverage-table"')[1].split("</thead>")[0])
@@ -871,7 +871,7 @@ def test_the_counts_on_the_page_follow_the_plan_and_the_three_reasons_add_up_to_
     if not os.path.exists(tracked) or not os.path.exists(p):
         pytest.skip("SKIPPED, not passed: the built material plan page or the saved week 3 pulls are not on this machine")
     page = open(tracked, encoding="utf-8").read()
-    m = re.search(r"สินค้าในแผนการผลิต (\d+) รหัส คิดวัตถุดิบ (\d+) รหัส ไม่ได้คิด (\d+) รหัส: ไม่มียอดผลิตใน (\d+) เดือนนี้ (\d+) รหัส · ไม่มีบันทึกผลิตใน DB \(cube_final\) (\d+) รหัส · ไม่มี BOM ใน DB \(Cube_BOM_Exact\) (\d+) รหัส", page)
+    m = re.search(r"สินค้าใน Production Plan (\d+) รหัส คิดวัตถุดิบ (\d+) รหัส ไม่ได้คิด (\d+) รหัส: ไม่มียอดผลิตใน (\d+) เดือนนี้ (\d+) รหัส · ไม่มีบันทึกผลิตใน DB \(cube_final\) (\d+) รหัส · ไม่มี BOM ใน DB \(Cube_BOM_Exact\) (\d+) รหัส", page)
     assert m, "the coverage line is not on the built page"
     n, mexp, k, months, a, b, c = map(int, m.groups())
     im, _dm, opmeta = op.read_outputs(PROJECT_ROOT, cfg["operation_plan"])
@@ -901,8 +901,8 @@ def test_the_coverage_line_and_the_divisions_follow_the_plan_items_given_to_the_
     l1, l2 = (bm.TEXT["coverage_line"].format(n_items=v["coverage"]["n_items"], n_exploded=v["coverage"]["n_exploded"], n_not=v["coverage"]["n_not"],
                                               n_months=v["coverage"]["n_months"], n_no_demand=v["coverage"]["n_no_demand"],
                                               n_no_production=v["coverage"]["n_no_production"], n_no_bom=v["coverage"]["n_no_bom"]) for v in (one, two))
-    assert l1 == "สินค้าในแผนการผลิต 3 รหัส คิดวัตถุดิบ 1 รหัส ไม่ได้คิด 2 รหัส: ไม่มียอดผลิตใน 2 เดือนนี้ 1 รหัส · ไม่มีบันทึกผลิตใน DB (cube_final) 1 รหัส · ไม่มี BOM ใน DB (Cube_BOM_Exact) 0 รหัส"
-    assert l2 == "สินค้าในแผนการผลิต 6 รหัส คิดวัตถุดิบ 3 รหัส ไม่ได้คิด 3 รหัส: ไม่มียอดผลิตใน 2 เดือนนี้ 2 รหัส · ไม่มีบันทึกผลิตใน DB (cube_final) 0 รหัส · ไม่มี BOM ใน DB (Cube_BOM_Exact) 1 รหัส"
+    assert l1 == "สินค้าใน Production Plan 3 รหัส คิดวัตถุดิบ 1 รหัส ไม่ได้คิด 2 รหัส: ไม่มียอดผลิตใน 2 เดือนนี้ 1 รหัส · ไม่มีบันทึกผลิตใน DB (cube_final) 1 รหัส · ไม่มี BOM ใน DB (Cube_BOM_Exact) 0 รหัส"
+    assert l2 == "สินค้าใน Production Plan 6 รหัส คิดวัตถุดิบ 3 รหัส ไม่ได้คิด 3 รหัส: ไม่มียอดผลิตใน 2 เดือนนี้ 2 รหัส · ไม่มีบันทึกผลิตใน DB (cube_final) 0 รหัส · ไม่มี BOM ใน DB (Cube_BOM_Exact) 1 รหัส"
     assert one["divisions"] == "PEM101" and one["coverage"]["divisions_without_production"] == ["PEM104"]
     assert two["divisions"] == "PEM101, PEM104" and two["coverage"]["divisions_without_production"] == []
     with pytest.raises(mp.MaterialPlanError):                    # a count that does not match the plan's own count of exploded items stops the page
