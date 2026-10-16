@@ -2535,3 +2535,150 @@ Start (shell clock): 2026-10-16 13:36. HEAD before: a52b822. No database connect
 ### Found while checking (not acted on)
 The daily task's 12:00 run of 2026-10-16 ended with result 1 after 4 seconds and wrote no log (the 08:00 run published normally; Task Scheduler event 201 records the completion). The publish clone had moved forward to the latest `main` by then, so the pull step worked. A read-only import of `snapshot_daily`, the config load, the publishing-setup check and the "success today" check in the clone now all work and take about 5 seconds, so the cause is **UNDETERMINED**: a start-up failure before any log is written (an import or memory problem at that moment is possible; the machine was reported as low on memory shortly after 12:00). The 2026-10-15 08:00 run had a similar start-up failure (`PermissionError`, STATUS backlog). The Monday 08:00 run will show whether it repeats; the new `env_note` does not help find the cause.
 - **Tests after the change:** 892 collected: 891 passed and 1 failed in the full run (886 before plus the 6 new cases). The failure was the personal-login-name guard flagging my fake test path (a made-up user name in a Windows path); the fake path now uses the repo's `<user>` placeholder and `tests/test_daily_noon_skip.py` plus `tests/test_guards.py` pass (49 passed), so all 892 pass; I did not repeat the 20-minute full run for that one-line test-data change. No test deleted or skipped. **Validator (fresh, evaluate-only, after the last code change):** PASS on all seven checks (line text cannot carry the value; placed first in `main`, before every early exit; `_write_log` is the only writer and `setdefault` cannot overwrite; only +8 lines in `src/`, none touching a `SystemExit`, `return` or `raise`; tests prove what is claimed; task facts match; scope) with minor wording notes, one of which (the log file name depends on the real start time) is fixed in STATUS.
+
+
+## Prompt 44
+
+Start (shell clock): 2026-10-16 14:34. HEAD before: 7141cb1. Tests at the start (before any change): 892 passed, 0 failed, 0 skipped. No database connection; neither the daily nor the monthly job was run; no scheduled task was modified, run, enabled, disabled or re-registered (Task Scheduler event log and `Get-ScheduledTask` read only); in `D:\sale_forecast_publish` only file reads (`.git/logs/*`, mtimes, `find`) and a read-only import check, no git command at all (no fetch). Task Scheduler event messages carry the account name: only event time, id and result code are used here.
+
+### Part 0: the two failed daily runs (read-only; no fix)
+Task Scheduler history is enabled (4,741 start/finish events in the last 10 days). Daily task events (start, finish, result; result 2147942401 is 0x80070001 = the process exit code 1):
+- failures in the last 10 days: 2026-10-10 11:45 (40 s) and 12:00 (15 s), 2026-10-11 10:25 (38 s) and 12:00 (24 s) (weekend starts of the code before the weekend rule of Prompt 23; manual or make-up starts, not investigated), 2026-10-12 08:00 (26 s, before the later fixes; not investigated), **2026-10-15 08:00 (24 s)** and **2026-10-16 12:00 (4 s)**;
+- successes (result 0): every other start from 2026-10-12 12:00 on, e.g. 10-13 08:00 (33 s) and 12:00 (9 s), 10-14 08:00 (32 s) and 12:00 (11 s), 10-15 12:00 (36 s), 10-16 08:00 (34 s). The 12:00 skip runs take 9 to 60 s.
+
+| | 2026-10-15 08:00 | 2026-10-16 12:00 |
+|---|---|---|
+| start / end / result | 08:00:00 / 08:00:24 / 1 | 12:00:00 / 12:00:04 / 1 |
+| python started | **YES.** `output/runs/daily/daily_stock_20261015T080016.json` (the run log: step "pull" done, failed at step "build") and `..._080024.json` (`record_failure` of the same process: step "database session or stock snapshot"), both written 08:00:24; 6 `.pyc` files of the clone were recompiled at 08:00 (the pull of 07:38 had changed code). The traceback: `PermissionError: [WinError 5] Access is denied` raised by `CreateProcess` when `daily_stock_job.build_stage` (`src/daily_stock_job.py:244` in the clone's version of that day; line 250 in the tree after Prompt 43) started its child python (`build_inventory_dataset.py`). The database pull of that run had succeeded. | **Probably NO (UNDETERMINED).** No daily log exists for 12:00 although every started run that reaches the skip check or any failure writes one; the whole task lasted 4 s, of which the pull took until 12:00:03, whereas every successful 12:00 run takes at least 9 s (imports alone take about 5 s); no `.pyc` was rewritten (not conclusive: none of the daily job's imports changed in that pull). |
+| git pull failed | **NO** (proven: python ran, so the `&&` chain passed; the pull at 08:00 left no reflog entry because nothing was new (the previous pull is 07:38:14)) | **NO, not proven.** The refs and the working tree were updated, but no git exit code or console output is recorded, so "git exited non-zero after updating the refs and python never launched" cannot be excluded: git's last write was at about 12:00:03.7 and the task ended at 12:00:04.1, which fits an instant python crash as well as a non-zero git exit. The clone's `HEAD` reflog has "pull --ff-only origin main: Fast-forward" at 12:00:03 and the `origin/main` reflog the same; `FETCH_HEAD` and `ORIG_HEAD` mtimes are 12:00:03; no `*.lock` file exists in `.git`; no git hook exists; the pull brought in the commits of Prompts 39 to 41 |
+| verdict | **OTHER** (python started and failed inside the job: the child process could not be created, WinError 5) | **PYTHON START FAILED** (probable, not proven: either python died within about a second, before the first log, or git exited non-zero after updating the refs and python never started; the evidence does not separate the two) |
+| concurrent Claude Code activity | **UNDETERMINED.** Claude Code sessions were active that morning (commits of that day at 09:26, 11:32, 12:44 ...), but nothing in the evidence ties an operation to 08:00:24 in the clone or to process creation | **UNDETERMINED.** The reflogs show no ref-changing git command of mine in the clone between 08:00:33 and 12:00:03; the only one that day is Prompt 42's `git fetch` at 11:15:28, 45 minutes earlier (allowed in that prompt; this prompt made no git command in the clone). Reflogs do not record read-only git commands (the index file was touched at 14:01 by one), so a read-only git command or any other file access near 12:00 is not excluded. Not ruled out: resource pressure from Claude Code's own work around 12:00: a Validator subagent had background work running across that minute and the harness stopped one of my background shells for low memory at about 12:04; free memory is now about 5.5 GB of 32 GB; the System log has no resource-exhaustion event between 12:00 and 12:12 |
+| other note | the pull of the same minute rewrote about 30 files (`src/*.py`, pages) a second before python started: an on-access scanner or indexer holding a freshly written file would also fit WinError 5 and a very early crash; not provable | |
+
+Options (none applied; the user decides): (1) make the failure visible: have the task action append the console output of both commands to a file (a task change, so the user's decision), or have `snapshot_daily.py` write a one-line start marker as its very first act (a code change; it separates "pull failed" from "python died" for every future failure); (2) a retry: a second 12:30 trigger, or a bounded retry in the daily job around `subprocess.run` on `PermissionError` (code change); (3) ask whoever manages the security software to exclude the publish clone's `src` folder and its python from on-access blocking (the 10-15 `WinError 5` and the 10-16 early crash both fall within minutes of a pull). The Monday 08:00 run (and the `env_note` of Prompt 43) will show whether it recurs.
+
+### Part 1: model experiment 2 (report only)
+**Pre-registration.** METRICS.md Sec.55 and the config block `experiment_2026_10b` were committed and pushed alone as **eeac2ec** (2026-10-16 14:58:49), before any candidate was computed on the project's series (the library calls were tried only on a made-up series to fix their exact form). The result and the code that computes it are in the commit after it.
+
+**Setup.** statsforecast 2.1.1 (installed; nothing installed). Exact calls: damped_trend = `statsforecast.models.AutoETS(season_length=1, model="AAN", damped=True).forecast(y=train, h=6)["mean"]` (fitted method ETS(A,Ad,N)), clipped at 0; theta = `statsforecast.models.Theta(season_length=1).forecast(y=train, h=6)["mean"]`, clipped at 0; combination_plus_damped = (6 x the six-model Combination + damped_trend) / 7; seasonal_shrunk = the current forecast x s*[division, calendar month of the target] as in Sec.55 (Y = floor(train_size / 12), window = the last 12 x Y months, w = Y / (Y + 2)). Code: `src/investigations/model_experiment_2026_10.py --experiment b` (the same file, experiment 1 unchanged and still the default); output `output/summary/model_experiment_2026_10b.json` (untracked); nothing in production, the forward-test log, the vintages, the plans or the pages was touched.
+- **The current candidate reproduces Sec.50: YES.** Relative MAE on all 7 origins differs from the experiment-1 record by 0.0 for every one of the seven groups (the run stops above 1e-9), and the forecasts equal the main table's cells exactly (maximum difference 0.0, 2,328 item cells).
+- **Cells by Y:** 2,006 cells with Y = 1 (origins 1 to 6) and 336 with Y = 2 (origin 7), item cells and the 14 group cells together (2,342).
+- **Fallback to Naive after a model error:** 0 cases for damped_trend and for theta.
+
+### Results (per group; Relative MAE: below 1 = better than Naive; Tracking Signal on 5 origins (1–5) and on all 7)
+
+**PEM101** (1000 cells)
+
+| candidate | Relative MAE (1–5) | (6–7) | (all 7) | Horizon 3 (all 7) | Tracking Signal (1–5) | Tracking Signal (all 7) | passes TS filter |
+|---|---|---|---|---|---|---|---|
+| current | 0.849 | 0.675 | 0.800 | 0.830 | -3.73 | -2.74 | yes |
+| naive | 1.000 | 1.000 | 1.000 | 1.000 | -0.84 | -1.62 | yes |
+| damped_trend | 0.945 | 0.680 | 0.870 | 0.884 | -2.19 | 0.20 | yes |
+| theta | 0.882 | 0.679 | 0.824 | 0.873 | -2.37 | -0.07 | yes |
+| seasonal_shrunk | 0.810 | 0.635 | 0.760 | 0.825 | -4.32 | -4.42 | no |
+| combination_plus_damped | 0.857 | 0.671 | 0.804 | 0.826 | -3.58 | -2.35 | yes |
+
+Rule outcome: **keep current**, winner on 1–5 among the candidates that pass the filter: current. current has the lowest Relative MAE on origins 1-5 among the candidates that pass the Tracking Signal filter.
+
+**PEM103** (343 cells)
+
+| candidate | Relative MAE (1–5) | (6–7) | (all 7) | Horizon 3 (all 7) | Tracking Signal (1–5) | Tracking Signal (all 7) | passes TS filter |
+|---|---|---|---|---|---|---|---|
+| current | 1.140 | 0.974 | 1.041 | 1.064 | -4.81 | -6.85 | no |
+| naive | 1.000 | 1.000 | 1.000 | 1.000 | -5.00 | -7.00 | no |
+| damped_trend | 0.966 | 1.045 | 1.013 | 0.975 | -5.00 | -7.00 | no |
+| theta | 1.010 | 1.051 | 1.035 | 1.026 | -4.87 | -6.87 | no |
+| seasonal_shrunk | 1.156 | 0.976 | 1.048 | 1.091 | -3.57 | -5.90 | yes |
+| combination_plus_damped | 1.101 | 0.984 | 1.030 | 1.048 | -4.97 | -6.98 | no |
+
+Rule outcome: **keep current**, winner on 1–5 among the candidates that pass the filter: seasonal_shrunk (1.3 percent above current on 1–5). seasonal_shrunk wins origins 1-5 but is not at least 5 percent below current on origins 1-5 and not lower than current on origins 6-7.
+
+**PEM107** (782 cells)
+
+| candidate | Relative MAE (1–5) | (6–7) | (all 7) | Horizon 3 (all 7) | Tracking Signal (1–5) | Tracking Signal (all 7) | passes TS filter |
+|---|---|---|---|---|---|---|---|
+| current | 0.870 | 0.848 | 0.864 | 1.050 | -0.71 | 0.80 | yes |
+| naive | 1.000 | 1.000 | 1.000 | 1.000 | -1.26 | 0.10 | yes |
+| damped_trend | 0.929 | 0.794 | 0.894 | 1.088 | -0.90 | 0.28 | yes |
+| theta | 0.905 | 0.811 | 0.880 | 1.089 | -0.81 | 0.54 | yes |
+| seasonal_shrunk | 0.873 | 0.819 | 0.858 | 1.030 | -0.40 | 1.98 | yes |
+| combination_plus_damped | 0.876 | 0.839 | 0.866 | 1.056 | -0.74 | 0.73 | yes |
+
+Rule outcome: **keep current**, winner on 1–5 among the candidates that pass the filter: current. current has the lowest Relative MAE on origins 1-5 among the candidates that pass the Tracking Signal filter.
+
+**PEM102** (112 cells)
+
+| candidate | Relative MAE (1–5) | (6–7) | (all 7) | Horizon 3 (all 7) | Tracking Signal (1–5) | Tracking Signal (all 7) | passes TS filter |
+|---|---|---|---|---|---|---|---|
+| current | 0.921 | 0.928 | 0.923 | 0.884 | -1.55 | -0.56 | yes |
+| naive | 1.000 | 1.000 | 1.000 | 1.000 | -2.78 | 0.32 | yes |
+| damped_trend | 1.029 | 1.036 | 1.031 | 1.022 | 1.79 | 3.59 | yes |
+| theta | 1.006 | 1.013 | 1.008 | 1.008 | 0.73 | 2.76 | yes |
+| seasonal_shrunk | 0.917 | 0.931 | 0.921 | 0.874 | -3.67 | -1.80 | yes |
+| combination_plus_damped | 0.934 | 0.942 | 0.936 | 0.904 | -1.00 | 0.14 | yes |
+
+Rule outcome: **keep current**, winner on 1–5 among the candidates that pass the filter: seasonal_shrunk (0.5 percent below current on 1–5). seasonal_shrunk wins origins 1-5 but is not at least 5 percent below current on origins 1-5 and not lower than current on origins 6-7.
+
+**CI101** (91 cells)
+
+| candidate | Relative MAE (1–5) | (6–7) | (all 7) | Horizon 3 (all 7) | Tracking Signal (1–5) | Tracking Signal (all 7) | passes TS filter |
+|---|---|---|---|---|---|---|---|
+| current | 1.028 | 0.538 | 0.828 | 0.769 | 5.00 | 7.00 | no |
+| naive | 1.000 | 1.000 | 1.000 | 1.000 | -0.38 | 3.24 | yes |
+| damped_trend | 0.914 | 0.448 | 0.723 | 0.617 | 2.69 | 4.96 | yes |
+| theta | 0.905 | 0.425 | 0.709 | 0.593 | 1.60 | 3.89 | yes |
+| seasonal_shrunk | 1.056 | 0.484 | 0.822 | 0.782 | 4.95 | 6.96 | no |
+| combination_plus_damped | 0.996 | 0.515 | 0.799 | 0.733 | 5.00 | 7.00 | no |
+
+Rule outcome: **switch**, winner on 1–5 among the candidates that pass the filter: theta (11.9 percent below current on 1–5). theta is at least 5 percent below current on origins 1-5 and lower on origins 6-7.
+
+**Fuse Cutout** (7 cells)
+
+| candidate | Relative MAE (1–5) | (6–7) | (all 7) | Horizon 3 (all 7) | Tracking Signal (1–5) | Tracking Signal (all 7) | passes TS filter |
+|---|---|---|---|---|---|---|---|
+| current | 0.809 | 1.053 | 0.930 | 0.826 | -0.12 | 0.82 | yes |
+| naive | 1.000 | 1.000 | 1.000 | 1.000 | -2.76 | -0.43 | yes |
+| damped_trend | 1.650 | 1.043 | 1.348 | 1.437 | -4.10 | -2.79 | no |
+| theta | 1.496 | 1.083 | 1.291 | 1.288 | -3.93 | -2.12 | yes |
+| seasonal_shrunk | 0.814 | 1.038 | 0.925 | 0.798 | -0.77 | -1.01 | yes |
+| combination_plus_damped | 0.789 | 1.050 | 0.919 | 0.789 | -0.88 | 0.33 | yes |
+
+Rule outcome: **keep current**, winner on 1–5 among the candidates that pass the filter: combination_plus_damped (2.4 percent below current on 1–5). combination_plus_damped wins origins 1-5 but is not at least 5 percent below current on origins 1-5.
+
+**Surge Arrester** (7 cells)
+
+| candidate | Relative MAE (1–5) | (6–7) | (all 7) | Horizon 3 (all 7) | Tracking Signal (1–5) | Tracking Signal (all 7) | passes TS filter |
+|---|---|---|---|---|---|---|---|
+| current | 1.085 | 1.066 | 1.075 | 0.986 | -3.48 | -4.85 | yes |
+| naive | 1.000 | 1.000 | 1.000 | 1.000 | -3.00 | -4.75 | yes |
+| damped_trend | 0.992 | 0.921 | 0.954 | 0.917 | -2.52 | -3.25 | yes |
+| theta | 1.030 | 0.993 | 1.010 | 1.019 | -3.36 | -4.40 | yes |
+| seasonal_shrunk | 1.134 | 1.064 | 1.097 | 1.078 | -4.08 | -6.15 | no |
+| combination_plus_damped | 1.066 | 1.045 | 1.055 | 0.976 | -3.34 | -4.62 | yes |
+
+Rule outcome: **switch**, winner on 1–5 among the candidates that pass the filter: damped_trend (8.5 percent below current on 1–5). damped_trend is at least 5 percent below current on origins 1-5 and lower on origins 6-7.
+
+### Rule outcome per group (the pre-registered rule of Sec.50, unchanged)
+
+| group | winner on origins 1–5 among the candidates that pass the Tracking Signal filter | outcome | reason |
+|---|---|---|---|
+| PEM101 | current | keep current | lowest on 1–5 among those that pass; seasonal_shrunk is lower on 1–5 (0.810 against 0.849) but fails the filter (Tracking Signal -4.32, limit 4) |
+| PEM103 | seasonal_shrunk (the only candidate that passes; current and four others fail the filter, Tracking Signal about -5) | keep current | seasonal_shrunk is 1.3 percent above current on 1–5 (1.156 against 1.140) and not lower on 6–7 (0.976 against 0.974) |
+| PEM107 | current | keep current | lowest on 1–5 |
+| PEM102 | seasonal_shrunk | keep current | 0.5 percent below current on 1–5 (0.917 against 0.921), not 5 percent, and not lower on 6–7 (0.931 against 0.928) |
+| CI101 | theta | **switch to theta** | 11.9 percent below current on 1–5 (0.905 against 1.028) and lower on 6–7 (0.425 against 0.538); current itself fails the filter (Tracking Signal +5.00 on 1–5), theta passes (+1.61) |
+| Fuse Cutout | combination_plus_damped | keep current | 2.4 percent below current on 1–5 (0.789 against 0.809), not 5 percent (it is lower on 6–7: 1.050 against 1.053) |
+| Surge Arrester | damped_trend | **switch to damped_trend** | 8.5 percent below current on 1–5 (0.992 against 1.085) and lower on 6–7 (0.921 against 1.066) |
+
+The proposal is not stored in `proposed` of the config (stays empty: nothing is adopted; the user decides). Two recommended switches, the same rule that in experiment 1 recommended Holt for Surge Arrester (that shadow forecast is already running; its decision is on 2027-01-05). In the same experiment the seasonal index (seasonal_shrunk) helped no group under the rule: it has the lowest Relative MAE on 1–5 in PEM101 (0.810) and PEM102 (0.917) and is the only candidate that passes the filter in PEM103, but it fails the Tracking Signal filter in PEM101 (-4.32) and Surge Arrester (-4.08), and it does not clear the 5 percent bar in PEM102 and is above current in PEM103. Limitations disclosed before the run (Sec.55): the windows of origins 1–5 and 6–7 overlap in four months, the index rests on one or two years of data, and the pilot groups have 7 cells each.
+
+### Effect on the executive year-end projection (report only; nothing on a page changes)
+As if the candidate had produced vintage 2 (a refit on all 31 months, the same unit prices and the booked-order rule of Sec.49; the current method recomputed here equals the vintage's forecast units, maximum difference 0.00005 units):
+- **CI101 with theta** (13 items): remaining months Sep to Dec 34.5 million baht with current, 31.4 with theta (-3.1 million: Sep -0.8, Oct -0.3, Nov -1.0, Dec -1.1); the division's projection 58.7 to 55.7 million (from unrounded figures; the difference is the 3.1 above), the total 982.4 to 979.3.
+- **Surge Arrester with damped_trend** (48 items, all in PEM101): remaining months 45.6 million baht with current, 79.5 with damped_trend (+33.8 million: Sep +5.6, Oct +7.5, Nov +9.5, Dec +11.2; the damped trend keeps extending the rise of the last months); PEM101's projection 380.9 to 414.7 million, the total 982.4 to 1,016.2. For comparison, the Holt switch of experiment 1 gave +23.3 million for the same group. The Surge Arrester August 2026 level (7,546 units) is already far above every earlier month, so a trend extrapolation moves the projection a lot: a reason to read the recommendation with care, not a reason to change the rule.
+- Both together: the total 982.4 to 1,013.1 million.
+
+### Tests and Validator
+
+- **Tests at the start (before any change):** 892 passed, 0 failed, 0 skipped. **At the end:** the full suite after the last code and report change: 896 passed and 1 failed of 897 collected (892 plus 5 new tests of the experiment: leakage of every new candidate, the seasonal index and its shrink on a fixed example, the candidate definitions on a fixed example, the Naive fallback and its count, the current candidate against experiment 1 and the cell counts). The one failure was the revenue-target guard flagging the STATUS.md entry of this prompt, which gave two year-end projection amounts on a line about the projection; the sentence now points to this report instead of repeating the amounts, and `tests/test_guards.py` passes (26 passed). After that I did not repeat the 22-minute full run; the two edits after it are that STATUS sentence and this paragraph (documents only). No test was deleted or skipped.
+- **Validator (fresh, evaluate-only):** Part 1 PASS: its own recomputation of PEM107 (a division) and Surge Arrester (a pilot group), all six candidates, Relative MAE (1–5, 6–7, all 7, Horizon 3), both Tracking Signals, the filter and the rule outcome, differs from the recorded result by at most 2.2e-15; the pre-registration commit eeac2ec touches only METRICS.md and the config and the experiment code was not in it; the projection effects match the record and the executive table. Part 0: the failure timeline matches the Task Scheduler log exactly; two points it found stated too firmly were corrected above (the 2026-10-16 git exit code is not recorded, so a non-zero git exit after updating the refs is not excluded; reflogs cannot exclude read-only git commands), and four small text errors were fixed (CI101 11.9 percent, the sign of PEM103's line, the line number of the subprocess call in the clone against the current tree, the CI101 projection rounding note).

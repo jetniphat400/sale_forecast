@@ -248,6 +248,89 @@ def test_the_current_candidate_equals_the_main_table_and_the_forecast_pages_rela
 
 
 # ---------------------------------------------------------------------------------------------------------------------------------------------
+# Forecast model experiment 2 (METRICS.md Sec.55, config experiment_2026_10b, pre-registered 2026-10-16): leakage of every candidate, the shrunk seasonal index, the fallback
+# ---------------------------------------------------------------------------------------------------------------------------------------------
+def _exp_cfg_b():
+    with open(os.path.join(_PROJECT_ROOT, "config", "config.yaml"), encoding="utf-8") as f:
+        return yaml.safe_load(f)["experiment_2026_10b"]
+
+
+_MONTHS_31 = [f"{2024 + (1 + k) // 12}-{(1 + k) % 12 + 1:02d}" for k in range(31)]       # 2024-02 ... 2026-08
+
+
+def test_experiment_2_candidates_never_see_a_value_after_the_origin():
+    cfg = _exp_cfg_b()
+    item, typ, div = _SERIES.copy(), _SERIES * 3 + 1, _SERIES * 7 + 2
+    for train_size in (13, 19, 25):
+        base = mx.forecasts_at_origin_b(item, typ, div, _MONTHS_31, train_size, 6, cfg, {})
+        item2, typ2, div2 = item.copy(), typ.copy(), div.copy()
+        item2[train_size:], typ2[train_size:], div2[train_size:] = 1000.0, 5000.0, 9000.0          # every later value changed
+        changed = mx.forecasts_at_origin_b(item2, typ2, div2, _MONTHS_31, train_size, 6, cfg, {})
+        for cand in cfg["candidates"]:
+            assert np.array_equal(base[cand], changed[cand]), (cand, train_size)
+        # a change before the origin does move them (the test can fail): the damped trend, Theta and the seasonal factors
+        typ3, div3 = typ.copy(), div.copy()
+        typ3[train_size - 1] += 400.0
+        div3[train_size - 1] += 4000.0
+        moved = mx.forecasts_at_origin_b(item, typ3, div3, _MONTHS_31, train_size, 6, cfg, {})
+        assert not np.array_equal(base["damped_trend"], moved["damped_trend"]) and not np.array_equal(base["theta"], moved["theta"])
+        assert not np.array_equal(base["seasonal_shrunk"], moved["seasonal_shrunk"])
+
+
+def test_the_seasonal_index_and_its_shrink_on_a_fixed_example():
+    months = [f"{2024 + k // 12}-{k % 12 + 1:02d}" for k in range(24)]                 # 2024-01 ... 2025-12
+    total = np.array([10.0] * 24)
+    total[0] = total[12] = 34.0                                                         # January 34, every other month 10: mean 12
+    s_star, years = mx.shrunk_seasonal_index(total, months, 24)
+    assert years == 2                                                                   # w = 2 / (2 + 2) = 0.5
+    assert s_star[1] == pytest.approx(1 + 0.5 * (34 / 12 - 1)) and s_star[2] == pytest.approx(1 + 0.5 * (10 / 12 - 1))
+    s_star1, years1 = mx.shrunk_seasonal_index(total, months, 13)                       # train 13: Y = 1, the window is months 2..13 (one January: the last), w = 1/3
+    assert years1 == 1 and s_star1[1] == pytest.approx(1 + (1 / 3) * (34 / (np.mean(total[1:13])) - 1)) and s_star1[7] == pytest.approx(1 + (1 / 3) * (10 / np.mean(total[1:13]) - 1))
+    zero, _ = mx.shrunk_seasonal_index(np.zeros(24), months, 24)
+    assert all(v == 1.0 for v in zero.values())                                          # a zero mean gives index 1 everywhere
+    assert mx.target_calendar_months("2025-12", 3) == [1, 2, 3] and mx.target_calendar_months("2026-08", 6) == [9, 10, 11, 12, 1, 2]
+
+
+def test_experiment_2_candidate_definitions_on_a_fixed_example():
+    cfg = _exp_cfg_b()
+    typ, div = _SERIES * 3 + 1, _SERIES * 7 + 2
+    fc = mx.forecasts_at_origin_b(_SERIES, typ, div, _MONTHS_31, 25, 6, cfg, {})
+    share = _SERIES[:25].sum() / typ[:25].sum()
+    comb = np.clip(combination_forecast(typ[:25], 6, MA_WINDOWS), 0, None)
+    from statsforecast.models import AutoETS, Theta
+    damped = np.clip(np.asarray(AutoETS(season_length=1, model="AAN", damped=True).forecast(y=typ[:25], h=6)["mean"], dtype=float), 0, None)
+    theta = np.clip(np.asarray(Theta(season_length=1).forecast(y=typ[:25], h=6)["mean"], dtype=float), 0, None)
+    assert np.allclose(fc["current"], comb * share) and np.allclose(fc["damped_trend"], damped * share) and np.allclose(fc["theta"], theta * share)
+    assert np.allclose(fc["combination_plus_damped"], (6 * comb + damped) / 7 * share)
+    s_star, years = mx.shrunk_seasonal_index(div, _MONTHS_31, 25)
+    assert years == 2 and np.allclose(fc["seasonal_shrunk"], fc["current"] * np.array([s_star[m] for m in mx.target_calendar_months(_MONTHS_31[24], 6)]))
+    assert all((fc[c] >= 0).all() for c in cfg["candidates"])
+
+
+def test_a_model_failure_takes_the_naive_fallback_and_is_counted(monkeypatch):
+    cfg = _exp_cfg_b()
+    counter = {}
+
+    def boom(train, horizon):
+        raise RuntimeError("fit failed")
+    monkeypatch.setattr(mx, "damped_clipped", boom)
+    tl = mx.type_level_forecasts_b(_SERIES * 3 + 1, 25, 6, counter)
+    assert counter == {"damped_trend": 1} and (tl["damped_trend"] == (_SERIES * 3 + 1)[24]).all()
+    assert np.allclose(tl["combination_plus_damped"], (6 * tl["current"] + tl["damped_trend"]) / 7)
+
+
+def test_experiment_2_current_candidate_reproduces_experiment_1_and_the_cell_counts():
+    if not (os.path.exists(os.path.join(_PROJECT_ROOT, "output", "data", "processed_all_divisions_monthly_qty.csv"))
+            and os.path.exists(os.path.join(_PROJECT_ROOT, "output", "summary", "model_experiment_2026_10.json"))):
+        pytest.skip("SKIPPED, not passed: the saved monthly series or the experiment-1 record (untracked output) is not on this machine")
+    result = mx.run_b()
+    book = result["bookkeeping"]
+    assert book["max_abs_diff_current_vs_main_table"] < 1e-9 and max(book["current_check"].values()) <= 1e-9
+    assert book["cells_with_Y1"] + book["cells_with_Y2"] == book["n_cells"] + 2 * 7           # the item cells and the 14 group cells; origins 1-6 have Y = 1, origin 7 has Y = 2
+    assert set(result["groups"]) == {"PEM101", "PEM103", "PEM107", "PEM102", "CI101", "Fuse Cutout", "Surge Arrester"}
+
+
+# ---------------------------------------------------------------------------------------------------------------------------------------------
 # Shadow forecasts (METRICS.md Sec.51, config shadow)
 # ---------------------------------------------------------------------------------------------------------------------------------------------
 import pandas as pd  # noqa: E402
