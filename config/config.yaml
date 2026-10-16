@@ -1254,6 +1254,26 @@ experiment_2026_10:
     Fuse Cutout: keep_current
     Surge Arrester: holt
 
+# Forecast model experiment 2 of 2026-10-16 (src/investigations/model_experiment_2026_10.py --experiment b, METRICS.md Sec.55). PRE-REGISTERED 2026-10-16, committed and pushed before any
+# candidate was computed on the project's series. Report only: the production model, the forward-test log, the vintages, the plans and the pages are unchanged. `proposed` stays empty
+# until the run has been reported.
+experiment_2026_10b:
+  registered_on: "2026-10-16"
+  candidates: [current, naive, damped_trend, theta, seasonal_shrunk, combination_plus_damped]     # the order is the tie-break order
+  damped_trend: {library: statsforecast, call: "AutoETS(season_length=1, model='AAN', damped=True)", season_length: 1}
+  theta: {library: statsforecast, call: "Theta(season_length=1)", season_length: 1}
+  seasonal_shrunk: {years_floor_divisor: 12, w_offset: 2}        # Y = floor(train_size / 12); w = Y / (Y + w_offset); index from the last 12 x Y months of the division total
+  combination_plus_damped: {models: 7}                           # the six current models and damped_trend, equal weight
+  origins: {selection: [1, 2, 3, 4, 5], confirmation: [6, 7], reference: [1, 2, 3, 4, 5, 6, 7]}
+  selection_rule:
+    tracking_signal_limit_from: "maxmin_v1.pending_criteria_values.tracking_signal_limit"    # 4
+    min_relative_improvement: 0.05
+    confirmation_must_be_lower: true
+    undefined_tracking_signal: not_eligible
+  fallback_on_model_error: naive                                 # counted and reported per candidate
+  current_check_tolerance: 1.0e-9                                # the current candidate must equal the Sec.50 values (rel_all, output/summary/model_experiment_2026_10.json) of every group within this
+  proposed: {}
+
 # Shadow forecasts (METRICS.md Sec.51). PRE-REGISTERED 2026-10-09 before any shadow forecast was computed or scored. A shadow forecast is computed and scored next to the production
 # forecast in the forward-test log, never replaces it and never feeds any plan (inventory, operation, material). Decision of the user, 2026-10-09: Surge Arrester runs Holt as a shadow.
 shadow:

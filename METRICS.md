@@ -1552,3 +1552,41 @@ evaluation run and the run at which a target month is scoreable are derived from
                    lines. A paid-remark line is in no summary count; a รอตรวจ line is in every count.
     evidence     = the item master (Cube_ItemList.ItemGroup, Cube_Inventory_Aging.GLDescription) read only with the material pull (material_plan.pull_item_attributes, saved as item_attributes.pkl); the master marks only
                    part of the labor and subcontract items (most are set up as ordinary raw materials), which is why the description keywords carry the paid remarks and the master only raises รอตรวจ.
+
+## 55. model_experiment_2026_10b
+
+    The second report-only model experiment (src/investigations/model_experiment_2026_10.py, run with --experiment b; config experiment_2026_10b). PRE-REGISTERED 2026-10-16,
+    committed and pushed BEFORE any candidate was computed on the project's series (the library calls were only tried on a made-up series to fix their exact form). The production
+    model, every page, every recorded output, the forward-test log, the vintages, the plans and the monthly run are unchanged; the result goes to output/summary (untracked) and the
+    report; an approved result would take effect from vintage 3 at the earliest; vintage 2 is never recomputed.
+
+    setup          = identical to Sec.50: the saved monthly series (output/data/processed_all_divisions_monthly_qty.csv), the same 335 scope items, 7 rolling origins (train sizes 13, 15,
+                     ..., 25 of 31 months), 6 horizons, the same cells (an item x an origin with a Top-down forecast), the five forecast divisions and the two pilot groups (the group's
+                     series is the Type series); metrics as Sec.48 and Sec.50 (Relative MAE on origins 1-5, 6-7 and 1-7, Relative MAE Horizon 3 on 1-7, Tracking Signal at horizon 1 of the
+                     group's monthly total on origins 1-5 and 1-7); the same selection rule (Sec.50: among the candidates with |Tracking Signal| on origins 1-5 at most
+                     maxmin_v1.pending_criteria_values.tracking_signal_limit, 4, the lowest Relative MAE on origins 1-5 wins, ties in the candidate order of the config; recommend a switch
+                     only if the winner is not current, is at least min_relative_improvement (5 percent) below current on origins 1-5 AND is lower than current on origins 6-7; no candidate
+                     passes the filter: keep current).
+    candidates     = 1 current   the production Top-down Combination, unchanged (reference; it must reproduce the current values of Sec.50 exactly: Relative MAE on all 7 origins of
+                                 every group, the check is part of the run)
+                     2 naive     item level, as Sec.50 (reference)
+                     3 damped_trend   Type level: damped additive-trend exponential smoothing without season, statsforecast.models.AutoETS(season_length=1, model="AAN", damped=True)
+                                 .forecast(y=train, h=6)["mean"] (fitted method ETS(A,Ad,N)), clipped at 0; top-down allocation as current (times the item's share of the Type in the training window)
+                     4 theta     Type level: the standard Theta method, statsforecast.models.Theta(season_length=1).forecast(y=train, h=6)["mean"], clipped at 0; top-down allocation as current
+                     5 seasonal_shrunk   the current forecast (item level, after the top-down allocation) times s*[division, calendar month of the target month]. The index comes from the
+                                 division's total series (the sum of its scope items with a full-length series; for a pilot group, the division the group belongs to) inside the training
+                                 window: Y = floor(train_size / 12) full years; the window is the last 12 x Y months before the origin; s[m] = (the mean of the window's values in calendar month m) /
+                                 (the mean of all the window's values), and s[m] = 1 when the mean of all values is 0; shrunk s*[m] = 1 + w x (s[m] - 1) with w = Y / (Y + 2) (Y = 1: w = 1/3;
+                                 Y = 2: w = 1/2). The index is computed from the first train_size months only. The number of cells with Y = 1 and with Y = 2 is reported.
+                     6 combination_plus_damped   Type level: (6 x the six-model Combination + damped_trend) / 7, the seven models at equal weight; top-down allocation as current
+    fallback       = if a statsforecast model raises or returns a non-finite value on a training series, that series' forecast of that candidate is the Naive forecast of the series (last
+                     observed month) and the number of such cases per candidate is reported; nothing is dropped and no other change is made.
+    leakage        = as Sec.50: each candidate function receives only the first train_size months (asserted in code; tested by changing every later value at three origins for every
+                     candidate, and a test that changing a value before the origin does change the forecast), and the seasonal index is a function of those months only.
+    effect         = for each recommended switch, the year-end projection of the executive summary (Sec.49) as if the candidate had produced vintage 2 (a refit on the whole fit window,
+                     train size 31, the same unit prices and booked-order rule), computed in the report only.
+    checks         = the current candidate's Relative MAE on all 7 origins equals Sec.50's value for every group (PEM101 0.800, PEM103 1.041, PEM107 0.864, PEM102 0.923, CI101 0.828,
+                     Fuse Cutout 0.930, Surge Arrester 1.075, to three decimals; the run compares the full-precision values recorded in output/summary/model_experiment_2026_10.json and stops if one differs by more than 1e-9); a fixed example tests the seasonal index and its shrink.
+
+- Known limitations, disclosed before the run (as Sec.50): the windows of origins 1-5 and 6-7 overlap in four target months; the seasonal index rests on one or two years of data; the
+  rule is the user's and is not changed. A recommendation is not an adoption: the user decides.
