@@ -2,6 +2,7 @@
 exits at once, logs that it skipped and makes no database connection; otherwise it runs normally. No tracked file is modified; the logs live in a
 temporary folder."""
 import json
+import logging
 import os
 import sys
 
@@ -180,6 +181,61 @@ def test_the_weekend_start_does_nothing_before_any_lock_check_preflight_or_login
     monkeypatch.setattr(djob, "check_publishing_setup", lambda *a, **k: (_ for _ in ()).throw(AssertionError("the setup check ran")))
     sd.main()                                                                                # returns (exit code 0), nothing else
     assert engine.connects == 0 and created == [] and _failure_logs(tmp_path) == []
+
+
+SECRET_PATH = "C:/Users/<user>/OneDrive - Secret Company"
+
+
+def test_the_env_line_says_only_set_or_not_set_and_never_the_value(monkeypatch):
+    monkeypatch.setenv("OneDriveCommercial", SECRET_PATH)
+    line = djob.env_line()
+    assert line == "env OneDriveCommercial: SET" and "<user>" not in line and "Secret" not in line and "OneDrive -" not in line
+    monkeypatch.setenv("OneDriveCommercial", "")
+    assert djob.env_line() == "env OneDriveCommercial: NOT SET"                              # an empty value is not set
+    monkeypatch.delenv("OneDriveCommercial")
+    assert djob.env_line() == "env OneDriveCommercial: NOT SET"
+
+
+@pytest.mark.parametrize("value,expected", [(SECRET_PATH, "env OneDriveCommercial: SET"), (None, "env OneDriveCommercial: NOT SET")])
+def test_the_line_is_logged_first_on_a_weekend_start_before_the_lock_check_and_changes_nothing_else(tmp_path, monkeypatch, caplog, value, expected):
+    import db
+    if value is None:
+        monkeypatch.delenv("OneDriveCommercial", raising=False)
+    else:
+        monkeypatch.setenv("OneDriveCommercial", value)
+    sd, engine, created = _daily_env(monkeypatch, tmp_path, reachable=True, weekday=False)
+    monkeypatch.setattr(db, "check_refused_lock", lambda: (_ for _ in ()).throw(AssertionError("the lock was checked")))
+    with caplog.at_level(logging.INFO, logger="snapshot_daily"):
+        sd.main()
+    messages = [r.getMessage() for r in caplog.records if r.name == "snapshot_daily"]
+    assert messages[0] == expected and messages.count(expected) == 1 and "<user>" not in caplog.text and "Secret" not in caplog.text
+    assert engine.connects == 0 and created == [] and _failure_logs(tmp_path) == []             # still no log file, no connection: the weekend exit is unchanged
+
+
+def test_the_line_is_logged_before_a_blocked_start_and_the_exit_code_stays_3(tmp_path, monkeypatch, caplog):
+    import db
+    monkeypatch.setenv("OneDriveCommercial", SECRET_PATH)
+    sd, engine, created = _daily_env(monkeypatch, tmp_path, reachable=True)
+    monkeypatch.setattr(db, "check_refused_lock", lambda: (_ for _ in ()).throw(db.LoginRefused("locked")))
+    with caplog.at_level(logging.INFO, logger="snapshot_daily"), pytest.raises(SystemExit) as stop:
+        sd.main()
+    assert stop.value.code == 3 and engine.connects == 0
+    assert [r.getMessage() for r in caplog.records if r.name == "snapshot_daily"][0] == "env OneDriveCommercial: SET"
+
+
+@pytest.mark.parametrize("value,expected", [(SECRET_PATH, "env OneDriveCommercial: SET"), (None, "env OneDriveCommercial: NOT SET")])
+def test_every_daily_log_carries_the_line_a_skip_log_and_a_failure_log(tmp_path, monkeypatch, value, expected):
+    if value is None:
+        monkeypatch.delenv("OneDriveCommercial", raising=False)
+    else:
+        monkeypatch.setenv("OneDriveCommercial", value)
+    _log(tmp_path, "a", "published", f"{TODAY}T08:01:00")
+    existing = djob.successful_run_today(str(tmp_path), CONFIG, today=TODAY)
+    skip = json.load(open(djob.record_skip(str(tmp_path), CONFIG, existing), encoding="utf-8"))
+    fail = json.load(open(djob.record_failure(str(tmp_path), CONFIG, "step", RuntimeError("x")), encoding="utf-8"))
+    assert skip["env_note"] == expected and fail["env_note"] == expected
+    assert "<user>" not in json.dumps(skip) and "Secret" not in json.dumps(fail)
+    assert skip["status"] == CONFIG["daily_stock"]["skip_status"] and fail["status"] == "failed"      # nothing else in the logs changed
 
 
 def test_a_refused_login_makes_one_attempt_writes_the_lock_exits_3_and_the_next_start_is_blocked_before_the_preflight(tmp_path, monkeypatch):

@@ -54,6 +54,12 @@ class DailyStop(DailyFailure):
     """The run stopped on purpose (for example a tracked file is modified): nothing was committed or pushed."""
 
 
+def env_line(name: str = "OneDriveCommercial") -> str:
+    """"env <name>: SET" or "env <name>: NOT SET" -- only whether the variable is visible to this process, never its value. The monthly run's backup needs it (config backup.env_var); the daily
+    task has the same principal, so this line in the daily log shows whether the scheduled-task context has it (Prompt 43)."""
+    return f"env {name}: " + ("SET" if os.environ.get(name) else "NOT SET")
+
+
 def load_config(root: str = PROJECT_ROOT) -> dict:
     with open(os.path.join(root, "config", "config.yaml"), encoding="utf-8") as f:
         return yaml.safe_load(f)
@@ -321,6 +327,7 @@ def _write_log(root: str, config: dict, log: dict) -> str:
     out_dir = os.path.join(root, config["daily_stock"]["log_dir"])
     os.makedirs(out_dir, exist_ok=True)
     path = os.path.join(out_dir, f"daily_stock_{log['run_id']}.json")
+    log.setdefault("env_note", env_line())       # every daily log (run, skip, failure) carries the one line
     with open(path, "w", encoding="utf-8") as f:
         json.dump(log, f, indent=2, default=str, ensure_ascii=False)
     return path

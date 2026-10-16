@@ -81,6 +81,7 @@ def main():
     import daily_stock_job as djob
     import db
     from db import session
+    logger.info("%s", djob.env_line())          # first, before the weekend exit, the lock check, the preflight and any database step: the visible-to-the-task proof of the backup variable
     if not is_weekday():      # Monday to Friday only: a missed Friday start that Task Scheduler launches at the weekend does nothing, before any lock check, preflight or login
         logger.info("Not a weekday: the daily job runs Monday to Friday only; nothing done.")
         return
