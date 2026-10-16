@@ -1206,8 +1206,9 @@ exec_summary:
     total_label: "รวม"
     dash: "–"
     watch_heading: "เรื่องที่ต้องระวัง"
-    watch_low: "{group} Forecast ต่ำกว่าจริงต่อเนื่อง (Tracking Signal {value}) คาดการณ์ทั้งปีของกลุ่มนี้อาจต่ำกว่าที่จะเกิดจริง"
-    watch_high: "{group} Forecast สูงกว่าจริงต่อเนื่อง (Tracking Signal {value}) คาดการณ์ทั้งปีของกลุ่มนี้อาจสูงกว่าที่จะเกิดจริง"
+    watch_low: "{group} Forecast ต่ำกว่าจริง {k} จาก {n} จุดวัด (Tracking Signal {value}){suffix} คาดการณ์ทั้งปีของกลุ่มนี้อาจต่ำกว่าที่จะเกิดจริง"
+    watch_high: "{group} Forecast สูงกว่าจริง {k} จาก {n} จุดวัด (Tracking Signal {value}){suffix} คาดการณ์ทั้งปีของกลุ่มนี้อาจสูงกว่าที่จะเกิดจริง"
+    watch_suffix: " ส่วนใหญ่มาจากเดือน {month} เดือนเดียว"            # added after the parenthesis only when the signal without its largest point is within the limit (METRICS.md Sec.49)
     watch_plan: "แผนผลิต {division} เดือน {month} สูงกว่า Historical peak (ยอดผลิตเสร็จสูงสุดต่อเดือนในอดีต ไม่ใช่กำลังผลิตเต็มที่) ({pct})"
     watch_material: "วัตถุดิบ {n} รายการเลยกำหนดสั่ง (Late to order) สั่งวันนี้ของมาไม่ทันแผน"
     watch_pem107: "PEM107 ส่งของช่องทาง Omni ส่งทัน (Not-late: ส่งไม่ช้ากว่าวันนัด) น้อยลงตั้งแต่ {since} ({pct})"

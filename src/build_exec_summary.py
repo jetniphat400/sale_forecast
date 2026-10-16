@@ -51,6 +51,18 @@ def exec_booked_units(raw: pd.DataFrame, items: set, months: list) -> dict:
     return {k: float(v) for k, v in g.items()}
 
 
+def exec_ts_counts(points: list, limit: float) -> dict:
+    """For a Tracking Signal beyond the limit (METRICS.md Sec.49): n = the number of points, k = the points whose error has the sign of the signal, and `month` = the month of the point
+    with the largest absolute error when the signal without that one point is within the limit (None otherwise, or when it cannot be computed). `points` = [(month, e)] as the page makes them."""
+    import transferability_all_divisions as ta
+    errors = [float(e) for _m, e in points]
+    ts = ta.tracking_signal(errors)["tracking_signal"]
+    k = sum(1 for e in errors if (e < 0 if ts < 0 else e > 0))
+    big = max(range(len(errors)), key=lambda i: abs(errors[i]))
+    rest = ta.tracking_signal(errors[:big] + errors[big + 1:])["tracking_signal"]
+    return {"k": k, "n": len(errors), "month": points[big][0] if rest is not None and abs(rest) <= limit else None}
+
+
 def exec_watch(ts_rows: list, limit: float, plan_above: list, n_late: int, pem107_alert) -> list:
     """The lines of "เรื่องที่ต้องระวัง", each only while its condition holds: a group whose Tracking Signal is beyond plus or minus `limit` (below: forecast below the actual), each
     division-month of the plan above the historical peak, materials already late (n_late above 0), the PEM107 not-late alert (a dict with `since` and `pct`, or None)."""
@@ -58,7 +70,7 @@ def exec_watch(ts_rows: list, limit: float, plan_above: list, n_late: int, pem10
     for r in ts_rows:
         ts = r["value"]
         if ts is not None and abs(ts) > limit:
-            watch.append({"kind": "low" if ts < 0 else "high", "group": r["group"], "value": ts})
+            watch.append({"kind": "low" if ts < 0 else "high", "group": r["group"], "value": ts, **exec_ts_counts(r["points"], limit)})
     for r in plan_above:
         watch.append({"kind": "plan", **r})
     if n_late > 0:
@@ -138,7 +150,7 @@ def exec_data(root: str = PROJECT_ROOT, plan_dir: str = None) -> dict:
     n_late = int(bmp.build_values(root, plan_dir)["n_late"])
     with open(os.path.join(root, "output", "summary", "task2b_part4_pem107_alert.json"), encoding="utf-8") as f:
         alert = json.load(f)
-    watch = exec_watch([{"group": r["label"], "value": r["tracking_signal"]} for r in acc["rows"]], th["limit"], plan_above, n_late,
+    watch = exec_watch([{"group": r["label"], "value": r["tracking_signal"], "points": r["points"]} for r in acc["rows"]], th["limit"], plan_above, n_late,
                        None if alert.get("not_late_from_may_2026_pct") is None else {"since": rv.thai_month_year(alert["split_date"]), "pct": f"{float(alert['not_late_from_may_2026_pct']):.1f}%"})
     pending = [r for r in maxmin_v1.pending_criteria_rows() if r["who"] == "ผู้บริหาร"]
     return {"data_month": data_month, "data_month_label": rv.thai_month_short(data_month), "year": year, "year_be": int(rv.thai_year_short(year)), "remaining_months": remaining, "booked_baht": booked_baht, "rows": rows, "total": tot, "monthly": monthly,
@@ -267,7 +279,8 @@ def exec_render(data: dict, config: dict) -> str:
     watch_lines = []
     for w in d["watch"]:
         if w["kind"] in ("low", "high"):
-            watch_lines.append(T["watch_" + w["kind"]].format(group=w["group"], value=f"{w['value']:.1f}"))
+            suffix = T["watch_suffix"].format(month=rv.thai_month_short(w["month"])) if w["month"] else ""
+            watch_lines.append(T["watch_" + w["kind"]].format(group=w["group"], value=f"{w['value']:.1f}", k=w["k"], n=w["n"], suffix=suffix))
         elif w["kind"] == "plan":
             watch_lines.append(T["watch_plan"].format(division=w["division"], month=w["month"], pct=w["pct"]))
         elif w["kind"] == "material":

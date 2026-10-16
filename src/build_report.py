@@ -508,10 +508,12 @@ def gather_accuracy_vs_naive(config: dict, primary_results: pd.DataFrame) -> dic
         r_all, r_h3 = ta.relative_mae(cs), ta.relative_mae(cs, 3)
         if len(cs) != int(main.loc[d, "n_scored"]) or abs(r_all["mae"] - float(main.loc[d, "MAE"])) > 1e-9:
             raise ReportSourceError(f"{d}: the model MAE of the {len(cs)} recomputed cells ({r_all['mae']}) differs from the main table's MAE ({main.loc[d, 'MAE']}, n_scored {main.loc[d, 'n_scored']}).")
-        e = list(ta.horizon1_errors_by_origin(cs).values()) + [float(x) for x in fdiv[fdiv["division"] == d].sort_values(["target_month", "vintage_id"])["e_total"]]
-        ts = ta.tracking_signal(e)
+        first_month = {c["origin"]: c["first_test_month"] for c in cs}
+        fwd = fdiv[fdiv["division"] == d].sort_values(["target_month", "vintage_id"])
+        points = [(first_month[o], x) for o, x in ta.horizon1_errors_by_origin(cs).items()] + [(str(m), float(x)) for m, x in zip(fwd["target_month"], fwd["e_total"])]   # (month, e) in time order
+        ts = ta.tracking_signal([x for _m, x in points])
         rows.append({"label": d, "kind": "division", "relative_mae": r_all["relative_mae"], "relative_mae_h3": r_h3["relative_mae"], "tracking_signal": ts["tracking_signal"],
-                     "n_points": ts["n_points"], "mae": r_all["mae"], "mae_naive": r_all["mae_naive"], "n_cells": r_all["n_cells"]})
+                     "n_points": ts["n_points"], "points": points, "mae": r_all["mae"], "mae_naive": r_all["mae_naive"], "n_cells": r_all["n_cells"]})
         # report only: the share of the division's items whose own horizon-1 Tracking Signal is beyond the limit
         item_e = {}
         for c in sorted(cs, key=lambda c: c["origin"]):
@@ -532,10 +534,11 @@ def gather_accuracy_vs_naive(config: dict, primary_results: pd.DataFrame) -> dic
         gc = ta.group_cells(qty, months, pull_date, margin)
         r_all, r_h3 = ta.relative_mae(gc), ta.relative_mae(gc, 3)
         fg = fitems[(fitems["division"] == div) & (fitems["type"].str.strip() == type_name)]
-        e = list(ta.horizon1_errors_by_origin(gc).values()) + [float(x) for x in fg.groupby(["target_month", "vintage_id"])["e_model"].sum().sort_index()]
-        ts = ta.tracking_signal(e)
+        first_month = {c["origin"]: c["first_test_month"] for c in gc}
+        points = [(first_month[o], x) for o, x in ta.horizon1_errors_by_origin(gc).items()] + [(str(m), float(x)) for (m, _v), x in fg.groupby(["target_month", "vintage_id"])["e_model"].sum().sort_index().items()]
+        ts = ta.tracking_signal([x for _m, x in points])
         rows.append({"label": label, "kind": "group", "relative_mae": r_all["relative_mae"], "relative_mae_h3": r_h3["relative_mae"], "tracking_signal": ts["tracking_signal"],
-                     "n_points": ts["n_points"], "mae": r_all["mae"], "mae_naive": r_all["mae_naive"], "n_cells": r_all["n_cells"]})
+                     "n_points": ts["n_points"], "points": points, "mae": r_all["mae"], "mae_naive": r_all["mae_naive"], "n_cells": r_all["n_cells"]})
     for r in rows:
         r["verdict_relative"] = verdict_relative(r["relative_mae"], good, passing)
         r["verdict_relative_h3"] = verdict_relative(r["relative_mae_h3"], good, passing)

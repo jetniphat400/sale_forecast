@@ -1361,7 +1361,7 @@ pipeline — no new section is needed for this; it is already covered by section
     verdict           = Relative MAE: ดี below relative_mae_good, ผ่าน below relative_mae_pass, ไม่ผ่าน otherwise; Tracking Signal: เตือน when |TS| is above tracking_signal_limit, ปกติ otherwise
                       Displayed words (config report.verdict_words, from Prompt 17): ดี = "ถึงเกณฑ์ดี (ร่าง)", ผ่าน = "ถึงเกณฑ์ผ่าน (ร่าง)", ไม่ผ่าน = "ยังไม่ถึงเกณฑ์ (ร่าง)": a result meets the DRAFT criteria; it is not claimed to be proven better than Naive (the significance block tests that).
 
-- Thresholds (draft, pending the user's decision after 2026-12-05): config pending_criteria_values (relative_mae_pass, relative_mae_good, tracking_signal_limit); the same values the
+- Thresholds (draft, pending the user's decision after the run of 2026-12-07, the run_day of 2026-12; config decision_month 2026-12): config pending_criteria_values (relative_mae_pass, relative_mae_good, tracking_signal_limit); the same values the
   assumptions tab shows in "เกณฑ์ที่รอกำหนด". Source of the ratio: Morlidge's ratio of forecast MAE to naive MAE (Gilliland / SAS, "The avoidability of forecast error, Part 4").
 - The measure is the ratio of mean absolute errors, not MASE (MASE scales by the in-sample naive step; the main table's MASE is unchanged).
 - Backtest figures are recomputed at page build from the saved monthly series with the same functions as the main table (src/transferability_all_divisions.py); the model MAE
@@ -1390,6 +1390,12 @@ pipeline — no new section is needed for this; it is already covered by section
     watch-outs     = lines shown only while their condition holds: a division or pilot group with |Tracking Signal| above the limit (below minus the limit: forecast below the actual; above
                      plus the limit: above); a division-month of the operation plan above 100 percent of the historical peak (the plan page's own flag and percent); the material plan
                      page's count of materials "ขาดแล้ว สั่งตอนนี้ไม่ทัน" when above 0; the PEM107 Omni not-late share since the split date, while the Min-Max page has its PEM107 alert
+    Tracking Signal lines (Prompt 42) = "{group} Forecast ต่ำกว่าจริง|สูงกว่าจริง {k} จาก {n} จุดวัด (Tracking Signal {value}){suffix} ..."; the points are exactly the page's own Tracking Signal points (Sec.48: one per backtest
+                     origin in time order, then one per scored forward month; horizon 1, the division's or group's total; `build_report.gather_accuracy_vs_naive` returns them as (month, e) in `points`);
+                     n = the number of points; k = the number of points whose error e (forecast minus actual) has the sign of the Tracking Signal (e below 0 for a signal below 0, above 0 for a signal above 0;
+                     a point with e = 0 is not counted); suffix = " ส่วนใหญ่มาจากเดือน {month} เดือนเดียว" only when the Tracking Signal recomputed without the single point with the largest |e| (the first
+                     such point in time order on a tie) is within the limit (|TS| at most tracking_signal_limit), {month} = that point's month; no suffix when that signal is undefined. Texts: config
+                     exec_summary.text watch_low, watch_high, watch_suffix. Computed in `build_exec_summary.exec_ts_counts` from the rows' points (no second computation path).
     pending rows   = the rows of the table "เกณฑ์ที่รอกำหนด" whose ใครกำหนด is ผู้บริหาร
     gates          = the total row equals the sum of the division rows; each division's projection equals its YTD plus, per item and remaining month, the larger of the baht on the
                      rendered forecast page and the on-the-books baht (Prompt 14; Prompt 13 compared with the page's division totals alone)
@@ -1459,7 +1465,7 @@ pipeline — no new section is needed for this; it is already covered by section
                       shadow.monthly_run_day_of_month), never typed; the job prints it. Until then the status is "pending" with the months scored so far and, for each unscored month,
                       the run date on which it becomes scoreable.
     counted         = vintage 2 only; shadow forecasts of vintage 3 and later are recorded and scored but do not count toward this rule.
-    outcome         = a recommendation only; never adopted automatically; the switch needs the user's approval. The `decision_date` of the criteria (2026-12-05) is not used by this rule.
+    outcome         = a recommendation only; never adopted automatically; the switch needs the user's approval. The criteria decision (config `decision_month` 2026-12, the run of 2026-12-07) is not used by this rule.
 
 - Disclosure: The rule was proposed in chat at 2026-10-09 11:01, before September's raw units for this group were printed during a completeness check at 11:02. The rule text did not change after that. No Holt or current forecast had been computed or scored at that point.
 

@@ -672,8 +672,8 @@ def test_each_watch_out_line_appears_only_when_its_condition_holds():
     cfg = bt.load_config()
     none = bx.exec_watch([{"group": "G", "value": 3.9}, {"group": "H", "value": -4.0}, {"group": "I", "value": None}], 4.0, [], 0, None)
     assert none == []                                                                                    # at the limit or inside it: no line; no plan line, no late material, no alert
-    low = bx.exec_watch([{"group": "G", "value": -4.1}], 4.0, [], 0, None)
-    high = bx.exec_watch([{"group": "H", "value": 6.7}], 4.0, [], 0, None)
+    low = bx.exec_watch([{"group": "G", "value": -6.0, "points": [("2026-01", -3), ("2026-02", -3), ("2026-03", -3), ("2026-04", -3), ("2026-05", -3), ("2026-06", -3)]}], 4.0, [], 0, None)          # six points below the actual: -6.0, still -5.0 without any one point: no suffix
+    high = bx.exec_watch([{"group": "H", "value": 6.7, "points": [("2026-01", 1), ("2026-02", -1), ("2026-03", 1), ("2026-04", -1), ("2026-05", 1), ("2026-06", -1), ("2026-07", 1), ("2026-08", 30)]}], 4.0, [], 0, None)   # 5 of 8 above, 6.7; without the 30 it is 1.0, within the limit: suffix for the 8th month
     plan = bx.exec_watch([], 4.0, [{"division": "D1", "month": "ต.ค. 69", "pct": "119.9%"}], 0, None)
     mat = bx.exec_watch([], 4.0, [], 584, None)
     alert = bx.exec_watch([], 4.0, [], 0, {"since": "พ.ค. 69", "pct": "57.7%"})
@@ -681,13 +681,45 @@ def test_each_watch_out_line_appears_only_when_its_condition_holds():
     d = _fixed_exec_data()
     d["watch"] = low + high + plan + mat + alert
     lines = _exec_visible(bx.exec_render(d, cfg))
-    assert "G Forecast ต่ำกว่าจริงต่อเนื่อง (Tracking Signal -4.1) คาดการณ์ทั้งปีของกลุ่มนี้อาจต่ำกว่าที่จะเกิดจริง" in lines
-    assert "H Forecast สูงกว่าจริงต่อเนื่อง (Tracking Signal 6.7) คาดการณ์ทั้งปีของกลุ่มนี้อาจสูงกว่าที่จะเกิดจริง" in lines
+    assert "G Forecast ต่ำกว่าจริง 6 จาก 6 จุดวัด (Tracking Signal -6.0) คาดการณ์ทั้งปีของกลุ่มนี้อาจต่ำกว่าที่จะเกิดจริง" in lines and (low[0]["k"], low[0]["n"], low[0]["month"]) == (6, 6, None)
+    assert "H Forecast สูงกว่าจริง 5 จาก 8 จุดวัด (Tracking Signal 6.7) ส่วนใหญ่มาจากเดือน ส.ค. 69 เดือนเดียว คาดการณ์ทั้งปีของกลุ่มนี้อาจสูงกว่าที่จะเกิดจริง" in lines and (high[0]["k"], high[0]["n"], high[0]["month"]) == (5, 8, "2026-08")
+    assert not any("ต่อเนื่อง" in x for x in lines)
     assert "แผนผลิต D1 เดือน ต.ค. 69 สูงกว่า Historical peak (ยอดผลิตเสร็จสูงสุดต่อเดือนในอดีต ไม่ใช่กำลังผลิตเต็มที่) (119.9%)" in lines
     assert "วัตถุดิบ 584 รายการเลยกำหนดสั่ง (Late to order) สั่งวันนี้ของมาไม่ทันแผน" in lines
     assert "PEM107 ส่งของช่องทาง Omni ส่งทัน (Not-late: ส่งไม่ช้ากว่าวันนัด) น้อยลงตั้งแต่ พ.ค. 69 (57.7%)" in lines
     assert "5 เรื่อง" in "\n".join(lines)                                                                 # card 4 counts the lines shown
     assert not any("Forecast ต่ำกว่าจริง" in x for x in _exec_visible(bx.exec_render(dict(d, watch=high), cfg)))
+    # an undefined signal without the largest point gives no suffix; a tie for the largest takes the first point in time order
+    assert bx.exec_ts_counts([("2026-01", -5.0), ("2026-02", 0.0)], 4.0) == {"k": 1, "n": 2, "month": None}
+    assert bx.exec_ts_counts([("2026-01", -3.0), ("2026-02", -3.0), ("2026-03", 0.5)], 2.0)["month"] == "2026-01"
+
+
+def test_the_watch_out_counts_on_the_saved_data_equal_an_independent_recomputation_and_no_line_says_continuously():
+    import build_trend_tab as bt
+    import build_exec_summary as bx
+    import build_report as br
+    cfg = bt.load_config()
+    limit = float(cfg["maxmin_v1"]["pending_criteria_values"]["tracking_signal_limit"])
+    acc = br.gather_accuracy_vs_naive(cfg, br.gather_primary_results())
+    d = bx.exec_data(PROJECT_ROOT)
+    seen = {w["group"]: w for w in d["watch"] if w["kind"] in ("low", "high")}
+    expect = {}
+    for r in acc["rows"]:
+        e = [x for _m, x in r["points"]]
+        ts = sum(e) / (sum(abs(x) for x in e) / len(e))
+        assert abs(ts - r["tracking_signal"]) < 1e-9 and len(e) == r["n_points"]                       # the points are the page's own
+        if abs(ts) > limit:
+            k = sum(1 for x in e if (x < 0) == (ts < 0) and x != 0)
+            big = max(range(len(e)), key=lambda i: abs(e[i]))
+            rest = e[:big] + e[big + 1:]
+            rest_ts = sum(rest) / (sum(abs(x) for x in rest) / len(rest)) if any(rest) else None
+            expect[r["label"]] = (k, len(e), r["points"][big][0] if rest_ts is not None and abs(rest_ts) <= limit else None)
+    assert expect and {g: (w["k"], w["n"], w["month"]) for g, w in seen.items()} == expect
+    lines = _exec_visible(bx.exec_render(d, cfg))
+    assert not any("ต่อเนื่อง" in x for x in lines if any(x.startswith(g + " Forecast ") for g in expect))          # no watch-out line says "continuously" (the decision list's Bias topic is another text)
+    for g, (k, n, month) in expect.items():
+        line = next(x for x in lines if x.startswith(g + " Forecast "))
+        assert f" {k} จาก {n} จุดวัด (Tracking Signal " in line and (("ส่วนใหญ่มาจากเดือน" in line) == (month is not None))
 
 
 def _fixed_page(tmp_path, a_vals, b_vals):

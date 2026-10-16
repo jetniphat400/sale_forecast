@@ -2440,3 +2440,72 @@ Code differs from the doc, matters, reported only (nothing changed): the monthly
 - **DATA_MAP.md entry 45:** rewritten with the same evidence points and levels (**V2** for the shares, correlations and August figures; the experiment figures are its recorded output).
 - **A claim I did not keep:** the audit says July and August 2026 are "far above any month of 2024 or 2025" for both categories. Checked on its own monthly table: true for both categories in August and for Surge Arrester in July (6,259 against a highest earlier month of 3,274), not for Fuse Cutout in July (4,018 against 5,121 in 2024-06). Only August is written in the docs. The audit file itself is not edited (out of scope).
 - **What the text no longer says as fact:** that seasonality is the cause of the August 2026 gap. The Fuse Cutout and Surge Arrester August level (8,670 and 7,546 units) is above every month of the two previous years, so it is above every earlier month; two years of data cannot separate a season from a level shift (the year-pair correlations are +0.68 and -0.61).
+
+
+## Prompt 42
+
+Start (shell clock): 2026-10-16 11:15. HEAD before: c6fa37b. No database connection; no scheduled task was modified, run, enabled, disabled or re-registered (read-only `schtasks /query /xml` and `Get-ScheduledTask`); in `D:\sale_forecast_publish` only `rev-parse`, `status`, `fetch`, `log`, `diff --stat`, `rev-list` and `merge-base` were used (`git fetch` updates the remote-tracking refs only).
+
+### Part A: readiness for the 2026-11-05 run (read-only, report only)
+
+**A1, the publish clone.**
+- Branch `main`; `git status --porcelain` is empty (clean: YES). After `git fetch`: HEAD `904de46` (the 2026-10-16 08:00 daily commit), `origin/main` `c6fa37b`: 0 ahead, 3 behind (Prompts 39, 40 and 41).
+- A fast-forward pull would succeed: YES. HEAD is an ancestor of `origin/main` (`merge-base --is-ancestor`), and the tree is clean. The daily job also pulls the clone (`daily_stock_job.publish_stage`: `git pull --ff-only origin main` before it publishes), so the clone moves forward on every daily run; the monthly task pulls again at 07:00.
+- Shared output: the clone's `output` resolves to the shared output folder (`os.path.realpath` equals config `publishing.shared_output_root`), so `check_publishing_setup` would pass.
+- Monthly task action (user name and profile path masked): `cmd.exe /c C:\Users\<user>\AppData\Local\Programs\Git\cmd\git.exe -C D:\sale_forecast_publish pull --ff-only origin main && C:\Users\<user>\AppData\Local\Programs\Python\Python312\python.exe D:\sale_forecast_publish\src\monthly_refresh.py`, working directory `D:\sale_forecast_publish`; trigger Monday to Friday 07:00; `StartWhenAvailable` true; `MultipleInstancesPolicy` IgnoreNew.
+- If the pull step fails: `&&` means python is not started. `cmd /c` returns the exit code of the last command it ran, so Task Scheduler records git's non-zero exit code as the task result (proven from the action line and the semantics of `&&`; the exact number depends on the git error and was not forced). No run log is written (the log is written by `monthly_refresh.main`, which never starts), no lock file, no success state (`record_monthly_success` is called only from `cli()` after a run). The next weekday start tries again (`monthly_run_due` stays true until a success is recorded).
+
+**A2, the OneDrive backup.**
+- Principal: LogonType `InteractiveToken` (the task runs only while the user is logged on; with `StartWhenAvailable` it starts after the next logon when the 07:00 start was missed); RunLevel: the element is absent, so the default (least privilege, not "highest"). The daily task (`SaleForecast_PostingDelaySnapshot`) has the same principal and LogonType. User name masked.
+- If `OneDriveCommercial` is not set in the task's environment: `backup_root` raises `BackupError` (`monthly_refresh.py:1130-1133`; it also raises when the folder the variable names does not exist). The backup is the last step, after step 11 (commit and push), so the pages are built and pushed first (`monthly_refresh.py:2087-2099`); the error is caught, the run log gets `backup.status = FAILED`, and the job returns exit code 1 (`EXIT_ABORTED`, `:2208-2209`). The success state is not written, so the whole run repeats on the next weekday. The start-of-run `check_stale_backup_folders` only records `checked: false` and does not stop anything (`:1182-1186`). The run does not stop before publishing: stops before publishing = NO.
+- In my own session the variable is SET (process scope), and it is also set at user scope (checked with the .NET `GetEnvironmentVariable(..., 'User')`: true; machine scope: false). Values are not printed.
+- Visible to the scheduled task: **UNDETERMINED**. For: the task runs as that user with an interactive token, and user-scope variables are part of a logon session's environment. Against: no evidence from a real run. All 12 monthly run logs since 2026-10-12 (the first with a backup entry) are dry or offline runs with `backup.status = skipped`; the two real runs (2026-10-02, 2026-10-05) were before the backup was written (Prompt 18). The daily task's logs do not record the variable.
+- Safest proof without changing the task (the user decides): (1) add one line to the daily job's run log that records `OneDriveCommercial` SET or NOT SET (a code change, no task change); the next 08:00 or 12:00 daily run, which has the same principal and context, then proves the context before 2026-11-05; or (2) after the run of 2026-11-05, read `backup.status` in the run log (proves it afterwards, and a failure costs a rerun the next weekday, not lost data).
+
+**A3, other conditions the monthly run checks before connecting (today's state).**
+
+| condition | where | state today |
+|---|---|---|
+| Run day | `monthly_run_due`, `monthly_refresh.py:167-177` | 2026-11-05 is due (`True, "run day"`); 2026-11-04 is not due; 2026-11-06 would be "made up" |
+| Success state of the month | `output/state/monthly_run_state.json` | `last_success_month` 2026-10, so November is not blocked |
+| DB login lock | `output/state/db_login_refused.lock` | does not exist |
+| Publishing clone check | `daily_stock_job.check_publishing_setup` | passes (clone root and shared output root equal the config) |
+| Runner lock | `output/runs/monthly_refresh.lock` | does not exist |
+| Git pull of the clone | the task action | would fast-forward (A1) |
+| Logged-on user | `InteractiveToken` | needs the owner logged on (locked is fine); nothing here can prove it for the date |
+| Network | step 1 `db.preflight` | reachable only inside the organisation network (not tested: no database contact) |
+
+No blocker was found. Open risks, not blockers: the logged-on requirement and the unproven backup variable (A2).
+
+### Part B: the executive Tracking Signal watch-outs (page change)
+- **Code.** `build_report.gather_accuracy_vs_naive` now also returns each row's `points` = [(month, e)] (the same list it already summed, with the origin's first test month or the forward month attached; no second computation). `build_exec_summary.exec_ts_counts` makes k, n and the suffix month from those points; `exec_watch` adds them to the line; `exec_render` fills the templates. Templates are in `config.yaml` `exec_summary.text` (`watch_low`, `watch_high`, `watch_suffix`). METRICS.md Sec.49 defines k, n and the suffix rule (a tie for the largest point takes the first in time order; no suffix when the signal without that point is undefined).
+- **The four rendered lines (Edge, executive tab):**
+  - "PEM103 Forecast ต่ำกว่าจริง 7 จาก 8 จุดวัด (Tracking Signal -7.8) คาดการณ์ทั้งปีของกลุ่มนี้อาจต่ำกว่าที่จะเกิดจริง"
+  - "CI101 Forecast สูงกว่าจริง 7 จาก 8 จุดวัด (Tracking Signal 6.7) คาดการณ์ทั้งปีของกลุ่มนี้อาจสูงกว่าที่จะเกิดจริง"
+  - "Fuse Cutout Forecast ต่ำกว่าจริง 4 จาก 8 จุดวัด (Tracking Signal -4.7) ส่วนใหญ่มาจากเดือน ส.ค. 69 เดือนเดียว คาดการณ์ทั้งปีของกลุ่มนี้อาจต่ำกว่าที่จะเกิดจริง"
+  - "Surge Arrester Forecast ต่ำกว่าจริง 5 จาก 8 จุดวัด (Tracking Signal -6.8) คาดการณ์ทั้งปีของกลุ่มนี้อาจต่ำกว่าที่จะเกิดจริง"
+- k/n per line: 7/8, 7/8, 4/8, 5/8. Suffix: Fuse Cutout only (without its 2026-08 point the signal is +0.82, within the limit 4). This matches the expected outcome exactly; nothing was forced. Surge Arrester has no suffix because without its largest point (2026-08) it is still -4.85, beyond the limit.
+- **Other page text that uses "ต่อเนื่อง" for Tracking Signal or bias (report only, not changed):** the executive tab's decision list (the topic "Forecast เอียงไปทางเดียวต่อเนื่อง (Bias)" and the definition "Tracking Signal (ตัวชี้ว่า Forecast เอียงไปทางเดียวต่อเนื่อง) …", source `config.yaml` `pending_criteria_rows`) and the same two on the assumptions tab (`data/assumptions.json`, generated from the same config); the manual's Tracking Signal term, which says "เอียงไปทางเดียวต่อเนื่อง" and then "ติดลบ = Forecast ต่ำกว่าจริงต่อเนื่อง บวก = Forecast สูงกว่าจริงต่อเนื่อง" (`docs/user_manual.md:41`, 3 occurrences on the manual tab); the sales report's Tracking Signal explanation line (`config/manual_notes.yaml:52`, 1 occurrence; the two other occurrences on that page are about sales being continuous, not about bias). The two "ต่อเนื่อง" mentions in config lines 1074 and 1076 are about demand, not Tracking Signal.
+
+### Part C: stale dates and the STATUS line 141
+Every occurrence of "2026-12-05" or its Thai form outside dated historical text:
+
+| file:line | what it said | action |
+|---|---|---|
+| `METRICS.md:1364` | thresholds pending the user's decision after 2026-12-05 | replaced: after the run of 2026-12-07 (the `run_day` of 2026-12; config `decision_month` 2026-12) |
+| `METRICS.md:1462` | the criteria `decision_date` (2026-12-05) is not used by this rule | replaced: the criteria decision (config `decision_month` 2026-12, the run of 2026-12-07) |
+| `STATUS.md:938` | decision after the 2026-12-05 run | replaced with 2026-12-07 |
+| `STATUS.md:958` | criteria decisions after the 2026-12-05 run | replaced with 2026-12-07 |
+| `STATUS.md:353` (now ~357; Prompt 16 entry, historical) | scoreable on the runs of 2026-11-05, 2026-12-05 and 2027-01-05; criteria `decision_date` 2026-12-05 | history kept; appended "(วันตัดสินปัจจุบัน 2026-12-07 ตาม run_day, Prompt 23; ...)" |
+| `STATUS.md:433` (now ~437; historical) | decision date (5 ธ.ค. 69) in config | history kept; the same note appended |
+| `src/reader_values.py:315` | a docstring example date | not a plan statement; untouched |
+| tests (`test_vintage_series.py:323-326`, `test_index_w3.py:272`, `test_manual_notes_sync.py:128`) | backup-folder dates and a guard against a typed date | not plan statements; untouched |
+| config | no value holds 2026-12-05 (`pending_criteria_values.decision_month` is "2026-12"; `data/assumptions.json` says "หลังรอบ 7 ธ.ค. 69") | nothing to report |
+
+`STATUS.md:141`: old "the monthly run reuses them and the material page shows their pull time. A pull step … needs a database session (Claude Code)"; new: the monthly run does not only reuse them, its step 1 pulls them again in a session of its own (`src/monthly_refresh.py:388-391` calls `material_plan.py --pull`, which runs `pull_and_save`, `src/material_plan.py:772-773`), recomputes the class file from the pull, a failed pull keeps the earlier files and is a WARN (exit code 2; a refused login stops the run with exit code 3), and the page shows the pull time.
+
+### Verification
+- **Executive tab dry run (step 7f path):** `run_exec_build` into a temporary copy of index.html with `exec_gate`: PASS (335 items checked); the executive block and the whole file equal the tracked index.html built by the same code.
+- **Number invariance (rendered text, Edge, before = the end of Prompt 40):** PASS for the tab bar, Trend, assumptions, manual, sales report, Min-Max, operation plan, material plan; executive tab: the cards, table and charts are unchanged (the only numbers that differ from before are the ones inside the four rewritten lines; every value that was in the old lines, such as -7.8, 6.7, -4.7, -6.8, 103.2, 201.5, 498 and 58.5, is still there).
+- **New and changed tests:** `test_each_watch_out_line_appears_only_when_its_condition_holds` (fixtures with points: below without suffix, above with suffix, a tie, an undefined signal) and the new `test_the_watch_out_counts_on_the_saved_data_equal_an_independent_recomputation_and_no_line_says_continuously` (k, n, value and the suffix condition recomputed in plain Python from the page's points; no watch-out line contains "ต่อเนื่อง").
+- **Tests and Validator (final):** the full suite (run after the last code change) gave 885 passed and 1 failed: the personal-login-name guard flagged the masked profile path of my report text (written `[user]` instead of the repo's `<user>`); after the fix `tests/test_guards.py`, `test_index_w3.py` and `test_manual_notes_sync.py` pass (86 passed). Tests before: 885 passed; after: 886 collected (one new test, the saved-data test of k, n, the value and the suffix; the watch-out test was extended, none deleted or skipped); with the path fix all 886 pass (the three files above re-run: 86 passed, the rest of the suite had passed in the full run). Fresh Validator (evaluate-only): PASS on Part B (every k, n, TS and suffix recomputed independently with no disagreement), Part C, Part A and scope; four minor wording points, all fixed. The suite made no database connection.
