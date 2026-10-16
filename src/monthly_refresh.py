@@ -79,6 +79,14 @@ import traceback
 import urllib.parse
 from datetime import date, datetime, timedelta
 
+if __name__ == "__main__" and not ({"--dry-run", "--offline", "--in-sandbox"} & set(sys.argv)):       # the very first act of a real start (a dry or offline run changes nothing but its own run log: tests/test_monthly_refresh_dry_run_isolation.py), before numpy, pandas and every other heavy import (Prompt 45): never raises, changes no decision
+    try:
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        from zero_row_guard import write_start_marker
+        write_start_marker(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "output", "runs"), "monthly_refresh.py")
+    except Exception:      # noqa: BLE001 -- a start marker must never stop a job
+        pass
+
 import numpy as np
 import pandas as pd
 import yaml
@@ -93,6 +101,7 @@ from forward_test_common import (append_vintage_and_hash, compute_scope_hash, lo
                                  read_forward_test_log, save_metadata)
 from item_level_reconciliation import forecast_all_approaches
 import db as db_module_for_exit
+from zero_row_guard import run_process
 import ma_comparator
 import vintage_series
 from leakage_guard import LeakageGuardError, check_window_closed, load_min_margin_days
@@ -215,7 +224,7 @@ def run_script(script_name: str, args: list = None) -> subprocess.CompletedProce
     # Task started from C:\Windows\system32 uses cp874, which raised UnicodeDecodeError and aborted step 1).
     cmd = [sys.executable, os.path.join(SRC_DIR, script_name)] + (args or [])
     logger.info("Running: %s", " ".join(cmd))
-    result = subprocess.run(cmd, cwd=PROJECT_ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace")
+    result = run_process(cmd, cwd=PROJECT_ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace")
     return result
 
 
@@ -1169,7 +1178,7 @@ def _sha256_file(path: str) -> str:
 
 def _pid_running(pid: int) -> bool:
     try:
-        out = subprocess.run(["tasklist", "/FI", f"PID eq {int(pid)}", "/NH"], capture_output=True, text=True).stdout
+        out = run_process(["tasklist", "/FI", f"PID eq {int(pid)}", "/NH"], capture_output=True, text=True).stdout
     except Exception:      # noqa: BLE001
         return True        # when it cannot be told, assume it runs: nothing is removed
     return str(int(pid)) in out
@@ -1632,7 +1641,7 @@ def step8_run_tests(skip_tests: bool = False) -> dict:
     if skip_tests:
         # Only for tests of the runner itself (the suite would otherwise run inside its own test).
         return {"skipped": True, "passed": None, "summary_line": "step 8 skipped (--skip-tests)"}
-    proc = subprocess.run([sys.executable, "-m", "pytest", "-q"], cwd=PROJECT_ROOT,
+    proc = run_process([sys.executable, "-m", "pytest", "-q"], cwd=PROJECT_ROOT,
                            capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=1800)
     tail = proc.stdout.strip().splitlines()[-1] if proc.stdout.strip() else ""
     return {"returncode": proc.returncode, "passed": proc.returncode == 0,
@@ -1672,7 +1681,7 @@ def step9_scan_sensitive_content(sandbox_started_at: float = None) -> dict:
                     findings.append({"path": rel_path, "pattern_matched": label})
         return {"n_changed_files_scanned": len(changed_paths), "changed_files": changed_paths,
                 "findings": findings, "passed": len(findings) == 0, "scanned_in": "dry-run copy"}
-    proc = subprocess.run(["git", "status", "--porcelain"], cwd=PROJECT_ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace")
+    proc = run_process(["git", "status", "--porcelain"], cwd=PROJECT_ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace")
     changed_paths = [line[3:] for line in proc.stdout.splitlines() if line.strip()]
     findings = []
     for rel_path in changed_paths:
@@ -1847,7 +1856,7 @@ GENERATED_PATHS = ["forecast/sales_report.html", "forecast/inventory.html", "for
 
 
 def _git_status_lines() -> list:
-    out = subprocess.run(["git", "status", "--porcelain", "--untracked-files=no"], cwd=PROJECT_ROOT,
+    out = run_process(["git", "status", "--porcelain", "--untracked-files=no"], cwd=PROJECT_ROOT,
                          capture_output=True, text=True, encoding="utf-8", errors="replace", check=True).stdout
     import daily_stock_job
     skip = daily_stock_job.shared_output_prefixes(load_config())        # the publishing clone's output/ is the main copy's folder (decision D1)
@@ -1909,11 +1918,11 @@ def _commit_and_push(gates_passed: bool) -> dict:
         return {"pushed": False, "committed": False, "nothing_to_commit": True,
                 "reason": "nothing the run generates has changed -- no commit."}
     try:
-        subprocess.run(["git", "add", "--"] + to_stage, cwd=PROJECT_ROOT, check=True, capture_output=True, text=True, encoding="utf-8", errors="replace")
-        subprocess.run(["git", "commit", "-m", "Automated monthly refresh"], cwd=PROJECT_ROOT, check=True, capture_output=True, text=True, encoding="utf-8", errors="replace")
+        run_process(["git", "add", "--"] + to_stage, cwd=PROJECT_ROOT, check=True, capture_output=True, text=True, encoding="utf-8", errors="replace")
+        run_process(["git", "commit", "-m", "Automated monthly refresh"], cwd=PROJECT_ROOT, check=True, capture_output=True, text=True, encoding="utf-8", errors="replace")
     except subprocess.CalledProcessError as e:
         return {"pushed": False, "held": True, "committed": False, "reason": _mask(f"git {e.cmd[1]} failed (exit {e.returncode}): {(e.stderr or '')[-800:]}")}
-    push = subprocess.run(["git", "push", "origin", "main"], cwd=PROJECT_ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace")
+    push = run_process(["git", "push", "origin", "main"], cwd=PROJECT_ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace")
     if push.returncode != 0:
         return {"pushed": False, "held": True, "committed": True, "reason": _mask("git push failed: " + (push.stdout + push.stderr)[-800:])}
     return {"pushed": True, "reason": push.stdout + push.stderr}
@@ -2005,7 +2014,7 @@ def run_dry_run_in_sandbox(force_new_vintage: bool = False, offline: bool = Fals
         if skip_tests:
             cmd.append("--skip-tests")
         env = dict(os.environ, MONTHLY_REFRESH_SANDBOX="1", PYTHONIOENCODING="utf-8")
-        proc = subprocess.run(cmd, cwd=temp_root, env=env, capture_output=True, text=True, encoding="utf-8", errors="replace")
+        proc = run_process(cmd, cwd=temp_root, env=env, capture_output=True, text=True, encoding="utf-8", errors="replace")
         log_path = os.path.join(RUNS_DIR, f"monthly_refresh_{run_id}.json")
         if not os.path.exists(log_path):
             raise MonthlyRefreshAbort(f"Dry run ABORTED before it wrote a run log (exit {proc.returncode}).\n"

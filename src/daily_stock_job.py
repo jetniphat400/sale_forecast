@@ -33,6 +33,7 @@ import yaml
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import stock_daily  # noqa: E402
+from zero_row_guard import run_process  # noqa: E402
 
 logger = logging.getLogger("daily_stock_job")
 
@@ -195,7 +196,7 @@ def failed_gates(results: list) -> list:
 
 # ----------------------------------------------------------------------------------------------- git
 def git(root: str, *args, check: bool = True):
-    proc = subprocess.run(["git", *args], cwd=root, capture_output=True, text=True, encoding="utf-8", errors="replace")
+    proc = run_process(["git", *args], cwd=root, capture_output=True, text=True, encoding="utf-8", errors="replace")
     if check and proc.returncode != 0:
         raise DailyFailure(f"git {' '.join(args)} failed ({proc.returncode}): {(proc.stderr or proc.stdout).strip()[:1500]}",
                            step="git " + args[0])
@@ -223,7 +224,7 @@ def commit_size(root: str) -> dict:
     raw = comp = 0
     per_file = {}
     for n in names:
-        blob = subprocess.run(["git", "show", f"HEAD:{n}"], cwd=root, capture_output=True).stdout
+        blob = run_process(["git", "show", f"HEAD:{n}"], cwd=root, capture_output=True).stdout
         raw += len(blob)
         c = len(zlib.compress(blob, 6))
         comp += c
@@ -247,7 +248,7 @@ def build_stage(root: str, pull_dir: str, out_dir: str) -> dict:
     frames, meta = bid.load_pulls(pull_dir)
     inv_out = os.path.join(out_dir, "inventory.json")
     env = dict(os.environ, PYTHONIOENCODING="utf-8")
-    proc = subprocess.run([sys.executable, os.path.join(root, "src", "build_inventory_dataset.py"), "--from-pulls", pull_dir, "--out", inv_out],
+    proc = run_process([sys.executable, os.path.join(root, "src", "build_inventory_dataset.py"), "--from-pulls", pull_dir, "--out", inv_out],
                           cwd=root, capture_output=True, text=True, encoding="utf-8", errors="replace", env=env)
     if proc.returncode != 0:
         raise DailyFailure(f"build_inventory_dataset.py exited {proc.returncode}: {proc.stderr[-1500:]}", step="build inventory.json")

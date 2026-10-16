@@ -19,6 +19,14 @@ import os
 import sys
 from datetime import datetime
 
+if __name__ == "__main__":       # the very first act of a scheduled start, before pandas and every other heavy import (Prompt 45): never raises, changes no decision
+    try:
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        from zero_row_guard import write_start_marker
+        write_start_marker(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "output", "runs", "daily"), "snapshot_daily.py")
+    except Exception:      # noqa: BLE001 -- a start marker must never stop a job
+        pass
+
 import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))

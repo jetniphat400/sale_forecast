@@ -330,6 +330,20 @@ def test_experiment_2_current_candidate_reproduces_experiment_1_and_the_cell_cou
     assert set(result["groups"]) == {"PEM101", "PEM103", "PEM107", "PEM102", "CI101", "Fuse Cutout", "Surge Arrester"}
 
 
+def test_the_vintage_2_refits_cover_every_item_and_the_six_months_after_the_fit_window_and_match_the_experiment():
+    if not os.path.exists(os.path.join(_PROJECT_ROOT, "output", "data", "processed_all_divisions_monthly_qty.csv")):
+        pytest.skip("SKIPPED, not passed: the saved monthly series (untracked output) is not on this machine")
+    assert mx.next_months("2026-08", 6) == ["2026-09", "2026-10", "2026-11", "2026-12", "2027-01", "2027-02"] and mx.next_months("2026-12", 2) == ["2027-01", "2027-02"]
+    cfg = _exp_cfg_b()
+    df = mx.vintage2_refits({"CI101": "theta", "Surge Arrester": "damped_trend"}, cfg)
+    assert list(df.columns) == ["group", "candidate", "itemcode", "division", "target_month", "candidate_units", "current_units"]
+    assert df.groupby("group")["itemcode"].nunique().to_dict() == {"CI101": 13, "Surge Arrester": 48} and len(df) == (13 + 48) * 6
+    assert sorted(df["target_month"].unique()) == ["2026-09", "2026-10", "2026-11", "2026-12", "2027-01", "2027-02"]
+    assert (df[["candidate_units", "current_units"]] >= 0).all().all() and df[["candidate_units", "current_units"]].notna().all().all()
+    ci = df[df["group"] == "CI101"]
+    assert (ci["division"] == "CI101").all() and (ci["candidate"] == "theta").all()
+
+
 # ---------------------------------------------------------------------------------------------------------------------------------------------
 # Shadow forecasts (METRICS.md Sec.51, config shadow)
 # ---------------------------------------------------------------------------------------------------------------------------------------------

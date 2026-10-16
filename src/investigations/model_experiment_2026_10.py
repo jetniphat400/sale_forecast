@@ -297,6 +297,17 @@ def run() -> dict:
     return result
 
 
+def division_totals(item_series: dict) -> tuple:
+    """({division: the sum of its full-length scope items' monthly series}, the months of those series)."""
+    totals, months_ref = {}, None
+    for qty, months, _tk, div, _cat in item_series.values():
+        if len(qty) == TOTAL_MONTHS:
+            months_ref = months_ref or months
+            assert months == months_ref, "the full-length items do not share the same months"
+            totals[div] = totals.get(div, 0.0) + qty
+    return totals, months_ref
+
+
 def build_cells_b(cfg: dict) -> tuple:
     """(division cells, group cells {label: [cells]}, bookkeeping) for experiment 2: the same cells as build_cells (the main table's), the candidates of Sec.55."""
     full = load_config()
@@ -306,12 +317,7 @@ def build_cells_b(cfg: dict) -> tuple:
     margin = load_min_margin_days(full)
     item_series, type_series = ta.build_item_and_type_series(monthly, scope)
     main_cells = ta.topdown_naive_cells(item_series, type_series, pull_date, margin)
-    division_total, months_ref = {}, None
-    for qty, months, _tk, div, _cat in item_series.values():
-        if len(qty) == TOTAL_MONTHS:
-            months_ref = months_ref or months
-            assert months == months_ref, "the full-length items do not share the same months"
-            division_total[div] = division_total.get(div, 0.0) + qty
+    division_total, months_ref = division_totals(item_series)
     counter, cache, s_cache, years_count, cells, max_diff = {}, {}, {}, {1: 0, 2: 0}, [], 0.0
     for c in main_cells:
         qty, _m, type_key, div, _cat = item_series[c["itemcode"]]
@@ -403,11 +409,8 @@ def projection_effect(label: str, candidate: str, cfg: dict, experiment: str = "
     booked = bx.exec_booked_units(raw, set(items), remaining)
     by_month = {m: {"current": 0, "candidate": 0} for m in remaining}
     cache, max_diff = {}, 0.0
-    division_total, months_ref, counter = {}, None, {}
-    for q_, ms_, _tk, dv_, _ct in item_series.values():
-        if len(q_) == TOTAL_MONTHS:
-            months_ref = months_ref or ms_
-            division_total[dv_] = division_total.get(dv_, 0.0) + q_
+    division_total, months_ref = division_totals(item_series)
+    counter = {}
     for code in items:
         qty, _m, type_key, div, _c = item_series[code]
         tq, _ = type_series[type_key]
@@ -429,12 +432,69 @@ def projection_effect(label: str, candidate: str, cfg: dict, experiment: str = "
             "difference": cand - cur, "max_abs_diff_current_vs_vintage_units": max_diff}
 
 
+def next_months(last_month: str, horizon: int) -> list:
+    """The `horizon` months ('YYYY-MM') after `last_month`."""
+    y, m = int(last_month[:4]), int(last_month[5:7])
+    return [f"{y + (m + h) // 12}-{(m + h) % 12 + 1:02d}" for h in range(horizon)]
+
+
+def vintage2_refits(picks: dict, cfg: dict) -> pd.DataFrame:
+    """The forecast units of each picked candidate ({group label: candidate}, experiment 2) as if it had produced vintage 2: a refit on the whole fit window (31 months, 2024-02 to 2026-08 of the
+    saved series), per item of the group and per target month of the six after it, next to the current method's units. Columns: group, candidate, itemcode, division, target_month, candidate_units,
+    current_units. Nothing is written by this function."""
+    full = load_config()
+    scope = pd.read_csv(os.path.join(SUMMARY_DIR, "phaseC_step2_scope_335items.csv"))
+    monthly = pd.read_csv(os.path.join(DATA_DIR, "processed_all_divisions_monthly_qty.csv"))
+    item_series, type_series = ta.build_item_and_type_series(monthly, scope)
+    division_total, months_ref = division_totals(item_series)
+    target = next_months(months_ref[-1], HOLDOUT)
+    counter, cache, rows = {}, {}, []
+    for label, cand in picks.items():
+        for code in items_of_group(label, full):
+            qty, _m, type_key, div, _c = item_series[code]
+            tq, _ = type_series[type_key]
+            if type_key not in cache:
+                cache[type_key] = type_level_forecasts_b(tq, TOTAL_MONTHS, HOLDOUT, counter)
+            fc = forecasts_at_origin_b(qty, tq, division_total[div], months_ref, TOTAL_MONTHS, HOLDOUT, cfg, counter, cache[type_key])
+            rows += [(label, cand, code, div, target[h], float(fc[cand][h]), float(fc["current"][h])) for h in range(HOLDOUT)]
+    assert not counter, f"a model fell back to Naive: {counter}"
+    return pd.DataFrame(rows, columns=["group", "candidate", "itemcode", "division", "target_month", "candidate_units", "current_units"])
+
+
+def save_vintage2_refits() -> dict:
+    """Writes output/summary/model_experiment_2026_10b_vintage2_refits.csv (untracked) for the switches the recorded result of experiment 2 recommends, and a record with the sha256 of the file and of
+    the input series. Does not touch the shadow log, the forward-test log or any production file."""
+    import hashlib
+    from datetime import datetime
+    with open(os.path.join(SUMMARY_DIR, "model_experiment_2026_10b.json"), encoding="utf-8") as f:
+        result = json.load(f)
+    picks = {g: v["rule"]["winner"] for g, v in result["groups"].items() if v["rule"]["outcome"] == "switch"}
+    df = vintage2_refits(picks, load_config()["experiment_2026_10b"])
+    path = os.path.join(SUMMARY_DIR, "model_experiment_2026_10b_vintage2_refits.csv")
+    df.to_csv(path, index=False)
+    sha = lambda p: hashlib.sha256(open(p, "rb").read()).hexdigest()
+    series = os.path.join(DATA_DIR, "processed_all_divisions_monthly_qty.csv")
+    scope = os.path.join(SUMMARY_DIR, "phaseC_step2_scope_335items.csv")
+    monthly = pd.read_csv(series, usecols=["year_month", "snapshot_pull_date"])
+    record = {"file": os.path.basename(path), "rows": int(len(df)), "sha256": sha(path), "picks": picks, "target_months": sorted(df["target_month"].unique()),
+              "fit_window": [str(monthly["year_month"].min()), str(monthly["year_month"].max())], "series_pull_date": str(monthly["snapshot_pull_date"].iloc[0]),
+              "input_series_file": "output/data/processed_all_divisions_monthly_qty.csv", "input_series_sha256": sha(series),
+              "scope_file": "output/summary/phaseC_step2_scope_335items.csv", "scope_file_sha256": sha(scope), "written_at": datetime.now().isoformat(timespec="seconds")}
+    with open(os.path.join(SUMMARY_DIR, "model_experiment_2026_10b_vintage2_refits.json"), "w", encoding="utf-8") as f:
+        json.dump(record, f, ensure_ascii=False, indent=1)
+    return record
+
+
 def main(argv=None) -> int:
     import argparse
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
     ap = argparse.ArgumentParser(description="Forecast model experiments of 2026-10 (report only)")
     ap.add_argument("--experiment", choices=["a", "b"], default="a", help="a = METRICS.md Sec.50 (default), b = Sec.55")
+    ap.add_argument("--save-refits", action="store_true", help="only: write the vintage-2 refits of the switches recorded for experiment 2 (output only)")
     args = ap.parse_args(argv)
+    if args.save_refits:
+        print(json.dumps(save_vintage2_refits(), indent=1, default=str))
+        return 0
     key = "experiment_2026_10b" if args.experiment == "b" else "experiment_2026_10"
     result = run_b() if args.experiment == "b" else run()
     cfg = load_config()[key]
