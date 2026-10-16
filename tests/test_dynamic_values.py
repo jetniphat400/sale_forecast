@@ -346,9 +346,9 @@ def test_sales_report_numbers_follow_their_sources(two_builds):
     expected_base = build_report.significance_line(direct, "Direct")
     assert expected_base in b, "the Direct line of the block does not follow topdown_significance.csv"
     assert expected_base not in p
-    assert "PEM101 ทายพลาดน้อยกว่าประมาณ 7.7% (วัดจาก MAE) ทดสอบทางสถิติแล้วว่าต่างกันอย่างมีนัยสำคัญ (statistically significant ไม่น่าเกิดจากความบังเอิญ)" in p
-    assert "PEM101 ทายพลาดน้อยกว่าประมาณ 7.7% (วัดจาก MAE) ทดสอบทางสถิติแล้วว่าต่างกันอย่างมีนัยสำคัญ (statistically significant ไม่น่าเกิดจากความบังเอิญ) แม้จะเล็ก" not in p      # 7.7 is not below 5
-    assert "PEM103 ทายพลาดมากกว่าประมาณ 3.0% (วัดจาก MAE) ทดสอบทางสถิติแล้วว่าต่างกันอย่างมีนัยสำคัญ (statistically significant ไม่น่าเกิดจากความบังเอิญ) แม้จะเล็ก" in p
+    assert "PEM101 Forecast คลาดน้อยกว่าประมาณ 7.7% (วัดจาก MAE) ทดสอบทางสถิติแล้วว่าต่างกันอย่างมีนัยสำคัญ (statistically significant ไม่น่าเกิดจากความบังเอิญ)" in p
+    assert "PEM101 Forecast คลาดน้อยกว่าประมาณ 7.7% (วัดจาก MAE) ทดสอบทางสถิติแล้วว่าต่างกันอย่างมีนัยสำคัญ (statistically significant ไม่น่าเกิดจากความบังเอิญ) แม้จะเล็ก" not in p      # 7.7 is not below 5
+    assert "PEM103 Forecast คลาดมากกว่าประมาณ 3.0% (วัดจาก MAE) ทดสอบทางสถิติแล้วว่าต่างกันอย่างมีนัยสำคัญ (statistically significant ไม่น่าเกิดจากความบังเอิญ) แม้จะเล็ก" in p
 
 
 def _pilot_row(html_text):
@@ -566,7 +566,7 @@ def test_new_sales_report_lines_and_tables_follow_their_sources(two_builds):
     assert re.fullmatch(r"Forecast = ยอดขายที่ระบบคาดการณ์ · รอบ Forecast รันเมื่อ \S+ \d\d · ใช้ยอดขายถึง \S+ \d\d · หน้าสร้างเมื่อ \d{1,2} \S+ \d\d \d\d:\d\d", fb)
     # the fit window, the forecast months
     rb, rp = _first(r'id="fit-range-line">(.*?)</td>', b), _first(r'id="fit-range-line">(.*?)</td>', p)
-    assert rb != rp and rp == "ยอดขายที่ใช้ทาย พ.ค. 67 ถึง พ.ย. 69"
+    assert rb != rp and rp == "ยอดขายที่ใช้คำนวณ Forecast พ.ค. 67 ถึง พ.ย. 69"
     hb, hp = _first(r"<h2>2\. (.*?)</h2>", b), _first(r"<h2>2\. (.*?)</h2>", p)
     assert hb != hp and hp == "Forecast ธ.ค. 69 ถึง พ.ค. 70"
     # the count of codes with no forecast follows the scope table (seven codes moved from forecast to placeholder)
@@ -585,9 +585,9 @@ def test_new_sales_report_lines_and_tables_follow_their_sources(two_builds):
         for label in ("Fuse Cutout", "Surge Arrester"):
             mae, bias = re.search(rf"<tr><td>{label}</td><td>(-?[\d.]+)</td><td>(-?[\d.]+)</td></tr>", html_text).groups()
             if float(bias) < 0:
-                assert f"▸ {label} ทายต่ำกว่าจริงเฉลี่ยเดือนละ {abs(float(bias)):.1f} ชิ้น" in html_text
+                assert f"▸ {label} Forecast ต่ำกว่าจริงเฉลี่ยเดือนละ {abs(float(bias)):.1f} ชิ้น" in html_text
             else:
-                assert f"▸ {label} ทายต่ำกว่าจริง" not in html_text
+                assert f"▸ {label} Forecast ต่ำกว่าจริง" not in html_text
     assert re.findall(r'<tr><td>(?:Fuse Cutout|Surge Arrester)</td><td>[-\d.]+</td><td>[-\d.]+</td></tr>', b) != \
         re.findall(r'<tr><td>(?:Fuse Cutout|Surge Arrester)</td><td>[-\d.]+</td><td>[-\d.]+</td></tr>', p)
     # the monthly scored table and its count of months

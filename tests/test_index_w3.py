@@ -334,7 +334,7 @@ def test_limitations_hold_no_significance_claim_the_block_replaced():
 
 
 # ====================================================================================================== 2026-10-09: the original tabs and links restored, only แผนวัตถุดิบ added
-LABELS = ["S&OP Plan (เดิม)", "สรุปผู้บริหาร", "Trend Price List Omni ปี 67–69", "Production Plan (แผนผลิตรายเดือน จาก Forecast + ออเดอร์ที่รับแล้ว)", "แผนวัตถุดิบ", "สมมติฐานที่ใช้อยู่", "คู่มือการใช้งาน"]
+LABELS = ["S&OP Plan (เดิม)", "สรุปผู้บริหาร", "Trend Price List Omni ปี 67–69", "Production Plan (แผนผลิต)", "แผนวัตถุดิบ", "สมมติฐานที่ใช้อยู่", "คู่มือการใช้งาน"]
 PAGE_FILES = {"sales": "sales_report.html", "inventory": "inventory.html", "operation": "operation_plan.html", "material": "material_plan.html"}
 
 
@@ -610,7 +610,7 @@ def test_the_exec_tab_texts_cards_table_and_remarks_are_verbatim_from_fixed_data
                  "AAA | 100.0 | 80.0 | +25.0% | 150.0 | 0.60 |",
                  "BBB | 30.0 | 40.0 | -25.0% | 40.0 | 1.20 |",
                  "รวม | 130.0 | 120.0 | +8.3% | 190.0 | – |",
-                 "PEM104 | – | – | – | – | – | PEM104 ผลิตตามสั่งทั้งหมด จึงไม่ได้ทายยอดขาย",
+                 "PEM104 | – | – | – | – | – | PEM104 ผลิตตามสั่งทั้งหมด จึงไม่ได้ทำ Forecast",
                  "ยอดขาย = ยอดตามเดือนที่ต้องส่งของ รวม PO ที่รับแล้วแต่ยังไม่ส่ง (MPS) ไม่รวม VAT · ยอดจริงมีถึง ส.ค. 69 · คาดการณ์ทั้งปี = ยอดจริงที่มีทั้งหมดข้างต้น + ยอดเดือนที่เหลือ · ยอดเดือนที่เหลือ = ค่าที่มากกว่าระหว่าง Forecast กับออเดอร์ที่รับแล้ว × ราคาขายเฉลี่ยจริง · ยอดขายและคาดการณ์นับเฉพาะสินค้าใน Price List"]:
         assert text in joined, text
     assert "{" not in joined and "}" not in joined
@@ -635,13 +635,13 @@ def test_each_watch_out_line_appears_only_when_its_condition_holds():
     d = _fixed_exec_data()
     d["watch"] = low + high + plan + mat + alert
     lines = _exec_visible(bx.exec_render(d, cfg))
-    assert "G ทายต่ำกว่าจริงต่อเนื่อง (Tracking Signal -4.1) คาดการณ์ทั้งปีของกลุ่มนี้อาจต่ำกว่าที่จะเกิดจริง" in lines
-    assert "H ทายสูงกว่าจริงต่อเนื่อง (Tracking Signal 6.7) คาดการณ์ทั้งปีของกลุ่มนี้อาจสูงกว่าที่จะเกิดจริง" in lines
+    assert "G Forecast ต่ำกว่าจริงต่อเนื่อง (Tracking Signal -4.1) คาดการณ์ทั้งปีของกลุ่มนี้อาจต่ำกว่าที่จะเกิดจริง" in lines
+    assert "H Forecast สูงกว่าจริงต่อเนื่อง (Tracking Signal 6.7) คาดการณ์ทั้งปีของกลุ่มนี้อาจสูงกว่าที่จะเกิดจริง" in lines
     assert "แผนผลิต D1 เดือน ต.ค. 69 สูงกว่า Historical peak (ยอดผลิตเสร็จสูงสุดต่อเดือนในอดีต ไม่ใช่กำลังผลิตเต็มที่) (119.9%)" in lines
     assert "วัตถุดิบ 584 รายการเลยกำหนดสั่ง (Late to order) สั่งวันนี้ของมาไม่ทันแผน" in lines
     assert "PEM107 ส่งของช่องทาง Omni ส่งทัน (Not-late: ส่งไม่ช้ากว่าวันนัด) น้อยลงตั้งแต่ พ.ค. 69 (57.7%)" in lines
     assert "5 เรื่อง" in "\n".join(lines)                                                                 # card 4 counts the lines shown
-    assert not any("ทายต่ำกว่าจริง" in x for x in _exec_visible(bx.exec_render(dict(d, watch=high), cfg)))
+    assert not any("Forecast ต่ำกว่าจริง" in x for x in _exec_visible(bx.exec_render(dict(d, watch=high), cfg)))
 
 
 def _fixed_page(tmp_path, a_vals, b_vals):

@@ -271,7 +271,7 @@ def test_the_three_approved_lines_are_on_the_page_with_their_values_filled():
     m = re.search(r'id="freshness-line">Forecast = ยอดขายที่ระบบคาดการณ์ · รอบ Forecast รันเมื่อ (.*?) · ใช้ยอดขายถึง (.*?) · หน้าสร้างเมื่อ (\d{1,2} \S+ \d{2} \d{2}:\d{2})</span>', h)
     assert m, "the freshness line is missing or not in the approved shape"
     assert m.group(1) == rv.thai_month_short(vf["run_date"]) and m.group(2) == rv.thai_month_short(vf["fit_last"])
-    assert f'id="fit-range-line">ยอดขายที่ใช้ทาย {rv.thai_month_short(vf["fit_first"])} ถึง {rv.thai_month_short(vf["fit_last"])}</td>' in h
+    assert f'id="fit-range-line">ยอดขายที่ใช้คำนวณ Forecast {rv.thai_month_short(vf["fit_first"])} ถึง {rv.thai_month_short(vf["fit_last"])}</td>' in h
     first, last = rv.thai_month_short(vf["forecast_months"][0]), rv.thai_month_short(vf["forecast_months"][-1])
     assert f"<h2>2. Forecast {first} ถึง {last}</h2>" in h
     scope = build_report.gather_scope_table()
@@ -279,7 +279,7 @@ def test_the_three_approved_lines_are_on_the_page_with_their_values_filled():
     assert f'<p class="hint" id="forward-missing">รหัสที่ยังไม่มี Forecast {n} รหัส ดูเหตุผลใน<a href="#scope">ตารางขอบเขตข้อมูล</a></p>' in h
     assert "ข้อมูลดึงเมื่อ:" not in h and "ช่วงข้อมูลที่ใช้ได้" not in h
     assert "ทุกต้นเดือนระบบเทียบ Forecast กับยอดขายจริงของเดือนที่ผ่านมา และเพิ่มผลในตารางนี้" in h
-    assert "ทุกเดือนระบบจะเทียบการทายกับยอดขายจริงเดือนล่าสุด" not in h
+    assert "ทุกเดือนระบบจะเทียบ Forecast กับยอดขายจริงเดือนล่าสุด" not in h
     heads = re.findall(r"<h2>(\d)\. ", h)
     assert heads == [str(i) for i in range(1, 10)]                                    # the sections are numbered 1 to 9 without a gap
 
@@ -289,9 +289,9 @@ def test_every_approved_note_line_is_on_the_page_verbatim_and_no_brace_is_left()
     text = _visible(h)
     for line in ["▸ เดือนข้างหน้าสินค้าแต่ละประเภทน่าจะขายกี่ชิ้น", "▸ แถว = ประเภทสินค้า · คอลัมน์ = เดือน · ตัวเลข = จำนวนชิ้น", "▸ คลิกประเภทเพื่อดูรายรหัส",
                  "▸ เป็นตัวเลขค่าเดียว (point forecast) ยังไม่มีช่วงสูงต่ำ ดูว่าพลาดได้แค่ไหนจากส่วนผลลัพธ์",
-                 "▸ สองกลุ่มนำร่องทายแม่นแค่ไหน", "▸ MAE = พลาดเฉลี่ยกี่ชิ้นต่อเดือน · Bias ติดลบ = ทายต่ำกว่าจริง",
-                 "▸ ถ้าใช้ Forecast ของสองกลุ่มนี้วางแผน ให้ระวังว่ามักทายต่ำ", "Surge Arrester ในตารางนี้นับเฉพาะ Medium Voltage",
-                 "▸ ยอดที่ทายไว้ล่วงหน้า พอถึงเดือนจริงพลาดแค่ไหน", "▸ MAE เดือนจริงสูงกว่าผลทดสอบย้อนหลังมาก = ช่วงนี้ทายยากกว่าปกติ",
+                 "▸ Forecast ของสองกลุ่มนำร่องแม่นแค่ไหน", "▸ MAE = พลาดเฉลี่ยกี่ชิ้นต่อเดือน · Bias ติดลบ = Forecast ต่ำกว่าจริง",
+                 "▸ ถ้าใช้ Forecast ของสองกลุ่มนี้วางแผน ให้ระวังว่ามัก Forecast ต่ำ", "Surge Arrester ในตารางนี้นับเฉพาะ Medium Voltage",
+                 "▸ ยอด Forecast ที่ทำไว้ล่วงหน้า พอถึงเดือนจริงพลาดแค่ไหน", "▸ MAE เดือนจริงสูงกว่าผลทดสอบย้อนหลังมาก = ช่วงนี้ Forecast ยากกว่าปกติ",
                  "กลุ่มนำร่อง (Pilot group): ประเภทสินค้า Fuse Cutout และ Surge Arrester", "Forecast เทียบยอดขายจริง"]:
         assert line in text, line
     assert "{" not in text and "}" not in text, "a placeholder or a brace is left in the visible text of the sales report"
@@ -369,11 +369,11 @@ def test_the_pilot_group_table_and_sentences_follow_the_pilot_view_data():
         assert own["MAE"] == pytest.approx(recorded[unit]["series_own"]["MAE"]) and own["Bias"] == pytest.approx(recorded[unit]["series_own"]["Bias"])
         assert f"<tr><td>{label}</td><td>{own['MAE']:.1f}</td><td>{own['Bias']:.1f}</td></tr>" in h
         if own["Bias"] < 0:
-            assert f"▸ {label} ทายต่ำกว่าจริงเฉลี่ยเดือนละ {abs(own['Bias']):.1f} ชิ้น" in h
+            assert f"▸ {label} Forecast ต่ำกว่าจริงเฉลี่ยเดือนละ {abs(own['Bias']):.1f} ชิ้น" in h
         else:
-            assert f"▸ {label} ทายต่ำกว่าจริง" not in h
+            assert f"▸ {label} Forecast ต่ำกว่าจริง" not in h
     if all(fresh[u]["series_own"]["Bias"] >= 0 for u in ("Drop-out Fuse Cutout", "Surge Arrester")):
-        assert "ให้ระวังว่ามักทายต่ำ" not in h
+        assert "ให้ระวังว่ามัก Forecast ต่ำ" not in h
     assert "Surge Arrester ในตารางนี้นับเฉพาะ Medium Voltage" in h
 
 
@@ -390,7 +390,7 @@ def test_the_forecast_versus_actual_table_follows_the_recorded_forward_test_scor
     assert len(rendered) == len(s) and len(s) > 0
     expected = {(r.key, rv.thai_month_short(r.target_month)): (f"{r.MAE:.1f}", f"{r.Bias:.1f}", f"{back[r.key]:.1f}") for r in s.itertuples()}
     assert {(d, m): (a, b, c) for d, m, a, b, c in rendered} == expected
-    assert f"▸ ตอนนี้มีผล {s['target_month'].nunique()} เดือน ยังสรุปไม่ได้ว่าวิธีทายดีขึ้นหรือแย่ลง" in h
+    assert f"▸ ตอนนี้มีผล {s['target_month'].nunique()} เดือน ยังสรุปไม่ได้ว่าวิธี Forecast ดีขึ้นหรือแย่ลง" in h
     assert "MAE ในการทดสอบย้อนหลัง" in h
 
 
@@ -453,8 +453,8 @@ def test_the_unit_switch_and_the_baht_texts_are_on_the_page_verbatim_and_default
     n_fit = sum(1 for p in info["prices"].values() if p["source"] == "sales_fit_window")
     fit_first, fit_last = rv.thai_month_short(info["fit"][0]), rv.thai_month_short(info["fit"][-1])
     label = (f"มูลค่าคิดจากราคาขายเฉลี่ยต่อชิ้นของแต่ละรหัส (Average selling price) 12 เดือนล่าสุด {first} ถึง {last}"
-             + (f" · {n_fit} รหัสที่ไม่ได้ขายใน 12 เดือนนั้นใช้ราคาขายเฉลี่ยของทั้งช่วงที่ใช้ทายยอด ({fit_first} ถึง {fit_last}) แทน" if n_fit else "")
-             + (f" · {n_market} รหัสที่ไม่มียอดขายเลยในช่วงที่ใช้ทายใช้ราคาตั้ง (List price) ใน Price List แทน" if n_market else ""))
+             + (f" · {n_fit} รหัสที่ไม่ได้ขายใน 12 เดือนนั้นใช้ราคาขายเฉลี่ยของทั้งช่วงข้อมูลที่ใช้คำนวณ Forecast ({fit_first} ถึง {fit_last}) แทน" if n_fit else "")
+             + (f" · {n_market} รหัสที่ไม่มียอดขายเลยในช่วงข้อมูลที่ใช้คำนวณ Forecast ใช้ราคาตั้ง (List price) ใน Price List แทน" if n_market else ""))
     assert f'id="baht-label">{label}</p>' in sec
     assert ("▸ Forecast คิดเป็นเงินเท่าไหร่ต่อเดือน ▸ ตัวเลข = Forecast (ชิ้น) × ราคาขายเฉลี่ยของรหัสนั้น หน่วยบาท ▸ ถ้าราคาขายข้างหน้าต่างจากช่วงที่ใช้เฉลี่ย ยอดเงินจะคลาดตาม") in text
     assert "เป้า" not in sec.split('id="baht-explanation"')[1].split("</p>")[0]            # no revenue-target sentence (Prompt 28)
@@ -572,7 +572,7 @@ def test_the_forecast_versus_actual_table_has_the_baht_columns_and_the_note_and_
     vf, info = _page_prices()
     head = re.search(r'<table class="report-table" id="scored-table"><thead><tr>(.*?)</tr>', h, re.S).group(1)
     assert head.endswith("<th>Forecast (บาท)</th><th>ยอดจริง (บาท)</th><th>ต่าง (บาท)</th>")
-    assert "ตัวเลขบาทคิดทั้ง Forecast และยอดจริงด้วยราคาขายเฉลี่ยเดียวกัน (ยอดจริงคือจำนวนที่ขายจริง × ราคาขายเฉลี่ย ไม่ใช่รายได้ตามบัญชี) เพื่อดูว่าทายจำนวนพลาดคิดเป็นเงินเท่าไหร่ ต่างติดลบ = ทายต่ำกว่าจริง" in " ".join(_visible(h).split())
+    assert "ตัวเลขบาทคิดทั้ง Forecast และยอดจริงด้วยราคาขายเฉลี่ยเดียวกัน (ยอดจริงคือจำนวนที่ขายจริง × ราคาขายเฉลี่ย ไม่ใช่รายได้ตามบัญชี) เพื่อดูว่า Forecast จำนวนคลาดคิดเป็นเงินเท่าไหร่ ต่างติดลบ = Forecast ต่ำกว่าจริง" in " ".join(_visible(h).split())
     body = re.search(r'id="scored-table">.*?<tbody>(.*?)</tbody>', h, re.S).group(1)
     rows = re.findall(r"<tr><td>(\w+)</td><td>(.*?)</td><td>(.*?)</td><td>[^<]*</td><td>[^<]*</td><td>(.*?)</td><td>.*?</td><td>(-?[\d,]+)</td><td>(-?[\d,]+)</td><td>(-?[\d,]+)</td></tr>", body)
     assert rows
@@ -698,9 +698,9 @@ def test_the_criteria_block_is_verbatim_has_every_division_and_group_and_reads_i
     assert "เทียบกับร่างเกณฑ์" in text
     head = re.search(r'<table class="report-table" id="criteria-table"><thead><tr>(.*?)</tr>', h, re.S).group(1)
     assert re.findall(r"<th>(.*?)</th>", head) == ["ฝ่าย / กลุ่ม", "Relative MAE", "ผล", "Relative MAE (Horizon 3)", "ผล", "Tracking Signal", "ผล"]
-    lines = ["▸ วิธีทายของเราดีกว่า Naive (ใช้ยอดเดือนล่าสุดเป็น Forecast ทุกเดือน) ไหม",
+    lines = ["▸ วิธี Forecast ของเราดีกว่า Naive (ใช้ยอดเดือนล่าสุดเป็น Forecast ทุกเดือน) ไหม",
              f"▸ Relative MAE = MAE ของเรา ÷ MAE ของ Naive ในเดือนทดสอบเดียวกัน ต่ำกว่า {crit['relative_mae_pass']:g} = ต่ำกว่า Naive ในการทดสอบนี้ (ถึงเกณฑ์ผ่านของร่าง) · ต่ำกว่า {crit['relative_mae_good']:g} = ถึงเกณฑ์ดีของร่าง",
-             "▸ Horizon 3 = ทายล่วงหน้า 3 เดือน ใช้ดูความแม่นในช่วงที่ต้องสั่งวัตถุดิบล่วงหน้า",
+             "▸ Horizon 3 = Forecast ล่วงหน้า 3 เดือน ใช้ดูความแม่นในช่วงที่ต้องสั่งวัตถุดิบล่วงหน้า",
              f"▸ Tracking Signal (ตัวชี้ว่า Forecast เอียงไปทางเดียวต่อเนื่อง) เกิน ±{crit['tracking_signal_limit']:g} = เตือน",
              f"▸ ถึงเกณฑ์ร่าง ยังไม่ได้แปลว่าพิสูจน์แล้วว่าดีกว่า Naive: ผลมาจากการทดสอบย้อนหลังเพียง {rv.backtest_rounds(cfg)} รอบ ดูว่าฝ่ายไหนต่างจาก Naive จริงในหัวข้อ \"ใช้วิธี Top-down ดีกว่าวิธีอื่นไหม\"",
              f"▸ เกณฑ์เป็นร่าง ผู้บริหารยืนยันหลังรอบ {rv.thai_date_short(rv.criteria_decision_date(crit))}"]
@@ -790,7 +790,7 @@ def test_the_baht_price_note_states_the_price_chain_of_the_code_and_the_page_car
     recent = report["baht_label"].format(first_month="A", last_month="B")
     fit = report["baht_label_fit_part"].format(n=7, fit_first="C", fit_last="D")
     market = report["baht_label_market_part"].format(m=3)
-    assert "12 เดือนล่าสุด" in recent and "ไม่ได้ขายใน 12 เดือนนั้น" in fit and "ทั้งช่วงที่ใช้ทายยอด" in fit and "Price List" in market and "List price" in market
+    assert "12 เดือนล่าสุด" in recent and "ไม่ได้ขายใน 12 เดือนนั้น" in fit and "ทั้งช่วงข้อมูลที่ใช้คำนวณ Forecast" in fit and "Price List" in market and "List price" in market
     forward = {"months": ["2026-09", "2026-10"], "divisions": {"D": [{"type": "T", "items": [{"item": "a", "name": "", "values": [1, 1]}, {"item": "b", "name": "", "values": [1, 1]},
                                                                                               {"item": "c", "name": "", "values": [1, 1]}, {"item": "d", "name": "", "values": [1, 1]}]}]}}
     prices = {"a": {"price": 10.0, "source": "sales_recent_window"}, "b": {"price": 11.0, "source": "sales_fit_window"}, "c": {"price": 12.0, "source": "market_price"},
@@ -799,4 +799,4 @@ def test_the_baht_price_note_states_the_price_chain_of_the_code_and_the_page_car
     assert baht["fit_items"] == ["b"] and baht["market_items"] == ["c"] and [r["item"] for r in baht["no_price"]] == ["d"]
     page = open(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "forecast", "sales_report.html"), encoding="utf-8").read()
     label = re.search(r'id="baht-label">(.*?)</p>', page, re.S).group(1)
-    assert "12 เดือนล่าสุด" in label and "ไม่ได้ขายใน 12 เดือนนั้นใช้ราคาขายเฉลี่ยของทั้งช่วงที่ใช้ทายยอด" in label and "ใช้ราคาตั้ง (List price) ใน Price List" in label
+    assert "12 เดือนล่าสุด" in label and "ไม่ได้ขายใน 12 เดือนนั้นใช้ราคาขายเฉลี่ยของทั้งช่วงข้อมูลที่ใช้คำนวณ Forecast" in label and "ใช้ราคาตั้ง (List price) ใน Price List" in label

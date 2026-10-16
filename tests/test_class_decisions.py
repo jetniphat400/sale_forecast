@@ -237,7 +237,7 @@ def test_the_pem104_reason_and_every_page_line_that_states_it_come_from_one_conf
     assert rv.division_reason_codes(cfg) == {"PEM104": "made_to_order"}
     entry = cfg["not_forecast_reasons"]["made_to_order"]
     line, mm_line = entry["line"], entry["min_max_line"]
-    assert rv.not_forecast_text("made_to_order", "line", "PEM104", cfg) == "PEM104 ผลิตตามสั่งทั้งหมด จึงไม่ได้ทายยอดขาย" and rv.not_forecast_text("no_such_reason", "line", "X", cfg) is None
+    assert rv.not_forecast_text("made_to_order", "line", "PEM104", cfg) == "PEM104 ผลิตตามสั่งทั้งหมด จึงไม่ได้ทำ Forecast" and rv.not_forecast_text("no_such_reason", "line", "X", cfg) is None
     # no typed copy: the wording is in config only, in no code file (investigations aside) and in no second config key
     text = "ผลิตตามสั่งทั้งหมด"
     for path in glob.glob(os.path.join(PROJECT_ROOT, "src", "*.py")):

@@ -38,7 +38,7 @@ DASH = "-"
 
 # Approved Thai text, verbatim. {braces} are computed values.
 TEXT = {
-    "heading": "แผนการผลิต {n_months} เดือน · ทุกฝ่าย",
+    "heading": "Production Plan {n_months} เดือน · ทุกฝ่าย",
     "data_line": "ข้อมูล stock จาก DB (Cube_Inventory_Exact) ดึงเมื่อ {pull_time} · Forecast = ยอดขายที่ระบบคาดการณ์ · รอบ Forecast รันเมื่อ {forecast_run_month}",
     "col_month": "เดือน", "col_demand": "Demand-driven (ผลิตตาม Forecast หรือออเดอร์ แล้วแต่อันไหนมากกว่า)", "col_refill": "Build to Max (ผลิตเติม stock ให้ถึง Max)", "col_mto": "ผลิตตามสั่ง (MTO: Make to Order)", "col_total": "รวม",
     "col_capacity": "เทียบกับ Historical peak (ยอดผลิตเสร็จสูงสุดต่อเดือนในอดีต ไม่ใช่กำลังผลิตเต็มที่)", "above_capacity": "สูงกว่า Historical peak",

@@ -206,7 +206,7 @@ def test_guard_catches_each_rule():
     assert violations([english, "x" * 30 + " " + "y" * 40], keys)                                      # a neighbour with no Thai is no explanation
     long_cell = "3 Phase 1000kVA 22kV 400/230V Dyn11 Low Loss (Total Loss 1.2%) 008 PEA"
     assert violations([long_cell], keys) and not violations([long_cell], keys, english_exempt={long_cell})
-    assert not violations(["ตัวควบคุมด้านล่างเปลี่ยนแค่ตัวเลขบนหน้านี้ ไม่ได้เปลี่ยนการทายยอดขาย"], keys)
+    assert not violations(["ตัวควบคุมด้านล่างเปลี่ยนแค่ตัวเลขบนหน้านี้ ไม่ได้เปลี่ยน Forecast"], keys)
     assert not violations(["Min/Max ไม่เปลี่ยน เพราะคำนวณจากยอดขาย ไม่ได้ใช้ stock ปัจจุบัน " + "a" * 70], keys)
 
 

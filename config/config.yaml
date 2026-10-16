@@ -1054,7 +1054,7 @@ report:
   # Source: STATUS.md Locked Decisions, "Final forecasting method: Top-down combination".
   model_description: >-
     วิธีที่ใช้ประกอบด้วยสองส่วน Combination คือเฉลี่ยผลของโมเดลพยากรณ์ {n_base_models} แบบ ได้แก่
-    Naive (ใช้ยอดเดือนล่าสุดเป็น Forecast ทุกเดือน), MA3/MA6/MA12 (ค่าเฉลี่ยเคลื่อนที่ตามจำนวนเดือน), Croston และ SBA (วิธีสำหรับสินค้าที่ขายห่างๆ) เพื่อทายยอดรวมของแต่ละ "Type" (กลุ่มสินค้าที่ขายในลักษณะเดียวกัน
+    Naive (ใช้ยอดเดือนล่าสุดเป็น Forecast ทุกเดือน), MA3/MA6/MA12 (ค่าเฉลี่ยเคลื่อนที่ตามจำนวนเดือน), Croston และ SBA (วิธีสำหรับสินค้าที่ขายห่างๆ) เพื่อ Forecast ยอดรวมของแต่ละ "Type" (กลุ่มสินค้าที่ขายในลักษณะเดียวกัน
     เช่น High Voltage Distribution Fuse Cutout) Top-down คือการแบ่ง Forecast ของ Type นั้นลงสินค้าแต่ละรายการ (Item)
     ตามสัดส่วนยอดขายจริงในอดีตของสินค้านั้นเทียบกับยอดขายรวมของ Type ทั้งหมด
 
@@ -1064,7 +1064,7 @@ report:
   # Petropoulos-Kourentzes) is not significantly better than the Combination average, so
   # Combination was chosen as the safer approach (confidence: high).
   why_not_single_model: >-
-    ไม่มีวิธีทายวิธีเดียวที่ชนะทุกกลุ่มสินค้า และการเลือกวิธีตามกฎทางวิชาการก็ไม่ได้ดีกว่าการเฉลี่ยหลายวิธี
+    ไม่มีวิธี Forecast วิธีเดียวที่ชนะทุกกลุ่มสินค้า และการเลือกวิธีตามกฎทางวิชาการก็ไม่ได้ดีกว่าการเฉลี่ยหลายวิธี
     จึงใช้ค่าเฉลี่ย (Combination) ซึ่งเสี่ยงน้อยกว่าพึ่งวิธีเดียว
 
   # Source: STATUS.md Locked Decisions, "Model progression is Naive baseline, then Moving
@@ -1072,7 +1072,7 @@ report:
   why_not_ml: >-
     ไม่ใช้โมเดลซับซ้อนที่ต้องใช้ข้อมูลยาว (Neural Network, Prophet) เนื่องจากมีข้อมูลย้อนหลังเพียง {history_months} เดือน
     และ {intermittent_lumpy_share_pct}% ของรหัสสินค้ามีลักษณะการขายแบบ Intermittent หรือ Lumpy (ขายห่างๆ ไม่ต่อเนื่อง)
-    ทำให้ Neural Network มีความเสี่ยงสูงที่จะทายตามข้อมูลเดิมมากเกินไป (Overfit) เมื่อข้อมูลมีน้อย และ Prophet ต้องการ
+    ทำให้ Neural Network มีความเสี่ยงสูงที่จะ Forecast ตามข้อมูลเดิมมากเกินไป (Overfit) เมื่อข้อมูลมีน้อย และ Prophet ต้องการ
     ข้อมูลที่ขายต่อเนื่องทุกเดือน ซึ่งไม่ตรงกับลักษณะข้อมูลจริงของโครงการนี้
 
   # Each item a short, standing (not-yet-resolved) caveat, carrying its own stated confidence
@@ -1097,7 +1097,7 @@ report:
   # Approved Thai text of the 2026-10-08 task (verbatim); {braced} names are filled at build time by src/build_report.py from the forward-test log,
   # its metadata, the scope table, the pilot-category view and the recorded forward-test scores. The unconditional "▸" lines are in config/manual_notes.yaml.
   freshness_line: "Forecast = ยอดขายที่ระบบคาดการณ์ · รอบ Forecast รันเมื่อ {round} · ใช้ยอดขายถึง {fit_last} · หน้าสร้างเมื่อ {built_at}"
-  fit_range_line: "ยอดขายที่ใช้ทาย {first_month} ถึง {last_month}"
+  fit_range_line: "ยอดขายที่ใช้คำนวณ Forecast {first_month} ถึง {last_month}"
   forward_heading: "Forecast {first_month} ถึง {last_month}"
   forward_missing_line: "รหัสที่ยังไม่มี Forecast {n} รหัส ดูเหตุผลใน{scope_link}"
   forward_scope_link_text: "ตารางขอบเขตข้อมูล"
@@ -1107,11 +1107,11 @@ report:
   pilot_heading: "กลุ่มนำร่อง (Pilot group): ประเภทสินค้า Fuse Cutout และ Surge Arrester"
   pilot_columns: ["ประเภทสินค้า (Type)", "MAE (ชิ้นต่อเดือน)", "Bias"]
   pilot_labels: {fuse_cutout: "Fuse Cutout", surge_arrester: "Surge Arrester"}
-  pilot_group_line: "▸ {group} ทายต่ำกว่าจริงเฉลี่ยเดือนละ {x} ชิ้น"
-  pilot_warn_line: "▸ ถ้าใช้ Forecast ของสองกลุ่มนี้วางแผน ให้ระวังว่ามักทายต่ำ"
+  pilot_group_line: "▸ {group} Forecast ต่ำกว่าจริงเฉลี่ยเดือนละ {x} ชิ้น"
+  pilot_warn_line: "▸ ถ้าใช้ Forecast ของสองกลุ่มนี้วางแผน ให้ระวังว่ามัก Forecast ต่ำ"
   pilot_scope_note: "Surge Arrester ในตารางนี้นับเฉพาะ Medium Voltage"
   # Shadow forecast line under the pilot table (METRICS.md Sec.51); {braced} names are filled at build time from the score record and the leakage guard.
-  shadow_head: "▸ {group} shadow forecast (Forecast ทดลองที่คำนวณคู่กับ Forecast จริง) ใช้วิธี {method} (ทายตามแนวโน้มยอดขายที่ขึ้นหรือลง)"
+  shadow_head: "▸ {group} shadow forecast (Forecast ทดลองที่คำนวณคู่กับ Forecast จริง) ใช้วิธี {method} (Forecast ตามแนวโน้มยอดขายที่ขึ้นหรือลง)"
   shadow_status_pending: "สถานะ: ยังไม่มีเดือนที่เทียบได้ ผลเดือนแรกออกในรอบวันที่ {first_run}"
   shadow_status_partial: "สถานะ: เทียบแล้ว {n} จาก {total} เดือน"
   shadow_status_recommend_switch: "สถานะ: เทียบครบ ผลแนะนำให้เปลี่ยนเป็น {method} รอการอนุมัติ"
@@ -1136,8 +1136,8 @@ report:
   # The price chain of reader_values.unit_prices (config report.price_basis.order): the average selling price of the last 12 months of the fit window; an item with no sale in those 12 months
   # takes the average of the whole fit window; an item with no sale in the fit window takes the Market Price (List price) of the Price List.
   baht_label: "มูลค่าคิดจากราคาขายเฉลี่ยต่อชิ้นของแต่ละรหัส (Average selling price) 12 เดือนล่าสุด {first_month} ถึง {last_month}"
-  baht_label_fit_part: " · {n} รหัสที่ไม่ได้ขายใน 12 เดือนนั้นใช้ราคาขายเฉลี่ยของทั้งช่วงที่ใช้ทายยอด ({fit_first} ถึง {fit_last}) แทน"
-  baht_label_market_part: " · {m} รหัสที่ไม่มียอดขายเลยในช่วงที่ใช้ทายใช้ราคาตั้ง (List price) ใน Price List แทน"
+  baht_label_fit_part: " · {n} รหัสที่ไม่ได้ขายใน 12 เดือนนั้นใช้ราคาขายเฉลี่ยของทั้งช่วงข้อมูลที่ใช้คำนวณ Forecast ({fit_first} ถึง {fit_last}) แทน"
+  baht_label_market_part: " · {m} รหัสที่ไม่มียอดขายเลยในช่วงข้อมูลที่ใช้คำนวณ Forecast ใช้ราคาตั้ง (List price) ใน Price List แทน"
   baht_summary_title: "Forecast รวมรายเดือน (บาท)"
   baht_all_divisions_row: "รวมทุกฝ่าย"
   baht_division_total_row: "รวม {division}"
@@ -1145,7 +1145,7 @@ report:
   baht_no_price_line: "{n} รหัสไม่มีทั้งประวัติขายและราคาใน Price List ไม่ได้รวมในยอดบาท"
   baht_no_price_columns: ["รหัส", "ชื่อ", "ฝ่าย"]
   flat_forecast_line: "Forecast เท่ากันทุกเดือน (flat forecast) · เพราะวิธีที่ใช้ตอนนี้ให้ค่าเดียวกับทุกเดือนข้างหน้า · และยังไม่คิดช่วงขายดีขายน้อยตามฤดูกาล (seasonality)"
-  scored_baht_note: "ตัวเลขบาทคิดทั้ง Forecast และยอดจริงด้วยราคาขายเฉลี่ยเดียวกัน (ยอดจริงคือจำนวนที่ขายจริง × ราคาขายเฉลี่ย ไม่ใช่รายได้ตามบัญชี) เพื่อดูว่าทายจำนวนพลาดคิดเป็นเงินเท่าไหร่ ต่างติดลบ = ทายต่ำกว่าจริง"
+  scored_baht_note: "ตัวเลขบาทคิดทั้ง Forecast และยอดจริงด้วยราคาขายเฉลี่ยเดียวกัน (ยอดจริงคือจำนวนที่ขายจริง × ราคาขายเฉลี่ย ไม่ใช่รายได้ตามบัญชี) เพื่อดูว่า Forecast จำนวนคลาดคิดเป็นเงินเท่าไหร่ ต่างติดลบ = Forecast ต่ำกว่าจริง"
 
   # Unit price per item for the baht view (decisions of the user, 2026-10-08). Tried in this order; the first rule that gives a price is used.
   #   sales_recent_window : sum of sale / sum of qty over the most recent `window_months` complete months inside the fit window of the vintage the page uses
@@ -1181,7 +1181,7 @@ trend_tab:
 not_forecast_reasons:
   made_to_order:
     divisions: [PEM104]
-    line: "{division} ผลิตตามสั่งทั้งหมด จึงไม่ได้ทายยอดขาย"
+    line: "{division} ผลิตตามสั่งทั้งหมด จึงไม่ได้ทำ Forecast"
     min_max_line: "ไม่มีนโยบาย stock ฝ่ายนี้ผลิตตามสั่งทั้งหมด"
 
 # Executive summary tab of index.html (src/build_exec_summary.py, decisions of the user 2026-10-09, METRICS.md Sec.49). The revenue-target comparison (Cube_Target_PMIS) was removed on
@@ -1205,8 +1205,8 @@ exec_summary:
     total_label: "รวม"
     dash: "–"
     watch_heading: "เรื่องที่ต้องระวัง"
-    watch_low: "{group} ทายต่ำกว่าจริงต่อเนื่อง (Tracking Signal {value}) คาดการณ์ทั้งปีของกลุ่มนี้อาจต่ำกว่าที่จะเกิดจริง"
-    watch_high: "{group} ทายสูงกว่าจริงต่อเนื่อง (Tracking Signal {value}) คาดการณ์ทั้งปีของกลุ่มนี้อาจสูงกว่าที่จะเกิดจริง"
+    watch_low: "{group} Forecast ต่ำกว่าจริงต่อเนื่อง (Tracking Signal {value}) คาดการณ์ทั้งปีของกลุ่มนี้อาจต่ำกว่าที่จะเกิดจริง"
+    watch_high: "{group} Forecast สูงกว่าจริงต่อเนื่อง (Tracking Signal {value}) คาดการณ์ทั้งปีของกลุ่มนี้อาจสูงกว่าที่จะเกิดจริง"
     watch_plan: "แผนผลิต {division} เดือน {month} สูงกว่า Historical peak (ยอดผลิตเสร็จสูงสุดต่อเดือนในอดีต ไม่ใช่กำลังผลิตเต็มที่) ({pct})"
     watch_material: "วัตถุดิบ {n} รายการเลยกำหนดสั่ง (Late to order) สั่งวันนี้ของมาไม่ทันแผน"
     watch_pem107: "PEM107 ส่งของช่องทาง Omni ส่งทัน (Not-late: ส่งไม่ช้ากว่าวันนัด) น้อยลงตั้งแต่ {since} ({pct})"

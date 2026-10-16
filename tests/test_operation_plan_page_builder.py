@@ -196,7 +196,7 @@ def test_the_refill_line_is_omitted_when_the_refill_part_is_zero_and_the_backlog
 def test_the_heading_months_and_the_data_line_come_from_the_plan_not_from_typing():
     v = _values()
     page = bp.render(v)
-    assert f"แผนการผลิต {len(MONTHS)} เดือน · ทุกฝ่าย" in page and "PEM101 และ PEM107" not in page
+    assert f"Production Plan {len(MONTHS)} เดือน · ทุกฝ่าย" in page and "PEM101 และ PEM107" not in page
     assert f"ข้อมูล stock จาก DB (Cube_Inventory_Exact) ดึงเมื่อ {v['pull_time']} · Forecast = ยอดขายที่ระบบคาดการณ์ · รอบ Forecast รันเมื่อ {v['forecast_run_month']}" in page
     im, dm, meta = _plan()
     meta4 = dict(meta, months=MONTHS)
@@ -478,7 +478,7 @@ def test_the_new_page_shows_heading_data_line_summary_flag_lines_and_item_table(
     v = bp.build_values(PROJECT_ROOT)
     edge.open(site + "/forecast/operation_plan.html")
     assert _wait(edge, "document.querySelectorAll('#item-table-body tr').length > 0")
-    assert edge.ev("document.getElementById('page-title').innerText") == f"แผนการผลิต {v['n_months']} เดือน · ทุกฝ่าย"
+    assert edge.ev("document.getElementById('page-title').innerText") == f"Production Plan {v['n_months']} เดือน · ทุกฝ่าย"
     assert edge.ev("document.getElementById('data-line').innerText") == f"ข้อมูล stock จาก DB (Cube_Inventory_Exact) ดึงเมื่อ {v['pull_time']} · Forecast = ยอดขายที่ระบบคาดการณ์ · รอบ Forecast รันเมื่อ {v['forecast_run_month']}"
     heads = edge.ev("[...document.querySelectorAll('#summary-PEM101 thead th')].map(t=>t.innerText.replace('รวมทุกช่องทาง','').trim())")
     assert heads == ["เดือน", "Demand-driven (ผลิตตาม Forecast หรือออเดอร์ แล้วแต่อันไหนมากกว่า)", "Build to Max (ผลิตเติม stock ให้ถึง Max)", "ผลิตตามสั่ง (MTO: Make to Order)", "รวม", "เทียบกับ Historical peak (ยอดผลิตเสร็จสูงสุดต่อเดือนในอดีต ไม่ใช่กำลังผลิตเต็มที่)"]
@@ -557,7 +557,7 @@ def test_the_index_has_the_link_and_the_assumptions_tab_shows_ten_rows(edge, sit
     edge.open(site + "/index.html")
     time.sleep(1.5)
     link = edge.ev("(function(){const a=document.querySelector('#tabBar a'); return [a.innerText.trim(), a.getAttribute('href')]})()")
-    assert link == ["Production Plan (แผนผลิตรายเดือน จาก Forecast + ออเดอร์ที่รับแล้ว)", "forecast/operation_plan.html"]
+    assert link == ["Production Plan (แผนผลิต)", "forecast/operation_plan.html"]
     link = edge.ev("(function(){const a=document.getElementById('tbMat'); return [a.innerText.trim(), a.getAttribute('href'), getComputedStyle(a).backgroundColor === getComputedStyle(document.getElementById('tbPlan')).backgroundColor]})()")
     assert link == ["แผนวัตถุดิบ", "forecast/material_plan.html", True]
     edge.ev("omniShowTab(4); 1")
@@ -749,15 +749,15 @@ def test_a_made_to_order_division_with_no_forecast_item_says_so_and_every_other_
     vals = bp.compute_values(im, dm, meta, {}, "2026-10-02", SIX, {"PEM104": "made_to_order"})
     page = bp.render(vals)
     lines = {d: [_nb(l) for l in re.findall(r'<p class="note-line division-line" data-division="%s">(.*?)</p>' % d, page)] for d in SIX}
-    assert lines["PEM104"] == ["PEM104 ผลิตตามสั่งทั้งหมด จึงไม่ได้ทายยอดขาย", "1 รหัสยังไม่มี Forecast (ประวัติขายไม่พอ) แผนนับเฉพาะออเดอร์ที่รับแล้วแต่ยังไม่ส่ง (open orders) ตอนนี้มีออเดอร์ที่รับแล้วยังไม่ส่ง 1 รหัส"]
+    assert lines["PEM104"] == ["PEM104 ผลิตตามสั่งทั้งหมด จึงไม่ได้ทำ Forecast", "1 รหัสยังไม่มี Forecast (ประวัติขายไม่พอ) แผนนับเฉพาะออเดอร์ที่รับแล้วแต่ยังไม่ส่ง (open orders) ตอนนี้มีออเดอร์ที่รับแล้วยังไม่ส่ง 1 รหัส"]
     assert "PEM104 ไม่มีสินค้าที่เข้าเกณฑ์เก็บ stock" not in page
     for d in ("PEM102", "CI101", "PEM103"):                                     # the general line stays where the reason does not apply
         assert f"{d} ไม่มีสินค้าที่เข้าเกณฑ์เก็บ stock แผนจึงเป็นการผลิตแบบ Demand-driven ทั้งหมด (ตาม Forecast หรือออเดอร์ แล้วแต่อันไหนมากกว่า)" in page
     # the reason on a division that has forecast items (PEM103) does not change its line; nor does an unknown reason on PEM104
     other = bp.render(bp.compute_values(im, dm, meta, {}, "2026-10-02", SIX, {"PEM103": "made_to_order", "PEM104": "too_little_history"}))
-    assert "ผลิตตามสั่งทั้งหมด จึงไม่ได้ทายยอดขาย" not in other and "PEM104 ไม่มีสินค้าที่เข้าเกณฑ์เก็บ stock" in other
+    assert "ผลิตตามสั่งทั้งหมด จึงไม่ได้ทำ Forecast" not in other and "PEM104 ไม่มีสินค้าที่เข้าเกณฑ์เก็บ stock" in other
     none = bp.render(bp.compute_values(im, dm, meta, {}, "2026-10-02", SIX))
-    assert "ผลิตตามสั่งทั้งหมด จึงไม่ได้ทายยอดขาย" not in none
+    assert "ผลิตตามสั่งทั้งหมด จึงไม่ได้ทำ Forecast" not in none
     assert 'id="material-plan-link"' in page and 'class="links"' in page
 
 
@@ -769,7 +769,7 @@ def test_the_recorded_plan_page_reads_the_reason_from_config_not_from_a_typed_di
     import reader_values as rv
     assert "exclusion_reasons" not in cfg and rv.division_reason_codes() == {"PEM104": "made_to_order"}        # the one entry is config not_forecast_reasons
     page = bp.render(bp.build_values())
-    assert re.findall(r'<p class="note-line division-line" data-division="PEM104">(.*?)</p>', page)[0] == "PEM104 ผลิตตามสั่งทั้งหมด จึงไม่ได้ทายยอดขาย"
+    assert re.findall(r'<p class="note-line division-line" data-division="PEM104">(.*?)</p>', page)[0] == "PEM104 ผลิตตามสั่งทั้งหมด จึงไม่ได้ทำ Forecast"
     src = open(os.path.join(PROJECT_ROOT, "src", "build_operation_plan_page.py"), encoding="utf-8").read()
     assert "PEM104" not in src, "the builder names a division in code: the reason must come from config"
 

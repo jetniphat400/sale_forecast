@@ -228,7 +228,7 @@ def gather_model_chart() -> pd.DataFrame:
 
 # The two comparisons of the significance block, in the order shown, with the approved line openings.
 SIGNIFICANCE_LINES = {
-    "Direct": "เทียบกับการทายรายรหัสตรงๆ:",
+    "Direct": "เทียบกับการทำ Forecast รายรหัสตรงๆ:",
     "Naive": "เทียบกับ Naive (ใช้ยอดเดือนล่าสุดเป็น Forecast ทุกเดือน):",
 }
 SIGNIFICANCE_HEADING = "ใช้วิธี Top-down ดีกว่าวิธีอื่นไหม"
@@ -251,7 +251,7 @@ def significance_line(rows: pd.DataFrame, other: str) -> str:
     for verdict, word in (("better", "น้อยกว่า"), ("worse", "มากกว่า")):
         for _, r in rows[rows["verdict"] == verdict].iterrows():
             small = " แม้จะเล็ก" if abs(float(r["rel_diff_pct"])) < SMALL_DIFFERENCE_PCT else ""
-            phrases.append(f"{r['division']} ทายพลาด{word}ประมาณ {significance_pct_text(r['rel_diff_pct'])}% (วัดจาก MAE) ทดสอบทางสถิติแล้วว่าต่างกันอย่างมีนัยสำคัญ (statistically significant ไม่น่าเกิดจากความบังเอิญ){small}")
+            phrases.append(f"{r['division']} Forecast คลาด{word}ประมาณ {significance_pct_text(r['rel_diff_pct'])}% (วัดจาก MAE) ทดสอบทางสถิติแล้วว่าต่างกันอย่างมีนัยสำคัญ (statistically significant ไม่น่าเกิดจากความบังเอิญ){small}")
     unclear = list(rows[rows["verdict"] == "unclear"]["division"])
     if unclear:
         phrases.append(", ".join(unclear) + " ใกล้เคียงกันจนบอกไม่ได้ว่าวิธีไหนดีกว่า")
@@ -1025,7 +1025,7 @@ def render_page(config: dict) -> str:
           <!-- Split lots; STATUS.md, Locked Decisions -->
           <tr><td colspan="2">รายการที่ดูเหมือนซ้ำแต่เป็นการแบ่งส่งหลายงวด นับครบทุกงวด</td></tr>
           <!-- MPS retained; STATUS.md, Locked Decisions -->
-          <tr><td colspan="2">MPS (open PO: PO ที่รับแล้วแต่ยังไม่ส่ง) นับรวมในยอดที่ใช้ทาย (Actual + MPS) เพราะลูกค้าสั่งแล้วจริง แต่ยังไม่ใช่ยอดที่ส่งมอบแล้ว</td></tr>
+          <tr><td colspan="2">MPS (open PO: PO ที่รับแล้วแต่ยังไม่ส่ง) นับรวมในยอดที่ใช้คำนวณ Forecast (Actual + MPS) เพราะลูกค้าสั่งแล้วจริง แต่ยังไม่ใช่ยอดที่ส่งมอบแล้ว</td></tr>
           <!-- forecast_date keying: the series is keyed on forecast_date, a frozen snapshot, not queried live each time; STATUS.md, Locked Decisions -->
           <tr><td colspan="2">ยอดขายนับตามเดือนที่ต้องส่งของตามสัญญา ไม่ใช่เดือนที่รับ PO</td></tr>
           <!-- Pricelist as division source; the database division column is not used to filter; STATUS.md, CONVENTIONS.md -->
@@ -1115,7 +1115,7 @@ def render_page(config: dict) -> str:
       </div>
       <h3>ตารางหลัก — ความแม่นของวิธี Top-down (วิธีที่ใช้จริง) ต่อฝ่าย</h3>
       <!-- Previous wording, kept off screen: this is the Top-down method the project adopted (STATUS.md Locked Decisions, "Final forecasting method"): forecast at Type level, then allocate to items by trailing sales share, recomputed at every rolling origin (not a one-time fixed allocation), scored at item level across the project's standard 7 origins -- src/transferability_all_divisions.py, summary in output/summary/phaseC_step2_transferability_per_division.csv (method detail in docs/reports/summary/phaseC_step2_report.md Part 3). -->
-      <p class="hint">ทายยอดรวมระดับประเภทสินค้าก่อน แล้วแบ่งให้แต่ละรหัสตามสัดส่วนที่เคยขาย ทดสอบย้อนหลัง {n_rounds} รอบ · MAE เทียบข้ามฝ่ายตรงๆ ไม่ได้ เพราะฝ่ายที่ขายเป็นจำนวนมากมักมี MAE สูงกว่า</p>
+      <p class="hint">Forecast ยอดรวมระดับประเภทสินค้าก่อน แล้วแบ่งให้แต่ละรหัสตามสัดส่วนที่เคยขาย ทดสอบย้อนหลัง {n_rounds} รอบ · MAE เทียบข้ามฝ่ายตรงๆ ไม่ได้ เพราะฝ่ายที่ขายเป็นจำนวนมากมักมี MAE สูงกว่า</p>
       {cite('phaseC_step2_transferability_per_division.csv', 'MAE / RMSE / Bias / MASE / n_scored')}
       <!-- filtered to rows where approach == 'Top-down' -->
       <table class="report-table" id="primary-results-table">
@@ -1132,7 +1132,7 @@ def render_page(config: dict) -> str:
       </table>
       {pilot_html}
       {criteria_html}
-      <h3>Rolling-origin MAE ระดับ Type (ทดสอบย้อนหลังทีละรอบ: ตัดข้อมูลที่เดือนหนึ่ง แล้วทายเดือนถัดไปเทียบกับของจริง) — คลิก legend เพื่อซ่อน/แสดงแต่ละโมเดล</h3>
+      <h3>Rolling-origin MAE ระดับ Type (ทดสอบย้อนหลังทีละรอบ: ตัดข้อมูลที่เดือนหนึ่ง แล้ว Forecast เดือนถัดไปเทียบกับของจริง) — คลิก legend เพื่อซ่อน/แสดงแต่ละโมเดล</h3>
       {cite('phaseC_step2_rolling_origin_qty.csv', 'origin / model / MAE')}
       <div id="chart-rolling" class="plotly-chart"></div>
       {render_notes_html('sales_report.html', 'chart-rolling', values=note_values)}
@@ -1170,7 +1170,7 @@ def render_page(config: dict) -> str:
 
     controls_note = f"""
     <!-- Previous wording, kept off screen: the controls on this page (Division/Type/Item/Origin selectors, legend toggles) change only the view shown, not the model or the forecasts already computed; structural changes (Tier B parameters: base models, combination method, scope, series key, aggregation level) are made in config.yaml and need a pipeline re-run, per the Tier A/B/C grouping in config.yaml's comment block "Three-tier parameter classification". -->
-    <div class="controls-note">ตัวกรองในส่วนนี้เปลี่ยนแค่สิ่งที่แสดง ไม่ได้เปลี่ยนการทาย</div>"""
+    <div class="controls-note">ตัวกรองในส่วนนี้เปลี่ยนแค่สิ่งที่แสดง ไม่ได้เปลี่ยน Forecast</div>"""
 
     body = sec1 + sec_fwd + sec2 + sec3 + sec4 + sec5 + controls_note + sec6 + sec7 + sec8
 

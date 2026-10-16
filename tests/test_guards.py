@@ -429,17 +429,20 @@ def test_no_windows_login_or_db_login_appears_in_a_tracked_file():
 
 
 # ====================================================================================================
-# Prompt 38: eight wordings the readers must never see again: they are not in the visible text of index.html (outside the original S&OP tab), forecast/sales_report.html,
+# Prompt 38 (eight wordings) and Prompt 39 (the verb "to guess", the plain three-letter string, added as the ninth entry): wordings the readers must never see again: they are not in the visible text of index.html (outside the original S&OP tab), forecast/sales_report.html,
 # inventory.html, operation_plan.html, material_plan.html, nor in the user-text sources (config/config.yaml and config/manual_notes.yaml string values,
 # data/assumptions.json string values, docs/user_manual.md). Visible text = the text a reader sees in the static HTML (scripts, styles and comments dropped) plus the
 # quoted strings of its scripts (script comments dropped) plus title/aria-label/placeholder/alt attributes. The words are built from parts so that this file does not hold them.
-# DB product names: none of the eight words is in a product name of the saved pulls (collision count 0 when this was written); a collision would show here as a hit.
+# DB product names: none of the words is in a product name of the saved pulls (collision count 0 when this was written); a collision would show here as a hit.
 # ====================================================================================================
 from html.parser import HTMLParser
 
-BANNED_WORDS = ("ยอด" + "ทาย", "วิธี" + "เดาง่าย", "ของ" + "ค้าง", "สต็อ" + "ค", "สต็อ" + "ก", "Price" + "list", "ความคลาด" + "สะสม", "ค่า" + "ทาย")
+BANNED_WORDS = ("ยอด" + "ทาย", "วิธี" + "เดาง่าย", "ของ" + "ค้าง", "สต็อ" + "ค", "สต็อ" + "ก", "Price" + "list", "ความคลาด" + "สะสม", "ค่า" + "ทาย", "ท" + "าย")
 BANNED_PAGES = ("index.html", "forecast/sales_report.html", "forecast/inventory.html", "forecast/operation_plan.html", "forecast/material_plan.html")
 BANNED_SOURCES = ("config/config.yaml", "config/manual_notes.yaml", "data/assumptions.json", "docs/user_manual.md")
+# Words and DB product-name text that contain the letters of the verb without being it (found in the saved pulls: a paint colour in product names; the others are ordinary Thai words).
+# They are removed from a piece before the search, so they never count as a hit. Written out in full: this file is not one of the scanned user texts.
+NOT_THE_VERB = ("เทาย่น", "ทายาท", "ทักทาย", "ท้าทาย")
 ORIG_TAB_OPEN = '<div id="origTab">'
 ORIG_TAB_CLOSE = "</div><!--/origTab-->"
 
@@ -540,6 +543,8 @@ def banned_wording_hits(root: str) -> list:
             text = f.read()
         pieces = _page_texts(text, rel_path) if kind == "page" else _source_strings(text, rel_path)
         for piece in pieces:
+            for allowed in NOT_THE_VERB:
+                piece = piece.replace(allowed, "")
             for word in BANNED_WORDS:
                 i = piece.find(word)
                 if i >= 0:
@@ -547,7 +552,7 @@ def banned_wording_hits(root: str) -> list:
     return found
 
 
-def test_none_of_the_eight_banned_wordings_is_in_the_reader_text_of_the_pages_or_in_the_user_text_sources():
+def test_none_of_the_banned_wordings_is_in_the_reader_text_of_the_pages_or_in_the_user_text_sources():
     hits = banned_wording_hits(PROJECT_ROOT)
     assert not hits, f"banned wording found: {[(f, w) for f, w, _ in hits][:20]}"
 
@@ -581,3 +586,19 @@ def test_the_banned_wording_guard_fails_when_one_word_is_injected_into_a_tempora
     edit("index.html", lambda s: s.replace('<div id="execTab">', '<div id="execTab"><p>' + word + "</p>", 1))
     got = sorted({f for f, _, _ in banned_wording_hits(str(tmp_path))})
     assert got == sorted(["forecast/material_plan.html", "forecast/inventory.html", "forecast/sales_report.html", "config/manual_notes.yaml", "data/assumptions.json", "docs/user_manual.md", "index.html"])
+
+
+def test_the_banned_wording_guard_ignores_product_names_and_words_that_only_contain_the_letters_of_the_verb(tmp_path):
+    import shutil
+    for rel_path in BANNED_PAGES + BANNED_SOURCES:
+        os.makedirs(os.path.dirname(os.path.join(str(tmp_path), rel_path)) or str(tmp_path), exist_ok=True)
+        shutil.copyfile(os.path.join(PROJECT_ROOT, rel_path), os.path.join(str(tmp_path), rel_path))
+    p = os.path.join(str(tmp_path), "forecast", "material_plan.html")
+    with open(p, encoding="utf-8", newline="") as f:
+        s = f.read()
+    with open(p, "w", encoding="utf-8", newline="") as f:
+        f.write(s.replace("</body>", "<p>" + " ".join(NOT_THE_VERB) + "</p></body>", 1))
+    assert banned_wording_hits(str(tmp_path)) == []
+    with open(p, "w", encoding="utf-8", newline="") as f:
+        f.write(s.replace("</body>", "<p>" + " ".join(NOT_THE_VERB) + " " + BANNED_WORDS[-1] + "ต่ำกว่าจริง</p></body>", 1))
+    assert [w for _, w, _ in banned_wording_hits(str(tmp_path))] == [BANNED_WORDS[-1]]

@@ -132,7 +132,7 @@ def test_build_report_source_never_reads_date_range_end():
 
 
 def test_the_data_range_line_follows_the_fit_window_of_the_latest_vintage_not_a_literal():
-    """The line "ยอดขายที่ใช้ทาย {เดือนแรก} ถึง {เดือนสุดท้าย}" (it replaced the old 'Usable range' row, whose end came from the 128-item pilot file) is the
+    """The line "ยอดขายที่ใช้คำนวณ Forecast {เดือนแรก} ถึง {เดือนสุดท้าย}" (it replaced the old 'Usable range' row, whose end came from the 128-item pilot file) is the
     fit window of the latest vintage of the forward-test log, in the shared month format; no 'Usable range' row and no typed end date is left on the page."""
     import reader_values as rv
     with open(SALES_REPORT_HTML, "r", encoding="utf-8") as f:
@@ -141,7 +141,7 @@ def test_the_data_range_line_follows_the_fit_window_of_the_latest_vintage_not_a_
     m = re.search(r'id="fit-range-line">(.*?)</td>', html_text)
     assert m, "the fit range line is not on forecast/sales_report.html"
     vf = rv.vintage_facts()
-    assert m.group(1) == f"ยอดขายที่ใช้ทาย {rv.thai_month_short(vf['fit_first'])} ถึง {rv.thai_month_short(vf['fit_last'])}"
+    assert m.group(1) == f"ยอดขายที่ใช้คำนวณ Forecast {rv.thai_month_short(vf['fit_first'])} ถึง {rv.thai_month_short(vf['fit_last'])}"
 
 
 # ---------------------------------------------------------------------------------------------
