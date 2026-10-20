@@ -179,11 +179,12 @@ def test_inventory_json_backlog_source_table_is_cube_ces():
 # (5) MASE_undefined renders instead of NaN
 # ---------------------------------------------------------------------------------------------
 
-def test_client_js_renders_mase_undefined_not_nan():
+def test_the_mase_column_is_not_shown_on_the_sales_report_and_the_page_says_why():
+    """Prompt 51 (decision 7): MASE is removed from both tables of the page; the recorded files keep it."""
     with open(SALES_REPORT_HTML, "r", encoding="utf-8") as f:
         text = f.read()
-    assert "MASE_undefined" in text
-    assert "function fmtMase" in text
+    assert "function fmtMase" not in text and "<th>MASE" not in text and "MASE_undefined" not in text
+    assert "ถอด MASE ออกจากหน้านี้ เพราะวัดเทียบกับความคลาดของ Naive ในข้อมูลที่ใช้คำนวณ Forecast ซึ่งอ่านขัดกับ Relative MAE · ใช้ Relative MAE แทน" in text
 
 
 def test_embedded_json_never_contains_literal_nan_for_mase(tmp_path):

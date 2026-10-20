@@ -158,7 +158,7 @@ def test_stock_panel_available_note_and_three_labels(page):
     assert page["avail_th"]["note"] == AVAILABLE_NOTE
     assert page["avail_th"]["text"].startswith("Available")
     assert re.search(r"ข้อมูล stock ใน DB \(Cube_Inventory_Exact\) ณ \d{1,2} \S+ \d{2} \d{2}:\d{2}", page["stock"])
-    assert re.search(r"ยอดจองใน DB \(Cube_CES\) ณ \d{1,2} \S+ \d{2} \d{2}:\d{2}", page["stock"])
+    assert re.search(r"ของที่ออเดอร์ที่รับแล้วจองไว้ \(Reserved\) ใน DB \(Cube_CES\) ณ \d{1,2} \S+ \d{2} \d{2}:\d{2}", page["stock"])
     assert re.search(r"ดึงข้อมูลเมื่อ \d{1,2} \S+ \d{2} \d{2}:\d{2}", page["stock"])
     for gone in ("Cube_", "task 2a", "DATA_MAP", "METRICS", "config.yaml", "inventory.json"):
         assert gone not in re.sub(r"DB \(Cube_\w+\)", "DB", page["stock"]), gone          # a table name only inside the approved DB (<table>) form
@@ -278,7 +278,7 @@ def test_manual_states_the_gap_without_a_typed_percentage(page):
     assert f"ข้อมูลขายใน DB (cube_Sale_APD) ถึง {manual_values['trend_data_through']}" in page["manual"] and "วันธรรมดา (จันทร์ถึงศุกร์) วันแรกตั้งแต่วันที่ " + manual_values["run_day_base"] in page["manual"]
     assert f"ต้องรอ {manual_values['guard_days']} วันหลังสิ้นเดือน" in page["manual"]
     # the confirmed lead time (45-60 days, read from config), never the stress point 75; the one term for on-time delivery; the data date in the one year format
-    assert "แต่สั่งวัตถุดิบใช้ 45-60 วัน" in page["manual"] and "45-75" not in page["manual"]
+    assert "แต่การสั่งวัตถุดิบใช้ 45-60 วัน" in page["manual"] and "45-75" not in page["manual"]
     assert "ฝ่ายที่ขายเยอะ MAE มักสูงกว่า" in page["manual"] and "สูงกว่าเสมอ" not in page["manual"].split("ฝ่ายที่ขายเยอะ")[1][:30]
     assert re.search(r"ข้อมูลขายใน DB \(cube_Sale_APD\) ถึง \d{1,2} \S+ \d{2}\b", page["manual"]) and not re.search(r"\b(20[2-3]\d|25[6-7]\d)\b", page["manual"])
 
@@ -303,12 +303,12 @@ def test_the_manual_shows_an_unresolved_placeholder_visibly_never_blank(edge, tm
     del data["manual_values"]["trend_data_through"]
     path.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
     text = _manual_text(edge, site)
-    assert "[ค่าไม่พบ: trend_data_through]" in text and "[ค่าไม่พบ: stale_daily]" not in text
+    assert "โหลดค่าบางตัวของคู่มือไม่ได้" in text and "[ค่าไม่พบ" not in text
     # the file cannot be read at all: every name stays visible as unresolved
     site2 = _site(tmp_path_factory, "w3_manual_no_values")
     os.remove(site2 / "data" / "assumptions.json")
     text2 = _manual_text(edge, site2)
-    assert "[ค่าไม่พบ: stale_daily]" in text2 and "[ค่าไม่พบ: run_day_base]" in text2
+    assert "โหลดค่าบางตัวของคู่มือไม่ได้" in text2 and "[ค่าไม่พบ" not in text2 and "—" in text2
 
 
 def test_trend_embedded_data_is_what_the_builder_makes_from_the_saved_pull():
@@ -544,7 +544,7 @@ def test_trend_yellow_note_and_chart_caption_show_the_months_and_date_of_the_dat
     yellow = " ".join(page["trend_yellow"].split())
     assert f"เดือน {m['month_incomplete']} ยังไม่จบเดือน แสดงเป็นแท่งสีจาง และไม่รวมในการคำนวณ ADI/CV² (ฐาน {omni['n31']} เดือน: {m['base_first']} – {m['base_last']})" in yellow, yellow
     assert "คนละชุด" in yellow and "แท็บ S&OP Plan เดิม" in yellow                                           # the sentence about the S&OP tab is as it was
-    assert f"ตรวจสอบแล้ว ({m['pull']}): ไม่มีรหัสสินค้าใดถูกนับซ้ำข้ามหน่วยธุรกิจ" in " ".join(page["trend_c4"].split())
+    assert "ตรวจสอบแล้ว" not in " ".join(page["trend_c4"].split())
     assert re.fullmatch(r"\S+ \d{2}", m["month_incomplete"])    # the shared month format (MMM yy, Buddhist year)
     changed = text.replace(f'"month_incomplete":"{m["month_incomplete"]}"', '"month_incomplete":"ม.ค. 99"', 1).replace(f'"base_last":"{m["base_last"]}"', '"base_last":"ธ.ค. 98"', 1)
     assert changed != text
@@ -703,7 +703,7 @@ def test_each_watch_out_line_appears_only_when_its_condition_holds():
     assert "H Forecast สูงกว่าจริง 5 จาก 8 จุดวัด (Tracking Signal 6.7) ส่วนใหญ่มาจากเดือน ส.ค. 69 เดือนเดียว คาดการณ์ทั้งปีของกลุ่มนี้อาจสูงกว่าที่จะเกิดจริง" in lines and (high[0]["k"], high[0]["n"], high[0]["month"]) == (5, 8, "2026-08")
     assert not any("ต่อเนื่อง" in x for x in lines)
     assert "แผนผลิต D1 เดือน ต.ค. 69 สูงกว่า Historical peak (ยอดผลิตเสร็จสูงสุดต่อเดือนในอดีต ไม่ใช่กำลังผลิตเต็มที่) (119.9%) คิดจากประวัติผลิต 3 ม.ค. 66 ถึง 2 ต.ค. 69" in lines
-    assert "วัตถุดิบ 584 รายการเลยกำหนดสั่ง (Late to order) สั่งวันนี้ของมาไม่ทันแผน (นับ ณ 6 ต.ค. 69)" in lines
+    assert "วัตถุดิบ 584 รายการเลยกำหนดสั่ง (Late to order) สั่งวันนี้ของมาไม่ทันแผน (ณ 6 ต.ค. 69)" in lines
     assert "PEM107 ส่งของช่องทาง Omni ส่งทัน (Not-late: ส่งไม่ช้ากว่าวันนัด) น้อยลงตั้งแต่ พ.ค. 69 (57.7%)" in lines
     assert "5 เรื่อง" in "\n".join(lines)                                                                 # card 4 counts the lines shown
     assert not any("Forecast ต่ำกว่าจริง" in x for x in _exec_visible(bx.exec_render(dict(d, watch=high), cfg)))
@@ -734,9 +734,9 @@ def test_the_watch_out_counts_on_the_saved_data_equal_an_independent_recomputati
             expect[r["label"]] = (k, len(e), r["points"][big][0] if rest_ts is not None and abs(rest_ts) <= limit else None)
     assert expect and {g: (w["k"], w["n"], w["month"]) for g, w in seen.items()} == expect
     lines = _exec_visible(bx.exec_render(d, cfg))
-    assert not any("ต่อเนื่อง" in x for x in lines if any(x.startswith(g + " Forecast ") for g in expect))          # no watch-out line says "continuously" (the decision list's Bias topic is another text)
+    assert not any("ต่อเนื่อง" in x for x in lines if any(re.match(re.escape(g) + r"( \([^)]*\))? Forecast ", x) for g in expect))          # no watch-out line says "continuously" (the decision list's Bias topic is another text)
     for g, (k, n, month) in expect.items():
-        line = next(x for x in lines if x.startswith(g + " Forecast "))
+        line = next(x for x in lines if re.match(re.escape(g) + r"( \([^)]*\))? Forecast ", x))
         assert f" {k} จาก {n} จุดวัด (Tracking Signal " in line and (("ส่วนใหญ่มาจากเดือน" in line) == (month is not None))
 
 
@@ -960,7 +960,7 @@ def test_no_page_or_manual_text_outside_the_original_tab_calls_a_database_table_
         t = re.sub(r"<!--.*?-->", "", t, flags=re.S)                  # an off-screen comment may quote the old wording
         for phrase in gone:
             assert phrase not in t, f"{name}: {phrase!r}"
-    assert "ข้อมูล stock ใน DB (Cube_Inventory_Exact) ณ" in texts["forecast/inventory.html"] and "ยอดจองใน DB (Cube_CES) ณ" in texts["forecast/inventory.html"]
+    assert "ข้อมูล stock ใน DB (Cube_Inventory_Exact) ณ" in texts["forecast/inventory.html"] and "ของที่ออเดอร์ที่รับแล้วจองไว้ (Reserved) ใน DB (Cube_CES) ณ" in texts["forecast/inventory.html"]
     assert "DB (cube_Sale_APD)" in texts["forecast/sales_report.html"] and "DB (cube_final)" in texts["forecast/operation_plan.html"]
     assert "DB (Cube_BOM_Exact)" in texts["forecast/material_plan.html"] or "ไม่มี BOM ใน DB" not in texts["forecast/material_plan.html"]
 
@@ -970,8 +970,9 @@ def test_the_stock_panel_script_judges_its_two_daily_sources_by_the_previous_wee
     cfg = yaml.safe_load(open(os.path.join(PROJECT_ROOT, "config", "config.yaml"), encoding="utf-8"))
     assert "const INV_DAILY_WEEKDAYS_BACK = %d;" % cfg["page_timestamps"]["daily_weekdays_back"] in open(INDEX, encoding="utf-8").read()
     base = json.load(open(os.path.join(PROJECT_ROOT, "data", "inventory.json"), encoding="utf-8"))
-    for generated, loaded, old in (("2026-10-12T02:00:00Z", "2026-10-09 21:00:00", False), ("2026-10-12T02:00:00Z", "2026-10-08 21:00:00", True),
-                                   ("2026-10-13T02:00:00Z", "2026-10-12 21:00:00", False), ("2026-10-13T02:00:00Z", "2026-10-09 21:00:00", True)):
+    import reader_values as rv
+    today = rv.date_today()          # the panel judges its sources against the day it is read
+    for generated, loaded, old in (("2026-10-12T02:00:00Z", f"{rv.previous_weekday(today, 1)} 21:00:00", False), ("2026-10-12T02:00:00Z", f"{rv.previous_weekday(today, 2)} 21:00:00", True)):
         inv = json.loads(json.dumps(base))
         inv["snapshot"].update(generated_at=generated, loaded_at=loaded)
         inv["backlog"]["loaded_at"] = loaded
@@ -985,6 +986,8 @@ def test_the_stock_panel_script_judges_its_two_daily_sources_by_the_previous_wee
         finally:
             server.shutdown()
         assert [bool(x) for x in shown] == [old, old], (generated, loaded, shown)
+        labels = edge.ev("document.getElementById('invSnapshotLabel').textContent + ' | ' + document.getElementById('invBacklogLabel').textContent")
+        assert labels.count("เก่า (Stale)") == (2 if old else 0) and labels.count("ใหม่ (Fresh)") == (0 if old else 2), labels
         if old:
             assert all("ข้อมูล" in x and "เก่า" in x and "ดึงก่อนวันทำการก่อนหน้า" in x and "page_built_at" not in x for x in shown)
 

@@ -159,7 +159,7 @@ STOCK_COVERAGE_PATH = os.path.join(SUMMARY_DIR, "phaseE2_1_item_to_warehouse_rev
 
 
 def _stocked_item_counts(division: str) -> tuple:
-    """(items that ever hold stock, total items) for one division, from STOCK_COVERAGE_PATH."""
+    """(items with stock above zero in the latest daily stock pull, total items) for one division: the item list is STOCK_COVERAGE_PATH, the stock is the pull's inventory file."""
     if not os.path.exists(STOCK_COVERAGE_PATH):
         raise FileNotFoundError(f"Required source file missing: {STOCK_COVERAGE_PATH} "
                                 f"(needed for the disabled-division reasons).")
@@ -167,7 +167,11 @@ def _stocked_item_counts(division: str) -> tuple:
     sub = df[df["division"] == division]
     if sub.empty:
         raise ValueError(f"{STOCK_COVERAGE_PATH} has no rows for division {division}.")
-    return int(sub["has_stock_anywhere"].astype(bool).sum()), int(len(sub))
+    pull = os.path.join(PROJECT_ROOT, "output", "data", "daily_stock_pull", "inventory.pkl")
+    if not os.path.exists(pull):
+        raise FileNotFoundError(f"Required source file missing: {pull} (needed for the disabled-division reasons).")
+    stock = pd.read_pickle(pull).groupby("itemcode")["stock"].sum()
+    return int((stock.reindex(sub["itemcode"]).fillna(0) > 0).sum()), int(len(sub))
 
 
 # Approved text (the user, 2026-10-06), shown for every division that has no Min and Max; {n_stock} is the number of items of the division classed
@@ -198,8 +202,8 @@ def disabled_division_reasons() -> dict:
     n_ci, t_ci = _stocked_item_counts("CI101")
     n_102, t_102 = _stocked_item_counts("PEM102")
     reasons = {
-        "CI101": f"ยังไม่ประเมิน (Not assessed) มีของในคลังแค่ {n_ci} จาก {t_ci} รหัส และอยู่ในคลังเดียวกับ PEM101 ยังกำหนดคลังของฝ่ายนี้ไม่ได้",
-        "PEM102": f"ยังไม่ประเมิน (Not assessed) มีของในคลังแค่ {n_102} จาก {t_102} รหัส น้อยเกินกว่าจะกำหนดคลังได้",
+        "CI101": f"ยังไม่ประเมิน มีของในคลังแค่ {n_ci} จาก {t_ci} รหัส (ตามการดึง stock ล่าสุด) และอยู่ในคลังเดียวกับ PEM101 ยังกำหนดคลังของฝ่ายนี้ไม่ได้",
+        "PEM102": f"ยังไม่ประเมิน มีของในคลังแค่ {n_102} จาก {t_102} รหัส (ตามการดึง stock ล่าสุด) น้อยเกินกว่าจะกำหนดคลังได้",
     }
     for division, code in rv.division_reason_codes().items():             # a division that is not forecast: the configured reason (config not_forecast_reasons)
         reasons[division] = rv.not_forecast_text(code, "min_max_line", division)
@@ -264,13 +268,14 @@ def _build_curve_target_pem101() -> dict:
     n_fitted = int(data["n_items_calibrated"])
     # The note states the fitted item count from the ensemble's own output. When the current stock_policy set differs from the fitted
     # set, the earlier approved clause saying so is kept.
-    data["item_set_note"] = f"ปรับให้ตรงกับผลจริงจากสินค้า {n_fitted} รายการ"
+    data["item_set_note"] = f"Calibration จากการส่งของจริงของสินค้าที่เก็บ stock {n_fitted} รายการ (DB (Cube_CES) ช่อง Omni Channel)"
     if n_current_set != n_fitted:
-        data["item_set_note"] += f" ตอนนี้สินค้าที่เข้าเกณฑ์เก็บ stock มี {n_current_set} รายการ ยังไม่ได้ปรับใหม่ตามชุดนี้"
+        data["item_set_note"] += f" ตอนนี้สินค้าที่เข้าเกณฑ์เก็บ stock มี {n_current_set} รายการ ยังไม่ได้ทำ Calibration ใหม่ตามชุดนี้"
     first, last = maxmin_v1.demand_history_window(cfg)
     with open(CONFIG_PATH, "r", encoding="utf-8") as f:
-        data["demand_input_note"] = yaml.safe_load(f)["inventory_page"]["pem101_demand_note"].format(
-            first_month=rv.thai_month_short(first), last_month=rv.thai_month_short(last))
+        page_config = yaml.safe_load(f)
+    data["demand_input_note"] = page_config["inventory_page"]["pem101_demand_note"].format(
+        first_month=rv.thai_month_short(first), last_month=rv.thai_month_short(last), guard_days=page_config["leakage_guard"]["min_margin_days"])
     data["item_set_ref"] = ("count: n_items_calibrated of the Max-Min v1 ensemble output (src/maxmin_v1.py, week1_recal_targets.json n_items); "
                             "stock_policy count: task2b_part2_item_level.csv class stock_policy; METRICS.md Sec.23")
     lead = maxmin_v1.material_lead_for_page(data["items_order"], cfg)
@@ -373,7 +378,7 @@ def _build_pem101_division(config: dict, inventory_source=None) -> dict:
         "sellable_warehouse_codes": e1["sellable_warehouse_codes"]["PEM101"],
         "segment_policy": sp,
         "snapshot_pull_date": series_bundle["pull_date"],
-        "n_items_label": f"{len(items)} รายการ",
+        "n_items_label": f"{len(items)} รายการที่มี Forecast จาก {len(items) + len(no_policy)}",
         "warehouse_scope_note": warehouse_scope_note_and_ref("PEM101")[0],
         # Reference kept off screen (the page renders it as an HTML comment).
         "warehouse_scope_ref": warehouse_scope_note_and_ref("PEM101")[1],
@@ -468,7 +473,7 @@ def _build_pilot_division(config: dict, division: str, raw: pd.DataFrame, invent
         "sellable_warehouse_codes": e1["sellable_warehouse_codes"][division],
         "segment_policy": {"p50_annual_value_thb": None, "note": "computed per-division, see output/summary/phaseE2pilot_report.md"},
         "snapshot_pull_date": pull_label or (datetime.now().strftime("%Y-%m-%d %H:%M:%S") + " (live pull, not a frozen file)"),
-        "n_items_label": f"{len(items)} รายการ (ของทั้งหมด {len(codes)}, เฉพาะที่มีนโยบาย)",
+        "n_items_label": f"{len(items)} รายการที่มี Forecast จาก {len(codes)}",
         "warehouse_scope_note": warehouse_scope_note_and_ref(division)[0],
         "warehouse_scope_ref": warehouse_scope_note_and_ref(division)[1],
     }
@@ -483,18 +488,18 @@ def _pem107_split_label() -> str:
 def warehouse_scope_note_and_ref(division: str) -> tuple:
     """(on-screen scope note, facts and references kept for an HTML comment) for one enabled division."""
     if division == "PEM101":
-        return ("PEM101 ปรับให้ตรงกับผลจริงแล้วบางส่วน ใช้ส่วนเลือกเป้าการส่งทันด้านล่าง",
+        return ("PEM101 ส่วนเลือกเป้าการส่งทันด้านล่าง (กราฟและตารางสินค้าที่เก็บ stock) ผ่าน Calibration แล้ว ส่วนตัวควบคุมด้านบนยังใช้สมมติฐานมาตรฐาน",
                 "previous English note: PEM101 128-item Fuse/Surge-Arrester pilot. PARTIALLY CALIBRATED "
                 "(80 distinct ensemble members). See STATUS.md whmap_report.md; METRICS.md Sec.22.")
     if division == "PEM103":
-        return ("PEM103 ผลิตตามงานประมูล วางแผนแบบผลิตตามสั่ง ตัวเลขในหน้านี้ใช้ดูทิศทางเท่านั้น",
+        return ("PEM103 เป็นธุรกิจงานประมูล ผลิตตามสั่ง · หน้านี้นับเฉพาะ Omni Channel (ไม่รวมงานประมูล) ตัวเลขใช้ดูทิศทางเท่านั้น",
                 "previous English note: PEM103 -- E2 scoped pilot, sellable-warehouse list is a business assumption. "
                 "PLANNED UNDER G3, NOT G2 (PROJECT_GRAPH.md Q22, business-confirmed): PEM103 is a "
                 "transformers/tendering-pipeline business, not a stock-policy division; the Tier A scenario values "
                 "are illustrative only. Sources: output/summary/phaseE2_readiness_report.md, phaseE2pilot_report.md.")
     if division == "PEM107":
-        return (f"PEM107 ยังไม่ได้ปรับให้ตรงกับผลจริง เพราะระบบเปลี่ยนเมื่อ {_pem107_split_label()} "
-                f"และข้อมูลหลังเปลี่ยนยังน้อย ตัวเลขใช้ดูทิศทางเท่านั้น",
+        return (f"PEM107 ยังไม่ผ่าน Calibration เพราะส่งทันลดลงตั้งแต่ {_pem107_split_label()} (ยังไม่รู้สาเหตุ) "
+                f"และข้อมูลหลังจากนั้นยังน้อย ตัวเลขใช้ดูทิศทางเท่านั้น",
                 "previous English note: PEM107 -- E2 scoped pilot, sellable-warehouse list is a business assumption. "
                 "UNCALIBRATED (Phase J3 found no stock-based policy fits both the 2024-2025 and 2026 periods "
                 "simultaneously; METRICS.md Sec.20); the Tier A scenario values are a scenario tool only. "
@@ -571,7 +576,7 @@ def apply_class_file_divisions(data: dict, config: dict) -> None:
                 no_policy.append({"code": it["code"], "type": it.get("type", ""), "policy": sub.loc[it["code"], "status_category"]})
         total = len(items) + len(no_policy)
         dd["items"], dd["no_policy_items"] = items, no_policy
-        dd["n_items_label"] = f"{len(items)} รายการ (ของทั้งหมด {total}, เฉพาะที่มีนโยบาย)"
+        dd["n_items_label"] = f"{len(items)} รายการที่มี Forecast จาก {total}"
         if not any(it["policy"] == "stock_policy" for it in items):
             dd["no_min_max_line"] = no_min_max_line(division)
         else:
@@ -658,7 +663,7 @@ def build_data(inventory_source=None, sales_source=None, pull_labels: dict = Non
         # METRICS.md Sec.26 (page_timestamps), added 2026-09-25 (task 2a, Part 2 -- ONLY these two
         # fields touched on this page this task; Min/Max logic, segmentation, PEM107 alert etc.
         # are explicitly out of scope, per task instruction, for a separate task 2b).
-        "page_built_at": datetime.now().strftime("%Y-%m-%d %H:%M") + " ICT (UTC+7) -- this build run's own clock",
+        "page_built_at": datetime.now().strftime("%Y-%m-%d %H:%M") + " -- this build run's own clock (UTC+7)",
         "scope_line": config["inventory_page"]["scope_line"],          # one scope line under the page heading (Prompt 34, item 10)
         "model_calibrated_at": model_calibrated_at(),
         "division_order": PILOT_DIVISIONS,

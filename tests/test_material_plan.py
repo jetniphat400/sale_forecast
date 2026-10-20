@@ -483,7 +483,7 @@ def _nb(text: str) -> str:
 
 def test_the_two_order_lists_split_by_the_latest_order_date_with_the_approved_columns_and_source_labels(project):
     page, v = _page(project)
-    heads_expected = ["รหัสวัตถุดิบ", "ชื่อ", "ใช้ในสินค้า (รหัส · +n คือมีอีก n รหัส)", "ต้องสั่งเพิ่ม (Order qty)", "สั่งภายในวันที่ (Order-by date)", "lead time (วัน)", "ที่มา lead time"]
+    heads_expected = ["รหัสวัตถุดิบ", "ชื่อ", "ใช้ในสินค้า (รหัส · +n คือมีอีก n รหัส)", "ต้องสั่งเพิ่ม (Order qty)", "สั่งภายในวันที่ (Order-by date)", "Lead time (วัน: ระยะเวลาสั่งถึงได้ของ)", "ที่มาของ lead time"]
     for table in ("within-table", "late-table"):
         assert [_nb(h) for h in re.findall(r"<th(?:\s[^>]*)?>(.*?)</th>", page.split('id="%s"' % table)[1].split("</table>")[0])] == heads_expected
     _, sm, meta = mp.read_outputs(project)
@@ -599,7 +599,7 @@ def test_the_config_warehouses_equal_the_proof_on_the_saved_pulls_and_no_materia
 def test_the_page_opens_with_the_visually_distinct_notice_above_everything_else(project):
     page, v = _page(project)
     body = page.split('<div class="wrap">')[1]
-    assert body.lstrip().startswith('<div class="notice" id="verification-notice">แผนนี้เป็นร่าง (Draft) ยังอยู่ระหว่างตรวจสอบ ตัวเลขต้องสั่งยังใช้สั่งซื้อจริงไม่ได้ จนกว่าจะกำหนดเกณฑ์ว่าตรงกับใบสั่งซื้อจริงแค่ไหนถึงใช้ได้ (ดูแท็บสมมติฐานที่ใช้อยู่)</div>')
+    assert body.lstrip().startswith('<div class="notice" id="verification-notice">แผนนี้เป็นร่าง (Draft) ยังใช้สั่งซื้อจริงไม่ได้ · ต้องกำหนดก่อนว่าตัวเลขต้องตรงกับใบสั่งซื้อจริงแค่ไหน (ดูแท็บสมมติฐานที่ใช้อยู่)</div>')
     assert ".notice {" in page and "border: 2px solid" in page
 
 
@@ -942,16 +942,16 @@ def test_remarks_on_fixed_examples_paid_pending_none_and_a_config_exception():
     rule = _rule()
     rule["exceptions"] = {"LABOR-9": "the name reads like a physical plate", "EXC-1": "the name reads like a physical plate"}
     c = _remarks(["LAB-1", "SUB-1", "RAW-1", "ODD-1", "NOM-1", "FRT-1", "WRK-1", "EXC-1", "LABOR-9", "labor_x", "GRP-1"], attrs, {"WRK-1": "HOUR"}, rule)
-    assert (c.loc["LAB-1", "remark"], c.loc["LAB-1", "evidence"]) == ("ค่าแรง", "จากชื่อ") and bool(c.loc["LAB-1", "paid"])        # a labor description
-    assert (c.loc["SUB-1", "remark"], c.loc["SUB-1", "evidence"]) == ("ค่าจ้าง", "จากชื่อ")             # a ค่าจ้าง name with no LABOR in the code
-    assert (c.loc["FRT-1", "remark"], c.loc["FRT-1", "evidence"]) == ("ค่าบริการ", "จากชื่อ")           # freight is a service
-    assert (c.loc["ODD-1", "remark"], c.loc["ODD-1", "evidence"]) == ("รอตรวจ", "จากกลุ่มสินค้า") and not bool(c.loc["ODD-1", "paid"])      # item group 2000, no keyword
+    assert (c.loc["LAB-1", "remark"], c.loc["LAB-1", "evidence"]) == ("ค่าแรง", "ดูจากชื่อ") and bool(c.loc["LAB-1", "paid"])        # a labor description
+    assert (c.loc["SUB-1", "remark"], c.loc["SUB-1", "evidence"]) == ("ค่าจ้าง", "ดูจากชื่อ")             # a ค่าจ้าง name with no LABOR in the code
+    assert (c.loc["FRT-1", "remark"], c.loc["FRT-1", "evidence"]) == ("ค่าบริการ", "ดูจากชื่อ")           # freight is a service
+    assert (c.loc["ODD-1", "remark"], c.loc["ODD-1", "evidence"]) == ("รอตรวจ", "ดูจากกลุ่มสินค้า") and not bool(c.loc["ODD-1", "paid"])      # item group 2000, no keyword
     assert (c.loc["NOM-1", "remark"], c.loc["NOM-1", "evidence"]) == ("รอตรวจ", "ไม่มีข้อมูลใน DB (Cube_ItemList)")     # no item-master record
-    assert (c.loc["WRK-1", "remark"], c.loc["WRK-1", "evidence"]) == ("รอตรวจ", "หน่วยนับ")             # a unit that names work
+    assert (c.loc["WRK-1", "remark"], c.loc["WRK-1", "evidence"]) == ("รอตรวจ", "ดูจากหน่วยนับ")             # a unit that names work
     assert c.loc["RAW-1", "remark"] == "" and not bool(c.loc["RAW-1", "paid"])                          # a normal raw material: no remark
-    assert (c.loc["EXC-1", "remark"], c.loc["EXC-1", "evidence"]) == ("รอตรวจ", "ชื่อเป็นชิ้นส่วน")        # a (non-LABOR) code moved to รอตรวจ by an explicit config exception
-    assert (c.loc["LABOR-9", "remark"], c.loc["LABOR-9", "evidence"]) == ("ค่าแรง", "จากรหัส")           # a LABOR- code is labor, never รอตรวจ, and no config exception moves it
-    assert (c.loc["labor_x", "remark"], c.loc["labor_x", "evidence"]) == ("ค่าแรง", "จากรหัส")          # a code starting with labor_ , any case, with an ordinary name
+    assert (c.loc["EXC-1", "remark"], c.loc["EXC-1", "evidence"]) == ("รอตรวจ", "ผู้ดูแลโครงการตรวจแล้ว")        # a (non-LABOR) code moved to รอตรวจ by an explicit config exception
+    assert (c.loc["LABOR-9", "remark"], c.loc["LABOR-9", "evidence"]) == ("ค่าแรง", "ดูจากรหัส")           # a LABOR- code is labor, never รอตรวจ, and no config exception moves it
+    assert (c.loc["labor_x", "remark"], c.loc["labor_x", "evidence"]) == ("ค่าแรง", "ดูจากรหัส")          # a code starting with labor_ , any case, with an ordinary name
     # a line matching both the paid keywords and a รอตรวจ condition gets the paid remark, and the overlap is recorded
     assert (c.loc["GRP-1", "remark"], c.loc["GRP-1", "also_pending"]) == ("ค่าจ้าง", False)
     both = _remarks(["LAB-1"], _attrs([("LAB-1", "2000")]))
@@ -967,13 +967,13 @@ def test_the_answers_of_the_user_labor_codes_outsource_slit_cost_and_the_confirm
     rule["user_confirmed"]["codes"]["CONF-1"] = "confirmed by user 2026-10-12"
     attrs = _attrs([("LABOR-J", "2000"), ("LABOR-S", "100"), ("LABOR-W", "400"), ("LABOR-N", "4012"), ("OS-1", "100"), ("SLIT COST-7", "2000"), ("CONF-1", "2000")])     # LABOR-N and COST OF PAPER: no master / group 4012
     c = _remarks(["LABOR-J", "LABOR-S", "LABOR-W", "LABOR-N", "OS-1", "SLIT COST-7", "COST OF PAPER", "CONF-1", "ODD-1"], attrs, {"LABOR-N": "HOUR"}, rule)
-    assert (c.loc["LABOR-J", "remark"], c.loc["LABOR-J", "evidence"]) == ("ค่าจ้าง", "จากชื่อ")           # a LABOR code whose name states ค่าจ้าง: the label of the name
-    assert (c.loc["LABOR-S", "remark"], c.loc["LABOR-S", "evidence"]) == ("ค่าบริการ", "จากชื่อ")         # ... or ค่าบริการ
-    assert (c.loc["LABOR-W", "remark"], c.loc["LABOR-W", "evidence"]) == ("ค่าแรง", "จากรหัส")           # otherwise ค่าแรง from the code, also with group 400
-    assert (c.loc["LABOR-N", "remark"], c.loc["LABOR-N", "evidence"]) == ("ค่าแรง", "จากรหัส")           # never รอตรวจ, even with a work unit, group 4012 and no name
-    assert (c.loc["OS-1", "remark"], c.loc["OS-1", "evidence"]) == ("ค่าจ้าง", "จากชื่อ")                # OUTSOURCE is hire work
+    assert (c.loc["LABOR-J", "remark"], c.loc["LABOR-J", "evidence"]) == ("ค่าจ้าง", "ดูจากชื่อ")           # a LABOR code whose name states ค่าจ้าง: the label of the name
+    assert (c.loc["LABOR-S", "remark"], c.loc["LABOR-S", "evidence"]) == ("ค่าบริการ", "ดูจากชื่อ")         # ... or ค่าบริการ
+    assert (c.loc["LABOR-W", "remark"], c.loc["LABOR-W", "evidence"]) == ("ค่าแรง", "ดูจากรหัส")           # otherwise ค่าแรง from the code, also with group 400
+    assert (c.loc["LABOR-N", "remark"], c.loc["LABOR-N", "evidence"]) == ("ค่าแรง", "ดูจากรหัส")           # never รอตรวจ, even with a work unit, group 4012 and no name
+    assert (c.loc["OS-1", "remark"], c.loc["OS-1", "evidence"]) == ("ค่าจ้าง", "ดูจากชื่อ")                # OUTSOURCE is hire work
     for code in ("SLIT COST-7", "COST OF PAPER", "CONF-1"):                                              # the keywords SLIT COST and COST OF PAPER, and the confirmed code list
-        assert (c.loc[code, "remark"], c.loc[code, "evidence"]) == ("ไม่ใช่สินค้า", "ผู้ใช้ยืนยัน") and bool(c.loc[code, "paid"])
+        assert (c.loc[code, "remark"], c.loc[code, "evidence"]) == ("ไม่ใช่สินค้า", "ผู้ดูแลโครงการยืนยัน") and bool(c.loc[code, "paid"])
     assert c.loc["ODD-1", "remark"] == "" or c.loc["ODD-1", "remark"] == "รอตรวจ"                       # an unconfirmed item is still handled by the รอตรวจ rules
     assert set(rule["user_confirmed"]["codes"]) >= {"TF-R-01-0077", "TF-R-05-0216", "TF-R-08-0223TF", "TF-R-08-0224TF"} and "02-00-R-7048" not in rule["user_confirmed"]["codes"]
     assert rule["exceptions"] == {"02-00-R-7048": "user 2026-10-12: probably goods"}                    # the one code the user says is probably goods (the five name-review exceptions of Prompt 22 are gone)
@@ -982,7 +982,7 @@ def test_the_answers_of_the_user_labor_codes_outsource_slit_cost_and_the_confirm
 def test_the_code_the_user_called_probably_goods_is_pending_and_counted_not_a_paid_remark():
     rule = _rule()
     c = _remarks(["02-00-R-7048", "TF-R-01-0077"], _attrs([("02-00-R-7048", "100"), ("TF-R-01-0077", "100")], aging_rows=[("02-00-R-7048", "Raw materials")]), {}, rule)
-    assert (c.loc["02-00-R-7048", "remark"], c.loc["02-00-R-7048", "evidence"], bool(c.loc["02-00-R-7048", "paid"])) == ("รอตรวจ", "ชื่อเป็นชิ้นส่วน", False)      # pending, so counted
+    assert (c.loc["02-00-R-7048", "remark"], c.loc["02-00-R-7048", "evidence"], bool(c.loc["02-00-R-7048", "paid"])) == ("รอตรวจ", "ผู้ดูแลโครงการตรวจแล้ว", False)      # pending, so counted
     assert (c.loc["TF-R-01-0077", "remark"], bool(c.loc["TF-R-01-0077", "paid"])) == ("ไม่ใช่สินค้า", True)                                                       # the other confirmed codes stay not-goods
 
 
@@ -1043,13 +1043,13 @@ def test_paid_remark_lines_are_left_out_of_every_summary_count_and_pending_lines
     assert len(v["within"]) == s["within"]["all"] and len(v["late"]) == s["late"]["all"] and len(v["main"]) == s["main"]["all"] == 3    # the tables hold every line
     assert v["n_late"] == s["late"]["counted"] and v["n_within"] == s["within"]["counted"]
     line = re.search(r'<p class="note-line summary-line" id="main-summary">(.*?)</p>', page, re.S).group(1)
-    assert line == f"ทั้งหมด 3 รายการ นับ 2 รายการ · ไม่นับค่าแรง/ค่าจ้าง/ค่าบริการ/ไม่ใช่สินค้า 1 รายการ (ไม่ใช่สินค้า ไม่ต้อง stock) · รอตรวจ 1 รายการ ยังนับรวมไว้จนกว่าจะมีคนยืนยันว่าเป็นสินค้าหรือไม่"
+    assert line == f"มี 3 รายการ ใช้นับ 2 รายการ (ไม่นับ 1 รายการที่เป็นค่าแรง ค่าจ้าง ค่าบริการ หรือไม่ใช่สินค้า) · รอตรวจ 1 รายการ ยังนับรวมไว้จนกว่าจะมีคนยืนยันว่าเป็นสินค้าหรือไม่"
     for key in ("within", "late"):
         assert f'id="{key}-summary"' in page
     # the remark sits beside the code in the table, with its evidence
-    found_b = re.search(r'data-material="RM-B"><td class="code">RM-B.*?data-remark="ค่าแรง">ค่าแรง · จากชื่อ</span>', page, re.S)
+    found_b = re.search(r'data-material="RM-B"><td class="code">RM-B.*?data-remark="ค่าแรง">ค่าแรง \(ดูจากชื่อ\)</span>', page, re.S)
     assert found_b, page[page.index('data-material="RM-B"'):][:600]
-    assert re.search(r'data-material="RM-C"><td class="code">RM-C.*?data-remark="รอตรวจ">รอตรวจ · ไม่มีข้อมูลใน DB \(Cube_ItemList\)</span>', page, re.S)
+    assert re.search(r'data-material="RM-C"><td class="code">RM-C.*?data-remark="รอตรวจ">รอตรวจ \(ไม่มีข้อมูลใน DB \(Cube_ItemList\)\)</span>', page, re.S)
     assert 'data-material="RM-A"><td class="code">RM-A</td>' in page or 'data-material="RM-A"><td class="code">RM-A<' in page
 
 

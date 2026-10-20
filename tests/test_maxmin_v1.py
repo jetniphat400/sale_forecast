@@ -81,7 +81,7 @@ def test_the_inventory_builder_reads_the_ensemble_output_not_the_76_item_set(rec
     assert ct["items_order"] == dense["items_order"] and len(ct["items_order"]) == dense["n_items_calibrated"] == 92
     assert ct["grid"] == dense["grid"] and ct["relative_service_cost"] == ratio
     assert ct["today_point"]["not_late_pct"] == dense["today_point"]["not_late_pct"]
-    assert "ปรับให้ตรงกับผลจริงจากสินค้า 92 รายการ" in ct["item_set_note"] and "76" not in ct["item_set_note"]
+    assert "Calibration จากการส่งของจริงของสินค้าที่เก็บ stock 92 รายการ" in ct["item_set_note"] and "76" not in ct["item_set_note"]
     assert bd.model_calibrated_at()["run_date"] == dense["calibrated_on"]
     cfg_text = open(os.path.join(PROJECT_ROOT, "src", "build_inventory_page_data.py"), encoding="utf-8").read()
     assert "phase23_dense_grid_PEM101" not in cfg_text.split("def _build_curve_target_pem101")[1].split("def _build_pem101_division")[0]
@@ -98,7 +98,7 @@ def test_the_note_keeps_the_earlier_clause_only_when_the_sets_differ(recorded, m
         return df
     monkeypatch.setattr(bd, "_load_fulfilment_segmentation", with_extra_stock_item)
     note = bd._build_curve_target_pem101()["item_set_note"]
-    assert "93 รายการ" in note and "ยังไม่ได้ปรับใหม่ตามชุดนี้" in note and "ปรับให้ตรงกับผลจริงจากสินค้า 92 รายการ" in note
+    assert "93 รายการ" in note and "ยังไม่ได้ทำ Calibration ใหม่ตามชุดนี้" in note and "Calibration จากการส่งของจริงของสินค้าที่เก็บ stock 92 รายการ" in note
 
 
 # ------------------------------------------------------------------ every braced value against its source
@@ -216,7 +216,7 @@ def test_the_assumptions_file_holds_the_approved_texts_and_the_computed_values(r
     rows = {r["id"]: r for r in json.load(open(TRACKED_ASSUMPTIONS, encoding="utf-8"))["assumptions"]}
     v = mm.assumption_values(CFG)
     expected = {
-        "minmax_lead_time": ("lead time ที่ใช้คำนวณ Min/Max", "ได้จากการปรับค่า (calibration) ให้ตรงผลจริง ไม่ได้วัดตรง", f"{v['lead_min']}-{v['lead_max']} วัน", "Min/Max ของ PEM101"),
+        "minmax_lead_time": ("lead time ที่ใช้คำนวณ Min/Max", "ได้จาก Calibration (ปรับการจำลองให้อัตราส่งทันตรงกับการส่งของจริง) ไม่ได้วัดตรง", f"{v['lead_min']}-{v['lead_max']} วัน", "Min/Max ของ PEM101"),
         "production_time": ("เวลาผลิตสินค้า", "DB (cube_final) ไม่บันทึกวันเริ่มผลิตจริง", f"{v['assumed_production_days']} วัน ({v['n_assumed_production']} รายการ)", "แผนสั่งวัตถุดิบ"),
         "material_without_purchase_history": ("วัตถุดิบที่ไม่มีประวัติสั่งซื้อ", "ไม่มีใบสั่งซื้อใน DB (Cube_PO_Exact)", "เวลาที่ผู้ขายแจ้ง หรือค่าสูงของวัตถุดิบอื่น", "แผนสั่งวัตถุดิบ"),
         "sellable_warehouses": ("คลังที่นับว่าขายได้", "ประวัติการเคลื่อนไหวของคลังไม่พอ", v["sellable_warehouses"], "stock ที่ใช้เทียบกับ Min"),
@@ -225,7 +225,7 @@ def test_the_assumptions_file_holds_the_approved_texts_and_the_computed_values(r
         "open_production_orders": ("ใบสั่งผลิตที่กำลังทำ", "วันกำหนดเสร็จใน DB (Cube_Production_Order) ไม่ตรงกับวันเสร็จจริง", "ไม่นำมาหักจากแผน (Open production orders ยังไม่ถูกนับ)", "Production Plan"),
         "fmto_fmts_warehouses": ("คลัง FMTO และ FMTS", "ยังไม่รู้ว่าเป็นของพร้อมขายไหม", "ไม่นับ", "stock ที่ใช้เทียบกับ Min และ Production Plan"),
         "forecast_range": ("Forecast", "Forecast = ยอดขายที่ระบบคาดการณ์ · ยังไม่มีช่วงสูง-ต่ำ", "ใช้ค่าเดียวต่อเดือน (point forecast)", "Production Plan"),
-        "calibration_window": ("ช่วงข้อมูลที่ใช้ปรับ Min/Max", "ถ้าใช้ช่วงสั้นลง lead time ที่ได้จะแคบลง", v["calibration_window"], "Min/Max ของ PEM101"),
+        "calibration_window": ("ช่วงข้อมูลที่ใช้ Calibration ของ Min/Max", "ถ้าใช้ช่วงสั้นลง lead time ที่ได้จะแคบลง (ช่วงยอดขายที่ใช้คำนวณ Min/Max ของ PEM101 เป็นอีกช่วงหนึ่ง ดูหน้า Min-Max)", v["calibration_window"], "Min/Max ของ PEM101"),
     }
     assert set(rows) == set(expected)
     for rid, (topic, unknown, used, affects) in expected.items():
@@ -306,8 +306,8 @@ def test_an_unknown_mixed_item_stops_the_computation():
 # The approved rows, verbatim; {braces} are the draft values of config (pending_criteria_values) and the decision date as 'd MMM yy'.
 PENDING_ROWS = [
     ["Forecast ดีกว่า Naive (ใช้ยอดเดือนล่าสุดเป็น Forecast ทุกเดือน) ไหม", "Relative MAE ต่ำแค่ไหนถึงนับว่าถึงเกณฑ์ (MAE ของเรา ÷ MAE ของ Naive)", "ร่าง: ต่ำกว่า {relative_mae_pass} ถึงเกณฑ์ผ่าน, ต่ำกว่า {relative_mae_good} ถึงเกณฑ์ดี", "ผู้บริหาร", "หลังรอบ {decision_date}"],
-    ["Forecast เอียงไปทางเดียวต่อเนื่อง (Bias)", "Tracking Signal (ตัวชี้ว่า Forecast เอียงไปทางเดียวต่อเนื่อง) เกินเท่าไหร่ถึงเตือน", "ร่าง: ±{tracking_signal_limit} (ไม่มีหน่วย)", "ผู้บริหาร", "ทุกเดือน"],
-    ["ฝ่ายที่ Forecast ไม่ชนะ Naive (ใช้ยอดเดือนล่าสุดเป็น Forecast ทุกเดือน)", "ใช้ Naive (ใช้ยอดเดือนล่าสุดเป็น Forecast ทุกเดือน) แทนไหม", "ยังใช้วิธีเดิม และแสดงผลเทียบ", "ผู้บริหาร", "หลังรอบ {decision_date}"],
+    ["Forecast สูงหรือต่ำกว่าจริงไปทางเดียวกัน (Bias)", "Tracking Signal (ตัวชี้ว่าความคลาดของ Forecast สะสมไปทางเดียวกัน ดูจำนวนจุดวัดที่ผิดทางเดียวกันประกอบ) เกินเท่าไหร่ถึงเตือน", "ร่าง: ±{tracking_signal_limit} (ไม่มีหน่วย)", "ผู้บริหาร", "ทุกเดือน"],
+    ["ฝ่ายที่ Forecast ไม่ชนะ Naive", "ใช้ Naive แทนไหม", "ยังใช้วิธีเดิม และแสดงผลเทียบ", "ผู้บริหาร", "หลังรอบ {decision_date}"],
     ["เป้าการส่งทัน (Not-late: ส่งไม่ช้ากว่าวันนัด)", "บริษัทต้องการกี่ %", "ให้เลือกเองบนหน้า Min-Max", "ผู้บริหาร", "ยังไม่กำหนด"],
     ["Min/Max ที่จำลอง", "การส่งทันที่จำลองห่างจากผลจริงได้แค่ไหน", "ยังไม่กำหนด", "ฝ่ายวางแผน", "หลังรอบ {decision_date}"],
     ["แผนวัตถุดิบ", "ตรงกับใบสั่งซื้อจริงแค่ไหนถึงใช้สั่งของได้", "ยังไม่กำหนด หน้าขึ้นว่ายังอยู่ระหว่างตรวจสอบ", "ฝ่ายจัดซื้อ", "ยังไม่กำหนด"],

@@ -116,8 +116,8 @@ def test_the_calibrated_target_note_states_the_fitted_count_from_the_ensemble_ou
     n_stock = sum(1 for i in pem101["items"] if i["policy"] == "stock_policy")
     ct = pem101["curve_target"]
     assert ct["n_items_calibrated"] == 92 == n_stock
-    assert ct["item_set_note"] == f"ปรับให้ตรงกับผลจริงจากสินค้า {ct['n_items_calibrated']} รายการ"
-    assert "ยังไม่ได้ปรับใหม่" not in ct["item_set_note"] and "76" not in ct["item_set_note"]
+    assert ct["item_set_note"] == f"Calibration จากการส่งของจริงของสินค้าที่เก็บ stock {ct['n_items_calibrated']} รายการ (DB (Cube_CES) ช่อง Omni Channel)"
+    assert "ยังไม่ได้ทำ Calibration ใหม่" not in ct["item_set_note"] and "76" not in ct["item_set_note"]
 
 
 # ------------------------------------------------------------------ manual text (part 4)

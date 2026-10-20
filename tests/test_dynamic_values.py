@@ -419,7 +419,7 @@ def test_numbers_from_the_remaining_typed_list_follow_their_sources(two_builds):
     # first scoring month from the forward-test log
     with open(os.path.join(rv.PROJECT_ROOT, "config", "config.yaml"), encoding="utf-8") as f:
         real_cfg = yaml.safe_load(f)
-    assert "ทุกต้นเดือนระบบเทียบ Forecast กับยอดขายจริงของเดือนที่ผ่านมา และเพิ่มผลในตารางนี้" in b and "ผลรอบแรกต้นเดือน" not in b
+    assert "ระบบเทียบ Forecast กับยอดจริงของเดือนที่ปิดครบ" in b and "ผลรอบแรกต้นเดือน" not in b
     # the |t| and Wilcoxon thresholds are applied when topdown_significance.csv is written (METRICS.md Sec.41), not typed in the page;
     # the report only states them in an HTML comment read from that file
     assert "|t| &gt;= 2" in b and "Wilcoxon p &lt; 0.05" in b
@@ -466,7 +466,7 @@ def test_script_filled_lines_follow_their_sources(two_builds):
         sp, rp, ap = texts["pert"]
         grid_b = base.data["divisions"]["PEM101"]["curve_target"]
         grid_p = pert.data["divisions"]["PEM101"]["curve_target"]
-        assert f"{grid_p['n_distinct_members']} ชุด" in sp and f"{grid_b['n_distinct_members']} ชุด" in sb and sb != sp
+        assert f"{grid_p['n_distinct_members']} ระดับของการสั่งเติม" in sp and f"{grid_b['n_distinct_members']} ระดับของการสั่งเติม" in sb and sb != sp
         assert "ส่งทัน 91.37%" in sp and "ส่งทัน 91.37%" not in sb
         assert f"{round(grid_p['today_point']['stock_value_thb']):,} บาท" in sp
         assert "จาก 90.11% เป็น" in rp and "จาก 90.11% เป็น" not in rb
@@ -517,7 +517,7 @@ def test_operation_plan_division_lines_follow_the_counts_of_the_plan():
     meta2["counts"]["no_production_items_by_division"]["PEM103"] = 17
     meta2["counts"]["stock_items_by_division"]["PEM102"] = 3          # a division that has stock items no longer says it has none
     pert = bp.render(bp.compute_values(im, dm, meta2, {}, "2026-10-02", SIX))
-    assert "1 รหัสยังไม่มี Forecast (ประวัติขายไม่พอ) แผนนับเฉพาะออเดอร์ที่รับแล้วแต่ยังไม่ส่ง (open orders) ตอนนี้มีออเดอร์ที่รับแล้วยังไม่ส่ง 1 รหัส" in base and "41 รหัสยังไม่มี Forecast (ประวัติขายไม่พอ) แผนนับเฉพาะออเดอร์ที่รับแล้วแต่ยังไม่ส่ง (open orders) ตอนนี้มีออเดอร์ที่รับแล้วยังไม่ส่ง 1 รหัส" in pert and "41 รหัส" not in base
+    assert "1 รหัสยังไม่มียอดขายใน Omni Channel เลย จึงยังไม่มี Forecast แผนนับเฉพาะออเดอร์ที่รับแล้ว ตอนนี้มีออเดอร์ที่รับแล้ว 1 รหัส" in base and "41 รหัสยังไม่มียอดขายใน Omni Channel เลย จึงยังไม่มี Forecast แผนนับเฉพาะออเดอร์ที่รับแล้ว ตอนนี้มีออเดอร์ที่รับแล้ว 1 รหัส" in pert and "41 รหัส" not in base
     assert "1 รหัสไม่มีบันทึกผลิตใน DB (cube_final) (ไม่ได้แปลว่ายกเลิกผลิต) ไม่นับรวมในยอดผลิตตามแผน" in base and "17 รหัสไม่มีบันทึกผลิตใน DB (cube_final) (ไม่ได้แปลว่ายกเลิกผลิต) ไม่นับรวมในยอดผลิตตามแผน" in pert
     assert "PEM102 ไม่มีสินค้าที่เข้าเกณฑ์เก็บ stock" in base and "PEM102 ไม่มีสินค้าที่เข้าเกณฑ์เก็บ stock" not in pert
 
@@ -545,7 +545,7 @@ def test_material_plan_page_text_values_follow_their_sources():
     assert "แผนวัตถุดิบ 5 เดือน" in a and "แผนวัตถุดิบ 3 เดือน" in b
     assert "จาก Production Plan ที่สร้างเมื่อ 6 ต.ค. 69 08:00 · <span" in a and "stock วัตถุดิบและใบสั่งซื้อที่ค้างรับดึงเมื่อ 6 ต.ค. 69 07:30 · <span" in a
     assert "จาก Production Plan ที่สร้างเมื่อ 4 ม.ค. 70 09:30 · <span" in b and "stock วัตถุดิบและใบสั่งซื้อที่ค้างรับดึงเมื่อ 15 ม.ค. 70 17:45 · <span" in b
-    assert "นับ ณ 6 ต.ค. 69" in a and "นับ ณ 4 ม.ค. 70" in b
+    assert "ณ 6 ต.ค. 69: " in a and "ณ 4 ม.ค. 70: " in b
     assert "stock วัตถุดิบนับจากคลัง WH21, WH22" in a and "stock วัตถุดิบนับจากคลัง WH90" in b
     assert 'id="divisions-covered">ฝ่ายที่รวมในแผนนี้: PEM101, PEM103<' in a and 'id="divisions-covered">ฝ่ายที่รวมในแผนนี้: CI101<' in b
     assert "นับของที่สั่งแล้วรอรับตามวันที่คาดว่าจะได้" in a and "ยังไม่นับของที่สั่งแล้วรอรับ" in b

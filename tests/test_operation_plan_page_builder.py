@@ -183,7 +183,7 @@ def test_the_three_lines_are_rendered_with_their_values_and_in_the_approved_word
     page = bp.render(v)
     lines = [_nb(l) for l in re.findall(r'<p class="note-line">(.*?)</p>', page)]
     assert lines[0] == (f"{v['first_month']} PEM101 ต้องเติมให้ถึง Max {v['refill_units']} หน่วย นอกเหนือจากความต้องการเดือนนั้น "
-                        "เพราะ stock ตอนนี้ต่ำกว่า Max ทยอยเติมในเดือนถัดไปได้")
+                        "เพราะ stock ตอนนี้ต่ำกว่า Max (ถ้ากำลังผลิตไม่พอ อาจทยอยเติมในเดือนถัดไป)")
     assert lines[1] == (f"{v['first_month']} PEM107 มีออเดอร์ที่รับแล้วสูงกว่า Forecast {v['backlog_above_forecast']} หน่วย ส่วนใหญ่จาก {v['top_backlog_items']}")
     assert lines[2] == "Historical peak คือยอดผลิตเสร็จต่อเดือนสูงสุดในอดีต นับทุกสินค้ารวมกันโดยไม่แยกขนาด ใช้ดูทิศทาง ไม่ได้แปลว่าเป็นกำลังผลิตเต็มที่"
     assert len(lines) == 3
@@ -203,7 +203,7 @@ def test_the_heading_months_and_the_data_line_come_from_the_plan_not_from_typing
     page = bp.render(v)
     assert f"Production Plan {len(MONTHS)} เดือน · ทุกฝ่าย" in page and "PEM101 และ PEM107" not in page
     facts = bp.rv.model_round_facts("2026-10-02")
-    assert "ข้อมูล stock จาก DB (Cube_Inventory_Exact) · Forecast = ยอดขายที่ระบบคาดการณ์ · <span" in page and f"stock และออเดอร์ที่รับแล้วดึงเมื่อ {v['pull_time']} · <span" in page
+    assert "ข้อมูล stock จาก DB (Cube_Inventory_Exact) · Forecast = ยอดขายที่ระบบคาดการณ์ · ออเดอร์ที่รับแล้ว (Backlog) = ลูกค้าสั่งแล้วแต่ยังไม่ส่ง · <span" in page and f"stock และออเดอร์ที่รับแล้วดึงเมื่อ {v['pull_time']} · <span" in page
     assert f"ข้อมูลรอบ Forecast {facts['round']} · ดึงเมื่อ {facts['pulled']}" in page and "Forecast รันเมื่อ" not in page
     assert "Historical peak คิดจากประวัติผลิต 3 ม.ค. 66 ถึง 2 ต.ค. 69" in page and 'data-pulled="2026-10-02"' in page and 'data-pulled="2026-10-06"' in page
     im, dm, meta = _plan()
@@ -279,10 +279,10 @@ def test_the_division_lines_use_the_approved_wording_with_counts_from_the_plan_a
     page = bp.render(_six())
     lines = {d: [_nb(l) for l in re.findall(r'<p class="note-line division-line" data-division="%s">(.*?)</p>' % d, page)] for d in SIX}
     assert lines["PEM101"] == ["PEM101 6 รหัสอยู่ใน Price List แต่ไม่เคยขาย ไม่อยู่ในแผน"] and lines["PEM107"] == []
-    assert lines["PEM103"] == ["PEM103 ไม่มีสินค้าที่เข้าเกณฑ์เก็บ stock แผนจึงเป็นการผลิตแบบ Demand-driven ทั้งหมด (ตาม Forecast หรือออเดอร์ แล้วแต่อันไหนมากกว่า)", "1 รหัสยังไม่มี Forecast (ประวัติขายไม่พอ) แผนนับเฉพาะออเดอร์ที่รับแล้วแต่ยังไม่ส่ง (open orders) ตอนนี้มีออเดอร์ที่รับแล้วยังไม่ส่ง 1 รหัส",
+    assert lines["PEM103"] == ["PEM103 ไม่มีสินค้าที่เข้าเกณฑ์เก็บ stock แผนจึงเป็นการผลิตแบบ Demand-driven ทั้งหมด (ตาม Forecast หรือออเดอร์ แล้วแต่อันไหนมากกว่า)", "1 รหัสยังไม่มียอดขายใน Omni Channel เลย จึงยังไม่มี Forecast แผนนับเฉพาะออเดอร์ที่รับแล้ว ตอนนี้มีออเดอร์ที่รับแล้ว 1 รหัส",
                                "1 รหัสไม่มีบันทึกผลิตใน DB (cube_final) (ไม่ได้แปลว่ายกเลิกผลิต) ไม่นับรวมในยอดผลิตตามแผน", "PEM103 นับเฉพาะยอด Omni Channel งานประมูลไม่อยู่ในแผนนี้"]
     assert lines["PEM102"] == ["PEM102 ไม่มีสินค้าที่เข้าเกณฑ์เก็บ stock แผนจึงเป็นการผลิตแบบ Demand-driven ทั้งหมด (ตาม Forecast หรือออเดอร์ แล้วแต่อันไหนมากกว่า)"]
-    assert lines["PEM104"] == ["PEM104 ไม่มีสินค้าที่เข้าเกณฑ์เก็บ stock แผนจึงเป็นการผลิตแบบ Demand-driven ทั้งหมด (ตาม Forecast หรือออเดอร์ แล้วแต่อันไหนมากกว่า)", "1 รหัสยังไม่มี Forecast (ประวัติขายไม่พอ) แผนนับเฉพาะออเดอร์ที่รับแล้วแต่ยังไม่ส่ง (open orders) ตอนนี้มีออเดอร์ที่รับแล้วยังไม่ส่ง 1 รหัส"]
+    assert lines["PEM104"] == ["PEM104 ไม่มีสินค้าที่เข้าเกณฑ์เก็บ stock แผนจึงเป็นการผลิตแบบ Demand-driven ทั้งหมด (ตาม Forecast หรือออเดอร์ แล้วแต่อันไหนมากกว่า)", "1 รหัสยังไม่มียอดขายใน Omni Channel เลย จึงยังไม่มี Forecast แผนนับเฉพาะออเดอร์ที่รับแล้ว ตอนนี้มีออเดอร์ที่รับแล้ว 1 รหัส"]
     assert lines["CI101"] == ["CI101 ไม่มีสินค้าที่เข้าเกณฑ์เก็บ stock แผนจึงเป็นการผลิตแบบ Demand-driven ทั้งหมด (ตาม Forecast หรือออเดอร์ แล้วแต่อันไหนมากกว่า)"]
     for d in SIX:      # each line sits directly under its own division's table
         block = page.split('id="summary-%s"' % d)[1].split("</table></div>", 1)[1]
@@ -293,11 +293,11 @@ def test_the_class_labels_and_the_flag_with_its_tooltip_are_the_approved_text():
     page = bp.render(_six())
     rows = {re.search(r"<td>(\w+)</td>", m).group(1): m for m in re.findall(r'<tr data-division="\w+" data-class="\w+">(.*?)</tr>', page)}
     kind = lambda code: re.findall(r'<td class="kind">(.*?)</td>', rows[code])[0]
-    assert kind("S1") == "เก็บ stock" and kind("P3a") == "ยังไม่ชัด" and kind("L2") == "ยังไม่ชัด"
-    assert kind("P3c") == "ไม่มีบันทึกผลิตใน DB (cube_final)" and kind("T7") == "ข้อมูลไม่พอจัดประเภท"
+    assert kind("S1") == "เก็บ stock" and kind("P3a") == "ยังไม่ชัด (ป้าย MTS/MTO กับพฤติกรรมขัดกัน)" and kind("L2") == "ยังไม่ชัด (ป้าย MTS/MTO กับพฤติกรรมขัดกัน)"
+    assert kind("P3c") == "ไม่มีบันทึกผลิตใน DB (cube_final)" and kind("T7") == "ข้อมูลน้อยเกินกว่าจะบอกว่าเก็บ stock หรือผลิตตามสั่ง (สัญญาที่ส่งมอบแล้วน้อย)"
     assert kind("C1").startswith("ผสม (เก็บ stock บางส่วน)")
-    assert '<span class="flag tip" title="ป้าย MTS/MTO ที่บันทึกใน DB (cube_Sale_APD) ไม่ตรงกับพฤติกรรมจริงของสินค้า ใช้พฤติกรรมจริงตัดสิน และให้ฝ่ายยืนยัน">ป้ายไม่ตรงกับพฤติกรรมจริง (Conflict)</span>' in kind("C1")
-    assert page.count("ป้ายไม่ตรงกับพฤติกรรมจริง (Conflict)</span>") == 1                                     # only the flagged item carries it
+    assert '<span class="flag tip" title="ป้าย MTS/MTO ที่บันทึกใน DB (cube_Sale_APD) ไม่ตรงกับพฤติกรรมจริงของสินค้า ใช้พฤติกรรมจริงตัดสิน และให้ฝ่ายยืนยัน">ป้ายใน DB ไม่ตรงกับพฤติกรรมจริง (Conflict)</span>' in kind("C1")
+    assert page.count("ป้ายใน DB ไม่ตรงกับพฤติกรรมจริง (Conflict)</span>") == 1                                     # only the flagged item carries it
     assert re.findall(r'data-division="PEM103" data-class="(\w+)"', page).count("no_production_in_system") == 1
 
 
@@ -307,7 +307,7 @@ def test_the_filter_row_the_stock_note_and_the_material_plan_link_are_the_approv
     assert re.search(r'<label>นโยบายการผลิต <select id="filter-class"><option value="all">ทั้งหมด</option>', page)
     opts = re.findall(r'<option value="(\w+)">(.*?)</option>', page.split('id="filter-class"')[1].split("</select>")[0])
     assert [k for k, _ in opts if k != "all"] == bp.CLASS_ORDER and dict(opts)["mixed"] == "ผสม (เก็บ stock บางส่วน)"
-    assert '<p class="table-note" id="stock-note">stock ตอนนี้ แสดงเฉพาะสินค้าเก็บ stock · คอลัมน์เดือน = จำนวนที่แผนให้ผลิตในเดือนนั้น (สินค้าที่ไม่เก็บ stock = ยอดที่ต้องผลิตตามความต้องการ) แถวที่ไม่มีบันทึกผลิตใน DB (cube_final)แสดงยอดความต้องการ ไม่ใช่ยอดผลิต</p>' in _nb(page)
+    assert '<p class="table-note" id="stock-note">stock ตอนนี้ แสดงเฉพาะสินค้าเก็บ stock · คอลัมน์เดือน = จำนวนที่แผนให้ผลิตในเดือนนั้น (สินค้าที่ไม่เก็บ stock = ยอดที่ต้องผลิตตามความต้องการ) · แถวที่ไม่มีบันทึกผลิตใน DB (cube_final) แสดงยอดความต้องการ ไม่ใช่ยอดผลิต</p>' in _nb(page)
     assert '<a class="page-link" id="material-plan-link" href="material_plan.html">แผนวัตถุดิบ</a>' in page
 
 
@@ -384,7 +384,7 @@ NEW_ASSUMPTIONS = [
     ("open_production_orders", "ใบสั่งผลิตที่กำลังทำ", "วันกำหนดเสร็จใน DB (Cube_Production_Order) ไม่ตรงกับวันเสร็จจริง", "ไม่นำมาหักจากแผน (Open production orders ยังไม่ถูกนับ)", "Production Plan"),
     ("fmto_fmts_warehouses", "คลัง FMTO และ FMTS", "ยังไม่รู้ว่าเป็นของพร้อมขายไหม", "ไม่นับ", "stock ที่ใช้เทียบกับ Min และ Production Plan"),
     ("forecast_range", "Forecast", "Forecast = ยอดขายที่ระบบคาดการณ์ · ยังไม่มีช่วงสูง-ต่ำ", "ใช้ค่าเดียวต่อเดือน (point forecast)", "Production Plan"),
-    ("calibration_window", "ช่วงข้อมูลที่ใช้ปรับ Min/Max", "ถ้าใช้ช่วงสั้นลง lead time ที่ได้จะแคบลง", "{window}", "Min/Max ของ PEM101"),
+    ("calibration_window", "ช่วงข้อมูลที่ใช้ Calibration ของ Min/Max", "ถ้าใช้ช่วงสั้นลง lead time ที่ได้จะแคบลง (ช่วงยอดขายที่ใช้คำนวณ Min/Max ของ PEM101 เป็นอีกช่วงหนึ่ง ดูหน้า Min-Max)", "{window}", "Min/Max ของ PEM101"),
 ]
 
 
@@ -488,12 +488,12 @@ def test_the_new_page_shows_heading_data_line_summary_flag_lines_and_item_table(
     assert _wait(edge, "document.querySelectorAll('#item-table-body tr').length > 0")
     assert edge.ev("document.getElementById('page-title').innerText") == f"Production Plan {v['n_months']} เดือน · ทุกฝ่าย"
     line = edge.ev("document.getElementById('data-line').innerText")
-    assert line.startswith("ข้อมูล stock จาก DB (Cube_Inventory_Exact) · Forecast = ยอดขายที่ระบบคาดการณ์ · stock และออเดอร์ที่รับแล้วดึงเมื่อ " + v["pull_time"] + " · ")
+    assert line.startswith("ข้อมูล stock จาก DB (Cube_Inventory_Exact) · Forecast = ยอดขายที่ระบบคาดการณ์ · ออเดอร์ที่รับแล้ว (Backlog) = ลูกค้าสั่งแล้วแต่ยังไม่ส่ง · stock และออเดอร์ที่รับแล้วดึงเมื่อ " + v["pull_time"] + " · ")
     after_round = line.split("ข้อมูลรอบ Forecast")[1]
     assert ("ใหม่ (Fresh)" in line) != ("เก่า (Stale)" in line) and "Fresh" not in after_round and "Stale" not in after_round     # the model round carries no status
     assert edge.ev("document.getElementById('peak-line').innerText").startswith("Historical peak คิดจากประวัติผลิต ")
     heads = edge.ev("[...document.querySelectorAll('#summary-PEM101 thead th')].map(t=>t.innerText.replace('รวมทุกช่องทาง','').trim())")
-    assert heads == ["เดือน", "Demand-driven (ผลิตตาม Forecast หรือออเดอร์ แล้วแต่อันไหนมากกว่า)", "Build to Max (ผลิตเติม stock ให้ถึง Max)", "ผลิตตามสั่ง (MTO: Make to Order)", "รวม", "เทียบกับ Historical peak (ยอดผลิตเสร็จสูงสุดต่อเดือนในอดีต ไม่ใช่กำลังผลิตเต็มที่)"]
+    assert heads == ["เดือน", "Demand-driven (ผลิตตาม Forecast หรือออเดอร์ แล้วแต่อันไหนมากกว่า)", "Build to Max (ผลิตเติม stock ให้ถึง Max)", "ผลิตตามสั่ง (MTO: Make to Order)", "รวม", "% ของ Historical peak"]
     for d in v["divisions"]:
         rows = edge.ev(f"[...document.querySelectorAll('#summary-{d} tbody tr')].map(r=>[...r.children].map(c=>c.innerText.trim()))")
         s = v["summary"][v["summary"]["division"] == d].reset_index(drop=True)
@@ -508,7 +508,7 @@ def test_the_new_page_shows_heading_data_line_summary_flag_lines_and_item_table(
     lines = edge.ev("[...document.querySelectorAll('p.note-line')].map(p=>p.innerText.replace('รวมทุกช่องทาง','').trim())")
     assert lines[-1].startswith("Historical peak คือยอดผลิตเสร็จต่อเดือนสูงสุดในอดีต")
     if v["refill_first"] >= 0.5:
-        assert f"{v['first_month']} PEM101 ต้องเติมให้ถึง Max {v['refill_units']} หน่วย นอกเหนือจากความต้องการเดือนนั้น เพราะ stock ตอนนี้ต่ำกว่า Max ทยอยเติมในเดือนถัดไปได้" in lines
+        assert f"{v['first_month']} PEM101 ต้องเติมให้ถึง Max {v['refill_units']} หน่วย นอกเหนือจากความต้องการเดือนนั้น เพราะ stock ตอนนี้ต่ำกว่า Max (ถ้ากำลังผลิตไม่พอ อาจทยอยเติมในเดือนถัดไป)" in lines
     if v["backlog_above_forecast_value"] >= 0.5:
         assert f"{v['first_month']} PEM107 มีออเดอร์ที่รับแล้วสูงกว่า Forecast {v['backlog_above_forecast']} หน่วย ส่วนใหญ่จาก {v['top_backlog_items']}" in lines
     cols = edge.ev("[...document.querySelectorAll('#item-table thead th')].map(t=>t.innerText.trim())")
@@ -599,14 +599,14 @@ def test_the_six_divisions_the_lines_the_labels_the_flag_and_the_filter_row_show
     assert edge.ev("document.querySelector('label[for], .filters label').innerText.trim().split('\\n')[0]").startswith("ฝ่าย")
     assert edge.ev("[...document.querySelectorAll('#filter-division option')].map(o=>o.innerText)") == ["ทั้งหมด"] + v["divisions"]
     labels = edge.ev("[...document.querySelectorAll('#filter-class option')].map(o=>o.innerText)")
-    assert labels == ["ทั้งหมด", "เก็บ stock", "ผลิตตามสั่ง", "ยังไม่ชัด", "ผสม (เก็บ stock บางส่วน)", "ข้อมูลไม่พอจัดประเภท", "ไม่มีบันทึกผลิตใน DB (cube_final)"]
-    assert edge.ev("document.getElementById('stock-note').innerText.replace('รวมทุกช่องทาง', '').trim()") == "stock ตอนนี้ แสดงเฉพาะสินค้าเก็บ stock · คอลัมน์เดือน = จำนวนที่แผนให้ผลิตในเดือนนั้น (สินค้าที่ไม่เก็บ stock = ยอดที่ต้องผลิตตามความต้องการ) แถวที่ไม่มีบันทึกผลิตใน DB (cube_final)แสดงยอดความต้องการ ไม่ใช่ยอดผลิต"
+    assert labels == ["ทั้งหมด", "เก็บ stock", "ผลิตตามสั่ง", "ยังไม่ชัด (ป้าย MTS/MTO กับพฤติกรรมขัดกัน)", "ผสม (เก็บ stock บางส่วน)", "ข้อมูลน้อยเกินกว่าจะบอกว่าเก็บ stock หรือผลิตตามสั่ง (สัญญาที่ส่งมอบแล้วน้อย)", "ไม่มีบันทึกผลิตใน DB (cube_final)"]
+    assert edge.ev("document.getElementById('stock-note').innerText.replace('รวมทุกช่องทาง', '').trim()") == "stock ตอนนี้ แสดงเฉพาะสินค้าเก็บ stock · คอลัมน์เดือน = จำนวนที่แผนให้ผลิตในเดือนนั้น (สินค้าที่ไม่เก็บ stock = ยอดที่ต้องผลิตตามความต้องการ) · แถวที่ไม่มีบันทึกผลิตใน DB (cube_final) แสดงยอดความต้องการ ไม่ใช่ยอดผลิต"
     kinds = edge.ev("[...document.querySelectorAll('#item-table-body td.kind')].map(c=>c.innerText.trim().split('\\n')[0])")
     for label in {bp.CLASS_LABELS[i["label"]] for i in v["items"]}:
         assert any(k.startswith(label) for k in kinds), label
     flags = edge.ev("[...document.querySelectorAll('#item-table-body .flag')].map(f=>[f.innerText.trim(), f.title])")
     assert len(flags) == sum(1 for i in v["items"] if i["inconsistent"])
-    assert all(f == ["ป้ายไม่ตรงกับพฤติกรรมจริง (Conflict)", "ป้าย MTS/MTO ที่บันทึกใน DB (cube_Sale_APD) ไม่ตรงกับพฤติกรรมจริงของสินค้า ใช้พฤติกรรมจริงตัดสิน และให้ฝ่ายยืนยัน"] for f in flags)
+    assert all(f == ["ป้ายใน DB ไม่ตรงกับพฤติกรรมจริง (Conflict)", "ป้าย MTS/MTO ที่บันทึกใน DB (cube_Sale_APD) ไม่ตรงกับพฤติกรรมจริงของสินค้า ใช้พฤติกรรมจริงตัดสิน และให้ฝ่ายยืนยัน"] for f in flags)
     link = edge.ev("(function(){const a=document.getElementById('material-plan-link'); return [a.innerText.trim(), a.getAttribute('href'), a.href]})()")
     assert link[0] == "แผนวัตถุดิบ" and link[1] == "material_plan.html" and link[2].endswith("/forecast/material_plan.html")
     assert not [e for e in edge.errors if e.startswith("exception")], edge.errors
@@ -641,12 +641,12 @@ def test_the_material_plan_page_shows_its_approved_text_sections_and_tables(edge
     assert edge.ev("document.getElementById('late-title').compareDocumentPosition(document.getElementById('material-table')) & 4") == 4      # both sections sit above the main table
     for key, table in (("within", "within-table"), ("late", "late-table")):
         assert edge.ev("[...document.querySelectorAll('#%s thead th')].map(t=>t.innerText.replace('รวมทุกช่องทาง (ยกเว้น PEM103)','').trim())" % table) == \
-            ["รหัสวัตถุดิบ", "ชื่อ", "ใช้ในสินค้า (รหัส · +n คือมีอีก n รหัส)", "ต้องสั่งเพิ่ม (Order qty)", "สั่งภายในวันที่ (Order-by date)", "lead time (วัน)", "ที่มา lead time"]
+            ["รหัสวัตถุดิบ", "ชื่อ", "ใช้ในสินค้า (รหัส · +n คือมีอีก n รหัส)", "ต้องสั่งเพิ่ม (Order qty)", "สั่งภายในวันที่ (Order-by date)", "Lead time (วัน: ระยะเวลาสั่งถึงได้ของ)", "ที่มาของ lead time"]
         rows = edge.ev("[...document.querySelectorAll('#%s tbody tr')].map(r=>[...r.children].map(c=>c.innerText.trim()))" % table)
         assert len(rows) == v["n_" + key + "_all"] and {r[6] for r in rows} <= {"จากใบสั่งซื้อที่ผ่านมา", "ผู้ขายแจ้งเวลา", "ประมาณการ (ไม่มีข้อมูลจริง)"}
         lst = v[key].reset_index(drop=True)
         for r, (_, x) in zip(rows[:40], lst.head(40).iterrows()):
-            rm = (x["remark"] + " · " + x["evidence"]) if x["remark"] else ""      # the remark beside the code
+            rm = (x["remark"] + " (" + x["evidence"] + ")") if x["remark"] else ""      # the remark beside the code
             if x["no_unit_flag"]:      # no purchase unit in the system: its own flag beside the code, a dash for quantity and date
                 assert r[0] == x["material"] + "ไม่มีหน่วยซื้อใน DB (Cube_PriceList, Cube_tobe_received)" + rm and r[3] == "-" and r[4] == "-" and r[5] == bm.fmt_qty(x["lead_days"])
             elif x["unit_flag"]:       # purchase unit differs from the BOM unit
@@ -660,7 +660,7 @@ def test_the_material_plan_page_shows_its_approved_text_sections_and_tables(edge
     assert notes == [("นับของที่สั่งแล้วรอรับตามวันที่คาดว่าจะได้" if v["open_orders_used"] else
                       "ยังไม่นับของที่สั่งแล้วรอรับ เพราะข้อมูลวันรับของยังใช้ไม่ได้ ตัวเลขต้องสั่งเพิ่มจึงอาจสูงกว่าจริง"), f"stock วัตถุดิบนับจากคลัง {v['rm_warehouses']}"]
     assert edge.ev("document.getElementById('divisions-covered').innerText") == "ฝ่ายที่รวมในแผนนี้: " + v["divisions"]
-    assert edge.ev("document.getElementById('verification-notice').innerText") == "แผนนี้เป็นร่าง (Draft) ยังอยู่ระหว่างตรวจสอบ ตัวเลขต้องสั่งยังใช้สั่งซื้อจริงไม่ได้ จนกว่าจะกำหนดเกณฑ์ว่าตรงกับใบสั่งซื้อจริงแค่ไหนถึงใช้ได้ (ดูแท็บสมมติฐานที่ใช้อยู่)"
+    assert edge.ev("document.getElementById('verification-notice').innerText") == "แผนนี้เป็นร่าง (Draft) ยังใช้สั่งซื้อจริงไม่ได้ · ต้องกำหนดก่อนว่าตัวเลขต้องตรงกับใบสั่งซื้อจริงแค่ไหน (ดูแท็บสมมติฐานที่ใช้อยู่)"
     assert edge.ev("document.body.firstElementChild.id === undefined || document.querySelector('.wrap').firstElementChild.id") == "verification-notice"
     assert edge.ev("getComputedStyle(document.getElementById('verification-notice')).borderTopWidth") == "2px"
     flags = edge.ev("[...document.querySelectorAll('.flag.unit')].map(f=>f.innerText.trim())")
@@ -676,9 +676,9 @@ def test_pem103_has_no_min_max_row_keeps_its_scope_note_and_shows_the_approved_l
     policies = {i["policy"] for i in d["items"]}
     assert policies <= {"confirmed_to_order", "conflict"} and not (policies & {"finished_goods_stock", "component_stock_ato", "stock_policy"})
     assert d["no_min_max_line"] == "ไม่มีสินค้าที่เข้าเกณฑ์เก็บ stock"
-    assert d["warehouse_scope_note"] == "PEM103 ผลิตตามงานประมูล วางแผนแบบผลิตตามสั่ง ตัวเลขในหน้านี้ใช้ดูทิศทางเท่านั้น"
+    assert d["warehouse_scope_note"] == "PEM103 เป็นธุรกิจงานประมูล ผลิตตามสั่ง · หน้านี้นับเฉพาะ Omni Channel (ไม่รวมงานประมูล) ตัวเลขใช้ดูทิศทางเท่านั้น"
     assert len(d["items"]) + len(d["no_policy_items"]) == 87 and all(r["policy"].startswith("placeholder") for r in d["no_policy_items"])
-    assert d["n_items_label"] == f"{len(d['items'])} รายการ (ของทั้งหมด 87, เฉพาะที่มีนโยบาย)"
+    assert d["n_items_label"] == f"{len(d['items'])} รายการที่มี Forecast จาก 87"
     import build_inventory_page_data as bd
     again = fresh_inventory_data()
     bd.apply_class_file_divisions(again, {"inventory_page": {"class_file_divisions": ["PEM103"]}})
@@ -692,7 +692,7 @@ def test_pem103_on_the_rendered_page_shows_the_line_the_note_and_no_min_max_figu
     edge.pump(0.5)
     assert edge.ev("document.getElementById('no-min-max-line').innerText") == "ไม่มีสินค้าที่เข้าเกณฑ์เก็บ stock"
     assert edge.ev("getComputedStyle(document.getElementById('no-min-max-line')).display") != "none"
-    assert edge.ev("document.getElementById('scope-note').innerText") == "PEM103 ผลิตตามงานประมูล วางแผนแบบผลิตตามสั่ง ตัวเลขในหน้านี้ใช้ดูทิศทางเท่านั้น"
+    assert edge.ev("document.getElementById('scope-note').innerText") == "PEM103 เป็นธุรกิจงานประมูล ผลิตตามสั่ง · หน้านี้นับเฉพาะ Omni Channel (ไม่รวมงานประมูล) ตัวเลขใช้ดูทิศทางเท่านั้น"
     assert edge.ev("document.querySelectorAll('#item-table-body tr').length") == 0
     assert edge.ev("document.getElementById('tot-n-items').innerText") == "0"
     edge.ev("document.getElementById('division-select').value='PEM107'; onDivisionChange(); 1")
@@ -709,17 +709,17 @@ def test_the_count_of_received_orders_k_follows_the_plan_input_and_the_zero_word
     assert base["no_forecast_with_orders"] == {"PEM101": 0, "PEM103": 1, "PEM107": 0, "PEM102": 0, "PEM104": 1, "CI101": 0}
     lines = lambda v, d: bp.render(v).split(f'data-division="{d}">')[1:]
     page = bp.render(base)
-    assert "1 รหัสยังไม่มี Forecast (ประวัติขายไม่พอ) แผนนับเฉพาะออเดอร์ที่รับแล้วแต่ยังไม่ส่ง (open orders) ตอนนี้มีออเดอร์ที่รับแล้วยังไม่ส่ง 1 รหัส" in page
+    assert "1 รหัสยังไม่มียอดขายใน Omni Channel เลย จึงยังไม่มี Forecast แผนนับเฉพาะออเดอร์ที่รับแล้ว ตอนนี้มีออเดอร์ที่รับแล้ว 1 รหัส" in page
     assert "ตอนนี้ไม่มีออเดอร์ค้างในกลุ่มนี้" not in page
     im2 = im.copy()
     im2.loc[im2["status_category"] != "forecast", "backlog_due"] = 0.0          # no received order left in the no-forecast group
     zero = bp.render(bp.compute_values(im2, dm, meta, {}, "2026-10-02", SIX))
-    assert zero.count("1 รหัสยังไม่มี Forecast (ประวัติขายไม่พอ) แผนนับเฉพาะออเดอร์ที่รับแล้วแต่ยังไม่ส่ง (open orders) ตอนนี้ไม่มีออเดอร์ที่รับแล้วยังไม่ส่งในกลุ่มนี้") == 2 and "ตอนนี้มีออเดอร์ที่รับแล้วยังไม่ส่ง" not in zero
+    assert zero.count("1 รหัสยังไม่มียอดขายใน Omni Channel เลย จึงยังไม่มี Forecast แผนนับเฉพาะออเดอร์ที่รับแล้ว ตอนนี้ไม่มีออเดอร์ที่รับแล้วในกลุ่มนี้") == 2 and "ตอนนี้มีออเดอร์ที่รับแล้วยังไม่ส่ง" not in zero
     im3 = im.copy()
     three = im3["status_category"] != "forecast"
     im3.loc[three, "backlog_due"] = 2.0                                           # an order on every no-forecast item: k = n
     three_page = bp.render(bp.compute_values(im3, dm, meta, {}, "2026-10-02", SIX))
-    assert three_page.count("ตอนนี้มีออเดอร์ที่รับแล้วยังไม่ส่ง 1 รหัส") == 2
+    assert three_page.count("ตอนนี้มีออเดอร์ที่รับแล้ว 1 รหัส") == 2
     for page_text in (page, zero, three_page):
         assert "{" not in re.sub(r"<style.*?</style>|<script.*?</script>", "", page_text, flags=re.S)
 
@@ -763,7 +763,7 @@ def test_a_made_to_order_division_with_no_forecast_item_says_so_and_every_other_
     vals = bp.compute_values(im, dm, meta, {}, "2026-10-02", SIX, {"PEM104": "made_to_order"})
     page = bp.render(vals)
     lines = {d: [_nb(l) for l in re.findall(r'<p class="note-line division-line" data-division="%s">(.*?)</p>' % d, page)] for d in SIX}
-    assert lines["PEM104"] == ["PEM104 ผลิตตามสั่งทั้งหมด จึงไม่ได้ทำ Forecast", "1 รหัสยังไม่มี Forecast (ประวัติขายไม่พอ) แผนนับเฉพาะออเดอร์ที่รับแล้วแต่ยังไม่ส่ง (open orders) ตอนนี้มีออเดอร์ที่รับแล้วยังไม่ส่ง 1 รหัส"]
+    assert lines["PEM104"] == ["PEM104 ผลิตตามสั่งทั้งหมด จึงไม่ได้ทำ Forecast", "1 รหัสยังไม่มียอดขายใน Omni Channel เลย จึงยังไม่มี Forecast แผนนับเฉพาะออเดอร์ที่รับแล้ว ตอนนี้มีออเดอร์ที่รับแล้ว 1 รหัส"]
     assert "PEM104 ไม่มีสินค้าที่เข้าเกณฑ์เก็บ stock" not in page
     for d in ("PEM102", "CI101", "PEM103"):                                     # the general line stays where the reason does not apply
         assert f"{d} ไม่มีสินค้าที่เข้าเกณฑ์เก็บ stock แผนจึงเป็นการผลิตแบบ Demand-driven ทั้งหมด (ตาม Forecast หรือออเดอร์ แล้วแต่อันไหนมากกว่า)" in page

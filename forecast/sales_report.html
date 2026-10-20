@@ -61,13 +61,13 @@
 </head>
 <body>
 <div class="wrap">
-  <a class="back-link" href="../index.html">&larr; กลับหน้าหลัก</a>
+  <a class="back-link" href="../index.html">&larr; กลับไปหน้าหลัก (Dashboard)</a>
   <h1>รายงานการพยากรณ์ยอดขาย (Sales Forecast Report) — PEM Group</h1>
   <!-- สร้างโดย src/build_report.py — ทุกตัวเลขมีที่มาระบุไว้ในซอร์สโค้ด HTML (ดู source comments) -->
   
     <details class="note-box" style="margin:10px 0" id="page-data-line">
-      <summary style="cursor:pointer"><!-- round = run month of vintage 2 of the forward-test log; fit_last = that vintage's last fit month; built_at = page_built_at; oldest data_pulled_at of the page: 2026-10-05 07:41 ICT (UTC+7), per section below
-        --><span id="freshness-line">Forecast = ยอดขายที่ระบบคาดการณ์ · ข้อมูลรอบ Forecast ต.ค. 69 · ใช้ยอดขายถึง ส.ค. 69 · หน้าสร้างเมื่อ 20 ต.ค. 69 10:34</span><!-- source: src/build_report.py rv.vintage_facts()/datetime.now(), this build run --></summary>
+      <summary style="cursor:pointer"><!-- round = run month of vintage 2 of the forward-test log; fit_last = that vintage's last fit month; built_at = page_built_at; oldest data_pulled_at of the page: 2026-10-05 07:41 (clock of UTC+7), per section below
+        --><span id="freshness-line">Forecast = ยอดขายที่ระบบคาดการณ์ · ข้อมูลรอบ Forecast ต.ค. 69 · ใช้ยอดขายถึง ส.ค. 69 · หน้าสร้างเมื่อ 20 ต.ค. 69 15:12</span><!-- source: src/build_report.py rv.vintage_facts()/datetime.now(), this build run --></summary>
       <h3 style="margin-top:10px">ข้อมูลแต่ละส่วนดึงเมื่อ</h3>
       <table class="report-table" style="margin-top:8px">
         <thead><tr><th>ส่วน</th><th>ข้อมูลที่ใช้</th></tr></thead>
@@ -77,16 +77,22 @@
   
     <section id="exec-summary">
       <h2>1. บทสรุปผู้บริหาร (Executive Summary)</h2>
-      <p>วิธีที่ใช้ประกอบด้วยสองส่วน Combination คือเฉลี่ยผลของโมเดลพยากรณ์ 6 แบบ ได้แก่ Naive (ใช้ยอดเดือนล่าสุดเป็น Forecast ทุกเดือน), MA3/MA6/MA12 (ค่าเฉลี่ยเคลื่อนที่ตามจำนวนเดือน), Croston และ SBA (วิธีสำหรับสินค้าที่ขายห่างๆ) เพื่อ Forecast ยอดรวมของแต่ละ &quot;Type&quot; (กลุ่มสินค้าที่ขายในลักษณะเดียวกัน เช่น High Voltage Distribution Fuse Cutout) Top-down คือการแบ่ง Forecast ของ Type นั้นลงสินค้าแต่ละรายการ (Item) ตามสัดส่วนยอดขายจริงในอดีตของสินค้านั้นเทียบกับยอดขายรวมของ Type ทั้งหมด</p>
+      <p>วิธีที่ใช้ประกอบด้วยสองส่วน คือ Combination และ Top-down</p><p>Combination = เฉลี่ยผลของโมเดลพยากรณ์ 6 แบบ ได้แก่ Naive (ใช้ยอดเดือนล่าสุดเป็น Forecast ทุกเดือน), MA3/MA6/MA12 (ค่าเฉลี่ยเคลื่อนที่ตามจำนวนเดือน), Croston และ SBA (วิธีสำหรับสินค้าที่ขายห่างๆ) เพื่อ Forecast ยอดรวมของแต่ละ &quot;Type&quot; (กลุ่มสินค้าที่ขายในลักษณะเดียวกัน เช่น High Voltage Distribution Fuse Cutout)</p><p>Top-down = แบ่ง Forecast ของ Type นั้นลงสินค้าแต่ละรายการ (Item) ตามสัดส่วนยอดขายจริงในอดีตของสินค้านั้นเทียบกับยอดขายรวมของ Type ทั้งหมด</p>
       <p>
         <!-- source: output/summary/phaseC_step1revised_item_status_445.csv, column status_category -->
         โครงการนี้ครอบคลุมสินค้าทั้งหมด <b>445</b> รหัส ใน Omni Channel (ประเภทรายได้ที่ไม่รวม Tendering หรืองานประมูล) ทุกฝ่าย
-        (PEM101/PEM102/PEM103/PEM104/PEM107/CI101) โดย <b>335</b> รหัสมีประวัติขาย
-        เพียงพอสำหรับการพยากรณ์ <b>92</b> รหัสไม่มีประวัติเพียงพอและใช้ค่าประมาณ
-        (Placeholder) แทน และ <b>18</b> รหัสถูกตัดออกจากการพยากรณ์
+        (PEM101/PEM102/PEM103/PEM104/PEM107/CI101)
+      </p>
+      <p>
+        <b>335</b> รหัสมีประวัติขายเพียงพอสำหรับการพยากรณ์ · <b>92</b> รหัสไม่มียอดขายใน Omni Channel เลย
+        จึงยังไม่มี Forecast (Placeholder) · <b>18</b> รหัสถูกตัดออกจากการพยากรณ์
+      </p>
+      <p>
         <!-- source: output/summary/leadtime_overall_distribution.csv, column median -->
-        ในสินค้า PEM101 (128 รหัส) ลูกค้าให้เวลาแจ้งล่วงหน้าก่อนส่งมอบเพียง <b>6</b> วัน
+        ในสินค้า PEM101 (กลุ่มทดสอบเดิม 128 รหัส) ลูกค้าให้เวลาแจ้งล่วงหน้าก่อนส่งมอบเพียง <b>6</b> วัน
         (median) ซึ่งสั้นกว่าระยะเวลาจัดหาวัตถุดิบมาก
+      </p>
+      <p>
         <!-- source: output/summary/delivery_by_year.csv, column pct_on_time -->
         สัดส่วนส่งตรงวันพอดี ของ PEM101 (exact-day delivery: ส่งวันนัดเป๊ะ ไม่นับส่งก่อน) ปรับตัวขึ้นจาก 57.8% (ปี 66) เป็น
         <b>73.2%</b> ในปี 69 (ข้อมูลบางส่วน)
@@ -114,7 +120,7 @@
       <h2>3. ขอบเขตข้อมูล (Scope)</h2>
       <p>ขอบเขต Omni Channel ครอบคลุมสินค้าทุกฝ่ายตาม Price List รวม 445 รหัส</p>
       <table class="report-table">
-        <thead><tr><th>ฝ่าย (Division)</th><th>พยากรณ์ (Forecast)</th><th>Placeholder (ใช้ค่าประมาณ)</th><th>ตัดออก (Excluded)</th><th>รวม</th></tr></thead>
+        <thead><tr><th>ฝ่าย (Division)</th><th>พยากรณ์ (Forecast)</th><th>Placeholder (ยังไม่มี Forecast)</th><th>ตัดออก (Excluded)</th><th>รวม</th></tr></thead>
         <tbody><tr><td>CI101</td><td><!-- source: output/summary/phaseC_step1revised_item_status_445.csv, column status_category -->13</td><td>0</td><td>0</td><td>13</td></tr><tr><td>PEM101</td><td><!-- source: output/summary/phaseC_step1revised_item_status_445.csv, column status_category -->144</td><td>21</td><td>6</td><td>171</td></tr><tr><td>PEM102</td><td><!-- source: output/summary/phaseC_step1revised_item_status_445.csv, column status_category -->16</td><td>10</td><td>0</td><td>26</td></tr><tr><td>PEM103</td><td><!-- source: output/summary/phaseC_step1revised_item_status_445.csv, column status_category -->50</td><td>37</td><td>0</td><td>87</td></tr><tr><td>PEM104</td><td><!-- source: output/summary/phaseC_step1revised_item_status_445.csv, column status_category -->0</td><td>0</td><td>12</td><td>12</td></tr><tr><td>PEM107</td><td><!-- source: output/summary/phaseC_step1revised_item_status_445.csv, column status_category -->112</td><td>24</td><td>0</td><td>136</td></tr>
         <tr class="total-row"><td>รวมทั้งหมด</td><td>335</td><td>92</td><td>18</td><td>445</td></tr>
         </tbody>
@@ -122,7 +128,7 @@
     </section>
     <section id="business-findings">
       <h2>4. ข้อค้นพบทางธุรกิจ (Business Findings)</h2>
-      <p class="scope-note" id="business-findings-scope">ส่วนนี้ (ระยะแจ้งล่วงหน้าและการส่งมอบ) นับเฉพาะสินค้า PEM101 128 รหัส ไม่รวมฝ่ายอื่น</p>
+      <p class="scope-note" id="business-findings-scope">ส่วนนี้ (ระยะแจ้งล่วงหน้าและการส่งมอบ) นับเฉพาะสินค้า PEM101 กลุ่มทดสอบเดิม 128 รหัส ไม่รวมฝ่ายอื่น</p>
       <p>
         <!-- source: output/summary/leadtime_overall_distribution.csv, column median -->
         ระยะแจ้งล่วงหน้าของลูกค้า PEM101 (Customer notice) ค่ากลาง (median): <b>6</b> วัน &nbsp;|&nbsp;
@@ -130,19 +136,20 @@
         สัดส่วนออเดอร์ที่แจ้งล่วงหน้า &ge; 1 เดือน: <b>5.80%</b> &nbsp;|&nbsp;
         <!-- source: config.yaml, field phase_e1_assumptions.procurement_lead_time_days_grid -->
         ระยะเวลาสั่งวัตถุดิบถึงได้ของ (Procurement lead time ไม่ใช่ระยะแจ้งล่วงหน้าของลูกค้า): <b>45-60</b> วัน
-        (ช่วงที่ธุรกิจยืนยัน ค่าที่ใช้ 60 วัน · ช่วงทดสอบความไวเพิ่มถึง 75 วัน)
+        (ช่วงที่ธุรกิจยืนยัน · ตัวควบคุมจำลองเริ่มที่ 60 วัน · ช่วงทดสอบความไวเพิ่มถึง 75 วัน ·
+        Min/Max ของ PEM101 ใช้ lead time ที่ผ่าน Calibration 1-30 วัน)
       </p>
       <h3>การกระจายของระยะเวลาแจ้งล่วงหน้า (Notice period)</h3>
       <!-- source: output/summary/leadtime_notice_buckets_overall.csv, column min_notice_days / pct_of_orders -->
       <div id="chart-notice" class="plotly-chart"></div>
-      <p class="hint">▸ ลูกค้า PEM101 (128 รหัส) สั่งของล่วงหน้านานแค่ไหนก่อนวันที่ต้องส่ง<br>▸ แกน X = ระยะแจ้งล่วงหน้าขั้นต่ำ (≥30 วัน, ≥60 วัน … ≥180 วัน) · แกน Y = % ของออเดอร์ทั้งหมด<br>▸ ตัวอย่าง: แท่ง ≥30 วันสูง 6% หมายถึงออเดอร์ 100 ใบ มีแค่ 6 ใบที่แจ้งล่วงหน้าเกิน 30 วัน</p>
+      <p class="hint">▸ ลูกค้า PEM101 (กลุ่มทดสอบเดิม 128 รหัส) สั่งของล่วงหน้านานแค่ไหนก่อนวันที่ต้องส่ง<br>▸ แกน X = ระยะแจ้งล่วงหน้าขั้นต่ำ (≥30 วัน, ≥60 วัน … ≥180 วัน) · แกน Y = % ของออเดอร์ทั้งหมด<br>▸ ตัวอย่าง: แท่ง ≥30 วันสูง 6% หมายถึงออเดอร์ 100 ใบ มีแค่ 6 ใบที่แจ้งล่วงหน้าเกิน 30 วัน</p>
       <h3>สัดส่วนส่งมอบตรงวันครบกำหนดเป๊ะ vs. ส่งทัน (Not-late: ส่งไม่ช้ากว่าวันนัด) (ปี 66-69)</h3>
       <!-- Previous wording, kept off screen: on_time_exact = delivered exactly on the due date (PlanDelDate), counted by number of orders (row-weighted), PEM101 128 items -- src/investigations/delivery_performance.py:71-75 (classify_delay) and lines 155-161 (by_year aggregation, column pct_on_time); METRICS.md §19 forbids using this figure alone as a fill-rate benchmark (the earlier 73.2% incident), so not_late is shown alongside. not_late = delivered on or before ForecastDelDate, unit-weighted (ActualQty), not by order count; unit-weighted because METRICS.md §10 (fill_rate) is defined as unit-based, not order-based, and the figure is read alongside fill_rate/service level (src/investigations/task2a_delivery_notlate_by_year.py, computed from the same Cube_CES data as on_time_exact, no new pull). -->
       <p class="hint">เส้นส่งทันนับเป็นชิ้น เพราะสิ่งที่ลูกค้าสนใจคือได้ของครบทันไหม ไม่ใช่จำนวนใบสั่ง</p>
       <!-- source: output/summary/delivery_by_year.csv, column year / pct_on_time -->
       <!-- source: output/summary/delivery_not_late_by_year.csv, column year / not_late_pct_unit_weighted -->
       <div id="chart-ontime" class="plotly-chart"></div>
-      <p class="hint">▸ PEM101 (128 รหัส) ส่งของให้ลูกค้าทันวันนัดกี่ % ต่อปี<br>▸ แกน X = ปี · แกน Y = % (0-100)<br>▸ 2 เส้น ส่งทัน (คือทันหรือก่อนวันนัด) กับ ส่งตรงวันพอดี ใช้เส้นส่งทันถ้าจะตอบว่าลูกค้าได้ของทันไหม<br>▸ เส้นส่งตรงวันพอดีต่ำกว่าเสมอเพราะไม่นับที่ส่งก่อน อย่าเอาไปรายงานเป็นอัตราส่งทัน</p>
+      <p class="hint">▸ PEM101 (กลุ่มทดสอบเดิม 128 รหัส) ส่งของให้ลูกค้าทันวันนัดกี่ % ต่อปี<br>▸ แกน X = ปี · แกน Y = % (0-100)<br>▸ 2 เส้น ส่งทัน (คือทันหรือก่อนวันนัด) กับ ส่งตรงวันพอดี ใช้เส้นส่งทันถ้าจะตอบว่าลูกค้าได้ของทันไหม<br>▸ เส้นส่งตรงวันพอดีต่ำกว่าเสมอเพราะไม่นับที่ส่งก่อน อย่าเอาไปรายงานเป็นอัตราส่งทัน</p>
     </section>
     <section id="data">
       <h2>5. ข้อมูลที่ใช้ (Data)</h2>
@@ -152,9 +159,9 @@
           <!-- source: the fit window (first and last month) of vintage 2 of the forward-test log metadata, the series every figure of this page's forecast is fitted on -->
           <tr><td colspan="2" id="fit-range-line">ยอดขายที่ใช้คำนวณ Forecast ก.พ. 67 ถึง ส.ค. 69</td></tr>
           <!-- Split lots; STATUS.md, Locked Decisions -->
-          <tr><td colspan="2">รายการที่ดูเหมือนซ้ำแต่เป็นการแบ่งส่งหลายงวด นับครบทุกงวด</td></tr>
+          <tr><td colspan="2">รายการที่ดูเหมือนซ้ำส่วนใหญ่เป็นการแบ่งส่งหลายงวด นับครบทุกงวด</td></tr>
           <!-- MPS retained; STATUS.md, Locked Decisions -->
-          <tr><td colspan="2">MPS (open PO: PO ที่รับแล้วแต่ยังไม่ส่ง) นับรวมในยอดที่ใช้คำนวณ Forecast (Actual + MPS) เพราะลูกค้าสั่งแล้วจริง แต่ยังไม่ใช่ยอดที่ส่งมอบแล้ว</td></tr>
+          <tr><td colspan="2">MPS (ออเดอร์ที่รับแล้วแต่ยังไม่ส่ง) นับรวมในยอดที่ใช้คำนวณ Forecast (Actual + MPS) เพราะลูกค้าสั่งแล้วจริง แต่ยังไม่ใช่ยอดที่ส่งมอบแล้ว</td></tr>
           <!-- forecast_date keying: the series is keyed on forecast_date, a frozen snapshot, not queried live each time; STATUS.md, Locked Decisions -->
           <tr><td colspan="2">ยอดขายนับตามเดือนที่ต้องส่งของตามสัญญา ไม่ใช่เดือนที่รับ PO</td></tr>
           <!-- Pricelist as division source; the database division column is not used to filter; STATUS.md, CONVENTIONS.md -->
@@ -164,9 +171,9 @@
     </section>
     <section id="model">
       <h2>6. โมเดลพยากรณ์ (Model)</h2>
-      <p>วิธีที่ใช้ประกอบด้วยสองส่วน Combination คือเฉลี่ยผลของโมเดลพยากรณ์ 6 แบบ ได้แก่ Naive (ใช้ยอดเดือนล่าสุดเป็น Forecast ทุกเดือน), MA3/MA6/MA12 (ค่าเฉลี่ยเคลื่อนที่ตามจำนวนเดือน), Croston และ SBA (วิธีสำหรับสินค้าที่ขายห่างๆ) เพื่อ Forecast ยอดรวมของแต่ละ &quot;Type&quot; (กลุ่มสินค้าที่ขายในลักษณะเดียวกัน เช่น High Voltage Distribution Fuse Cutout) Top-down คือการแบ่ง Forecast ของ Type นั้นลงสินค้าแต่ละรายการ (Item) ตามสัดส่วนยอดขายจริงในอดีตของสินค้านั้นเทียบกับยอดขายรวมของ Type ทั้งหมด</p>
+      <p>วิธีที่ใช้ประกอบด้วยสองส่วน คือ Combination และ Top-down</p><p>Combination = เฉลี่ยผลของโมเดลพยากรณ์ 6 แบบ ได้แก่ Naive (ใช้ยอดเดือนล่าสุดเป็น Forecast ทุกเดือน), MA3/MA6/MA12 (ค่าเฉลี่ยเคลื่อนที่ตามจำนวนเดือน), Croston และ SBA (วิธีสำหรับสินค้าที่ขายห่างๆ) เพื่อ Forecast ยอดรวมของแต่ละ &quot;Type&quot; (กลุ่มสินค้าที่ขายในลักษณะเดียวกัน เช่น High Voltage Distribution Fuse Cutout)</p><p>Top-down = แบ่ง Forecast ของ Type นั้นลงสินค้าแต่ละรายการ (Item) ตามสัดส่วนยอดขายจริงในอดีตของสินค้านั้นเทียบกับยอดขายรวมของ Type ทั้งหมด</p>
       <p>ไม่มีวิธี Forecast วิธีเดียวที่ชนะทุกกลุ่มสินค้า และการเลือกวิธีตามกฎทางวิชาการก็ไม่ได้ดีกว่าการเฉลี่ยหลายวิธี จึงใช้ค่าเฉลี่ย (Combination) ซึ่งเสี่ยงน้อยกว่าพึ่งวิธีเดียว</p>
-      <p>ไม่ใช้โมเดลซับซ้อนที่ต้องใช้ข้อมูลยาว (Neural Network, Prophet) เนื่องจากมีข้อมูลย้อนหลังเพียง 31 เดือน และ 73% ของรหัสสินค้ามีลักษณะการขายแบบ Intermittent หรือ Lumpy (ขายห่างๆ ไม่ต่อเนื่อง) ทำให้ Neural Network มีความเสี่ยงสูงที่จะ Forecast ตามข้อมูลเดิมมากเกินไป (Overfit) เมื่อข้อมูลมีน้อย และ Prophet ต้องการ ข้อมูลที่ขายต่อเนื่องทุกเดือน ซึ่งไม่ตรงกับลักษณะข้อมูลจริงของโครงการนี้</p>
+      <p>ไม่ใช้โมเดลซับซ้อนที่ต้องใช้ข้อมูลยาว (Neural Network, Prophet) เนื่องจากมีข้อมูลย้อนหลังเพียง 31 เดือน และ 73% ของรหัสสินค้ามีลักษณะการขายแบบ Intermittent หรือ Lumpy (ขายห่างๆ ไม่ต่อเนื่อง) ทำให้ Neural Network มีความเสี่ยงสูงที่จะ Forecast ตามข้อมูลเดิมมากเกินไป (Overfit) เมื่อข้อมูลมีน้อย</p>
       <h3>MAE ของโมเดลพื้นฐาน 6 แบบ เทียบกับ Combination และ Top-down (สินค้าหลัก 3 รหัส)</h3>
       <p class="hint">คลิกที่ legend เพื่อซ่อน/แสดงแต่ละโมเดล</p>
       <!-- source: output/summary/focus_items_test_all.csv, column model / MAE -->
@@ -179,7 +186,7 @@
       <h2>7. ผลลัพธ์ (Results)</h2>
       <!-- source: output/summary/phaseC_step2_transferability_per_division.csv, column first_test_month / last_test_month -->
       <!-- rolling-origin backtest window, 7 origins; METRICS.md §39 -->
-      <p class="hint">ตัวเลขทุกตัวด้านล่างมาจากการทดสอบช่วง มี.ค. 68 ถึง ส.ค. 69</p>
+      <p class="hint">ตัวเลขในตารางหลัก ตารางรอง กราฟ Rolling-origin และตารางเทียบกับร่างเกณฑ์มาจากการทดสอบย้อนหลังช่วง มี.ค. 68 ถึง ส.ค. 69 (ตาราง "Forecast เทียบยอดขายจริง" ใช้ยอดจริงของเดือนที่ผ่านมา)</p>
       <div class="controls">
         <label>ฝ่าย (Division): <select id="filterDivision"><option value="__all__">ทั้งหมด</option><option value="CI101">CI101</option><option value="PEM101">PEM101</option><option value="PEM102">PEM102</option><option value="PEM103">PEM103</option><option value="PEM107">PEM107</option></select></label>
         <span class="hint">(มีผลกับตารางหลัก ตารางรอง และกราฟ Rolling-origin · ไม่มีผลกับกราฟ Forecast vs Actual)</span>
@@ -189,18 +196,19 @@
       <h3>ตารางหลัก — ความแม่นของวิธี Top-down (วิธีที่ใช้จริง) ต่อฝ่าย</h3>
       <!-- Previous wording, kept off screen: this is the Top-down method the project adopted (STATUS.md Locked Decisions, "Final forecasting method"): forecast at Type level, then allocate to items by trailing sales share, recomputed at every rolling origin (not a one-time fixed allocation), scored at item level across the project's standard 7 origins -- src/transferability_all_divisions.py, summary in output/summary/phaseC_step2_transferability_per_division.csv (method detail in docs/reports/summary/phaseC_step2_report.md Part 3). -->
       <p class="hint">Forecast ยอดรวมระดับประเภทสินค้าก่อน แล้วแบ่งให้แต่ละรหัสตามสัดส่วนที่เคยขาย ทดสอบย้อนหลัง 7 รอบ · MAE เทียบข้ามฝ่ายตรงๆ ไม่ได้ เพราะฝ่ายที่ขายเป็นจำนวนมากมักมี MAE สูงกว่า</p>
-      <!-- source: output/summary/phaseC_step2_transferability_per_division.csv, column MAE / RMSE / Bias / MASE / n_scored -->
+      <!-- source: output/summary/phaseC_step2_transferability_per_division.csv, column MAE / RMSE / Bias / n_scored -->
       <!-- filtered to rows where approach == 'Top-down' -->
       <table class="report-table" id="primary-results-table">
-        <thead><tr><th>ฝ่าย</th><th>MAE</th><th>RMSE</th><th>Bias</th><th>MASE (เทียบกับ Naive; ต่ำกว่า 1 = ดีกว่า Naive)</th><th>จำนวนที่ใช้คำนวณ (สินค้า × รอบทดสอบ)</th></tr></thead>
+        <thead><tr><th>ฝ่าย</th><th>MAE</th><th>RMSE</th><th>Bias</th><th>จำนวนที่ใช้คำนวณ (สินค้า × รอบทดสอบ)</th></tr></thead>
         <tbody></tbody>
       </table>
+      <p class="hint" id="mase-removed-note">ถอด MASE ออกจากหน้านี้ เพราะวัดเทียบกับความคลาดของ Naive ในข้อมูลที่ใช้คำนวณ Forecast ซึ่งอ่านขัดกับ Relative MAE · ใช้ Relative MAE แทน</p>
       <h3>ตารางรอง — วิธี Combination ระดับประเภทสินค้า</h3>
       <!-- Previous wording, kept off screen: Combination model only, at Type level (not item level), averaged across all Types and the 7 rolling origins per division -- src/backtest_all_divisions.py:126-139 (first disclosed in output/summary/manual_factsheet.md Part 5 item 2); kept for comparison, no longer the primary table. -->
       <p class="hint">ผลของส่วน Combination ก่อนแบ่งลงรหัสสินค้า ใช้เทียบเท่านั้น ตัวเลขที่ใช้วางแผนคือตารางหลัก</p>
-      <!-- source: output/summary/phaseC_step2_per_division_summary_qty.csv, column MAE / RMSE / Bias / MASE / n_items -->
+      <!-- source: output/summary/phaseC_step2_per_division_summary_qty.csv, column MAE / RMSE / Bias / n_items -->
       <table class="report-table" id="div-results-table">
-        <thead><tr><th>ฝ่าย</th><th>MAE</th><th>RMSE</th><th>MASE</th><th>Bias</th><th>จำนวนสินค้า</th></tr></thead>
+        <thead><tr><th>ฝ่าย</th><th>MAE</th><th>RMSE</th><th>Bias</th><th>จำนวนสินค้า</th></tr></thead>
         <tbody></tbody>
       </table>
       <h3 id="pilot-groups">กลุ่มนำร่อง (Pilot group): ประเภทสินค้า Fuse Cutout และ Surge Arrester</h3>
@@ -212,9 +220,9 @@
       <p class="hint" id="pilot-shadow">▸ Surge Arrester shadow forecast (Forecast ทดลองที่คำนวณคู่กับ Forecast จริง) ใช้วิธี Holt (Forecast ตามแนวโน้มยอดขายที่ขึ้นหรือลง) · สถานะ: ยังไม่มีเดือนที่เทียบได้ ผลเดือนแรกออกในรอบวันที่ 5 พ.ย. 69 · ยังไม่ได้ใช้ในแผน</p>
       <h3 id="criteria-vs-draft">เทียบกับร่างเกณฑ์</h3>
       <!-- source: Relative MAE, Horizon 3 and Tracking Signal recomputed at build from the saved monthly series with the functions of the main table (src/transferability_all_divisions.py), Naive = the last month before each origin; the forward months from the forward-test log (src/forward_test_scoring.py forward_naive_items); thresholds: config maxmin_v1.pending_criteria_values (draft). METRICS.md Sec.48. Tracking Signal points used per row: PEM101 8, PEM103 8, PEM107 8, PEM102 8, CI101 8, Fuse Cutout 8, Surge Arrester 8. -->
-      <p class="hint">▸ วิธี Forecast ของเราดีกว่า Naive (ใช้ยอดเดือนล่าสุดเป็น Forecast ทุกเดือน) ไหม<br>▸ Relative MAE = MAE ของเรา ÷ MAE ของ Naive ในเดือนทดสอบเดียวกัน ต่ำกว่า 1 = ต่ำกว่า Naive ในการทดสอบนี้ (ถึงเกณฑ์ผ่านของร่าง) · ต่ำกว่า 0.7 = ถึงเกณฑ์ดีของร่าง<br>▸ Horizon 3 = Forecast ล่วงหน้า 3 เดือน ใช้ดูความแม่นในช่วงที่ต้องสั่งวัตถุดิบล่วงหน้า<br>▸ Tracking Signal (ตัวชี้ว่า Forecast เอียงไปทางเดียวต่อเนื่อง) เกิน ±4 = เตือน<br>▸ ถึงเกณฑ์ร่าง ยังไม่ได้แปลว่าพิสูจน์แล้วว่าดีกว่า Naive: ผลมาจากการทดสอบย้อนหลังเพียง 7 รอบ ดูว่าฝ่ายไหนต่างจาก Naive จริงในหัวข้อ &quot;ใช้วิธี Top-down ดีกว่าวิธีอื่นไหม&quot;<br>▸ เกณฑ์เป็นร่าง ผู้บริหารยืนยันหลังรอบ 7 ธ.ค. 69</p>
+      <p class="hint">▸ วิธี Forecast ของเราดีกว่า Naive (ใช้ยอดเดือนล่าสุดเป็น Forecast ทุกเดือน) ไหม<br>▸ Relative MAE = MAE ของเรา ÷ MAE ของ Naive ในเดือนทดสอบเดียวกัน ต่ำกว่า 1 = ต่ำกว่า Naive ในการทดสอบนี้ (ถึงเกณฑ์ผ่านของร่าง) · ต่ำกว่า 0.7 = ถึงเกณฑ์ดีของร่าง<br>▸ Horizon 3 = Forecast ล่วงหน้า 3 เดือน ใช้ดูความแม่นในช่วงที่ต้องสั่งวัตถุดิบล่วงหน้า<br>▸ Tracking Signal (ตัวชี้ว่าความคลาดของ Forecast สะสมไปทางเดียวกัน ดูจำนวนจุดวัดที่ผิดทางเดียวกันประกอบ) เกิน ±4 = เตือน<br>▸ ถึงเกณฑ์ร่าง ยังไม่ได้แปลว่าพิสูจน์แล้วว่าดีกว่า Naive: ผลมาจากการทดสอบย้อนหลังเพียง 7 รอบ ดูว่าฝ่ายไหนต่างจาก Naive จริงในหัวข้อ &quot;ใช้วิธี Top-down ดีกว่าวิธีอื่นไหม&quot;<br>▸ เกณฑ์เป็นร่าง ผู้บริหารยืนยันหลังรอบ 7 ธ.ค. 69</p>
       <div class="table-scroll"><table class="report-table" id="criteria-table"><thead><tr><th>ฝ่าย / กลุ่ม</th><th>Relative MAE</th><th>ผล</th><th>Relative MAE (Horizon 3)</th><th>ผล</th><th>Tracking Signal</th><th>ผล</th></tr></thead><tbody><tr><td>PEM101</td><td>0.80</td><td>ถึงเกณฑ์ผ่าน (ร่าง)</td><td>0.83</td><td>ถึงเกณฑ์ผ่าน (ร่าง)</td><td>-3.3</td><td>ปกติ</td></tr><tr><td>PEM103</td><td>1.04</td><td>ยังไม่ถึงเกณฑ์ (ร่าง)</td><td>1.06</td><td>ยังไม่ถึงเกณฑ์ (ร่าง)</td><td>-7.8</td><td>เตือน</td></tr><tr><td>PEM107</td><td>0.86</td><td>ถึงเกณฑ์ผ่าน (ร่าง)</td><td>1.05</td><td>ยังไม่ถึงเกณฑ์ (ร่าง)</td><td>1.3</td><td>ปกติ</td></tr><tr><td>PEM102</td><td>0.92</td><td>ถึงเกณฑ์ผ่าน (ร่าง)</td><td>0.88</td><td>ถึงเกณฑ์ผ่าน (ร่าง)</td><td>-1.4</td><td>ปกติ</td></tr><tr><td>CI101</td><td>0.83</td><td>ถึงเกณฑ์ผ่าน (ร่าง)</td><td>0.77</td><td>ถึงเกณฑ์ผ่าน (ร่าง)</td><td>6.7</td><td>เตือน</td></tr><tr><td>Fuse Cutout</td><td>0.93</td><td>ถึงเกณฑ์ผ่าน (ร่าง)</td><td>0.83</td><td>ถึงเกณฑ์ผ่าน (ร่าง)</td><td>-4.7</td><td>เตือน</td></tr><tr><td>Surge Arrester</td><td>1.07</td><td>ยังไม่ถึงเกณฑ์ (ร่าง)</td><td>0.99</td><td>ถึงเกณฑ์ผ่าน (ร่าง)</td><td>-6.8</td><td>เตือน</td></tr></tbody></table></div>
-      <h3>Rolling-origin MAE ระดับ Type (ทดสอบย้อนหลังทีละรอบ: ตัดข้อมูลที่เดือนหนึ่ง แล้ว Forecast เดือนถัดไปเทียบกับของจริง) — คลิก legend เพื่อซ่อน/แสดงแต่ละโมเดล</h3>
+      <h3>Rolling-origin MAE ระดับ Type (ทดสอบย้อนหลังทีละรอบ: ตัดข้อมูลที่เดือนหนึ่ง แล้ว Forecast 6 เดือนถัดไปเทียบกับของจริง) — คลิก legend เพื่อซ่อน/แสดงแต่ละโมเดล</h3>
       <!-- source: output/summary/phaseC_step2_rolling_origin_qty.csv, column origin / model / MAE -->
       <div id="chart-rolling" class="plotly-chart"></div>
       <p class="hint">▸ Forecast ของแต่ละวิธีแม่นสม่ำเสมอไหม ในการทดสอบแต่ละรอบ<br>▸ แกน X = รอบทดสอบที่ 1-7 เรียงตามเวลา · แกน Y = MAE เฉลี่ย (ชิ้นต่อเดือน)<br>▸ เส้นที่ต่ำและนิ่ง = ดี เส้นที่กระโดดขึ้นลง = บางช่วง Forecast ได้ บางช่วงพลาดหนัก</p>
@@ -237,18 +245,18 @@
       <p>ที่เลือกใช้ Top-down เพราะแม่นใกล้เคียงหรือดีกว่าวิธีอื่น และใช้วิธีเดียวได้ทุกฝ่าย</p>
       <h3 id="scored-months">Forecast เทียบยอดขายจริง</h3>
       <!-- source: output/summary/forward_test_scores.csv (scope division, horizon 1, integrity-checked); backtest MAE = the main table's Top-down MAE of the division -->
-      <p class="hint">▸ ยอด Forecast ที่ทำไว้ล่วงหน้า พอถึงเดือนจริงพลาดแค่ไหน<br>▸ MAE เดือนจริงสูงกว่าผลทดสอบย้อนหลังมาก = ช่วงนี้ Forecast ยากกว่าปกติ<br>▸ ตอนนี้มีผล 1 เดือน ยังสรุปไม่ได้ว่าวิธี Forecast ดีขึ้นหรือแย่ลง</p>
-      <div class="table-scroll"><table class="report-table" id="scored-table"><thead><tr><th>ฝ่าย</th><th>เดือน</th><th>MAE</th><th>MAE (Naive)</th><th>Relative MAE</th><th>Bias</th><th>MAE ในการทดสอบย้อนหลัง</th><th>Forecast (บาท)</th><th>ยอดจริง (บาท)</th><th>ต่าง (บาท)</th></tr></thead><tbody><tr><td>CI101</td><td>ส.ค. 69</td><td>9.8</td><td>9.1</td><td>1.08</td><td>-3.7</td><td>11.0</td><td>2,728,378</td><td>9,916,552</td><td>-7,188,174</td></tr><tr><td>PEM101</td><td>ส.ค. 69</td><td>348.8</td><td>401.0</td><td>0.87</td><td>-46.0</td><td>315.4</td><td>28,868,690</td><td>40,099,829</td><td>-11,231,139</td></tr><tr><td>PEM102</td><td>ส.ค. 69</td><td>1.2</td><td>0.8</td><td>1.56</td><td>-0.2</td><td>1.2</td><td>5,221,306</td><td>6,277,815</td><td>-1,056,509</td></tr><tr><td>PEM103</td><td>ส.ค. 69</td><td>6.1</td><td>2.6</td><td>2.31</td><td>-0.4</td><td>2.9</td><td>21,516,978</td><td>26,695,081</td><td>-5,178,103</td></tr><tr><td>PEM107</td><td>ส.ค. 69</td><td>6.1</td><td>4.2</td><td>1.45</td><td>2.8</td><td>11.3</td><td>10,312,689</td><td>10,958,273</td><td>-645,584</td></tr></tbody></table></div>
+      <p class="hint">▸ ยอด Forecast ที่ทำไว้ล่วงหน้า พอถึงเดือนจริงพลาดแค่ไหน<br>▸ ถ้า MAE เดือนจริงสูงกว่าผลทดสอบย้อนหลังมาก แปลว่าเดือนนี้พลาดมากกว่าปกติ (ยังไม่รู้สาเหตุ)<br>▸ ตอนนี้มีผล 1 เดือน ยังสรุปไม่ได้ว่าวิธี Forecast ดีขึ้นหรือแย่ลง</p>
+      <div class="table-scroll"><table class="report-table" id="scored-table"><thead><tr><th>ฝ่าย</th><th>เดือน</th><th>MAE</th><th>MAE (Naive)</th><th>Relative MAE</th><th>Bias</th><th>MAE ในการทดสอบย้อนหลัง</th><th>Forecast (บาท)</th><th>ยอดจริง (ชิ้น × ราคาเฉลี่ย บาท)</th><th>ต่าง (บาท)</th></tr></thead><tbody><tr><td>CI101</td><td>ส.ค. 69</td><td>9.8</td><td>9.1</td><td>1.08</td><td>-3.7</td><td>11.0</td><td>2,728,378</td><td>9,916,552</td><td>-7,188,174</td></tr><tr><td>PEM101</td><td>ส.ค. 69</td><td>348.8</td><td>401.0</td><td>0.87</td><td>-46.0</td><td>315.4</td><td>28,868,690</td><td>40,099,829</td><td>-11,231,139</td></tr><tr><td>PEM102</td><td>ส.ค. 69</td><td>1.2</td><td>0.8</td><td>1.56</td><td>-0.2</td><td>1.2</td><td>5,221,306</td><td>6,277,815</td><td>-1,056,509</td></tr><tr><td>PEM103</td><td>ส.ค. 69</td><td>6.1</td><td>2.6</td><td>2.31</td><td>-0.4</td><td>2.9</td><td>21,516,978</td><td>26,695,081</td><td>-5,178,103</td></tr><tr><td>PEM107</td><td>ส.ค. 69</td><td>6.1</td><td>4.2</td><td>1.45</td><td>2.8</td><td>11.3</td><td>10,312,689</td><td>10,958,273</td><td>-645,584</td></tr></tbody></table></div>
       <!-- baht: items = the items the row's MAE is computed over; forecast and actual units of each item x its unit price (as section 2); difference = forecast minus actual, the sign of Bias. Items without a price in these rows: 0. -->
-      <p class="hint" id="scored-baht-note">ตัวเลขบาทคิดทั้ง Forecast และยอดจริงด้วยราคาขายเฉลี่ยเดียวกัน (ยอดจริงคือจำนวนที่ขายจริง × ราคาขายเฉลี่ย ไม่ใช่รายได้ตามบัญชี) เพื่อดูว่า Forecast จำนวนคลาดคิดเป็นเงินเท่าไหร่ ต่างติดลบ = Forecast ต่ำกว่าจริง</p>
+      <p class="hint" id="scored-baht-note">ตัวเลขบาทคิดทั้ง Forecast และยอดจริงด้วยราคาขายเฉลี่ยเดียวกัน (ยอดจริงในตารางนี้ = จำนวนที่ขายจริง × ราคาขายเฉลี่ย ไม่ใช่ยอดขายบาทตามระบบที่แท็บ Trend และสรุปผู้บริหารใช้ และไม่ใช่รายได้ตามบัญชี) เพื่อดูว่า Forecast จำนวนคลาดคิดเป็นเงินเท่าไหร่ ต่างติดลบ = Forecast ต่ำกว่าจริง</p>
     </section>
     <section id="limitations">
       <h2>8. ข้อจำกัด (Limitations)</h2>
-      <ul><li>วันส่งตามสัญญาอาจถูกแก้หลังรับ PO DB (cube_Sale_APD) ไม่มีบันทึกการแก้ ตรวจจากสินค้า PEM101 (128 รหัส) แล้วกระทบประมาณ 2.5% ของรายการ</li><li>ไม่มีข้อมูลประวัติของ Price List เวอร์ชันเก่า จึงไม่สามารถตรวจสอบได้ว่าการจัดฝ่าย/ประเภท สินค้าเคยเปลี่ยนแปลงไปจากอดีตหรือไม่ (cannot be determined จากข้อมูลที่มีอยู่ในปัจจุบัน)</li><li>ยอดขายนับจาก PO ที่ลูกค้าสั่งจริงเท่านั้น จึงไม่เห็นความต้องการที่ไม่ได้กลายเป็น PO เช่น ลูกค้าที่ไม่สั่งเพราะรู้ว่าไม่มีของ</li><li>ไม่มีข้อมูลเวลาประกอบหลังได้ชิ้นส่วน ตัวเลขนี้ในการวางแผน stock เป็นค่าสมมติ</li><li>Min/Max ที่ตั้งอยู่ใน DB (Cube_Inventory_Exact) ตอนนี้ใช้คำนวณไม่ได้ 46 จาก 128 รายการของ PEM101 ไม่ได้ตั้ง และค่าที่มีไม่สอดคล้องกัน ใช้ได้แค่เป็นตัวเทียบ</li></ul>
+      <ul><li>วันส่งตามสัญญาอาจถูกแก้หลังรับ PO DB (cube_Sale_APD) ไม่มีบันทึกการแก้ ตรวจจากสินค้า PEM101 (128 รหัส) แล้วกระทบประมาณ 2.5% ของรายการ</li><li>ไม่มีข้อมูลประวัติของ Price List เวอร์ชันเก่า จึงไม่สามารถตรวจสอบได้ว่าการจัดฝ่าย/ประเภท สินค้าเคยเปลี่ยนแปลงไปจากอดีตหรือไม่ (cannot be determined จากข้อมูลที่มีอยู่ในปัจจุบัน)</li><li>ยอดขายนับจาก PO ที่ลูกค้าสั่งจริงเท่านั้น จึงไม่เห็นความต้องการที่ไม่ได้กลายเป็น PO เช่น ลูกค้าที่ไม่สั่งเพราะรู้ว่าไม่มีของ</li><li>ไม่มีข้อมูลเวลาประกอบหลังได้ชิ้นส่วน (Assembly time) ในการวางแผน stock จึงใช้ค่าสมมติ 3 วัน</li><li>ณ 23 ก.ย. 69 Min/Max ที่ตั้งอยู่ใน DB (Cube_Inventory_Exact) ใช้คำนวณไม่ได้ 46 จาก 128 รายการของ PEM101 ไม่ได้ตั้ง และค่าที่มีไม่สอดคล้องกัน ใช้ได้แค่เป็นตัวเทียบ</li></ul>
     </section>
     <section id="next-steps">
       <h2>9. ขั้นตอนต่อไป (Next Steps)</h2>
-      <ul><li>ทุกต้นเดือนระบบเทียบ Forecast กับยอดขายจริงของเดือนที่ผ่านมา และเพิ่มผลในตารางนี้</li></ul>
+      <ul><li>ทุกเดือน (วันทำการแรกตั้งแต่วันที่ 5) ระบบเทียบ Forecast กับยอดจริงของเดือนที่ปิดครบ 30 วันแล้ว และเพิ่มผลในตารางนี้</li></ul>
     </section>
 </div>
 <!-- source: output/summary/*.csv (see gather_* functions in src/build_report.py) and
@@ -279,7 +287,7 @@ function thaiDateTime(s, seconds) {
 function thaiQuarter(label) { return String(label).replace(/Q(\d)'?(\d{4})/g, function (m, q, y) { return 'Q' + q + ' ' + thaiYearShort(y); }); }
 /*TH-DATES-END*/
 const yearLabel = y => 'ปี ' + thaiYearShort(y);
-const CHART_FAIL_MSG = 'กราฟโหลดไม่ได้ เครือข่ายอาจบล็อกไลบรารีกราฟ · ตัวเลขและตารางยังใช้ได้ตามปกติ';
+const CHART_FAIL_MSG = 'แสดงกราฟไม่ได้ (เครือข่ายอาจไม่ให้โหลดตัวแสดงกราฟ) ตัวเลขและตารางยังใช้ได้ตามปกติ';
 // Text, tables and the data-date table never depend on the charting library: when it did not load, each chart
 // area shows the message instead and the rest of the page carries on.
 function chartLibraryOk(id) {
@@ -349,16 +357,12 @@ function populateTypeOptions() {
   if (types.includes(prev)) sel.value = prev;
 }
 
-function fmtMase(v) {
-  return (v === null || v === undefined || Number.isNaN(v)) ? 'MASE_undefined' : v.toFixed(3);
-}
-
 function drawDivTable() {
   const div = currentDivision();
   const rows = REPORT_DATA.per_division.filter(r => div === '__all__' || r.division === div);
   const tbody = document.querySelector('#div-results-table tbody');
   tbody.innerHTML = rows.map(r =>
-    `<tr><td>${r.division}</td><td>${r.MAE.toFixed(1)}</td><td>${r.RMSE.toFixed(1)}</td><td>${fmtMase(r.MASE)}</td><td>${r.Bias.toFixed(1)}</td><td>${r.n_items}</td></tr>`
+    `<tr><td>${r.division}</td><td>${r.MAE.toFixed(1)}</td><td>${r.RMSE.toFixed(1)}</td><td>${r.Bias.toFixed(1)}</td><td>${r.n_items}</td></tr>`
   ).join('');
 }
 
@@ -367,7 +371,7 @@ function drawPrimaryTable() {
   const rows = REPORT_DATA.primary_results.filter(r => div === '__all__' || r.division === div);
   const tbody = document.querySelector('#primary-results-table tbody');
   tbody.innerHTML = rows.map(r =>
-    `<tr><td>${r.division}</td><td>${r.MAE.toFixed(1)}</td><td>${r.RMSE.toFixed(1)}</td><td>${r.Bias.toFixed(1)}</td><td>${fmtMase(r.MASE)}</td><td>${r.n_scored}</td></tr>`
+    `<tr><td>${r.division}</td><td>${r.MAE.toFixed(1)}</td><td>${r.RMSE.toFixed(1)}</td><td>${r.Bias.toFixed(1)}</td><td>${r.n_scored}</td></tr>`
   ).join('');
 }
 
@@ -385,10 +389,10 @@ function drawRollingChart() {
     const means = origins.map(o => byOrigin[o].reduce((a, b) => a + b, 0) / byOrigin[o].length);
     return {x: origins, y: means, type: 'scatter', mode: 'lines+markers', name: m,
             marker: {color: MODEL_COLORS[m] || '#898781'}, line: {color: MODEL_COLORS[m] || '#898781'},
-            hovertemplate: 'origin %{x}<br>' + m + ': %{y:.1f}<extra></extra>'};
+            hovertemplate: 'รอบ %{x}<br>' + m + ': %{y:.1f}<extra></extra>'};
   });
   Plotly.newPlot('chart-rolling', traces, Object.assign({}, LAYOUT_BASE,
-    {xaxis: {title: {text: 'Rolling origin'}, dtick: 1}, yaxis: {title: {text: 'Mean MAE'}}}), PLOT_CONFIG);
+    {xaxis: {title: {text: 'รอบทดสอบ'}, dtick: 1}, yaxis: {title: {text: 'MAE เฉลี่ย (ชิ้นต่อเดือน)'}}}), PLOT_CONFIG);
 }
 
 function selectedFvaItems() {
@@ -408,11 +412,11 @@ function drawFvaChart() {
     if (!rows.length) return;
     const x = rows.map(r => r.month_in_horizon);
     traces.push({x, y: rows.map(r => r.actual_qty), type: 'scatter', mode: 'lines+markers',
-      name: it + ' (actual)', line: {color: colors[i % colors.length]},
-      hovertemplate: 'month %{x}<br>actual: %{y:.0f}<extra></extra>'});
+      name: it + ' (ยอดจริง)', line: {color: colors[i % colors.length]},
+      hovertemplate: 'เดือนที่ %{x}<br>ยอดจริง: %{y:.0f}<extra></extra>'});
     traces.push({x, y: rows.map(r => r.forecast_qty), type: 'scatter', mode: 'lines+markers',
-      name: it + ' (forecast)', line: {color: colors[i % colors.length], dash: 'dot'},
-      hovertemplate: 'month %{x}<br>forecast: %{y:.0f}<extra></extra>'});
+      name: it + ' (Forecast)', line: {color: colors[i % colors.length], dash: 'dot'},
+      hovertemplate: 'เดือนที่ %{x}<br>Forecast: %{y:.0f}<extra></extra>'});
   });
   const el = document.getElementById('chart-fva');
   if (!traces.length) {
@@ -420,7 +424,7 @@ function drawFvaChart() {
     return;
   }
   Plotly.newPlot('chart-fva', traces, Object.assign({}, LAYOUT_BASE,
-    {xaxis: {title: {text: 'Month in horizon (origin ' + origin + ')'}, dtick: 1}, yaxis: {title: {text: 'Quantity'}}}), PLOT_CONFIG);
+    {xaxis: {title: {text: 'เดือนที่หลังจุดตัดข้อมูล (รอบทดสอบที่ ' + origin + ')'}, dtick: 1}, yaxis: {title: {text: 'จำนวน (ชิ้น)'}}}), PLOT_CONFIG);
 }
 
 function redrawResultsSection() {

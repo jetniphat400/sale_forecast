@@ -149,7 +149,7 @@ def test_the_confirmed_lead_time_chain_config_to_manual_value_to_pages():
     assert not any(k.startswith("lead_grid") for k in values)
     with open(USER_MANUAL, "r", encoding="utf-8") as f:
         manual = f.read()
-    assert "แต่สั่งวัตถุดิบใช้ {lead_confirmed_first}-{lead_confirmed_last} วัน" in manual
+    assert "แต่การสั่งวัตถุดิบใช้ {lead_confirmed_first}-{lead_confirmed_last} วัน" in manual
     with open(SALES_REPORT_HTML, "r", encoding="utf-8") as f:
         sales = f.read()
     assert f"<b>{min(grid)}-{default}</b> วัน" in sales and f"ช่วงทดสอบความไวเพิ่มถึง {max(grid)} วัน" in sales

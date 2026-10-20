@@ -278,7 +278,7 @@ def test_the_three_approved_lines_are_on_the_page_with_their_values_filled():
     n = int(scope["placeholder"].sum() + scope["excluded"].sum())
     assert f'<p class="hint" id="forward-missing">รหัสที่ยังไม่มี Forecast {n} รหัส ดูเหตุผลใน<a href="#scope">ตารางขอบเขตข้อมูล</a></p>' in h
     assert "ข้อมูลดึงเมื่อ:" not in h and "ช่วงข้อมูลที่ใช้ได้" not in h
-    assert "ทุกต้นเดือนระบบเทียบ Forecast กับยอดขายจริงของเดือนที่ผ่านมา และเพิ่มผลในตารางนี้" in h
+    assert "ระบบเทียบ Forecast กับยอดจริงของเดือนที่ปิดครบ" in h and "และเพิ่มผลในตารางนี้" in h
     assert "ทุกเดือนระบบจะเทียบ Forecast กับยอดขายจริงเดือนล่าสุด" not in h
     heads = re.findall(r"<h2>(\d)\. ", h)
     assert heads == [str(i) for i in range(1, 10)]                                    # the sections are numbered 1 to 9 without a gap
@@ -291,7 +291,7 @@ def test_every_approved_note_line_is_on_the_page_verbatim_and_no_brace_is_left()
                  "▸ เป็นตัวเลขค่าเดียว (point forecast) ยังไม่มีช่วงสูงต่ำ ดูว่าพลาดได้แค่ไหนจากส่วนผลลัพธ์",
                  "▸ Forecast ของสองกลุ่มนำร่องแม่นแค่ไหน", "▸ MAE = พลาดเฉลี่ยกี่ชิ้นต่อเดือน · Bias ติดลบ = Forecast ต่ำกว่าจริง",
                  "▸ ถ้าใช้ Forecast ของสองกลุ่มนี้วางแผน ให้ระวังว่ามัก Forecast ต่ำ", "Surge Arrester ในตารางนี้นับเฉพาะ Medium Voltage",
-                 "▸ ยอด Forecast ที่ทำไว้ล่วงหน้า พอถึงเดือนจริงพลาดแค่ไหน", "▸ MAE เดือนจริงสูงกว่าผลทดสอบย้อนหลังมาก = ช่วงนี้ Forecast ยากกว่าปกติ",
+                 "▸ ยอด Forecast ที่ทำไว้ล่วงหน้า พอถึงเดือนจริงพลาดแค่ไหน", "▸ ถ้า MAE เดือนจริงสูงกว่าผลทดสอบย้อนหลังมาก แปลว่าเดือนนี้พลาดมากกว่าปกติ (ยังไม่รู้สาเหตุ)",
                  "กลุ่มนำร่อง (Pilot group): ประเภทสินค้า Fuse Cutout และ Surge Arrester", "Forecast เทียบยอดขายจริง"]:
         assert line in text, line
     assert "{" not in text and "}" not in text, "a placeholder or a brace is left in the visible text of the sales report"
@@ -571,8 +571,8 @@ def test_the_forecast_versus_actual_table_has_the_baht_columns_and_the_note_and_
     h = _tracked_sales_html()
     vf, info = _page_prices()
     head = re.search(r'<table class="report-table" id="scored-table"><thead><tr>(.*?)</tr>', h, re.S).group(1)
-    assert head.endswith("<th>Forecast (บาท)</th><th>ยอดจริง (บาท)</th><th>ต่าง (บาท)</th>")
-    assert "ตัวเลขบาทคิดทั้ง Forecast และยอดจริงด้วยราคาขายเฉลี่ยเดียวกัน (ยอดจริงคือจำนวนที่ขายจริง × ราคาขายเฉลี่ย ไม่ใช่รายได้ตามบัญชี) เพื่อดูว่า Forecast จำนวนคลาดคิดเป็นเงินเท่าไหร่ ต่างติดลบ = Forecast ต่ำกว่าจริง" in " ".join(_visible(h).split())
+    assert head.endswith("<th>Forecast (บาท)</th><th>ยอดจริง (ชิ้น × ราคาเฉลี่ย บาท)</th><th>ต่าง (บาท)</th>")
+    assert "ตัวเลขบาทคิดทั้ง Forecast และยอดจริงด้วยราคาขายเฉลี่ยเดียวกัน (ยอดจริงในตารางนี้ = จำนวนที่ขายจริง × ราคาขายเฉลี่ย ไม่ใช่ยอดขายบาทตามระบบที่แท็บ Trend และสรุปผู้บริหารใช้ และไม่ใช่รายได้ตามบัญชี) เพื่อดูว่า Forecast จำนวนคลาดคิดเป็นเงินเท่าไหร่ ต่างติดลบ = Forecast ต่ำกว่าจริง" in " ".join(_visible(h).split())
     body = re.search(r'id="scored-table">.*?<tbody>(.*?)</tbody>', h, re.S).group(1)
     rows = re.findall(r"<tr><td>(\w+)</td><td>(.*?)</td><td>(.*?)</td><td>[^<]*</td><td>[^<]*</td><td>(.*?)</td><td>.*?</td><td>(-?[\d,]+)</td><td>(-?[\d,]+)</td><td>(-?[\d,]+)</td></tr>", body)
     assert rows
@@ -701,7 +701,7 @@ def test_the_criteria_block_is_verbatim_has_every_division_and_group_and_reads_i
     lines = ["▸ วิธี Forecast ของเราดีกว่า Naive (ใช้ยอดเดือนล่าสุดเป็น Forecast ทุกเดือน) ไหม",
              f"▸ Relative MAE = MAE ของเรา ÷ MAE ของ Naive ในเดือนทดสอบเดียวกัน ต่ำกว่า {crit['relative_mae_pass']:g} = ต่ำกว่า Naive ในการทดสอบนี้ (ถึงเกณฑ์ผ่านของร่าง) · ต่ำกว่า {crit['relative_mae_good']:g} = ถึงเกณฑ์ดีของร่าง",
              "▸ Horizon 3 = Forecast ล่วงหน้า 3 เดือน ใช้ดูความแม่นในช่วงที่ต้องสั่งวัตถุดิบล่วงหน้า",
-             f"▸ Tracking Signal (ตัวชี้ว่า Forecast เอียงไปทางเดียวต่อเนื่อง) เกิน ±{crit['tracking_signal_limit']:g} = เตือน",
+             f"▸ Tracking Signal (ตัวชี้ว่าความคลาดของ Forecast สะสมไปทางเดียวกัน ดูจำนวนจุดวัดที่ผิดทางเดียวกันประกอบ) เกิน ±{crit['tracking_signal_limit']:g} = เตือน",
              f"▸ ถึงเกณฑ์ร่าง ยังไม่ได้แปลว่าพิสูจน์แล้วว่าดีกว่า Naive: ผลมาจากการทดสอบย้อนหลังเพียง {rv.backtest_rounds(cfg)} รอบ ดูว่าฝ่ายไหนต่างจาก Naive จริงในหัวข้อ \"ใช้วิธี Top-down ดีกว่าวิธีอื่นไหม\"",
              f"▸ เกณฑ์เป็นร่าง ผู้บริหารยืนยันหลังรอบ {rv.thai_date_short(rv.criteria_decision_date(crit))}"]
     block = re.search(r'<h3 id="criteria-vs-draft">.*?</table>', h, re.S).group(0)
@@ -766,7 +766,7 @@ def test_the_trend_note_and_the_chart_caption_carry_no_typed_month():
     text = open(os.path.join(PROJECT_ROOT, "index.html"), encoding="utf-8").read()
     for typed in ("เดือน ส.ค. 2026 ยังไม่จบเดือน", "ม.ค. 2024 – ก.ค. 2026", "ตรวจสอบแล้ว (2026-09-24)"):
         assert typed not in text, typed
-    assert 'class="omni-month-incomplete"' in text and 'class="omni-base-first"' in text and "ตรวจสอบแล้ว (' + OMNI.meta.pull + '): ไม่มีรหัสสินค้า" in text
+    assert 'class="omni-month-incomplete"' in text and 'class="omni-base-first"' in text and "ตรวจสอบแล้ว (' + OMNI.meta.pull + ')" not in text
 
 
 # ------------------------------------------------------------------ Prompt 28 (row 24): the lead-time and delivery sections say PEM101 plainly
@@ -774,11 +774,11 @@ def test_the_notice_and_delivery_figures_are_labelled_as_pem101_where_they_are_s
     import reader_values as rv
     text = open(os.path.join(PROJECT_ROOT, "forecast", "sales_report.html"), encoding="utf-8").read()
     n = rv.count_no_current_minmax()[1]
-    assert f'id="business-findings-scope">ส่วนนี้ (ระยะแจ้งล่วงหน้าและการส่งมอบ) นับเฉพาะสินค้า PEM101 {n} รหัส ไม่รวมฝ่ายอื่น</p>' in text
-    assert f"ในสินค้า PEM101 ({n} รหัส) ลูกค้าให้เวลาแจ้งล่วงหน้าก่อนส่งมอบเพียง" in text and "สัดส่วนส่งตรงวันพอดี ของ PEM101" in text
+    assert f'id="business-findings-scope">ส่วนนี้ (ระยะแจ้งล่วงหน้าและการส่งมอบ) นับเฉพาะสินค้า PEM101 กลุ่มทดสอบเดิม {n} รหัส ไม่รวมฝ่ายอื่น</p>' in text
+    assert f"ในสินค้า PEM101 (กลุ่มทดสอบเดิม {n} รหัส) ลูกค้าให้เวลาแจ้งล่วงหน้าก่อนส่งมอบเพียง" in text and "สัดส่วนส่งตรงวันพอดี ของ PEM101" in text
     assert "ระยะแจ้งล่วงหน้าของลูกค้า PEM101 (Customer notice)" in text
     assert f"ตรวจจากสินค้า PEM101 ({n} รหัส) แล้วกระทบประมาณ" in text and "รายการของ PEM101 ไม่ได้ตั้ง" in text
-    assert "▸ ลูกค้า PEM101 (128 รหัส) สั่งของล่วงหน้านานแค่ไหน" in text and "▸ PEM101 (128 รหัส) ส่งของให้ลูกค้าทันวันนัดกี่ % ต่อปี" in text
+    assert "▸ ลูกค้า PEM101 (กลุ่มทดสอบเดิม 128 รหัส) สั่งของล่วงหน้านานแค่ไหน" in text and "▸ PEM101 (กลุ่มทดสอบเดิม 128 รหัส) ส่งของให้ลูกค้าทันวันนัดกี่ % ต่อปี" in text
 
 
 # ---- Prompt 34, item 12: the price note states the price chain of the code

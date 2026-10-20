@@ -4,7 +4,7 @@
   {
    "id": "minmax_lead_time",
    "topic": "lead time ที่ใช้คำนวณ Min/Max",
-   "unknown": "ได้จากการปรับค่า (calibration) ให้ตรงผลจริง ไม่ได้วัดตรง",
+   "unknown": "ได้จาก Calibration (ปรับการจำลองให้อัตราส่งทันตรงกับการส่งของจริง) ไม่ได้วัดตรง",
    "used_now": "1-30 วัน",
    "affects": "Min/Max ของ PEM101",
    "value_source": "lead_time_days over the distinct members of the lead-time-free calibration, minimum and maximum (output/summary/week1_recal_control_members_PEM101_92.csv)",
@@ -84,8 +84,8 @@
   },
   {
    "id": "calibration_window",
-   "topic": "ช่วงข้อมูลที่ใช้ปรับ Min/Max",
-   "unknown": "ถ้าใช้ช่วงสั้นลง lead time ที่ได้จะแคบลง",
+   "topic": "ช่วงข้อมูลที่ใช้ Calibration ของ Min/Max",
+   "unknown": "ถ้าใช้ช่วงสั้นลง lead time ที่ได้จะแคบลง (ช่วงยอดขายที่ใช้คำนวณ Min/Max ของ PEM101 เป็นอีกช่วงหนึ่ง ดูหน้า Min-Max)",
    "used_now": "ม.ค. 67 ถึง ธ.ค. 68",
    "affects": "Min/Max ของ PEM101",
    "value_source": "config maxmin_v1.calibration_window (decision D4, 2026-10-06; the J3 window); the shorter window is the sensitivity in docs/reports/summary/week1_leadtime_calibration.md",
@@ -101,15 +101,15 @@
    "when": "หลังรอบ 7 ธ.ค. 69"
   },
   {
-   "topic": "Forecast เอียงไปทางเดียวต่อเนื่อง (Bias)",
-   "to_decide": "Tracking Signal (ตัวชี้ว่า Forecast เอียงไปทางเดียวต่อเนื่อง) เกินเท่าไหร่ถึงเตือน",
+   "topic": "Forecast สูงหรือต่ำกว่าจริงไปทางเดียวกัน (Bias)",
+   "to_decide": "Tracking Signal (ตัวชี้ว่าความคลาดของ Forecast สะสมไปทางเดียวกัน ดูจำนวนจุดวัดที่ผิดทางเดียวกันประกอบ) เกินเท่าไหร่ถึงเตือน",
    "now_used": "ร่าง: ±4 (ไม่มีหน่วย)",
    "who": "ผู้บริหาร",
    "when": "ทุกเดือน"
   },
   {
-   "topic": "ฝ่ายที่ Forecast ไม่ชนะ Naive (ใช้ยอดเดือนล่าสุดเป็น Forecast ทุกเดือน)",
-   "to_decide": "ใช้ Naive (ใช้ยอดเดือนล่าสุดเป็น Forecast ทุกเดือน) แทนไหม",
+   "topic": "ฝ่ายที่ Forecast ไม่ชนะ Naive",
+   "to_decide": "ใช้ Naive แทนไหม",
    "now_used": "ยังใช้วิธีเดิม และแสดงผลเทียบ",
    "who": "ผู้บริหาร",
    "when": "หลังรอบ 7 ธ.ค. 69"

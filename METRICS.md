@@ -192,6 +192,14 @@ PEM101's Min and Max keep the history-based demand input in v1: Min = r x 30.44 
   MASE, undefined items left out of that mean. An item whose fitted series is
   all zero is not scored. Pooling items before dividing, or pooling horizons,
   is a different quantity and is never reported under this name.
+- **Not shown on the sales report (Prompt 51, decision 7, 2026-10-20).** The
+  MASE column is removed from both tables of `forecast/sales_report.html`:
+  its scale is the in-sample one-step naive error of the fitting series, not
+  the Naive forecast of the test months, so on the same page it can read
+  worse than Naive (MASE above 1) while Relative MAE reads better. The page
+  says so and points to Relative MAE. MASE stays in the recorded outputs
+  (`phaseC_step2_*.csv`, the forward-test files) and in this definition;
+  nothing computed changed.
 
 ## 14. forecast_consumption
 

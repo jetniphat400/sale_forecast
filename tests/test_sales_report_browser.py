@@ -10,7 +10,7 @@ import pytest
 
 from page_helpers import Edge, require_browser
 
-CHART_FAIL_MSG = "กราฟโหลดไม่ได้ เครือข่ายอาจบล็อกไลบรารีกราฟ · ตัวเลขและตารางยังใช้ได้ตามปกติ"
+CHART_FAIL_MSG = "แสดงกราฟไม่ได้ (เครือข่ายอาจไม่ให้โหลดตัวแสดงกราฟ) ตัวเลขและตารางยังใช้ได้ตามปกติ"
 CHARTS = ["chart-notice", "chart-ontime", "chart-model", "chart-rolling", "chart-fva"]
 
 

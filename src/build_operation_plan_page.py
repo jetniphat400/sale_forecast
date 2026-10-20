@@ -29,8 +29,8 @@ logger = logging.getLogger("build_operation_plan_page")
 PAGE_RELATIVE = "forecast/operation_plan.html"
 MATERIAL_PAGE_RELATIVE = "material_plan.html"        # linked from this page; both pages sit in forecast/
 THAI_MONTHS = [rv.THAI_MONTH_ABBR[m] for m in range(1, 13)]   # the abbreviations the Min-Max page uses
-CLASS_LABELS = {"stock_policy": "เก็บ stock", "confirmed_to_order": "ผลิตตามสั่ง", "conflict": "ยังไม่ชัด", "mixed": "ผสม (เก็บ stock บางส่วน)",
-                "no_production_in_system": "ไม่มีบันทึกผลิตใน DB (cube_final)", "too_little_data": "ข้อมูลไม่พอจัดประเภท"}
+CLASS_LABELS = {"stock_policy": "เก็บ stock", "confirmed_to_order": "ผลิตตามสั่ง", "conflict": "ยังไม่ชัด (ป้าย MTS/MTO กับพฤติกรรมขัดกัน)", "mixed": "ผสม (เก็บ stock บางส่วน)",
+                "no_production_in_system": "ไม่มีบันทึกผลิตใน DB (cube_final)", "too_little_data": "ข้อมูลน้อยเกินกว่าจะบอกว่าเก็บ stock หรือผลิตตามสั่ง (สัญญาที่ส่งมอบแล้วน้อย)"}
 CLASS_ORDER = ["stock_policy", "confirmed_to_order", "conflict", "mixed", "too_little_data", "no_production_in_system"]
 SHARE_OF_BACKLOG_ITEMS = 0.80          # the items shown reach this share of the sum (approved text of 2026-10-06)
 MAX_BACKLOG_ITEMS = 3
@@ -39,23 +39,23 @@ DASH = "-"
 # Approved Thai text, verbatim. {braces} are computed values.
 TEXT = {
     "heading": "Production Plan {n_months} เดือน · ทุกฝ่าย",
-    "data_prefix": "ข้อมูล stock จาก DB (Cube_Inventory_Exact) · Forecast = ยอดขายที่ระบบคาดการณ์",       # the dated labels that follow come from config page_timestamps.text
+    "data_prefix": "ข้อมูล stock จาก DB (Cube_Inventory_Exact) · Forecast = ยอดขายที่ระบบคาดการณ์ · ออเดอร์ที่รับแล้ว (Backlog) = ลูกค้าสั่งแล้วแต่ยังไม่ส่ง",       # the dated labels that follow come from config page_timestamps.text
     "col_month": "เดือน", "col_demand": "Demand-driven (ผลิตตาม Forecast หรือออเดอร์ แล้วแต่อันไหนมากกว่า)", "col_refill": "Build to Max (ผลิตเติม stock ให้ถึง Max)", "col_mto": "ผลิตตามสั่ง (MTO: Make to Order)", "col_total": "รวม",
-    "col_capacity": "เทียบกับ Historical peak (ยอดผลิตเสร็จสูงสุดต่อเดือนในอดีต ไม่ใช่กำลังผลิตเต็มที่)", "above_capacity": "สูงกว่า Historical peak",
-    "line_refill": "{first_month} PEM101 ต้องเติมให้ถึง Max {refill_units} หน่วย นอกเหนือจากความต้องการเดือนนั้น เพราะ stock ตอนนี้ต่ำกว่า Max ทยอยเติมในเดือนถัดไปได้",
+    "col_capacity": "% ของ Historical peak", "above_capacity": "สูงกว่า Historical peak",
+    "line_refill": "{first_month} PEM101 ต้องเติมให้ถึง Max {refill_units} หน่วย นอกเหนือจากความต้องการเดือนนั้น เพราะ stock ตอนนี้ต่ำกว่า Max (ถ้ากำลังผลิตไม่พอ อาจทยอยเติมในเดือนถัดไป)",
     "line_backlog": "{first_month} PEM107 มีออเดอร์ที่รับแล้วสูงกว่า Forecast {backlog_above_forecast} หน่วย ส่วนใหญ่จาก {top_backlog_items}",
     "line_capacity": "Historical peak คือยอดผลิตเสร็จต่อเดือนสูงสุดในอดีต นับทุกสินค้ารวมกันโดยไม่แยกขนาด ใช้ดูทิศทาง ไม่ได้แปลว่าเป็นกำลังผลิตเต็มที่",
     "line_no_stock": "{division} ไม่มีสินค้าที่เข้าเกณฑ์เก็บ stock แผนจึงเป็นการผลิตแบบ Demand-driven ทั้งหมด (ตาม Forecast หรือออเดอร์ แล้วแต่อันไหนมากกว่า)",
-    "line_no_forecast": "{n} รหัสยังไม่มี Forecast (ประวัติขายไม่พอ) แผนนับเฉพาะออเดอร์ที่รับแล้วแต่ยังไม่ส่ง (open orders) ตอนนี้มีออเดอร์ที่รับแล้วยังไม่ส่ง {k} รหัส",
-    "line_no_forecast_no_orders": "{n} รหัสยังไม่มี Forecast (ประวัติขายไม่พอ) แผนนับเฉพาะออเดอร์ที่รับแล้วแต่ยังไม่ส่ง (open orders) ตอนนี้ไม่มีออเดอร์ที่รับแล้วยังไม่ส่งในกลุ่มนี้",
+    "line_no_forecast": "{n} รหัสยังไม่มียอดขายใน Omni Channel เลย จึงยังไม่มี Forecast แผนนับเฉพาะออเดอร์ที่รับแล้ว ตอนนี้มีออเดอร์ที่รับแล้ว {k} รหัส",
+    "line_no_forecast_no_orders": "{n} รหัสยังไม่มียอดขายใน Omni Channel เลย จึงยังไม่มี Forecast แผนนับเฉพาะออเดอร์ที่รับแล้ว ตอนนี้ไม่มีออเดอร์ที่รับแล้วในกลุ่มนี้",
     "line_no_production": "{n} รหัสไม่มีบันทึกผลิตใน DB (cube_final) (ไม่ได้แปลว่ายกเลิกผลิต) ไม่นับรวมในยอดผลิตตามแผน",
     "line_never_sold": "{division} {n} รหัสอยู่ใน Price List แต่ไม่เคยขาย ไม่อยู่ในแผน",
     "line_pem103": "PEM103 นับเฉพาะยอด Omni Channel งานประมูลไม่อยู่ในแผนนี้",
     "units": "หน่วย", "and": " และ ",
     "item_cols": ["รหัส", "ชื่อสินค้า", "นโยบายการผลิต", "stock ตอนนี้", "Min", "Max"],
     "filter_division": "ฝ่าย", "filter_all": "ทั้งหมด",
-    "stock_note": "stock ตอนนี้ แสดงเฉพาะสินค้าเก็บ stock · คอลัมน์เดือน = จำนวนที่แผนให้ผลิตในเดือนนั้น (สินค้าที่ไม่เก็บ stock = ยอดที่ต้องผลิตตามความต้องการ) แถวที่ไม่มีบันทึกผลิตใน DB (cube_final)แสดงยอดความต้องการ ไม่ใช่ยอดผลิต",
-    "flag_inconsistent": "ป้ายไม่ตรงกับพฤติกรรมจริง (Conflict)",
+    "stock_note": "stock ตอนนี้ แสดงเฉพาะสินค้าเก็บ stock · คอลัมน์เดือน = จำนวนที่แผนให้ผลิตในเดือนนั้น (สินค้าที่ไม่เก็บ stock = ยอดที่ต้องผลิตตามความต้องการ) · แถวที่ไม่มีบันทึกผลิตใน DB (cube_final) แสดงยอดความต้องการ ไม่ใช่ยอดผลิต",
+    "flag_inconsistent": "ป้ายใน DB ไม่ตรงกับพฤติกรรมจริง (Conflict)",
     "flag_inconsistent_tip": "ป้าย MTS/MTO ที่บันทึกใน DB (cube_Sale_APD) ไม่ตรงกับพฤติกรรมจริงของสินค้า ใช้พฤติกรรมจริงตัดสิน และให้ฝ่ายยืนยัน",
     "material_link": "แผนวัตถุดิบ",
     "no_production_note": "แถวที่ขึ้นว่า ไม่มีบันทึกผลิตใน DB (cube_final) ไม่ได้รวมในยอดผลิตของฝ่าย",
@@ -383,7 +383,7 @@ def page_labels(root: str, meta: dict, master: dict, run_date: str) -> dict:
     rng = meta["capacity_range"]
     facts = rv.model_round_facts(run_date)
     return {"stock": rv.data_age(stock[:10], shown, config), "round": t["plan_round"].format(round=facts["round"], pulled=facts["pulled"]),
-            "peak": rv.data_age(rng["last_date"], t["plan_peak"].format(first=rv.thai_date_short(rng["first_date"]), last=rv.thai_date_short(rng["last_date"])), config),
+            "peak": rv.data_age(rng["last_date"], t["plan_peak"].format(first=rv.thai_date_short(rng["first_date"]), last=rv.thai_date_short(rng["last_date"])), config, file_date=True),
             "master": lambda n: rv.data_age(master["pulled_iso"], t["plan_master"].format(n=n, pulled=master["pulled_at"]), config) if master and master.get("pulled_iso") else "",
             "js": rv.data_age_js(config)}
 

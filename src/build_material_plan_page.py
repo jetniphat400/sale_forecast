@@ -32,7 +32,7 @@ TEXT = {
     "within_line": "วัตถุดิบที่ต้องสั่งภายใน {n_days} วันข้างหน้า ถึงจะได้ของทันตามแผน",
     "late_title": "เลยกำหนดสั่ง (Late to order) สั่งวันนี้ของมาไม่ทันแผน",
     "late_line": "วัตถุดิบที่แผนต้องใช้ก่อนที่ของจะมาถึงแม้สั่งวันนี้ ควรตรวจของที่มีอยู่จริง หรือเร่งของที่สั่งไว้แล้ว",
-    "now_cols": ["รหัสวัตถุดิบ", "ชื่อ", "ใช้ในสินค้า (รหัส · +n คือมีอีก n รหัส)", "ต้องสั่งเพิ่ม (Order qty)", "สั่งภายในวันที่ (Order-by date)", "lead time (วัน)", "ที่มา lead time"],
+    "now_cols": ["รหัสวัตถุดิบ", "ชื่อ", "ใช้ในสินค้า (รหัส · +n คือมีอีก n รหัส)", "ต้องสั่งเพิ่ม (Order qty)", "สั่งภายในวันที่ (Order-by date)", "Lead time (วัน: ระยะเวลาสั่งถึงได้ของ)", "ที่มาของ lead time"],
     "source": {"observed": "จากใบสั่งซื้อที่ผ่านมา", "supplier_quoted": "ผู้ขายแจ้งเวลา", "assumed": "ประมาณการ (ไม่มีข้อมูลจริง)"},
     "main_cols": ["รหัส", "ชื่อ", "stock ตอนนี้", "ของที่สั่งแล้วรอรับ"],
     "net_col": "ต้องสั่งเพิ่ม",
@@ -40,7 +40,7 @@ TEXT = {
     "note_open_not_used": "ยังไม่นับของที่สั่งแล้วรอรับ เพราะข้อมูลวันรับของยังใช้ไม่ได้ ตัวเลขต้องสั่งเพิ่มจึงอาจสูงกว่าจริง",
     "note_warehouses": "stock วัตถุดิบนับจากคลัง {rm_warehouses}",
     "back_link": "← กลับไปหน้าหลัก (Dashboard)",
-    "notice": "แผนนี้เป็นร่าง (Draft) ยังอยู่ระหว่างตรวจสอบ ตัวเลขต้องสั่งยังใช้สั่งซื้อจริงไม่ได้ จนกว่าจะกำหนดเกณฑ์ว่าตรงกับใบสั่งซื้อจริงแค่ไหนถึงใช้ได้ (ดูแท็บสมมติฐานที่ใช้อยู่)",
+    "notice": "แผนนี้เป็นร่าง (Draft) ยังใช้สั่งซื้อจริงไม่ได้ · ต้องกำหนดก่อนว่าตัวเลขต้องตรงกับใบสั่งซื้อจริงแค่ไหน (ดูแท็บสมมติฐานที่ใช้อยู่)",
     "unit_flag": "หน่วยซื้อไม่ตรงกับหน่วยใน BOM",
     "no_unit_flag": "ไม่มีหน่วยซื้อใน DB (Cube_PriceList, Cube_tobe_received)",
     "demand_col": "ความต้องการ",
@@ -52,7 +52,7 @@ TEXT = {
     "coverage_cols": ["รหัส", "ชื่อ", "ฝ่าย", "เหตุผล"],
     "coverage_reason": {"no_demand": "ไม่มียอดผลิต", "no_production": "ไม่มีบันทึกผลิตใน DB (cube_final)", "no_bom": "ไม่มี BOM ใน DB (Cube_BOM_Exact)"},
     # Remarks (METRICS.md Sec.54): every line stays in its table; a line that is not goods carries a remark and is left out of the counts of the summary line under each list.
-    "summary_line": "ทั้งหมด {all} รายการ นับ {counted} รายการ · ไม่นับค่าแรง/ค่าจ้าง/ค่าบริการ/ไม่ใช่สินค้า {paid} รายการ (ไม่ใช่สินค้า ไม่ต้อง stock)",
+    "summary_line": "มี {all} รายการ ใช้นับ {counted} รายการ (ไม่นับ {paid} รายการที่เป็นค่าแรง ค่าจ้าง ค่าบริการ หรือไม่ใช่สินค้า)",
     "summary_pending": " · รอตรวจ {pending} รายการ ยังนับรวมไว้จนกว่าจะมีคนยืนยันว่าเป็นสินค้าหรือไม่",
     "remark_title": "หมายเหตุ: {evidence}",
 }
@@ -177,15 +177,15 @@ def remark_html(r) -> str:
     if not r["remark"]:
         return ""
     kind = "paid" if r["paid"] else "pending"
-    return f'<span class="flag remark {kind}" data-remark="{_e(r["remark"])}">{_e(r["remark"])} · {_e(r["evidence"])}</span>'
+    return f'<span class="flag remark {kind}" data-remark="{_e(r["remark"])}">{_e(r["remark"])} ({_e(r["evidence"])})</span>'
 
 
 def summary_html(v: dict, key: str, element_id: str) -> str:
     """The line under a list: all lines, the lines counted, the paid-remark lines left out of the count (and the lines waiting for a check, which are counted); every number computed."""
     c = v["summaries"][key]
-    text = TEXT["summary_line"].format(all=c["all"], counted=c["counted"], paid=c["paid"]) + (TEXT["summary_pending"].format(pending=c["pending"]) if c["pending"] else "")
+    text = TEXT["summary_line"].format(all=f'{c["all"]:,}', counted=f'{c["counted"]:,}', paid=f'{c["paid"]:,}') + (TEXT["summary_pending"].format(pending=f'{c["pending"]:,}') if c["pending"] else "")
     if v.get("labels") and key in ("within", "late"):         # the counts of the two lists are of the day the plan was built: the reference date shows beside them (config page_timestamps.text.late_count_date)
-        text += " · " + v["labels"]["count_date"]
+        text = v["labels"]["count_date"] + text
     return f'<p class="note-line summary-line" id="{element_id}">{_e(text)}</p>'
 
 
@@ -239,7 +239,7 @@ def render(values: dict) -> str:
     parts.append(summary_html(v, "main", "main-summary"))
     head1 = "".join(f'<th rowspan="2" class="{"name" if i == 1 else ""}">{_e(c)}</th>' for i, c in enumerate(T["main_cols"]))
     head1 += "".join(f'<th colspan="2">{_e(l)}</th>' for l in v["month_labels"])
-    head2 = "".join(f'<th>{_e(T["demand_col"])}{_channels_badge()}</th><th>{_e(T["net_col"])}</th>' for _ in v["month_labels"])
+    head2 = "".join(f'<th>{_e(T["demand_col"])}{_channels_badge() if k == 0 else ""}</th><th>{_e(T["net_col"])}</th>' for k, _ in enumerate(v["month_labels"]))
     body = []
     for _, r in v["main"].iterrows():
         m = r["material"]

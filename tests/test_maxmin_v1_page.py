@@ -95,9 +95,9 @@ def test_both_lines_and_the_corrected_item_count_show_in_the_pem101_section(edge
     assert lines == expected
     summary = edge.ev("document.getElementById('curve-target-summary').innerText")
     n = len(lead)
-    assert f"ปรับให้ตรงกับผลจริงจากสินค้า {n} รายการ" in summary and "76" not in summary
-    assert f"ใช้ชุดค่าที่เป็นไปได้ {len(members)} ชุด" in summary
-    assert "ยังไม่ได้ปรับใหม่" not in summary
+    assert f"Calibration จากการส่งของจริงของสินค้าที่เก็บ stock {n} รายการ" in summary and "76" not in summary
+    assert f"คำนวณไว้ {len(members)} ระดับของการสั่งเติม" in summary
+    assert "ยังไม่ได้ทำ Calibration ใหม่" not in summary
     assert not [x for x in edge.errors if x.startswith("exception")], edge.errors
 
 

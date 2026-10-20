@@ -60,6 +60,12 @@ def count_no_current_minmax() -> tuple:
     return int((~df["has_current_setting"].astype(bool)).sum()), int(len(df))
 
 
+def current_minmax_date() -> str:
+    """The date (ISO) the file behind count_no_current_minmax was written: the count is as of that day, not of today (the daily stock pull carries no Min and Max)."""
+    import datetime as _dt
+    return _dt.date.fromtimestamp(os.path.getmtime(os.path.join(SUMMARY_DIR, "phaseE1fix_2_current_minmax.csv"))).isoformat()
+
+
 def forecast_date_disagreement_pct() -> float:
     """Share of rows where forecast_date disagrees with PlanDelDate, in percent: rows in
     output/summary/phaseA_a1_task2_plandeldate_disagreement_rows.csv over the full-scope row count
@@ -175,30 +181,30 @@ def data_is_stale(date, today, config: dict) -> bool:
     return _as_date(date) < data_cutoff(today, config)
 
 
-def data_status_text(date, today, config: dict) -> str:
-    """The approved status wording for a DATA label on `today`."""
+def data_status_text(date, today, config: dict, file_date: bool = False) -> str:
+    """The approved status wording for a DATA label on `today`. `file_date` is True for a static file that is not pulled (its stale text says its last data date, not a pull)."""
     t = config["page_timestamps"]["text"]
-    return t["data_stale"] if data_is_stale(date, today, config) else t["data_fresh"]
+    return t["data_stale_file" if file_date else "data_stale"] if data_is_stale(date, today, config) else t["data_fresh"]
 
 
-def data_age(date, shown: str, config: dict, today=None) -> str:
+def data_age(date, shown: str, config: dict, today=None, file_date: bool = False) -> str:
     """HTML of a DATA label: `shown` and its status, in a span the page's script (DATA_AGE_JS) re-judges against the day the page is read; the text written here is the status on `today`
     (the build day by default), for a reader without the script and for the tests."""
     import html as _html
-    status = data_status_text(date, today if today is not None else date_today(), config)
-    return (f'<span class="data-age" data-pulled="{_html.escape(str(date)[:10])}">{_html.escape(shown)} · <span class="data-status">{_html.escape(status)}</span></span>')
+    status = data_status_text(date, today if today is not None else date_today(), config, file_date)
+    return (f'<span class="data-age" data-pulled="{_html.escape(str(date)[:10])}"{" data-file=1" if file_date else ""}>{_html.escape(shown)} · <span class="data-status">{_html.escape(status)}</span></span>')
 
 
 def data_age_js(config: dict) -> str:
     """The script that re-judges every `.data-age` element against the viewer's today (same rule as data_cutoff). Idempotent: a page that carries it twice runs it twice with the same result."""
     import json as _json
     t = config["page_timestamps"]["text"]
-    params = _json.dumps({"back": int(config["page_timestamps"]["daily_weekdays_back"]), "fresh": t["data_fresh"], "stale": t["data_stale"]}, ensure_ascii=False)
+    params = _json.dumps({"back": int(config["page_timestamps"]["daily_weekdays_back"]), "fresh": t["data_fresh"], "stale": t["data_stale"], "stale_file": t["data_stale_file"]}, ensure_ascii=False)
     return ("(function(){var P=" + params + ";"
             "function iso(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}"
             "function prev(back){var d=new Date(),n=0;while(n<back){d.setDate(d.getDate()-1);if(d.getDay()!==0&&d.getDay()!==6)n++;}return iso(d);}"
             "window.applyDataAge=function(){var cut=prev(P.back);document.querySelectorAll('.data-age').forEach(function(e){var s=e.querySelector('.data-status');"
-            "if(s&&e.dataset.pulled)s.textContent=e.dataset.pulled<cut?P.stale:P.fresh;});};"
+            "if(s&&e.dataset.pulled)s.textContent=e.dataset.pulled<cut?(e.dataset.file?P.stale_file:P.stale):P.fresh;});};"
             "window.applyDataAge();document.addEventListener('DOMContentLoaded',window.applyDataAge);})();")
 
 

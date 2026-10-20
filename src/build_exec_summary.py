@@ -162,7 +162,7 @@ def exec_data(root: str = PROJECT_ROOT, plan_dir: str = None) -> dict:
     alert_pull = str(alert["data_pulled_at"])
     labels = {"sales": text["exec_sales"].format(data_month=rv.thai_month_short(data_month), round=facts["round"], pulled=facts["pulled"]),
               "plan": rv.data_age(stock_pull[:10], text["exec_plan"].format(pulled=rv.thai_datetime_short(stock_pull)), config),
-              "peak": rv.data_age(rng["last_date"], text["exec_peak"].format(first=rv.thai_date_short(rng["first_date"]), last=rv.thai_date_short(rng["last_date"])), config),
+              "peak": rv.data_age(rng["last_date"], text["exec_peak"].format(first=rv.thai_date_short(rng["first_date"]), last=rv.thai_date_short(rng["last_date"])), config, file_date=True),
               "material": rv.data_age(rm_pull[:10], text["exec_material"].format(pulled=rv.thai_datetime_short(rm_pull), date=late_date), config),
               "pem107": rv.data_age(alert_pull[:10], text["exec_pem107"].format(pulled=rv.thai_datetime_short(alert_pull)), config), "js": rv.data_age_js(config)}
     pending = [r for r in maxmin_v1.pending_criteria_rows() if r["who"] == "ผู้บริหาร"]
@@ -293,7 +293,7 @@ def exec_render(data: dict, config: dict) -> str:
     for w in d["watch"]:
         if w["kind"] in ("low", "high"):
             suffix = T["watch_suffix"].format(month=rv.thai_month_short(w["month"])) if w["month"] else ""
-            watch_lines.append(T["watch_" + w["kind"]].format(group=w["group"], value=f"{w['value']:.1f}", k=w["k"], n=w["n"], suffix=suffix))
+            watch_lines.append(T["watch_" + w["kind"]].format(group=T["watch_group_names"].get(w["group"], w["group"]), value=f"{w['value']:.1f}", k=w["k"], n=w["n"], suffix=suffix))
         elif w["kind"] == "plan":
             watch_lines.append(T["watch_plan"].format(division=w["division"], month=w["month"], pct=w["pct"], first=w["first"], last=w["last"]))
         elif w["kind"] == "material":

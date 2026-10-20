@@ -2800,3 +2800,20 @@ e. Validator (a subagent that only read): **PASS** on all 8 checks (PEM107's fiv
 - The stock panel drill-down in `index.html` (reached from the original S&OP tab) still words its old-data notes by the old rule.
 - `data/assumptions.json` `updated_date` stamps move on every step 7 run although the assumptions did not change.
 - The within-30-days count is 159 only when day 30 is included (156 if excluded).
+
+## Prompt 51 -- the findings of the Prompt 50 audit applied (text only, plus the MASE column removed)
+
+**Scope and rules kept.** No database, no job run, no scheduled task touched. Reader-visible text changed at its sources (config, builders, manual, manual notes, static parts of `index.html`), pages rebuilt by the existing builders from saved data. HEAD before 784a59f.
+
+**Applied.** All 16 false findings (SAL-01, SAL-04, SAL-05, SAL-08, IDX-03, MM-13, MM-07, MM-12, IDX-07..IDX-11, IDX-13, IDX-14, SP-06), the unproven ones (SAL-07 sentence removed, SAL-11 dated, MM-04, MM-14, SAL-06, IDX-16 removed, SAL-10, SAL-13, IDX-12, PP-09, two manual sentences), wording and consistency items, SP-01 and MM-20 (status on the stock panel and the Min-Max pull line), guard words added to `tests/test_guards.py` (13 words; no collision on the current sources; each of the three new words proven to fail when injected into a temporary copy, copy deleted).
+
+**Changed differently from the proposal.** (a) The Naive definition appears once per section (card and first decide row), not once per tab. (b) The chart-library message is shorter but still shown per chart. (c) The sales-report MASE column is removed with a note (decision 7). (d) IDX-20: the two windows are told apart in the assumptions row and on the Min-Max page, not in one sentence. (e) One line of the shared built-at script (inside the original tab's markup) strips the zone label for the Omni tab; the original tab's own text is unchanged. (f) The stock-panel "not assessed" sentence now gives the reasons the Min-Max page gives.
+
+**Number invariance** (before = HEAD pages, build times masked): the sales report data block, the Trend data block (`OMNI`), the executive block numbers, every numeric table cell of the Production Plan, the material plan and `index.html`, and every numeric field embedded in the Min-Max page are identical; `manual_values` identical; model-file hashes identical (only `data/assumptions.json` text moved). Intended changes: the sales-report MASE column display, CI101 6 to 5 of 13 and PEM102 3 to 2 of 26 on Min-Max, the minmax count date.
+
+**Edge** (headless, temporary profile deleted, own PIDs closed): 32 states (sales, Min-Max with three divisions and details open, Production Plan, material plan, executive, Trend, assumptions, manual, stock panel) at 1366 and 1920: banned words 0 (counted outside the original tab), no horizontal scroll, no exception, no unresolved brace; tab bar identical to HEAD.
+
+**Verification.** Monthly dry run offline `--dry-run --offline --skip-tests`: PASS (5 gates, 0 failed). Executive dry run (step 7f gate inside the rebuild and the dry run): PASS. Full suite after the last code change: see STATUS. Validator (a subagent that only read): PASS on 23 IDs, 0 contradictions; its note: the PEM103 "not a stock business" statement is the user's business statement, not proven from data.
+
+**Out of scope findings.** The original S&OP tab still holds the old banned words and an internal link; `/favicon.ico` 404; PP-05 typos (master-data team); PEM104's "made to order" reason is business-stated while the status file says "data volume".
+

@@ -53,7 +53,7 @@ OUT_PATH = os.path.join(FORECAST_DIR, "sales_report.html")
 # local time, UTC+7. This machine's own clock is already ICT (confirmed this task via
 # `date`/Get-Date, both returning +0700), so datetime.now() needs no timezone conversion --
 # it is labelled ICT directly, never silently assumed.
-ICT_LABEL = "ICT (UTC+7)"
+ICT_LABEL = "(clock of UTC+7)"
 
 FOCUS_ITEMS = ["EEE-F-FC-1040010002", "HS-F-99-02110", "HS-F-99-0213"]
 BASE_MODELS = ["Naive", "MA3", "MA6", "MA12", "Croston", "SBA"]
@@ -769,6 +769,11 @@ def embed_report_data(scope_table, biz, model_chart, results, fva, primary_resul
 
 # ============================= SECTION RENDERERS =============================================
 
+def paragraphs(text: str) -> str:
+    """One <p> per non-empty line of a configured text."""
+    return "".join(f"<p>{html.escape(line)}</p>" for line in text.split("\n") if line.strip())
+
+
 def render_page(config: dict) -> str:
     report = require_config_path(config, "report")
     scope_table = gather_scope_table()
@@ -835,12 +840,19 @@ def render_page(config: dict) -> str:
         "n_focus_items": len(FOCUS_ITEMS), "n_rounds": n_rounds, "holdout_months": config["backtest"]["holdout_months"],
     }
     n_no_minmax, n_scope_items = rv.count_no_current_minmax()
+    import maxmin_v1
+    lead_cal = maxmin_v1.assumption_values()           # lead time range of the PEM101 calibration (METRICS.md Sec.20)
     report_values = {
         "forecast_date_revision_share_pct": f"{rv.forecast_date_disagreement_pct():.1f}",
         "n_no_minmax": n_no_minmax, "n_scope_items": n_scope_items,
         "history_months": rv.total_history_months(config), "n_base_models": len(BASE_MODELS),
         "intermittent_lumpy_share_pct": f"{rv.intermittent_lumpy_share_pct():.0f}",
         "first_scoring_month": rv.first_scoring_month_label(config),
+        "assembly_days": config["phase_e1_assumptions"]["default_scenario"]["assembly_time_days"],
+        "minmax_count_date": rv.thai_date_short(rv.current_minmax_date()),
+        "run_day_base": config["shadow"]["monthly_run_day_of_month"], "guard_days": config["leakage_guard"]["min_margin_days"],
+        "pilot_label": f"กลุ่มทดสอบเดิม {n_scope_items} รหัส",
+        "lead_cal_min": lead_cal["lead_min"], "lead_cal_max": lead_cal["lead_max"],
     }
 
     # ---- values of the sections added 2026-10-08 ----
@@ -864,16 +876,22 @@ def render_page(config: dict) -> str:
     sec1 = f"""
     <section id="exec-summary">
       <h2>1. บทสรุปผู้บริหาร (Executive Summary)</h2>
-      <p>{html.escape(report['model_description'].format(**report_values))}</p>
+      {paragraphs(report['model_description'].format(**report_values))}
       <p>
         {cite('phaseC_step1revised_item_status_445.csv', 'status_category')}
         โครงการนี้ครอบคลุมสินค้าทั้งหมด <b>{total_codes}</b> รหัส ใน Omni Channel (ประเภทรายได้ที่ไม่รวม Tendering หรืองานประมูล) ทุกฝ่าย
-        (PEM101/PEM102/PEM103/PEM104/PEM107/CI101) โดย <b>{forecast_total}</b> รหัสมีประวัติขาย
-        เพียงพอสำหรับการพยากรณ์ <b>{placeholder_total}</b> รหัสไม่มีประวัติเพียงพอและใช้ค่าประมาณ
-        (Placeholder) แทน และ <b>{excluded_total}</b> รหัสถูกตัดออกจากการพยากรณ์
+        (PEM101/PEM102/PEM103/PEM104/PEM107/CI101)
+      </p>
+      <p>
+        <b>{forecast_total}</b> รหัสมีประวัติขายเพียงพอสำหรับการพยากรณ์ · <b>{placeholder_total}</b> รหัสไม่มียอดขายใน Omni Channel เลย
+        จึงยังไม่มี Forecast (Placeholder) · <b>{excluded_total}</b> รหัสถูกตัดออกจากการพยากรณ์
+      </p>
+      <p>
         {cite('leadtime_overall_distribution.csv', 'median')}
-        ในสินค้า PEM101 ({report_values['n_scope_items']} รหัส) ลูกค้าให้เวลาแจ้งล่วงหน้าก่อนส่งมอบเพียง <b>{fmt_num(biz['median_notice'], 0)}</b> วัน
+        ในสินค้า PEM101 ({report_values['pilot_label']}) ลูกค้าให้เวลาแจ้งล่วงหน้าก่อนส่งมอบเพียง <b>{fmt_num(biz['median_notice'], 0)}</b> วัน
         (median) ซึ่งสั้นกว่าระยะเวลาจัดหาวัตถุดิบมาก
+      </p>
+      <p>
         {cite('delivery_by_year.csv', 'pct_on_time')}
         สัดส่วนส่งตรงวันพอดี ของ PEM101 (exact-day delivery: ส่งวันนัดเป๊ะ ไม่นับส่งก่อน) ปรับตัวขึ้นจาก {fmt_num(ontime_2023_val, 1)}% (ปี {rv.thai_year_short(ontime_first_year)}) เป็น
         <b>{fmt_num(ontime_2026_val, 1)}%</b> ในปี {rv.thai_year_short(ontime_last_year)} (ข้อมูลบางส่วน)
@@ -977,7 +995,7 @@ def render_page(config: dict) -> str:
       <h2>3. ขอบเขตข้อมูล (Scope)</h2>
       <p>ขอบเขต Omni Channel ครอบคลุมสินค้าทุกฝ่ายตาม Price List รวม {total_codes} รหัส</p>
       <table class="report-table">
-        <thead><tr><th>ฝ่าย (Division)</th><th>พยากรณ์ (Forecast)</th><th>Placeholder (ใช้ค่าประมาณ)</th><th>ตัดออก (Excluded)</th><th>รวม</th></tr></thead>
+        <thead><tr><th>ฝ่าย (Division)</th><th>พยากรณ์ (Forecast)</th><th>Placeholder (ยังไม่มี Forecast)</th><th>ตัดออก (Excluded)</th><th>รวม</th></tr></thead>
         <tbody>{scope_rows}
         <tr class="total-row"><td>รวมทั้งหมด</td><td>{forecast_total}</td><td>{placeholder_total}</td><td>{excluded_total}</td><td>{total_codes}</td></tr>
         </tbody>
@@ -988,7 +1006,7 @@ def render_page(config: dict) -> str:
     sec3 = f"""
     <section id="business-findings">
       <h2>4. ข้อค้นพบทางธุรกิจ (Business Findings)</h2>
-      <p class="scope-note" id="business-findings-scope">ส่วนนี้ (ระยะแจ้งล่วงหน้าและการส่งมอบ) นับเฉพาะสินค้า PEM101 {report_values['n_scope_items']} รหัส ไม่รวมฝ่ายอื่น</p>
+      <p class="scope-note" id="business-findings-scope">ส่วนนี้ (ระยะแจ้งล่วงหน้าและการส่งมอบ) นับเฉพาะสินค้า PEM101 {report_values['pilot_label']} ไม่รวมฝ่ายอื่น</p>
       <p>
         {cite('leadtime_overall_distribution.csv', 'median')}
         ระยะแจ้งล่วงหน้าของลูกค้า PEM101 (Customer notice) ค่ากลาง (median): <b>{fmt_num(biz['median_notice'], 0)}</b> วัน &nbsp;|&nbsp;
@@ -996,7 +1014,8 @@ def render_page(config: dict) -> str:
         สัดส่วนออเดอร์ที่แจ้งล่วงหน้า &ge; 1 เดือน: <b>{fmt_num(biz['pct_one_month'], 2)}%</b> &nbsp;|&nbsp;
         {cite_config('phase_e1_assumptions.procurement_lead_time_days_grid')}
         ระยะเวลาสั่งวัตถุดิบถึงได้ของ (Procurement lead time ไม่ใช่ระยะแจ้งล่วงหน้าของลูกค้า): <b>{biz['lead_confirmed'][0]}-{biz['lead_confirmed'][1]}</b> วัน
-        (ช่วงที่ธุรกิจยืนยัน ค่าที่ใช้ {biz['lead_default']} วัน · ช่วงทดสอบความไวเพิ่มถึง {biz['lead_grid'][-1]} วัน)
+        (ช่วงที่ธุรกิจยืนยัน · ตัวควบคุมจำลองเริ่มที่ {biz['lead_default']} วัน · ช่วงทดสอบความไวเพิ่มถึง {biz['lead_grid'][-1]} วัน ·
+        Min/Max ของ PEM101 ใช้ lead time ที่ผ่าน Calibration {report_values['lead_cal_min']}-{report_values['lead_cal_max']} วัน)
       </p>
       <h3>การกระจายของระยะเวลาแจ้งล่วงหน้า (Notice period)</h3>
       {cite('leadtime_notice_buckets_overall.csv', 'min_notice_days / pct_of_orders')}
@@ -1021,9 +1040,9 @@ def render_page(config: dict) -> str:
           <!-- source: the fit window (first and last month) of vintage {vf['vintage_id']} of the forward-test log metadata, the series every figure of this page's forecast is fitted on -->
           <tr><td colspan="2" id="fit-range-line">{html.escape(report['fit_range_line'].format(first_month=rv.thai_month_short(vf['fit_first']), last_month=rv.thai_month_short(vf['fit_last'])))}</td></tr>
           <!-- Split lots; STATUS.md, Locked Decisions -->
-          <tr><td colspan="2">รายการที่ดูเหมือนซ้ำแต่เป็นการแบ่งส่งหลายงวด นับครบทุกงวด</td></tr>
+          <tr><td colspan="2">รายการที่ดูเหมือนซ้ำส่วนใหญ่เป็นการแบ่งส่งหลายงวด นับครบทุกงวด</td></tr>
           <!-- MPS retained; STATUS.md, Locked Decisions -->
-          <tr><td colspan="2">MPS (open PO: PO ที่รับแล้วแต่ยังไม่ส่ง) นับรวมในยอดที่ใช้คำนวณ Forecast (Actual + MPS) เพราะลูกค้าสั่งแล้วจริง แต่ยังไม่ใช่ยอดที่ส่งมอบแล้ว</td></tr>
+          <tr><td colspan="2">MPS (ออเดอร์ที่รับแล้วแต่ยังไม่ส่ง) นับรวมในยอดที่ใช้คำนวณ Forecast (Actual + MPS) เพราะลูกค้าสั่งแล้วจริง แต่ยังไม่ใช่ยอดที่ส่งมอบแล้ว</td></tr>
           <!-- forecast_date keying: the series is keyed on forecast_date, a frozen snapshot, not queried live each time; STATUS.md, Locked Decisions -->
           <tr><td colspan="2">ยอดขายนับตามเดือนที่ต้องส่งของตามสัญญา ไม่ใช่เดือนที่รับ PO</td></tr>
           <!-- Pricelist as division source; the database division column is not used to filter; STATUS.md, CONVENTIONS.md -->
@@ -1036,7 +1055,7 @@ def render_page(config: dict) -> str:
     sec5 = f"""
     <section id="model">
       <h2>6. โมเดลพยากรณ์ (Model)</h2>
-      <p>{html.escape(report['model_description'].format(**report_values))}</p>
+      {paragraphs(report['model_description'].format(**report_values))}
       <p>{html.escape(report['why_not_single_model'].format(**report_values))}</p>
       <p>{html.escape(report['why_not_ml'].format(**report_values))}</p>
       <h3>MAE ของโมเดลพื้นฐาน {len(BASE_MODELS)} แบบ เทียบกับ Combination และ Top-down (สินค้าหลัก {len(FOCUS_ITEMS)} รหัส)</h3>
@@ -1104,7 +1123,7 @@ def render_page(config: dict) -> str:
       <h2>7. ผลลัพธ์ (Results)</h2>
       {cite('phaseC_step2_transferability_per_division.csv', 'first_test_month / last_test_month')}
       <!-- rolling-origin backtest window, {backtest_window['n_origins']} origins; METRICS.md §39 -->
-      <p class="hint">ตัวเลขทุกตัวด้านล่างมาจากการทดสอบช่วง {rv.thai_month_short(backtest_window['first_test_month'])} ถึง {rv.thai_month_short(backtest_window['last_test_month'])}</p>
+      <p class="hint">ตัวเลขในตารางหลัก ตารางรอง กราฟ Rolling-origin และตารางเทียบกับร่างเกณฑ์มาจากการทดสอบย้อนหลังช่วง {rv.thai_month_short(backtest_window['first_test_month'])} ถึง {rv.thai_month_short(backtest_window['last_test_month'])} (ตาราง "Forecast เทียบยอดขายจริง" ใช้ยอดจริงของเดือนที่ผ่านมา)</p>
       <div class="controls">
         <label>ฝ่าย (Division): <select id="filterDivision"><option value="__all__">ทั้งหมด</option>{div_options}</select></label>
         <span class="hint">(มีผลกับตารางหลัก ตารางรอง และกราฟ Rolling-origin · ไม่มีผลกับกราฟ Forecast vs Actual)</span>
@@ -1114,23 +1133,24 @@ def render_page(config: dict) -> str:
       <h3>ตารางหลัก — ความแม่นของวิธี Top-down (วิธีที่ใช้จริง) ต่อฝ่าย</h3>
       <!-- Previous wording, kept off screen: this is the Top-down method the project adopted (STATUS.md Locked Decisions, "Final forecasting method"): forecast at Type level, then allocate to items by trailing sales share, recomputed at every rolling origin (not a one-time fixed allocation), scored at item level across the project's standard 7 origins -- src/transferability_all_divisions.py, summary in output/summary/phaseC_step2_transferability_per_division.csv (method detail in docs/reports/summary/phaseC_step2_report.md Part 3). -->
       <p class="hint">Forecast ยอดรวมระดับประเภทสินค้าก่อน แล้วแบ่งให้แต่ละรหัสตามสัดส่วนที่เคยขาย ทดสอบย้อนหลัง {n_rounds} รอบ · MAE เทียบข้ามฝ่ายตรงๆ ไม่ได้ เพราะฝ่ายที่ขายเป็นจำนวนมากมักมี MAE สูงกว่า</p>
-      {cite('phaseC_step2_transferability_per_division.csv', 'MAE / RMSE / Bias / MASE / n_scored')}
+      {cite('phaseC_step2_transferability_per_division.csv', 'MAE / RMSE / Bias / n_scored')}
       <!-- filtered to rows where approach == 'Top-down' -->
       <table class="report-table" id="primary-results-table">
-        <thead><tr><th>ฝ่าย</th><th>MAE</th><th>RMSE</th><th>Bias</th><th>MASE (เทียบกับ Naive; ต่ำกว่า 1 = ดีกว่า Naive)</th><th>จำนวนที่ใช้คำนวณ (สินค้า × รอบทดสอบ)</th></tr></thead>
+        <thead><tr><th>ฝ่าย</th><th>MAE</th><th>RMSE</th><th>Bias</th><th>จำนวนที่ใช้คำนวณ (สินค้า × รอบทดสอบ)</th></tr></thead>
         <tbody></tbody>
       </table>
+      <p class="hint" id="mase-removed-note">ถอด MASE ออกจากหน้านี้ เพราะวัดเทียบกับความคลาดของ Naive ในข้อมูลที่ใช้คำนวณ Forecast ซึ่งอ่านขัดกับ Relative MAE · ใช้ Relative MAE แทน</p>
       <h3>ตารางรอง — วิธี Combination ระดับประเภทสินค้า</h3>
       <!-- Previous wording, kept off screen: Combination model only, at Type level (not item level), averaged across all Types and the 7 rolling origins per division -- src/backtest_all_divisions.py:126-139 (first disclosed in output/summary/manual_factsheet.md Part 5 item 2); kept for comparison, no longer the primary table. -->
       <p class="hint">ผลของส่วน Combination ก่อนแบ่งลงรหัสสินค้า ใช้เทียบเท่านั้น ตัวเลขที่ใช้วางแผนคือตารางหลัก</p>
-      {cite('phaseC_step2_per_division_summary_qty.csv', 'MAE / RMSE / Bias / MASE / n_items')}
+      {cite('phaseC_step2_per_division_summary_qty.csv', 'MAE / RMSE / Bias / n_items')}
       <table class="report-table" id="div-results-table">
-        <thead><tr><th>ฝ่าย</th><th>MAE</th><th>RMSE</th><th>MASE</th><th>Bias</th><th>จำนวนสินค้า</th></tr></thead>
+        <thead><tr><th>ฝ่าย</th><th>MAE</th><th>RMSE</th><th>Bias</th><th>จำนวนสินค้า</th></tr></thead>
         <tbody></tbody>
       </table>
       {pilot_html}
       {criteria_html}
-      <h3>Rolling-origin MAE ระดับ Type (ทดสอบย้อนหลังทีละรอบ: ตัดข้อมูลที่เดือนหนึ่ง แล้ว Forecast เดือนถัดไปเทียบกับของจริง) — คลิก legend เพื่อซ่อน/แสดงแต่ละโมเดล</h3>
+      <h3>Rolling-origin MAE ระดับ Type (ทดสอบย้อนหลังทีละรอบ: ตัดข้อมูลที่เดือนหนึ่ง แล้ว Forecast {note_values['holdout_months']} เดือนถัดไปเทียบกับของจริง) — คลิก legend เพื่อซ่อน/แสดงแต่ละโมเดล</h3>
       {cite('phaseC_step2_rolling_origin_qty.csv', 'origin / model / MAE')}
       <div id="chart-rolling" class="plotly-chart"></div>
       {render_notes_html('sales_report.html', 'chart-rolling', values=note_values)}
@@ -1235,7 +1255,7 @@ def render_page(config: dict) -> str:
 </head>
 <body>
 <div class="wrap">
-  <a class="back-link" href="../index.html">&larr; กลับหน้าหลัก</a>
+  <a class="back-link" href="../index.html">&larr; กลับไปหน้าหลัก (Dashboard)</a>
   <h1>รายงานการพยากรณ์ยอดขาย (Sales Forecast Report) — PEM Group</h1>
   <!-- สร้างโดย src/build_report.py — ทุกตัวเลขมีที่มาระบุไว้ในซอร์สโค้ด HTML (ดู source comments) -->
   {timestamps_html}
@@ -1303,7 +1323,7 @@ const MODEL_COLORS = """ + json.dumps(MODEL_COLORS) + """;
 const PLOT_CONFIG = {responsive: true, displaylogo: false};
 """ + rv.JS_THAI_DATES + """
 const yearLabel = y => 'ปี ' + thaiYearShort(y);
-const CHART_FAIL_MSG = 'กราฟโหลดไม่ได้ เครือข่ายอาจบล็อกไลบรารีกราฟ · ตัวเลขและตารางยังใช้ได้ตามปกติ';
+const CHART_FAIL_MSG = 'แสดงกราฟไม่ได้ (เครือข่ายอาจไม่ให้โหลดตัวแสดงกราฟ) ตัวเลขและตารางยังใช้ได้ตามปกติ';
 // Text, tables and the data-date table never depend on the charting library: when it did not load, each chart
 // area shows the message instead and the rest of the page carries on.
 function chartLibraryOk(id) {
@@ -1373,16 +1393,12 @@ function populateTypeOptions() {
   if (types.includes(prev)) sel.value = prev;
 }
 
-function fmtMase(v) {
-  return (v === null || v === undefined || Number.isNaN(v)) ? 'MASE_undefined' : v.toFixed(3);
-}
-
 function drawDivTable() {
   const div = currentDivision();
   const rows = REPORT_DATA.per_division.filter(r => div === '__all__' || r.division === div);
   const tbody = document.querySelector('#div-results-table tbody');
   tbody.innerHTML = rows.map(r =>
-    `<tr><td>${r.division}</td><td>${r.MAE.toFixed(1)}</td><td>${r.RMSE.toFixed(1)}</td><td>${fmtMase(r.MASE)}</td><td>${r.Bias.toFixed(1)}</td><td>${r.n_items}</td></tr>`
+    `<tr><td>${r.division}</td><td>${r.MAE.toFixed(1)}</td><td>${r.RMSE.toFixed(1)}</td><td>${r.Bias.toFixed(1)}</td><td>${r.n_items}</td></tr>`
   ).join('');
 }
 
@@ -1391,7 +1407,7 @@ function drawPrimaryTable() {
   const rows = REPORT_DATA.primary_results.filter(r => div === '__all__' || r.division === div);
   const tbody = document.querySelector('#primary-results-table tbody');
   tbody.innerHTML = rows.map(r =>
-    `<tr><td>${r.division}</td><td>${r.MAE.toFixed(1)}</td><td>${r.RMSE.toFixed(1)}</td><td>${r.Bias.toFixed(1)}</td><td>${fmtMase(r.MASE)}</td><td>${r.n_scored}</td></tr>`
+    `<tr><td>${r.division}</td><td>${r.MAE.toFixed(1)}</td><td>${r.RMSE.toFixed(1)}</td><td>${r.Bias.toFixed(1)}</td><td>${r.n_scored}</td></tr>`
   ).join('');
 }
 
@@ -1409,10 +1425,10 @@ function drawRollingChart() {
     const means = origins.map(o => byOrigin[o].reduce((a, b) => a + b, 0) / byOrigin[o].length);
     return {x: origins, y: means, type: 'scatter', mode: 'lines+markers', name: m,
             marker: {color: MODEL_COLORS[m] || '#898781'}, line: {color: MODEL_COLORS[m] || '#898781'},
-            hovertemplate: 'origin %{x}<br>' + m + ': %{y:.1f}<extra></extra>'};
+            hovertemplate: 'รอบ %{x}<br>' + m + ': %{y:.1f}<extra></extra>'};
   });
   Plotly.newPlot('chart-rolling', traces, Object.assign({}, LAYOUT_BASE,
-    {xaxis: {title: {text: 'Rolling origin'}, dtick: 1}, yaxis: {title: {text: 'Mean MAE'}}}), PLOT_CONFIG);
+    {xaxis: {title: {text: 'รอบทดสอบ'}, dtick: 1}, yaxis: {title: {text: 'MAE เฉลี่ย (ชิ้นต่อเดือน)'}}}), PLOT_CONFIG);
 }
 
 function selectedFvaItems() {
@@ -1432,11 +1448,11 @@ function drawFvaChart() {
     if (!rows.length) return;
     const x = rows.map(r => r.month_in_horizon);
     traces.push({x, y: rows.map(r => r.actual_qty), type: 'scatter', mode: 'lines+markers',
-      name: it + ' (actual)', line: {color: colors[i % colors.length]},
-      hovertemplate: 'month %{x}<br>actual: %{y:.0f}<extra></extra>'});
+      name: it + ' (ยอดจริง)', line: {color: colors[i % colors.length]},
+      hovertemplate: 'เดือนที่ %{x}<br>ยอดจริง: %{y:.0f}<extra></extra>'});
     traces.push({x, y: rows.map(r => r.forecast_qty), type: 'scatter', mode: 'lines+markers',
-      name: it + ' (forecast)', line: {color: colors[i % colors.length], dash: 'dot'},
-      hovertemplate: 'month %{x}<br>forecast: %{y:.0f}<extra></extra>'});
+      name: it + ' (Forecast)', line: {color: colors[i % colors.length], dash: 'dot'},
+      hovertemplate: 'เดือนที่ %{x}<br>Forecast: %{y:.0f}<extra></extra>'});
   });
   const el = document.getElementById('chart-fva');
   if (!traces.length) {
@@ -1444,7 +1460,7 @@ function drawFvaChart() {
     return;
   }
   Plotly.newPlot('chart-fva', traces, Object.assign({}, LAYOUT_BASE,
-    {xaxis: {title: {text: 'Month in horizon (origin ' + origin + ')'}, dtick: 1}, yaxis: {title: {text: 'Quantity'}}}), PLOT_CONFIG);
+    {xaxis: {title: {text: 'เดือนที่หลังจุดตัดข้อมูล (รอบทดสอบที่ ' + origin + ')'}, dtick: 1}, yaxis: {title: {text: 'จำนวน (ชิ้น)'}}}), PLOT_CONFIG);
 }
 
 function redrawResultsSection() {

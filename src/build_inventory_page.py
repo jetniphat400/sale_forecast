@@ -261,11 +261,11 @@ def build_page(**data_sources) -> str:
         </div>"""
 
     controls_html = "".join([
-        slider("procurement_lead_time_days", "Procurement lead time (วัน)", 1, "d", tip="สั่งวัตถุดิบถึงได้ของกี่วัน"),
-        slider("assembly_time_days", "Assembly time (วัน)", 1, "d", tip="ประกอบกี่วัน"),
-        slider("review_interval_days", "Review interval (วัน)", 1, "d", tip="ทบทวน stock ทุกกี่วัน"),
-        slider("cycle_service_level", "Cycle service level", 0.01, tip="โอกาสที่แต่ละรอบเติมไม่ขาดของ"),
-        slider("holding_cost_rate_annual", "Annual holding cost rate", 0.01, tip="ต้นทุนถือของต่อปี เป็นสัดส่วนของมูลค่า stock"),
+        slider("procurement_lead_time_days", "Procurement lead time (เวลาจัดหาวัตถุดิบ วัน)", 1, "d", tip="สั่งวัตถุดิบถึงได้ของกี่วัน"),
+        slider("assembly_time_days", "Assembly time (เวลาประกอบ วัน)", 1, "d", tip="ประกอบกี่วัน"),
+        slider("review_interval_days", "Review interval (ทบทวน stock ทุกกี่วัน)", 1, "d", tip="ทบทวน stock ทุกกี่วัน"),
+        slider("cycle_service_level", "Cycle service level (โอกาสเติมทันไม่ขาด)", 0.01, tip="โอกาสที่แต่ละรอบเติมไม่ขาดของ"),
+        slider("holding_cost_rate_annual", "Annual holding cost rate (ต้นทุนถือของต่อปี)", 0.01, tip="ต้นทุนถือของต่อปี เป็นสัดส่วนของมูลค่า stock"),
         # RE-ENABLED, task 2b Part 1 (METRICS.md Sec.40, excess_stock_flag): now drives the
         # item table's Excess column and the totals box's excess count, recomputed live.
         slider("obsolescence_threshold_months", "Excess stock threshold (เดือน)", 1, "mo", tip="เกณฑ์ Excess stock: stock พอขายเกินกี่เดือนถือว่าเกิน"),
@@ -383,16 +383,16 @@ def build_page(**data_sources) -> str:
     <button type="button" id="panel-toggle" class="panel-toggle" aria-expanded="true" onclick="togglePanel()">ตัวควบคุม "ถ้าเป็นแบบนี้ล่ะ"</button>
     <div id="panel-body">
       <div class="division-panel">
-        <label for="division-select"><b>Division:</b></label>
+        <label for="division-select"><b>ฝ่าย (Division):</b></label>
         <select id="division-select" onchange="onDivisionChange()">{division_options}</select>
       </div>
-      <p class="hint">ใช้สมมติฐานมาตรฐาน ยังไม่ได้เทียบกับผลจริง ใช้ดูทิศทางเท่านั้น · ถ้าจะใช้ตัวเลข ใช้ส่วน PEM101 ด้านล่างซึ่งเทียบกับผลจริงแล้ว</p>
+      <p class="hint">ใช้สมมติฐานมาตรฐานที่ยังไม่ผ่าน Calibration ใช้ดูทิศทางเท่านั้น · ส่วนเลือกเป้าการส่งทันของ PEM101 ด้านล่างผ่าน Calibration แล้ว</p>
       <!-- source: config.yaml phase_e1_assumptions (defaults), segment_policy (Tier B, not editable here) -->
       <div class="ctrl-panel">
         {controls_html}
       </div>
       <!-- Previous wording, kept off screen: warehouses counted as sellable for the selected division (changes with the division); ticking or unticking recomputes on-hand sellable, months of cover, value at risk and the excess flag at once (no effect on Min/Max, the Min/Max formulas never read on-hand stock, METRICS.md §5). -->
-      <p>เลือกคลังที่นับเป็นของขายได้ · Min/Max ไม่เปลี่ยน เพราะคำนวณจากยอดขาย ไม่ได้ใช้ stock ปัจจุบัน</p>
+      <p>เลือกคลังที่นับเป็นของขายได้</p>
       <div class="item-check-list" id="warehouse-checklist"></div>
       {render_notes_html('inventory.html', 'warehouse-checklist', values=note_values)}
       <p class="hint" id="control-scope">ตัวควบคุมชุดนี้มีผลกับ Min/Max ผลรวม ตาราง และกราฟด้านขวา · ไม่มีผลกับกราฟเป้าการส่งทัน ของ PEM101</p>
@@ -400,8 +400,8 @@ def build_page(**data_sources) -> str:
       <div class="summary-box" id="summary-box">
         <div class="summary-title">ผลจากตัวควบคุม</div>
         <div class="totals-box">
-          <div class="stat">Value of Min level (มูลค่าตาม Min จำลอง = Min × ต้นทุนต่อชิ้น รวมทุกรหัส)<b id="tot-stock-value">-</b></div>
-          <div class="stat">Holding cost (annual)<b id="tot-holding-cost">-</b></div>
+          <div class="stat">มูลค่าตาม Min จำลอง (Value of Min level = Min × ต้นทุนต่อชิ้น รวมทุกรหัส)<b id="tot-stock-value">-</b></div>
+          <div class="stat">ต้นทุนถือของต่อปี (Holding cost)<b id="tot-holding-cost">-</b></div>
           <div class="stat">สินค้าที่มี Min/Max<b id="tot-n-items">-</b></div>
           <!-- previously: Excess stock items (METRICS.md §40) -->
           <div class="stat">สินค้าที่มี Excess stock<b id="tot-excess-count">-</b></div>
@@ -421,9 +421,9 @@ def build_page(**data_sources) -> str:
     <div id="pem107-alert-headline"></div>
     <div class="table-scroll"><table class="report-table" id="pem107-alert-table">
       <thead><tr>
-        <th>Product Type</th><th>Product Description</th><th>Product Code</th>
-        <th>Units ordered (ตั้งแต่ {split_label})</th><th>Units late</th>
-        <th>ส่งทัน ตั้งแต่ {split_label}</th><th>ส่งทัน ก่อน {split_label}</th><th>Share of all late units</th>
+        <th>ประเภทสินค้า (Type)</th><th>รายละเอียด</th><th>รหัสสินค้า</th>
+        <th>จำนวนที่สั่ง (ชิ้น ตั้งแต่ {split_label})</th><th>จำนวนที่ส่งช้า (ชิ้น)</th>
+        <th>ส่งทัน ตั้งแต่ {split_label} (นับเป็นชิ้น)</th><th>ส่งทัน ก่อน {split_label} (นับเป็นชิ้น)</th><th>สัดส่วนของที่ส่งช้าทั้งหมด</th>
       </tr></thead>
       <tbody id="pem107-alert-table-body"></tbody>
     </table></div>
@@ -432,14 +432,17 @@ def build_page(**data_sources) -> str:
     {render_notes_html('inventory.html', 'pem107-alert', values=note_values)}
   </div>
   <!-- Previous wording, kept off screen: changing the controls below changes only what is displayed, not the forecasting model (Tier A); structural changes (Tier B, e.g. segment_policy) need an edit to config.yaml and a pipeline re-run. The sellable-warehouse list of every division (PEM101 included) is a business assumption, not a fact confirmed from data: the sales rows carry no warehouse field, so the reverse direction cannot be checked (STATUS.md, Phase E2 Part 1). -->
-  <p class="note-box"><b>หมายเหตุสำคัญ:</b> ตัวเลขในหน้านี้เป็น <b>ผลจำลอง (scenario values) ภายใต้สมมติฐานที่ระบุไว้เท่านั้น
-    ไม่ใช่คำแนะนำการสั่งซื้อ (purchase recommendation)</b> ตัวควบคุมด้านล่างเปลี่ยนแค่ตัวเลขบนหน้านี้ ไม่ได้เปลี่ยน Forecast
-    รายการ placeholder/excluded จะไม่มี Min/Max และไม่มีปริมาณสั่งซื้อ (purchase quantity) ใดๆ ทั้งสิ้น
-    รายชื่อคลังที่ขายได้เป็นสมมติฐาน DB (cube_Sale_APD) ไม่ได้บันทึกว่าของที่ส่งออกไปมาจากคลังไหน จึงตรวจจากข้อมูลไม่ได้</p>
+  <div class="note-box"><b>หมายเหตุสำคัญ:</b>
+    <ul>
+      <li>ตัวเลขในหน้านี้เป็น <b>ผลจำลอง (scenario values) ภายใต้สมมติฐานที่ระบุไว้เท่านั้น ไม่ใช่คำแนะนำการสั่งซื้อ</b></li>
+      <li>ตัวควบคุมเปลี่ยนแค่ตัวเลขบนหน้านี้ ไม่ได้เปลี่ยน Forecast</li>
+      <li>รายการ Placeholder และรายการที่ถูกตัดออกจะไม่มี Min/Max และไม่มีปริมาณสั่งซื้อ</li>
+      <li>รายชื่อคลังที่ขายได้เป็นสมมติฐาน เพราะ DB (cube_Sale_APD) ไม่ได้บันทึกว่าของที่ส่งออกไปมาจากคลังไหน จึงตรวจจากข้อมูลไม่ได้</li>
+    </ul></div>
   <!-- Previous wording, kept off screen: figures on this page are computed from the MONTHLY history embedded in the page (monthly proration, METRICS.md Sec.4's explicit fallback), not the DAILY window the server-side pipeline uses. The percentage is computed at build time: src/reader_values.py pipeline_gap_pct, page monthly-prorated stock value against output/summary/phaseE1fix_2_minmax_stockvalue.csv (stock_value_contribution) over the same PEM101 items at the default scenario; the earlier typed figure was 3.3% from a run on the older 128-item pilot set (STATUS.md Phase E1-fix-2). -->
   <p class="note-box" id="proration-note">ตัวเลขบนหน้านี้คำนวณจากยอดขายรายเดือนเพื่อให้หน้าโหลดเร็ว จึงต่างจากค่าเต็มที่คำนวณจากข้อมูลรายวัน (ค่าอ้างอิง) ประมาณ {gap_pct}% ของค่าเต็ม (PEM101)</p>
 
-  <h2>ตารางรายรายการ (เรียงตาม Value at Risk ได้)</h2>
+  <h2>ตารางรายรายการ (คลิกหัวคอลัมน์เพื่อเรียง เช่น Excess Min value)</h2>
   <!-- Stock figures (Months of cover, ของค้าง, the stock-with-no-forecast table, the count in the summary box) come from the stock file loaded when the page opens; the three dates below describe that file. -->
   <p class="note-box" id="stock-labels" style="display:none"></p>
   <!-- Formula: Value at risk = max(0, current_min − scenario_min) × unit_cost, the earlier on-screen hint described the opposite direction (current stock below the scenario) although the formula measures a system Min above the simulated one. Excess = months of cover above the obsolescence threshold set above (METRICS.md §40), recomputed whenever the ticked warehouses or the threshold change. -->
@@ -452,15 +455,15 @@ def build_page(**data_sources) -> str:
   </div>
   <div class="table-scroll"><table class="report-table" id="item-table">
     <thead><tr>
-      <th onclick="sortTable(0)">Item</th><th onclick="sortTable(1)">Policy</th>
-      <th onclick="sortTable(2)">Label</th><th onclick="sortTable(3)">Signals (S1/S2/S3)</th>
+      <th onclick="sortTable(0)">รหัส</th><th onclick="sortTable(1)">นโยบายการผลิต</th>
+      <th onclick="sortTable(2)">ป้ายใน DB</th><th onclick="sortTable(3)">สัญญาณ (มีของ · batch · ส่งภายใน {notice_days} วัน)</th>
       <th onclick="sortTable(4)">Min</th><th onclick="sortTable(5)">Max</th>
-      <th onclick="sortTable(6)">Min (ที่ตั้งใน DB (Cube_Inventory_Exact))</th><th onclick="sortTable(7)">Max (ที่ตั้งใน DB (Cube_Inventory_Exact))</th>
-      <th onclick="sortTable(8)">Months of cover</th>
-      <th onclick="sortTable(9)">Excess Min value (THB)</th><th onclick="sortTable(10)">Excess stock</th>
+      <th onclick="sortTable(6)">Min ใน DB</th><th onclick="sortTable(7)">Max ใน DB</th>
+      <th onclick="sortTable(8)">Months of cover (เดือนที่ stock พอขาย)</th>
+      <th onclick="sortTable(9)">Excess Min value (บาท)</th><th onclick="sortTable(10)">Excess stock</th>
     </tr></thead>
     <tbody id="item-table-body"></tbody>
-    <tfoot><tr class="total-row"><td colspan="7">Total</td><td id="item-total-system-max"></td><td colspan="3"></td></tr></tfoot>
+    <tfoot><tr class="total-row"><td colspan="7">รวม</td><td id="item-total-system-max"></td><td colspan="3"></td></tr></tfoot>
   </table></div>
   <!-- Shown for the division that has the calibrated section (PEM101), the one the sentence points to. -->
   <p class="hint" id="item-table-note" style="display:none">Min/Max ในตารางนี้เปลี่ยนตามตัวควบคุมด้านซ้าย ใช้ลองสมมติฐาน ค่าแนะนำอยู่ในส่วน PEM101 ด้านล่าง</p>
@@ -468,7 +471,7 @@ def build_page(**data_sources) -> str:
   <!-- previously: Confirmed-to-order / Conflict รายการ (ไม่มี Min/Max, METRICS.md §23); items classed confirmed_to_order or conflict get no Min/Max however much sales history they have (only PEM101/PEM107 have this grouping; PEM103 shows an empty table). -->
   <h2>สินค้าผลิตตามสั่ง และสินค้าที่ยังไม่ชัด (ไม่มี Min/Max)</h2>
   <div class="table-scroll"><table class="report-table" id="class-table">
-    <thead><tr><th>Item</th><th>Type</th><th>Label</th><th>Class</th><th>S1 (on-hand)</th><th>S2 (batch-before-PO)</th><th>S3 (notice, days)</th></tr></thead>
+    <thead><tr><th>รหัส</th><th>ประเภทสินค้า (Type)</th><th>ป้ายใน DB</th><th>นโยบายการผลิต</th><th>มีของในคลัง</th><th>ผลิตเป็น batch ก่อนลูกค้าสั่ง</th><th>ส่งได้ภายใน {notice_days} วัน</th></tr></thead>
     <tbody id="class-table-body"></tbody>
   </table></div>
 
@@ -493,7 +496,7 @@ def build_page(**data_sources) -> str:
 
   <!-- previously: Min เทียบกับค่าปัจจุบัน (current_min_max) — รายรายการ -->
   <!-- label changed: "Min ที่จำลอง เทียบกับ Min ที่ตั้งในระบบตอนนี้" ("ตอนนี้" called the system value current) -->
-  <h2>Min ที่จำลอง เทียบกับ Min ค่าที่ตั้งใน DB (Cube_Inventory_Exact)</h2>
+  <h2>Min ที่จำลอง เทียบกับ Min ใน DB (Cube_Inventory_Exact)</h2>
   <div id="chart-min-vs-current" class="plotly-chart"></div>
   {render_notes_html('inventory.html', 'chart-min-vs-current', values=note_values)}
 
@@ -504,7 +507,7 @@ def build_page(**data_sources) -> str:
     <p class="hint" id="curve-own-controls">ส่วนนี้ปรับได้ด้วยปุ่มเป้าและ slider ในส่วนนี้เท่านั้น</p>
     <p class="note-box" id="curve-target-summary"></p>
     <p class="note-box" id="curve-lead-lines"></p>
-    <p class="hint">ข้อมูลบอกไม่ได้ว่าบริษัทสั่งเติมเมื่อของเหลือกี่เดือน เป้าการส่งทันที่เลือกคือสิ่งที่กำหนดตัวนี้</p>
+    <p class="hint">ข้อมูลบอกไม่ได้ว่าบริษัทสั่งเติมเมื่อของเหลือกี่เดือน (ระดับสั่งเติม) จึงให้เป้าการส่งทันที่เลือกกำหนดระดับนี้</p>
     <div id="chart-robust-curve" class="plotly-chart"></div>
     {render_notes_html('inventory.html', 'chart-robust-curve', values=note_values)}
     <div class="preset-controls" style="display:flex; gap:10px; flex-wrap:wrap; margin:10px 0;">
@@ -548,9 +551,9 @@ function readControls() {{
   }};
 }}
 
-function fmtTHB(x) {{ return 'THB ' + Math.round(x).toLocaleString(); }}
+function fmtTHB(x) {{ return Math.round(x).toLocaleString() + ' บาท'; }}
 
-const CHART_FAIL_MSG = 'กราฟโหลดไม่ได้ เครือข่ายอาจบล็อกไลบรารีกราฟ · ตัวเลขและตารางยังใช้ได้ตามปกติ';
+const CHART_FAIL_MSG = 'แสดงกราฟไม่ได้ (เครือข่ายอาจไม่ให้โหลดตัวแสดงกราฟ) ตัวเลขและตารางยังใช้ได้ตามปกติ';
 // Charts are drawn only when the charting library loaded; totals and tables never depend on it.
 function plotSafe(id, draw) {{
   const el = document.getElementById(id);
@@ -602,15 +605,15 @@ const POLICY_LABEL = {{ stock_policy: 'เก็บ stock', confirmed_to_order: 
   finished_goods_stock: 'เก็บ stock (เกณฑ์เดิม)', component_stock_ato: 'เก็บชิ้นส่วน ประกอบตามสั่ง (เกณฑ์เดิม)' }};
 // Display names for the placeholder table's status values (matched on their leading words).
 function statusLabel(p) {{
-  if (String(p).startsWith('placeholder - pending method')) return 'ไม่มีประวัติขาย (รอวิธีประมาณ)';
-  if (String(p).startsWith('placeholder - method already assigned')) return 'ไม่มีประวัติขาย (กำหนดวิธีประมาณแล้ว)';
+  if (String(p).startsWith('placeholder - pending method')) return 'ยังไม่มียอดขายใน Omni Channel เลย จึงยังไม่มี Forecast';
+  if (String(p).startsWith('placeholder - method already assigned')) return 'ยังไม่มียอดขายใน Omni Channel เลย จึงยังไม่มี Forecast';
   if (String(p).startsWith('excluded - listed but never sold')) return 'ตัดออก มีใน Price List แต่ไม่เคยขาย';
   if (String(p).startsWith('excluded - division excluded')) return 'ตัดออก ทั้งฝ่ายไม่ใช้นโยบาย stock';
   return p;
 }}
 function policyLabel(p) {{ return POLICY_LABEL[p] || p; }}
 // Items whose class the user set from the data and that still await the business's confirmation carry a label beside the class.
-const CLASS_PENDING_LABEL = 'จัดตามข้อมูล รอยืนยัน';
+const CLASS_PENDING_LABEL = 'ฝ่ายอื่นยังไม่ยืนยัน (จัดประเภทตามข้อมูล)';
 function policyCell(r) {{
   return policyLabel(r.policy) + (r.classBasis ? '<br><span class="hint">' + CLASS_PENDING_LABEL + '</span>' : '');
 }}
@@ -636,7 +639,7 @@ function signalMark(v) {{
 function signalsCell(r) {{
   if (r.label === undefined) return '<span style="color:var(--muted)">n/a</span>'; // PEM103: no segmentation
   const s2 = r.S2_computable ? signalMark(r.S2) : '&ndash;';
-  return `S1 ${{signalMark(r.S1)}} &nbsp; S2 ${{s2}} &nbsp; S3 ${{signalMark(r.S3)}}`;
+  return `มีของ ${{signalMark(r.S1)}} &nbsp; ผลิต batch ก่อนสั่ง ${{s2}} &nbsp; ส่งภายใน {notice_days} วัน ${{signalMark(r.S3)}}`;
 }}
 
 // One rule decides which rows the item table lists and which of them show a Min and Max; the summary
@@ -778,7 +781,7 @@ function renderTradeoff(controls, divisionData) {{
       {{ x: [controls.cycle_service_level], y: [selectedValue], mode: 'markers+text', name: 'service level ที่เลือก',
          text: ['service level ที่เลือก'], textposition: 'top left', showlegend: false,
          marker: {{color: '#eb6834', size: 12, symbol: 'diamond'}} }}],
-    {{ margin: {{t:30}}, xaxis: {{title: {{text: 'Cycle service level'}}}}, yaxis: {{title: {{text: 'Stock value (THB)'}}}} }},
+    {{ margin: {{t:30}}, xaxis: {{title: {{text: 'Cycle service level (โอกาสเติมทันไม่ขาด)'}}}}, yaxis: {{title: {{text: 'มูลค่า stock (บาท)'}}}} }},
     {{responsive: true}}));
 }}
 
@@ -786,7 +789,7 @@ function renderMinVsCurrent(perItem) {{
   const withCurrent = perItem.filter(r => r.min !== null && r.currentMin !== null && r.currentMin !== undefined);
   plotSafe('chart-min-vs-current', () => Plotly.newPlot('chart-min-vs-current', [
     {{ x: withCurrent.map(r => r.code), y: withCurrent.map(r => r.min), name: 'Scenario Min', type: 'bar', marker: {{color:'#2a78d6'}} }},
-    {{ x: withCurrent.map(r => r.code), y: withCurrent.map(r => r.currentMin), name: 'Min (ค่าที่ตั้งใน DB (Cube_Inventory_Exact))', type: 'bar', marker: {{color:'#eda100'}} }}
+    {{ x: withCurrent.map(r => r.code), y: withCurrent.map(r => r.currentMin), name: 'Min ใน DB', type: 'bar', marker: {{color:'#eda100'}} }}
   ], {{ margin: {{t:10, b:90, l:70}}, barmode: 'group',
        xaxis: {{title: {{text: 'รหัสสินค้า'}}, tickangle: -60, tickfont:{{size:8}}}},
        yaxis: {{title: {{text: 'จำนวน (ชิ้น)'}}}} }}, {{responsive: true}}));
@@ -877,9 +880,9 @@ function applyCurveTarget(targetNotLate) {{
   const diffPct = 100 * diff / ct.today_point.stock_value_thb;
   document.getElementById('curve-target-totals').innerHTML = `
     <div class="stat">เป้าส่งทัน<b>${{result.not_late_median_pct.toFixed(2)}}%</b></div>
-    <div class="stat">Stock value (median)<b>${{fmtTHB(result.stock_value_median)}}</b></div>
-    <div class="stat">Stock value band (min–max)<b>${{fmtTHB(result.stock_value_min)}} – ${{fmtTHB(result.stock_value_max)}}</b></div>
-    <div class="stat">Change vs today's on-hand<b style="color:${{diff>=0?'#c0392b':'#1baf7a'}}">${{diff>=0?'+':''}}${{fmtTHB(diff)}} (${{diffPct>=0?'+':''}}${{diffPct.toFixed(1)}}%)</b></div>
+    <div class="stat">มูลค่า stock (ค่ากลาง)<b>${{fmtTHB(result.stock_value_median)}}</b></div>
+    <div class="stat">ช่วงมูลค่า stock (ต่ำสุด–สูงสุด)<b>${{fmtTHB(result.stock_value_min)}} – ${{fmtTHB(result.stock_value_max)}}</b></div>
+    <div class="stat">ต่างจาก stock ที่มีอยู่ตอนนี้<b style="color:${{diff>=0?'#c0392b':'#1baf7a'}}">${{diff>=0?'+':''}}${{fmtTHB(diff)}} (${{diffPct>=0?'+':''}}${{diffPct.toFixed(1)}}%)</b></div>
   `;
 
   // task 2b Part 3 (METRICS.md Sec.24): ratio_e across the distinct members, at THIS target,
@@ -901,11 +904,13 @@ function applyCurveTarget(targetNotLate) {{
     const narrower = (ratioBandPctOfMedian !== null && absBandPctOfMedian !== null && ratioBandPctOfMedian < absBandPctOfMedian);
     const bandNote = (ratioBandPctOfMedian === null || absBandPctOfMedian === null) ? ''
       : narrower
-        ? ` <span style="color:#1baf7a">ช่วงของอัตราส่วนนี้ (${{ratioBandPctOfMedian.toFixed(1)}}% ของค่ากลาง) แคบกว่าช่วงมูลค่า stock สัมบูรณ์ด้านบน (${{absBandPctOfMedian.toFixed(1)}}%) — เชื่อถือได้มากกว่า</span>`
-        : ` <span style="color:#c0392b">ช่วงของอัตราส่วนนี้ (${{ratioBandPctOfMedian.toFixed(1)}}% ของค่ากลาง) ไม่แคบกว่าช่วงมูลค่า stock สัมบูรณ์ (${{absBandPctOfMedian.toFixed(1)}}%) — ห้ามนำเสนอว่าแน่นอนกว่า</span>`;
+        ? ` <span style="color:#1baf7a">ช่วงของ % นี้ (${{ratioBandPctOfMedian.toFixed(1)}}% ของค่ากลาง) แคบกว่าช่วงมูลค่า stock สัมบูรณ์ด้านบน (${{absBandPctOfMedian.toFixed(1)}}%) — เชื่อถือได้มากกว่า</span>`
+        : ` <span style="color:#c0392b">ช่วงของ % นี้ (${{ratioBandPctOfMedian.toFixed(1)}}% ของค่ากลาง) ไม่แคบกว่าช่วงมูลค่า stock สัมบูรณ์ (${{absBandPctOfMedian.toFixed(1)}}%) — ห้ามนำเสนอว่าแน่นอนกว่า</span>`;
     const today = state.rsc.today_not_late_pct, target = result.not_late_median_pct.toFixed(2);
     // Two approved sentences, chosen by the sign of the median ratio.
-    const sentence = pct(ratio.median) >= 0
+    const sentence = Math.abs(Number(today) - Number(target)) < 0.005
+      ? `ไม่ต้องเพิ่ม stock (ช่วง ${{signed(ratio.min)}}% ถึง ${{signed(ratio.max)}}%) เพราะเป้าเท่ากับส่งทันวันนี้ ${{today}}%`
+      : pct(ratio.median) >= 0
       ? `ต้องเพิ่ม stock +${{magnitude(ratio.median)}}% (ช่วง ${{signed(ratio.min)}}% ถึง ${{signed(ratio.max)}}%) เพื่อขยับการส่งทันจาก ${{today}}% เป็น ${{target}}%`
       : `ลด stock ได้ ${{magnitude(ratio.median)}}% (ช่วง ${{signed(ratio.min)}}% ถึง ${{signed(ratio.max)}}%) ถ้ายอมให้การส่งทันลดจาก ${{today}}% เป็น ${{target}}%`;
     rscNote.innerHTML = htmlComment('METRICS.md §24 relative_service_cost') + sentence + bandNote;
@@ -923,14 +928,14 @@ function applyCurveTarget(targetNotLate) {{
   }}
 
   plotSafe('chart-robust-curve', () => Plotly.react('chart-robust-curve', [
-    {{ x: grid.map(g => g.not_late_median_pct), y: grid.map(g => g.stock_value_min), name: 'min stock_value', mode: 'lines', line: {{color:'#898781', dash:'dot'}} }},
-    {{ x: grid.map(g => g.not_late_median_pct), y: grid.map(g => g.stock_value_median), name: 'median stock_value', mode: 'lines', line: {{color:'#2a78d6'}} }},
-    {{ x: grid.map(g => g.not_late_median_pct), y: grid.map(g => g.stock_value_max), name: 'max stock_value', mode: 'lines', line: {{color:'#898781', dash:'dot'}} }},
-    {{ x: [ct.today_point.not_late_pct], y: [ct.today_point.stock_value_thb], name: "today's point",
+    {{ x: grid.map(g => g.not_late_median_pct), y: grid.map(g => g.stock_value_min), name: 'มูลค่า stock ต่ำสุด', mode: 'lines', line: {{color:'#898781', dash:'dot'}} }},
+    {{ x: grid.map(g => g.not_late_median_pct), y: grid.map(g => g.stock_value_median), name: 'มูลค่า stock ค่ากลาง', mode: 'lines', line: {{color:'#2a78d6'}} }},
+    {{ x: grid.map(g => g.not_late_median_pct), y: grid.map(g => g.stock_value_max), name: 'มูลค่า stock สูงสุด', mode: 'lines', line: {{color:'#898781', dash:'dot'}} }},
+    {{ x: [ct.today_point.not_late_pct], y: [ct.today_point.stock_value_thb], name: 'ตอนนี้',
       mode: 'markers', marker: {{color:'#eb6834', size:12, symbol:'star'}} }},
-    {{ x: [result.not_late_median_pct], y: [result.stock_value_median], name: 'selected target',
+    {{ x: [result.not_late_median_pct], y: [result.stock_value_median], name: 'เป้าที่เลือก',
       mode: 'markers', marker: {{color:'#1baf7a', size:11, symbol:'diamond'}} }},
-  ], {{ margin: {{t:40, l:90}}, xaxis: {{title: {{text: 'ส่งทัน %'}}}}, yaxis: {{title: {{text: 'Stock value (THB), median curve + band'}}}} }},
+  ], {{ margin: {{t:40, l:90}}, xaxis: {{title: {{text: 'ส่งทัน %'}}}}, yaxis: {{title: {{text: 'มูลค่า stock (บาท) เส้นค่ากลางและช่วง'}}}} }},
   {{responsive: true}}));
 }}
 
@@ -942,9 +947,9 @@ function renderCurveTarget(divisionData) {{
   curCurveTarget = {{ ct, grid: ct.grid, rsc: ct.relative_service_cost }};
 
   document.getElementById('curve-target-summary').innerHTML =
-    `ใช้ชุดค่าที่เป็นไปได้ ${{ct.n_distinct_members}} ชุด · วันนี้ ส่งทัน ${{ct.today_point.not_late_pct}}% ` +
+    `คำนวณไว้ ${{ct.n_distinct_members}} ระดับของการสั่งเติม · วันนี้ ส่งทัน ${{ct.today_point.not_late_pct}}% ` +
     `มูลค่า stock ${{Math.round(ct.today_point.stock_value_thb).toLocaleString()}} บาท` +
-    htmlComment('previous English wording: N distinct ensemble members (deduplicated on reorder level, order-up-to level, review interval and replenishment lead time). Today point: not_late, stock value THB. Sources: METRICS.md Sec.22, ' + ct.source_report + '; today point: ' + ct.today_point.source) +
+    htmlComment('previous English wording: N distinct ensemble members (deduplicated on reorder level, order-up-to level, review interval and replenishment lead time). Today point: not_late, stock value in baht. Sources: METRICS.md Sec.22, ' + ct.source_report + '; today point: ' + ct.today_point.source) +
     `<br><span style="color:#b45309;">${{ct.item_set_note}}</span>` + htmlComment(ct.item_set_ref || '');
 
   // Two approved lines; the numbers come from the section's own data (lead range across the members; median slowest-material lead time over the items with observed purchase records, their count and the items shown).
@@ -962,14 +967,14 @@ function renderCurveTarget(divisionData) {{
 
   const p1 = ct.presets.today_lowest_stock, p2 = ct.presets.highest_at_today_stock, p3 = ct.presets.stretch_99pct;
   const b1 = document.getElementById('preset-today-lowest');
-  b1.textContent = `Today's ส่งทัน, lowest stock (${{p1.not_late_pct.toFixed(2)}}%)`;
+  b1.textContent = `ส่งทันเท่าวันนี้ ใช้ stock น้อยสุด (${{p1.not_late_pct.toFixed(2)}}%)`;
   b1.onclick = () => applyCurveTarget(p1.not_late_pct);
   const b2 = document.getElementById('preset-highest-at-today');
-  b2.textContent = `Highest ส่งทัน at today's stock (${{p2.not_late_pct.toFixed(2)}}%)`;
+  b2.textContent = `ส่งทันสูงสุดที่ stock เท่าวันนี้ (${{p2.not_late_pct.toFixed(2)}}%)`;
   b2.onclick = () => applyCurveTarget(p2.not_late_pct);
   const b3 = document.getElementById('preset-stretch');
-  b3.textContent = p3.capped ? `Stretch: curve's max (${{p3.not_late_pct.toFixed(2)}}%, 99% not reached)`
-                              : `Stretch: ส่งทัน 99%`;
+  b3.textContent = p3.capped ? `เป้าท้าทาย: จุดสูงสุดของเส้น (${{p3.not_late_pct.toFixed(2)}}% ไม่ถึง 99%)`
+                              : `เป้าท้าทาย: ส่งทัน 99%`;
   b3.onclick = () => applyCurveTarget(p3.not_late_pct);
 
   applyCurveTarget(p1.not_late_pct);
@@ -1005,8 +1010,7 @@ function modelRoundText(pulled) {{
   return DATA.freshness.text.model_round.replace('{{round}}', DATA.model_round.round).replace('{{pulled}}', thaiDateShort(pulled));
 }}
 function parseYmdHm(s) {{
-  // Parses 'YYYY-MM-DD HH:MM[:SS]' (this machine's own clock, ICT/UTC+7 -- confirmed this task
-  // via `date`) into a JS Date; returns null if the string doesn't start with that pattern (e.g.
+  // Parses 'YYYY-MM-DD HH:MM[:SS]' (this machine's own clock) into a JS Date; returns null if the string doesn't start with that pattern (e.g.
   // the PEM103/PEM107 '... (live pull, not a frozen file)' suffix is ignored for parsing).
   const m = /^(\\d{{4}})-(\\d{{2}})-(\\d{{2}}) (\\d{{2}}):(\\d{{2}})/.exec(s || '');
   if (!m) return null;
@@ -1021,9 +1025,9 @@ function renderPageTimestamps() {{
   const builtShown = String(DATA.page_built_at).split(' -- ')[0];
   document.getElementById('page-timestamps-note').innerHTML =
     htmlComment('page_built_at; ' + String(DATA.page_built_at).slice(builtShown.length)) +
-    '<b>หน้าสร้างเมื่อ:</b> ' + thaiDateTime(builtShown) + ' ICT (UTC+7)' +
-    ' &nbsp;|&nbsp; ' + htmlComment('model_calibrated_at') + '<b>ปรับให้ตรงกับผลจริงเมื่อ:</b> ' + thaiDateShort(mc.run_date) + ' ICT (UTC+7), ' +
-    'ข้อมูลถึงเดือน ' + thaiMonthShort(mc.last_month_of_data) + ' ' + htmlComment('source: ' + mc.source);
+    '<b>สร้างหน้าเมื่อ:</b> ' + thaiDateTime(builtShown) +
+    ' &nbsp;|&nbsp; ' + htmlComment('model_calibrated_at') + '<b>Calibration (ปรับการจำลองให้อัตราส่งทันตรงกับการส่งของจริง) เมื่อ:</b> ' + thaiDateShort(mc.run_date) + ', ' +
+    'ใช้ข้อมูลถึงเดือน ' + thaiMonthShort(mc.last_month_of_data) + ' ' + htmlComment('source: ' + mc.source);
 }}
 
 function renderPem107Alert(division) {{
@@ -1037,7 +1041,7 @@ function renderPem107Alert(division) {{
 
   const fmtPct = v => (v === null || v === undefined) ? 'n/a' : v.toFixed(1) + '%';
   document.getElementById('pem107-alert-headline').innerHTML =
-    `<b>ส่งทัน (unit-weighted, Omni Channel) ก่อน ${{thaiDateShort(a.split_date)}}: ${{fmtPct(a.not_late_before_may_2026_pct)}}</b> ` +
+    `<b>ส่งทัน (นับเป็นชิ้น, Omni Channel) ก่อน ${{thaiDateShort(a.split_date)}}: ${{fmtPct(a.not_late_before_may_2026_pct)}}</b> ` +
     `(n=${{a.units_before_may_2026.toLocaleString()}} ชิ้น, ตั้งแต่ ${{thaiDateShort(a.before_window_start)}}) ` +
     `&rarr; <b>ตั้งแต่ ${{thaiDateShort(a.split_date)}}: ${{fmtPct(a.not_late_from_may_2026_pct)}}</b> ` +
     `(n=${{a.units_from_may_2026.toLocaleString()}} ชิ้น)`;
@@ -1074,7 +1078,7 @@ function renderPem107Alert(division) {{
   document.getElementById('pem107-alert-limitations').innerHTML =
     'ข้อจำกัด: ' + [
       `ก่อน ${{lbl}} ส่งทัน ${{a.not_late_before_may_2026_pct.toFixed(1)}}% จาก ${{a.units_before_may_2026.toLocaleString()}} ชิ้น`,
-      `หลัง ${{lbl}} จำนวนยังน้อย (${{a.units_from_may_2026.toLocaleString()}} ชิ้น) ตัวเลขรายเดือนจึงแกว่งมาก`,
+      `หลัง ${{lbl}} จำนวนยังน้อย (${{a.units_from_may_2026.toLocaleString()}} ชิ้น) ตัวเลขจึงเปลี่ยนมากถ้ามีออเดอร์ใหญ่ไม่กี่ใบ`,
       'ยังไม่รู้สาเหตุที่ส่งทันลดลง',
       `ยังไม่ยืนยันว่า ${{lbl}} แยกอะไรออกจากกัน stock หรือสายการผลิต`,
     ].map(x => '&bull; ' + x).join('<br>') +
@@ -1094,7 +1098,7 @@ function onDivisionChange() {{
   const pullShown = String(divisionData.snapshot_pull_date).split(' (')[0];
   const pullNote = String(divisionData.snapshot_pull_date).slice(pullShown.length).trim();
   document.getElementById('snapshot-note').innerHTML =
-    htmlComment('data_pulled_at; MODEL-ROUND label: ' + thaiDateTime(pullShown, true) + ' ICT (UTC+7)') + modelRoundText(pullShown) + (pullNote ? htmlComment(pullNote) : '');
+    htmlComment('data_pulled_at; MODEL-ROUND label: ' + thaiDateTime(pullShown, true)) + modelRoundText(pullShown) + (pullNote ? htmlComment(pullNote) : '');
   renderWarehouseChecklist(divisionData);
   renderNoPolicyTable(divisionData);
   renderCurveTarget(divisionData);
@@ -1166,9 +1170,9 @@ function renderStockLabels() {{
   if (!STOCK_OK) {{ el.textContent = STOCK_FAIL_MSG; return; }}
   el.innerHTML =
     '<span id="stock-label-stock">ข้อมูล stock ใน DB (Cube_Inventory_Exact) ณ ' + thaiDateTime(STOCK.stock_source_load_time) + '</span>' + dataStatus(STOCK.stock_source_load_time) + '<br>' +
-    '<span id="stock-label-reserved">ยอดจองใน DB (Cube_CES) ณ ' + thaiDateTime(STOCK.reserved_source_load_time) + '</span>' +
+    '<span id="stock-label-reserved">ของที่ออเดอร์ที่รับแล้วจองไว้ (Reserved) ใน DB (Cube_CES) ณ ' + thaiDateTime(STOCK.reserved_source_load_time) + '</span>' +
       (STOCK.reserved_source_load_time ? dataStatus(STOCK.reserved_source_load_time) : '') + '<br>' +
-    '<span id="stock-label-pulled">ดึงข้อมูลเมื่อ ' + thaiDateTime(STOCK.pull_time) + '</span>';
+    '<span id="stock-label-pulled">ดึงข้อมูลเมื่อ ' + thaiDateTime(STOCK.pull_time) + '</span>' + dataStatus(STOCK.pull_time);
 }}
 
 function renderDataLine() {{

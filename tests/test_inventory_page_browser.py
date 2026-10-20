@@ -20,7 +20,7 @@ DIVISIONS = ["PEM101", "PEM103", "PEM107"]
 # PEM103 follows METRICS.md Sec.23 since 2026-10-06 and has no stock_policy item, so it shows no Min and Max rows: the tests that move a control and expect
 # Min, Max or stock figures to move run for the divisions that have them; PEM103's page is checked in test_operation_plan_page_builder.py.
 MIN_MAX_DIVISIONS = ["PEM101", "PEM107"]
-CHART_FAIL_MSG = "กราฟโหลดไม่ได้ เครือข่ายอาจบล็อกไลบรารีกราฟ · ตัวเลขและตารางยังใช้ได้ตามปกติ"
+CHART_FAIL_MSG = "แสดงกราฟไม่ได้ (เครือข่ายอาจไม่ให้โหลดตัวแสดงกราฟ) ตัวเลขและตารางยังใช้ได้ตามปกติ"
 MARKER_NAME = "service level ที่เลือก"
 
 SNAP = """(function(){
@@ -324,7 +324,7 @@ def test_relative_cost_sentence_follows_the_sign_of_the_median(desktop):
     mid = _target_sentence(e)
     m = re.search(range_re, mid)
     assert m and m.group(1) == minus and m.group(3) == "+", f"a range crossing zero must read minus to plus: {mid}"
-    assert mid.startswith("ต้องเพิ่ม stock +")
+    assert mid.startswith("ไม่ต้องเพิ่ม stock (ช่วง ")
     assert not e.errors, e.errors
 
 
@@ -335,7 +335,7 @@ def test_placeholder_status_values_show_their_approved_labels(desktop, division)
     cells = e.ev("[...document.querySelectorAll('#no-policy-table-body tr')].map(r=>r.children[2].textContent.trim())")
     raw = [c for c in cells if c.startswith("placeholder - ") or c.startswith("excluded - ")]
     assert not raw, f"{division}: raw status values are still shown: {sorted(set(raw))}"
-    allowed = {"ไม่มีประวัติขาย (รอวิธีประมาณ)", "ไม่มีประวัติขาย (กำหนดวิธีประมาณแล้ว)",
+    allowed = {"ยังไม่มียอดขายใน Omni Channel เลย จึงยังไม่มี Forecast",
                "ตัดออก มีใน Price List แต่ไม่เคยขาย", "ตัดออก ทั้งฝ่ายไม่ใช้นโยบาย stock"}
     assert set(cells) <= allowed, sorted(set(cells) - allowed)
 
@@ -370,7 +370,7 @@ def test_some_item_on_the_page_has_a_system_max_of_zero(desktop):
 
 
 # ------------------------------------------------------------------ the 21 items whose class the user set from the data
-PENDING_LABEL = "จัดตามข้อมูล รอยืนยัน"
+PENDING_LABEL = "ฝ่ายอื่นยังไม่ยืนยัน (จัดประเภทตามข้อมูล)"
 
 
 def test_each_of_the_21_decided_items_carries_the_label_beside_its_class_and_no_other_item_does(desktop):
@@ -438,7 +438,7 @@ def test_the_pem101_section_says_its_min_and_max_come_from_sales_history(desktop
     first, last = maxmin_v1.demand_history_window()
     with open(__import__("os").path.join(__import__("page_helpers").PROJECT_ROOT, "config", "config.yaml"), encoding="utf-8") as f:
         template = yaml.safe_load(f)["inventory_page"]["pem101_demand_note"]
-    expected = template.format(first_month=rv.thai_month_short(first), last_month=rv.thai_month_short(last))
+    expected = template.format(first_month=rv.thai_month_short(first), last_month=rv.thai_month_short(last), guard_days=yaml.safe_load(open(__import__("os").path.join(__import__("page_helpers").PROJECT_ROOT, "config", "config.yaml"), encoding="utf-8"))["leakage_guard"]["min_margin_days"])
     assert expected.startswith("Min/Max ส่วนนี้คิดจากยอดขายจริงย้อนหลัง ") and expected.endswith("ยังไม่ได้คิดจาก Forecast ถ้ายอดขายข้างหน้าเพิ่มหรือลดมาก ค่านี้จะยังไม่ขยับตาม")
     assert desktop.ev("document.getElementById('curve-demand-note').textContent") == expected
     assert desktop.ev("document.getElementById('curve-demand-note').previousElementSibling.tagName") == "H2"
