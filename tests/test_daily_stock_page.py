@@ -121,25 +121,21 @@ def test_the_three_labels_show_the_values_in_the_stock_file(edge, tmp_path_facto
     assert not [x for x in edge.errors if x.startswith("exception")], edge.errors
 
 
-@pytest.mark.parametrize("pull,reserved_at,old", [
-    ("2026-10-06 08:00:05", "2026-10-05 21:00:00", False),       # Tuesday pull, source loaded the evening of the previous weekday (Monday): fresh
-    ("2026-10-06 08:00:05", "2026-10-03 21:00:00", True),        # loaded on Saturday, before the previous weekday (Monday): old
-    ("2026-10-12 08:00:05", "2026-10-09 21:00:00", False),       # Monday pull, source loaded on the Friday before: fresh (the previous weekday of a Monday is the Friday)
-    ("2026-10-12 08:00:05", "2026-10-08 21:00:00", True),        # Monday pull, source loaded on the Thursday: old
-])
-def test_the_reserved_date_is_old_when_it_is_before_the_previous_weekday_of_the_pull(edge, tmp_path_factory, pull, reserved_at, old):
+@pytest.mark.parametrize("weekdays_back,old", [(1, False), (2, True)])
+def test_the_reserved_date_is_old_when_it_is_before_the_previous_weekday_of_the_day_the_page_is_read(edge, tmp_path_factory, weekdays_back, old):
+    """A DATA label is judged against the day the page is read (Prompt 49): the reserved source loaded on the previous weekday is fresh, one weekday earlier is old; the stock line, loaded
+    today, is fresh in both cases."""
+    import reader_values as rv
+    today = rv.date_today()
+    day = rv.previous_weekday(today, weekdays_back)
     base = load_stock_payload()
-    stock_at = str(pd.Timestamp(pull) - pd.Timedelta(hours=11))[:19]
-    p = {**base, "pull_time": pull[:19], "stock_source_load_time": stock_at, "reserved_source_load_time": reserved_at}
-    _open(edge, _site(tmp_path_factory, "stock_age_" + pull[:10] + reserved_at[:10], p))
-    reserved = edge.ev("document.getElementById('stock-label-reserved').parentElement.textContent")
-    stock = edge.ev("document.getElementById('stock-label-stock').parentElement.textContent")
-    assert ("ข้อมูลเก่า ดึงก่อนวันทำการก่อนหน้า" in reserved) == old
-    # the reserved age is judged on its own: the stock line (loaded 11 hours before the pull) has no notice in any of the cases
-    assert reserved.count("ข้อมูลเก่า") == (1 if old else 0)                       # the container of both labels holds the one notice, after the reserved label
-    if old:
-        assert reserved.index("ข้อมูลเก่า") > reserved.index("ยอดจองใน DB (Cube_CES)")
-    assert "ข้อมูลเก่า" not in stock.split("ยอดจองใน DB")[0]                             # nothing after the stock label and before the reserved one
+    p = {**base, "pull_time": f"{today} 08:00:05", "stock_source_load_time": f"{today} 07:00:00", "reserved_source_load_time": f"{day} 21:00:00"}
+    _open(edge, _site(tmp_path_factory, f"stock_age_{weekdays_back}", p))
+    labels = edge.ev("document.getElementById('stock-label-reserved').parentElement.textContent")
+    stock_part, reserved_part = labels.split("ยอดจองใน DB")
+    assert "ใหม่ (Fresh)" in stock_part and "เก่า (Stale)" not in stock_part                  # judged on its own: the stock line is fresh in every case
+    assert ("เก่า (Stale)" in reserved_part) == old and ("ใหม่ (Fresh)" in reserved_part) == (not old)
+    assert labels.count("เก่า (Stale)") == (1 if old else 0)
 
 
 # ------------------------------------------------------------------ the file cannot be loaded

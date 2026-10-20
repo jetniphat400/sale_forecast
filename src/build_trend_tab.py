@@ -348,7 +348,8 @@ def build_data(daily: pd.DataFrame, names: pd.DataFrame, completeness: dict, pl:
     if bad:
         raise TrendTotalsMismatch(f"the Trend tab's totals differ from the completeness query: {bad}")
     omni = {"months": months, "n31": n_complete, "cates": sorted({i["cat"] for i in items}), "types": sorted({i["pt"] for i in items}), "items": items,
-            "meta": {"pull": rv.thai_date_short(completeness["pulled_at"]), "pull_iso": completeness["pulled_at"][:10], "pricelist": pricelist_quarter,
+            "meta": {"pull": rv.thai_date_short(completeness["pulled_at"]), "pull_iso": completeness["pulled_at"][:10], "last_date": completeness["last_date"], "pricelist": pricelist_quarter,
+                     "data_note": config["page_timestamps"]["text"]["trend_note"].format(last=rv.thai_date_short(completeness["last_date"]), pulled=rv.thai_date_short(completeness["pulled_at"])),
                      "first_year": int(months[0][:4]), "last_year": int(months[-1][:4]),
                      "month_incomplete": rv.thai_month_short(months[-1]), "base_first": rv.thai_month_short(months[0]), "base_last": rv.thai_month_short(months[n_complete - 1])}}
     report = {"n_items": len(items), "n_months": n_months, "n_complete": n_complete, "months": [months[0], months[-1]], "n_codes_on_more_than_one_sheet": n_multi_sheet,
@@ -362,11 +363,11 @@ def _json(obj) -> str:
     return json.dumps(obj, ensure_ascii=False, separators=(",", ":")).replace("</", "<\\/")
 
 
-def write_index(index_path: str, omni: dict, match: dict) -> None:
+def write_index(index_path: str, omni: dict, match: dict, status_js: str = "") -> None:
     """Replaces the two data blocks of the Trend tab between the markers. The first run wraps the existing `const MATCH = ...;` and `const OMNI = ...;` lines in the markers."""
     with open(index_path, encoding="utf-8", newline="") as f:
         text = f.read()
-    block = f"{BEGIN_MARK}\nconst MATCH = {_json(match)};\nconst OMNI = {_json(omni)};\n{END_MARK}"
+    block = f"{BEGIN_MARK}\nconst MATCH = {_json(match)};\nconst OMNI = {_json(omni)};\n" + (status_js + "\n" if status_js else "") + END_MARK
     if BEGIN_MARK in text:
         if text.count(BEGIN_MARK) != 1 or text.count(END_MARK) != 1:
             raise TrendTabError("index.html holds the data markers more than once")
@@ -388,7 +389,8 @@ def run_build(root: str = PROJECT_ROOT, index_path: str = None) -> dict:
     pl = pricelist_rows(root, config)
     omni, match, report = build_data(daily, names, completeness, pl, config, pricelist_label(root))
     path = index_path or os.path.join(root, config["trend_tab"]["index_file"])
-    write_index(path, omni, match)
+    import reader_values as rv
+    write_index(path, omni, match, rv.data_age_js(config))
     report["written_to"] = os.path.relpath(path, root) if path.startswith(root) else path
     logger.info("Trend tab data written: %s", {k: v for k, v in report.items() if k != "totals"})
     return report

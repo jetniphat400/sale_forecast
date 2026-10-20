@@ -2728,3 +2728,75 @@ STATUS.md Handover: part 4 has the deferred "Prompt 46" line (theta for CI101 an
 
 - **Tests at the start:** 897 passed, 0 failed, 0 skipped. **After the last code change:** 906 passed, 0 failed, 0 skipped (897 plus 9 new: 8 in `tests/test_zero_row_guard.py` and 1 in `tests/test_model_invariants.py`). Two earlier full runs after the first versions of the code failed or were stopped for real reasons that led to code changes, each followed by a new full run: the first failed `test_dry_run_changes_nothing_but_its_run_log` (the monthly marker wrote into the real folder on a dry run: the marker is now skipped on `--dry-run`, `--offline` and `--in-sandbox`); one run was stopped by me after the Validator's finding on the retry log line, which was fixed (the program name only, never its folder). After the last full run only this paragraph and the report text above changed (documents only): I re-ran `tests/test_guards.py` and the other tests that scan documents (see the final output), and the A4 dry/offline run (exit 0, no marker written, no abort, no failed gate).
 - **Validator (fresh, evaluate-only):** PASS on the marker (first statement before the heavy imports, cannot raise, only under `__main__`), on the retry (fires only on creation-time WinError 5 shown by the `CreateProcess` frame; exit codes, other errors and a PermissionError after a timeout kill never retried), on all 12 call sites, on Part B (hashes, 366 rows, months, current units equal to the vintage, two items recomputed independently: difference at most 2e-16, shadow and forward-test logs untouched) and on scope. Its two low findings were fixed and re-checked by a second pass (PASS): the retry log line named the tail of the interpreter's path, now the program name only; the marker's import and call are inside the `try`. The dry-run isolation problem above was found by the test suite, after the Validator pass, and fixed with the monthly marker skip.
+
+## Prompt 49
+
+Start (shell clock): 2026-10-20 09:23, outside both database windows. HEAD before: 6df836d (`git pull origin main`: already up to date). Tests at the start: 906 passed, 0 failed, 0 skipped. After the last code, config and test change: 899 passed, 0 failed, 0 skipped (the 8 monthly-cadence cases of the old rule were replaced; new cases added). Docs were edited after that run (guard and doc tests re-run, see the end).
+
+### Part A: data refresh and rebuild
+**Database.** One session through `src/db.py` with the reachability preflight, 1 login, read-only SELECTs, only existing pull functions, all called from one inline script inside the session (no pull code written): `src/material_plan.py:717` (`pull_inputs_only`: BOM tree 25,843, raw-material stock 18,662, open purchase orders 456, purchase orders 36,619, receipts 50,223, price list 7,460, item names 4,863, item master 5,261, item aging 100,095), `src/build_trend_tab.py:189` (`pull`: 22,972 daily rows, 388 name rows; completeness 38,722 rows), `src/cube_ces_pull.py:185` (`pull_pem107_alert`: 12,045 Cube_CES Omni rows, 74 items). The session ran about 4 minutes (09:42 to 09:46). Stock and backlog were not pulled: the daily job's pull of 2026-10-20 08:00:28 (`output/data/daily_stock_pull/pull_meta.json`: 2,498 stock rows, 767 backlog rows) was used.
+**Rebuild** (existing step functions, in the monthly order): step 7 (`monthly_refresh.step7_rebuild_pages`: sales report, Min-Max page, assumptions), 7b (operation plan and page), 7c (material plan as a pair: both carry built 2026-10-20T09:52:21), 7e (Trend tab), 7f (executive block; gate passed, 335 items checked).
+
+**A5 before to after.** Before = the plan built 2026-10-15 13:09 (stock pull 15 Oct 12:00:26); after = built 2026-10-20 09:52 (stock pull 20 Oct 08:00:28). Source: `operation_plan_v1_division_month.csv`; the before copies are in a scratch folder.
+
+| Production Plan, units (share of Historical peak) | 2026-10 | 2026-11 | 2026-12 | 2027-01 | 2027-02 |
+|---|---|---|---|---|---|
+| PEM101 | 218,802 (87.8%) to 193,100 (77.5%) | 105,135 (42.2%) to 113,119 (45.4%) | 129,883 (52.1%) to 129,535 (52.0%) | 108,163 (43.4%) to 108,194 (43.4%) | 131,549 (52.8%) to 131,845 (52.9%) |
+| PEM103 | 418 (103.2%) to 417 (102.9%) | 251 (62.0%) to 314 (77.6%) | 205 (50.7%) | 205 (50.5%) | 205 (50.5%) |
+| PEM107 | 1,920 (30.9%) to 1,888 (30.3%) | 2,061 (33.1%) to 2,064 (33.2%) | 896 (14.4%) | 807 (13.0%) to 818 (13.1%) | 807 (13.0%) |
+| PEM102 | 60 (201.5%) to 55 (184.9%) | 26 (87.3%) | 23 (77.8%) | 23 (77.8%) | 23 (77.8%) |
+| PEM104 | 0 | 0 | 0 | 0 | 0 |
+| CI101 | 228 (17.0%) to 227 (17.0%) | 155 (11.6%) to 159 (11.9%) | 154 (11.5%) | 153 (11.5%) | 153 (11.5%) to 154 (11.5%) |
+
+| Figure | Before | After |
+|---|---|---|
+| Items needing production | 68 | 67 |
+| Materials to order now (counted) | 550 (505) | 624 (572) |
+| Late to order, all (counted) | 543 (498) | 617 (565), counting date 20 ต.ค. 69 |
+| Within 30 days, all (counted) | 186 (177) | 159 (143) |
+| PEM107 not-late from 2026-05 | 58.5% on 2,888 units | 60.3% on 3,029 units (before the split: 87.1% on 41,495, unchanged) |
+| Trend latest sale date | 2026-10-14 | 2026-10-19 |
+| Trend totals (rows; quantity; sale) | 38,498; 3,648,800; 2,162,641,222.55 | 38,722; 3,663,931; 2,183,915,805.55 |
+
+Executive watch-out lines: the four Tracking Signal lines (PEM103, CI101, Fuse Cutout, Surge Arrester) unchanged; Historical peak PEM103 103.2% to 102.9%, PEM102 201.5% to 184.9% (both now with the history range); late materials 498 to 565 (now with the counting date); PEM107 not-late 58.5% to 60.3%.
+**Executive YTD, year projection, Relative MAE, Tracking Signal unchanged: YES** (cards and table byte-identical; YTD 542.1, projection 982.4 million baht; confirmed by the implementer and the Validator).
+**Min-Max embedded data identical: YES** (the divisions' items, with Min and Max, forecast and class: 0 differing paths; the differing paths are `freshness`, the new `model_round`, `page_built_at` and `pem107_alert`).
+**Model files untouched: YES.** SHA-256 of 26 files (model-input CSVs, vintage series, forward-test, shadow and comparator logs, Min and Max calibration outputs, class file) before and after: none differs. `data/assumptions.json` (in that list) differs only in `manual_values` (`stale_monthly` removed, `trend_data_through` 14 to 19 ต.ค. 69) and the `updated_date` stamps, rewritten by the existing step 7.
+
+### Part B: labels
+**B1 label map** (page | label | class | old to new). DATA carries a status (ใหม่ (Fresh) or เก่า (Stale)) against the day the page is read; MODEL-ROUND carries none.
+- Sales report | the 7 section rows of the per-section table | MODEL-ROUND | "ดึงเมื่อ {date}" plus a Fresh or Stale column to "ข้อมูลรอบ Forecast ต.ค. 69 · ดึงเมื่อ {date}"; the first row (ช่วงข้อมูลหลัก) to "ข้อมูลที่ใช้คำนวณ Forecast รอบ ต.ค. 69 · ดึงเมื่อ 5 ต.ค. 69 · ยอดขายจริงล่าสุดดูที่แท็บ Trend" (link `../index.html#trend`); the stale banner is removed.
+- Sales report | line under the title | MODEL-ROUND | "รอบ Forecast รันเมื่อ ต.ค. 69 ..." to "ข้อมูลรอบ Forecast ต.ค. 69 ..." (the build time stays: it is not a data date).
+- Min-Max | sales note of PEM103 and PEM107 | MODEL-ROUND | "ข้อมูลดึงเมื่อ: {time} ICT" plus a monthly old tag to "ข้อมูลรอบ Forecast ต.ค. 69 · ดึงเมื่อ 5 ต.ค. 69".
+- Min-Max | data line under the title | mixed | to "Forecast = ... · ข้อมูลรอบ Forecast ... · ข้อมูล stock จาก DB ... ดึงเมื่อ {time} · {status}".
+- Min-Max | stock and reserved labels | DATA | judged against the pull time of the file, to judged against the day the page is read; wording "ข้อมูลเก่า ดึงก่อนวันทำการก่อนหน้า ({date})" to the shared status text.
+- Min-Max | PEM107 alert "ข้อมูลดึงเมื่อ" | DATA (was monthly) | monthly rule to the previous-weekday rule, shared status text.
+- Min-Max | "หน้าสร้างเมื่อ", the calibration date, "ข้อมูลถึงเดือน" of the PEM101 note | build time and MODEL-ROUND | unchanged.
+- Production Plan | data line | DATA (stock and backlog, one pull) and MODEL-ROUND (round) | "ข้อมูล stock ... ดึงเมื่อ {time} · Forecast ... รอบ Forecast รันเมื่อ ต.ค. 69" to "... stock และออเดอร์ที่รับแล้วดึงเมื่อ {time} · {status} · ข้อมูลรอบ Forecast ต.ค. 69 · ดึงเมื่อ 5 ต.ค. 69".
+- Production Plan | new line under it | DATA (production history) | "Historical peak คิดจากประวัติผลิต 3 ม.ค. 66 ถึง 2 ต.ค. 69 · เก่า (Stale) ..." (B6; the executive watch-out lines that show the percentage carry the same range).
+- Production Plan | item-master note | DATA | "ดึงข้อมูลเมื่อ {date}" to the same with a status.
+- Production Plan | PEM103 fallback line "ใช้ข้อมูลที่ดึงไว้เมื่อ {date}" | DATA, conditional | unchanged and not shown now (the 2026-10-20 backlog pull carries the channel column); no status added.
+- Material plan | data line | DATA | "จาก Production Plan รอบ ต.ค. 69 · stock วัตถุดิบดึงเมื่อ {time}" to "จาก Production Plan ที่สร้างเมื่อ {time} · stock วัตถุดิบและใบสั่งซื้อที่ค้างรับดึงเมื่อ {time} · {status}".
+- Material plan | summary lines of the two lists (B5) | DATA | counting date added: "... · นับ ณ 20 ต.ค. 69".
+- Executive tab | new "ข้อมูล ณ" lines (B4): sales, projection and accuracy (MODEL-ROUND), Production Plan (stock pull), Historical peak (history range), materials (stock and purchase-order pull, counting date), PEM107 (pull time); the plan and material watch-out lines carry the range and the counting date.
+- Trend tab | note | DATA | "... ข้อมูลขายใน DB (cube_Sale_APD) ถึง {pull date}" (a pull date worded as a data date) to "... มียอดจริงล่าสุดวันที่ 19 ต.ค. 69 · ดึงเมื่อ 20 ต.ค. 69 · ใหม่ (Fresh)". The chart hint "ตรวจสอบแล้ว ({pull date})" keeps a date and has no status.
+- Manual tab | rule paragraph | text | rewritten to the two classes; "ข้อมูลขายใน DB ถึง {trend_data_through}" in its table follows the last sale date.
+- Excluded: the original S&OP tab and its stock panel drill-down (its old wording is unchanged).
+
+**Judgment calls (need a decision):** the two delivery charts of the sales report are classed MODEL-ROUND (they come from the round's monthly pull); the Trend status is judged on the pull date, not on the date of the latest sale; the Historical peak status is judged on the last data date of its static file (reads old today, correctly).
+**B3.** Sales report numbers unchanged: the page equals the page before outside the label element (build time masked), by byte comparison, and a test builds it with other label texts and compares. **B7** tests: the DATA and MODEL-ROUND classification, the status rule and its text, the labels of every page, the range of the Historical peak, number invariance of the sales report.
+
+### Part C
+STATUS.md has the phase "after 2026-11-05" (planned; nothing built, scheduled or enabled).
+
+### Verification
+a. Monthly dry run offline (`monthly_refresh.py --dry-run --offline --skip-tests`, no database): **PASS** (exit 0; 5 gates passed, 0 failed; the test step was skipped there because the suite was run on its own).
+b. Executive dry run through the step 7f path: **PASS** (gate passed in the rebuild and inside the dry run; the executive block of `index.html` equals what the builder renders, by test).
+c. Edge (headless, temporary profile deleted, only its own PIDs closed), width 1366: every changed page and tab showed the labels listed above; no horizontal scroll (scroll width equals client width everywhere); no script exceptions.
+d. Full suite after the last code, config and test change: 899 passed, 0 failed, 0 skipped.
+e. Validator (a subagent that only read): **PASS** on all 8 checks (PEM107's five plan months recomputed with its own code, the material counts, the Min-Max data comparison, the hashes, the pair match, the Trend totals, the executive figures, the sales report). One statement of it was wrong and is corrected here: it called `stale_monthly` a new key of `assumptions.json`; it was removed (checked with `git diff`).
+
+### Out of scope findings (not acted on)
+- The stock panel drill-down in `index.html` (reached from the original S&OP tab) still words its old-data notes by the old rule.
+- `data/assumptions.json` `updated_date` stamps move on every step 7 run although the assumptions did not change.
+- The within-30-days count is 159 only when day 30 is included (156 if excluded).

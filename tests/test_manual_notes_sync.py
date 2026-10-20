@@ -108,8 +108,8 @@ def test_an_unresolved_manual_placeholder_is_detected():
     import json
     with open(ASSUMPTIONS_JSON, "r", encoding="utf-8") as f:
         values = dict(json.load(f)["manual_values"])
-    values.pop("stale_monthly")
-    assert [n for n in sorted(_manual_names()) if not str(values.get(n, "")).strip()] == ["stale_monthly"]
+    values.pop("stale_daily")
+    assert [n for n in sorted(_manual_names()) if not str(values.get(n, "")).strip()] == ["stale_daily"]
 
 
 def test_the_published_manual_values_are_what_the_sources_compute_now():

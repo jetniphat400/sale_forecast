@@ -39,7 +39,7 @@ DASH = "-"
 # Approved Thai text, verbatim. {braces} are computed values.
 TEXT = {
     "heading": "Production Plan {n_months} เดือน · ทุกฝ่าย",
-    "data_line": "ข้อมูล stock จาก DB (Cube_Inventory_Exact) ดึงเมื่อ {pull_time} · Forecast = ยอดขายที่ระบบคาดการณ์ · รอบ Forecast รันเมื่อ {forecast_run_month}",
+    "data_prefix": "ข้อมูล stock จาก DB (Cube_Inventory_Exact) · Forecast = ยอดขายที่ระบบคาดการณ์",       # the dated labels that follow come from config page_timestamps.text
     "col_month": "เดือน", "col_demand": "Demand-driven (ผลิตตาม Forecast หรือออเดอร์ แล้วแต่อันไหนมากกว่า)", "col_refill": "Build to Max (ผลิตเติม stock ให้ถึง Max)", "col_mto": "ผลิตตามสั่ง (MTO: Make to Order)", "col_total": "รวม",
     "col_capacity": "เทียบกับ Historical peak (ยอดผลิตเสร็จสูงสุดต่อเดือนในอดีต ไม่ใช่กำลังผลิตเต็มที่)", "above_capacity": "สูงกว่า Historical peak",
     "line_refill": "{first_month} PEM101 ต้องเติมให้ถึง Max {refill_units} หน่วย นอกเหนือจากความต้องการเดือนนั้น เพราะ stock ตอนนี้ต่ำกว่า Max ทยอยเติมในเดือนถัดไปได้",
@@ -63,7 +63,6 @@ TEXT = {
     "line_pem103_fallback": "ออเดอร์ของ PEM103 ในแผนนี้ใช้ข้อมูลที่ดึงไว้เมื่อ {pulled} เพราะการดึงล่าสุดยังไม่มีข้อมูลช่องทางของออเดอร์ จะใช้ข้อมูลล่าสุดเมื่อรอบดึงถัดไปมีข้อมูลช่องทาง",
     "all_channels": "รวมทุกช่องทาง", "all_channels_tip": "stock และออเดอร์ที่รับแล้วใช้ร่วมกันทุกช่องทาง",
     "no_master": "ไม่พบรหัสนี้ใน DB (Cube_ItemList)", "no_master_tip": "ไม่พบรหัสนี้ใน DB (Cube_ItemList) ตัวเลขในแผนไม่เปลี่ยน",
-    "no_master_note": "{n} รหัสไม่พบใน DB (Cube_ItemList) ดึงข้อมูลเมื่อ {pulled}",
     "no_master_unchecked": "ยังไม่ได้ตรวจ {n} รหัสกับ DB (Cube_ItemList) เพราะยังไม่มีข้อมูลที่ดึงไว้ของรหัสเหล่านี้",
     "back_link": "← กลับไปหน้าหลัก (Dashboard)",       # wording of the same link on the Min-Max page
 }
@@ -125,7 +124,7 @@ def top_backlog_items(excess: pd.Series) -> list:
 
 
 def compute_values(item_month: pd.DataFrame, division_month: pd.DataFrame, meta: dict, names: dict, forecast_run_date: str, divisions: list, exclusion_reasons: dict = None,
-                   master: dict = None) -> dict:
+                   master: dict = None, labels: dict = None) -> dict:
     """Every value the page shows. `item_month`, `division_month`, `meta` are the recorded plan (read back), `names` maps item code to product name,
     `forecast_run_date` is the forecast vintage's run date, `divisions` the divisions in the order shown. The summary total must equal the recorded
     division-month total (checked); rows of items the plan does not count are in the item table but in no total. `master` (optional) is the check of the item codes against the DB item
@@ -206,7 +205,7 @@ def compute_values(item_month: pd.DataFrame, division_month: pd.DataFrame, meta:
         "backlog_above_forecast": fmt_units(excess.sum()), "backlog_above_forecast_value": float(excess.sum()),
         "top_backlog_items": join_items([f"{c} ({fmt_units(v)} {TEXT['units']})" for c, v in picked]) if picked else "",
         "top_backlog_picked": picked, "summary": summary, "items": items, "division_lines": division_lines, "no_forecast_with_orders": no_forecast_with_orders,
-        "master": master,
+        "master": master, "labels": labels,
     }
     return values
 
@@ -266,7 +265,10 @@ def render(values: dict) -> str:
     parts.append(f'<a class="back-link" href="../index.html">{_e(T["back_link"])}</a>')
     heading = T["heading"].format(n_months=v["n_months"])
     parts.append(f'<h1 id="page-title">{_e(heading)}</h1>')
-    parts.append(f'<p class="scope-note" id="data-line">{_e(T["data_line"].format(pull_time=v["pull_time"], forecast_run_month=v["forecast_run_month"]))}</p>')
+    lab = v.get("labels")
+    if lab:         # DATA labels carry a status judged when the page is read; the MODEL-ROUND label carries none (config page_timestamps)
+        parts.append(f'<p class="scope-note" id="data-line">{_e(T["data_prefix"])} · {lab["stock"]} · {_e(lab["round"])}</p>')
+        parts.append(f'<p class="scope-note" id="peak-line">{lab["peak"]}</p>')
     parts.append(f'<div class="links"><a class="page-link" id="material-plan-link" href="{MATERIAL_PAGE_RELATIVE}">{_e(T["material_link"])}</a></div>')
     for d in divisions:
         parts.append(f'<h2>{d}</h2>')
@@ -310,7 +312,7 @@ def render(values: dict) -> str:
     parts.append(f'<p class="table-note" id="stock-note">{_e(T["stock_note"])}{badge}</p>')
     mst = v.get("master")
     if mst and mst["missing"]:
-        parts.append(f'<p class="table-note" id="no-master-note">{_e(T["no_master_note"].format(n=len(mst["missing"]), pulled=mst["pulled_at"]))}</p>')
+        parts.append(f'<p class="table-note" id="no-master-note">{lab["master"](len(mst["missing"]))}</p>')
     if mst and mst["unchecked"]:
         parts.append(f'<p class="table-note" id="no-master-unchecked">{_e(T["no_master_unchecked"].format(n=len(mst["unchecked"])))}</p>')
     parts.append(f'<p class="table-note" id="no-production-note">{_e(T["no_production_note"])}</p>')
@@ -321,7 +323,7 @@ def render(values: dict) -> str:
                "are not in the plan (the page says how many per division). -->")
     return (f'<!DOCTYPE html>\n<html lang="th">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1">\n'
             f'<title>{_e(heading)}</title>\n<style>{CSS}</style>\n</head>\n<body>\n{comment}\n<div class="wrap">\n' + "\n".join(parts) +
-            f'\n</div>\n<script>{JS}</script>\n</body>\n</html>\n')
+            f'\n</div>\n<script>{JS}</script>\n' + (f'<script>{lab["js"]}</script>\n' if lab else '') + '</body>\n</html>\n')
 
 
 # ------------------------------------------------------------------ inputs
@@ -364,14 +366,34 @@ def item_master_check(root: str, cfg: dict, codes) -> dict:
         have |= set(d["master"]["ItemCode"].astype(str).str.strip())
         pulled.append(str(d.get("pulled_at_local", ""))[:10])
     missing = {c for c in codes if c in covered and c not in have}
-    return {"missing": missing, "unchecked": codes - covered, "pulled_at": rv.thai_date_short(min(pulled)) if pulled else ""}
+    return {"missing": missing, "unchecked": codes - covered, "pulled_at": rv.thai_date_short(min(pulled)) if pulled else "", "pulled_iso": min(pulled) if pulled else ""}
+
+
+def page_labels(root: str, meta: dict, master: dict, run_date: str) -> dict:
+    """The dated labels of the page (config page_timestamps.text): stock and backlog pull time, the item-master check and the Historical peak's production history range are DATA (with a
+    status), the forecast round is MODEL-ROUND (no status). `master` is the item-master check; its note is a function of the number of codes. Returns strings and one function."""
+    config = op.load_full_config(root)
+    t = config["page_timestamps"]["text"]
+    for label in ("stock และออเดอร์ที่รับแล้ว (Production Plan)", "ข้อมูลรหัสสินค้าใน DB (Production Plan)", "ประวัติการผลิตของ Historical peak"):
+        if rv.source_class(config, label) != "data":
+            raise op.OperationPlanError(f"{label!r} is expected to be a data source in config page_timestamps")
+    stock, backlog = str(meta["stock_pull"]["pulled_at_local"]), str(meta["backlog_pull"]["pulled_at_local"])
+    shown = t["plan_stock"].format(pulled=thai_datetime(stock)) if backlog == stock else (
+        t["plan_stock_only"].format(pulled=thai_datetime(stock)) + " · " + t["plan_backlog"].format(pulled=thai_datetime(backlog)))
+    rng = meta["capacity_range"]
+    facts = rv.model_round_facts(run_date)
+    return {"stock": rv.data_age(stock[:10], shown, config), "round": t["plan_round"].format(round=facts["round"], pulled=facts["pulled"]),
+            "peak": rv.data_age(rng["last_date"], t["plan_peak"].format(first=rv.thai_date_short(rng["first_date"]), last=rv.thai_date_short(rng["last_date"])), config),
+            "master": lambda n: rv.data_age(master["pulled_iso"], t["plan_master"].format(n=n, pulled=master["pulled_at"]), config) if master and master.get("pulled_iso") else "",
+            "js": rv.data_age_js(config)}
 
 
 def build_values(root: str = PROJECT_ROOT, out_dir: str = None) -> dict:
     cfg = op.load_config(root)
     im, dm, meta = op.read_outputs(root, cfg, out_dir)
-    return compute_values(im, dm, meta, product_names(root), forecast_run_date(root, cfg, meta["vintage_id"]), list(cfg["divisions"]), rv.division_reason_codes(),
-                          master=item_master_check(root, cfg, im["item"].unique()))
+    master = item_master_check(root, cfg, im["item"].unique())
+    run_date = forecast_run_date(root, cfg, meta["vintage_id"])
+    return compute_values(im, dm, meta, product_names(root), run_date, list(cfg["divisions"]), rv.division_reason_codes(), master=master, labels=page_labels(root, meta, master, run_date))
 
 
 def build_page(root: str = PROJECT_ROOT, out_dir: str = None, out_path: str = None) -> str:

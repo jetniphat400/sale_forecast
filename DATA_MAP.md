@@ -2064,3 +2064,12 @@ Source: STATUS.md "Week 4, prompt 14"; docs/reports/summary/prompt5_g2_vintage_t
 - **Order concentration, Jan to Aug (an order = a contract; the largest 1 / 3 / 5 orders as a share of YTD):** 2026: CI101 12.0 / 26.6 / 34.3 percent, PEM101 0.8 / 1.8 / 2.7, PEM102 6.8 / 11.9 / 15.5, PEM103 2.9 / 6.9 / 9.3, PEM107 3.7 / 7.2 / 9.5; the same months of 2025: CI101 10.4 / 28.9 / 40.4, PEM101 1.1 / 2.7 / 3.8, PEM102 6.5 / 14.1 / 19.0, PEM103 3.8 / 10.3 / 14.7, PEM107 3.3 / 9.1 / 13.5. **V2.**
 - **PEM103's YTD growth (+454.1 percent) comes from the number of orders (114 to 530), not from a few large ones** (without the three largest orders of 2026: +416.0 percent). **V2.**
 - **Every in-scope row of the 2025 and 2026 Jan to Aug YTD has a contract id.** **V2.**
+
+
+## Prompt 49 (2026-10-20): one-off DATA refresh -- verified facts
+
+Source: STATUS.md "Week 4, prompt 49"; docs/reports/summary/prompt5_g2_vintage_target_map.md, heading "Prompt 49". **V2** = recomputed by the implementer and independently by a Validator.
+
+- **The Historical peak's production history (`output/data/lead_time_inputs/cube_final_all.csv`, a file written 2026-10-05) covers 3 January 2023 to 2 October 2026** (45,671 rows, `final_date`). Nothing refreshes it. **V1** (recomputed by the implementer; the operation plan meta now records the range).
+- **The three current-state pulls of 2026-10-20 took one session of about 4 minutes** (material inputs 09:42, Trend 09:46, PEM107 alert 09:46; 1 login). Trend: 38,722 rows, last sale date 2026-10-19; PEM107 alert: not-late from 2026-05 60.3 percent on 3,029 units. **V1.**
+- **PEM107 Production Plan, 2026-10: 1,888 units, 30.3 percent of the Historical peak (6,221, month 2024-11)**; material plan 2,247 materials, 617 late of which 565 counted (the counted figure leaves out 52 paid-remark lines), 159 within 30 days (143 counted), 624 to order now (572 counted). **V2.**

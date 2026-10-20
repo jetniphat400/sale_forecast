@@ -1096,7 +1096,7 @@ report:
 
   # Approved Thai text of the 2026-10-08 task (verbatim); {braced} names are filled at build time by src/build_report.py from the forward-test log,
   # its metadata, the scope table, the pilot-category view and the recorded forward-test scores. The unconditional "▸" lines are in config/manual_notes.yaml.
-  freshness_line: "Forecast = ยอดขายที่ระบบคาดการณ์ · รอบ Forecast รันเมื่อ {round} · ใช้ยอดขายถึง {fit_last} · หน้าสร้างเมื่อ {built_at}"
+  freshness_line: "Forecast = ยอดขายที่ระบบคาดการณ์ · ข้อมูลรอบ Forecast {round} · ใช้ยอดขายถึง {fit_last} · หน้าสร้างเมื่อ {built_at}"
   fit_range_line: "ยอดขายที่ใช้คำนวณ Forecast {first_month} ถึง {last_month}"
   forward_heading: "Forecast {first_month} ถึง {last_month}"
   forward_missing_line: "รหัสที่ยังไม่มี Forecast {n} รหัส ดูเหตุผลใน{scope_link}"
@@ -1209,8 +1209,8 @@ exec_summary:
     watch_low: "{group} Forecast ต่ำกว่าจริง {k} จาก {n} จุดวัด (Tracking Signal {value}){suffix} คาดการณ์ทั้งปีของกลุ่มนี้อาจต่ำกว่าที่จะเกิดจริง"
     watch_high: "{group} Forecast สูงกว่าจริง {k} จาก {n} จุดวัด (Tracking Signal {value}){suffix} คาดการณ์ทั้งปีของกลุ่มนี้อาจสูงกว่าที่จะเกิดจริง"
     watch_suffix: " ส่วนใหญ่มาจากเดือน {month} เดือนเดียว"            # added after the parenthesis only when the signal without its largest point is within the limit (METRICS.md Sec.49)
-    watch_plan: "แผนผลิต {division} เดือน {month} สูงกว่า Historical peak (ยอดผลิตเสร็จสูงสุดต่อเดือนในอดีต ไม่ใช่กำลังผลิตเต็มที่) ({pct})"
-    watch_material: "วัตถุดิบ {n} รายการเลยกำหนดสั่ง (Late to order) สั่งวันนี้ของมาไม่ทันแผน"
+    watch_plan: "แผนผลิต {division} เดือน {month} สูงกว่า Historical peak (ยอดผลิตเสร็จสูงสุดต่อเดือนในอดีต ไม่ใช่กำลังผลิตเต็มที่) ({pct}) คิดจากประวัติผลิต {first} ถึง {last}"
+    watch_material: "วัตถุดิบ {n} รายการเลยกำหนดสั่ง (Late to order) สั่งวันนี้ของมาไม่ทันแผน (นับ ณ {date})"
     watch_pem107: "PEM107 ส่งของช่องทาง Omni ส่งทัน (Not-late: ส่งไม่ช้ากว่าวันนัด) น้อยลงตั้งแต่ {since} ({pct})"
     decide_heading: "เรื่องที่รอผู้บริหารตัดสิน"
     decide_link: "สมมติฐานที่ใช้อยู่"
@@ -1510,15 +1510,28 @@ backtest:
   train_val_test_owner: "Reused unchanged from src/evaluate_strategies.py / src/backtest_aggregate.py -- not a new figure. total_months (31) = train_months + val_months + test_months, computed by src/backtest_rekeyed.py, never stored here separately."
 
 # ============================================================
-# Page timestamps (METRICS.md Sec.26, amended 2026-10-14, Prompt 29): freshness is judged by each source's own pull cadence, not by one threshold in days.
-#   monthly source: old when its pull date is before the latest monthly run day (the first weekday on or after the base day, monthly_refresh.run_day) that is on or before today;
-#   daily source:   old when its pull date is before the previous weekday (`daily_weekdays_back` weekdays before today).
-# Every freshness-tagged source is listed once, under the cadence of the job that pulls it; a source that is in neither list stops the build (reader_values.source_cadence).
-# Read by src/build_report.py, src/build_inventory_page.py (and its data), index.html's stock panel script and the manual (data/assumptions.json manual_values).
+# Page timestamps (METRICS.md Sec.26, amended 2026-10-20, Prompt 49). Every date label on a page is one of two classes:
+#   DATA        = a current-state source pulled on its own (stock, backlog, raw-material stock, open purchase orders, sales actuals on the Trend tab, PEM107 deliveries, the production
+#                 history of the Historical peak). It carries a status judged against the day the page is read: old when its date is before the previous weekday (`daily_weekdays_back`
+#                 weekdays back; holidays are NOT modelled, so a day after a holiday reads old).
+#   MODEL-ROUND = the data the forecast round was fitted on, the forecast, its accuracy and the Min and Max calibration. It carries no Fresh or Stale wording: it is labelled with the
+#                 round and the date the round's data was pulled.
+# Every labelled source is listed once; a source in neither list stops the build (reader_values.source_class).
+# Read by src/build_report.py, src/build_inventory_page.py (and its data), src/build_operation_plan_page.py, src/build_material_plan_page.py, src/build_trend_tab.py,
+# src/build_exec_summary.py and the manual (data/assumptions.json manual_values).
 # ============================================================
 page_timestamps:
   daily_weekdays_back: 1
-  monthly_sources:        # pulled by the monthly job (src/monthly_refresh.py step 1 and step 4)
+  data_sources:
+    - "stock (หน้า Min-Max และแผง stock)"
+    - "ยอดจอง (หน้า Min-Max และแผง stock)"
+    - "แจ้งเตือน PEM107 (หน้า Min-Max)"
+    - "stock และออเดอร์ที่รับแล้ว (Production Plan)"
+    - "stock วัตถุดิบและใบสั่งซื้อที่ค้างรับ (แผนวัตถุดิบ)"
+    - "ข้อมูลรหัสสินค้าใน DB (Production Plan)"
+    - "ยอดขายจริงล่าสุด (แท็บ Trend)"
+    - "ประวัติการผลิตของ Historical peak"
+  model_round_sources:
     - "ช่วงข้อมูลหลัก"
     - "ผลทดสอบต่อฝ่าย"
     - "กราฟ Rolling-origin"
@@ -1527,10 +1540,28 @@ page_timestamps:
     - "กราฟส่งตรงวันพอดี"
     - "กราฟส่งทัน"
     - "ข้อมูลขาย PEM103/PEM107 (หน้า Min-Max)"
-    - "แจ้งเตือน PEM107 (หน้า Min-Max)"     # the PEM107 delivery alert, pulled by the monthly job from Cube_CES (Prompt 35)
-  daily_sources:          # pulled by the daily job (src/snapshot_daily.py, src/daily_stock_job.py)
-    - "stock (หน้า Min-Max และแผง stock)"
-    - "ยอดจอง (หน้า Min-Max และแผง stock)"
+  # Approved reader text (verbatim for the sales report line); {braces} are filled at build time.
+  text:
+    data_fresh: "ใหม่ (Fresh)"
+    data_stale: "เก่า (Stale) ดึงก่อนวันทำการก่อนหน้า ไม่คิดวันหยุด"
+    model_round: "ข้อมูลรอบ Forecast {round} · ดึงเมื่อ {pulled}"
+    sales_main: "ข้อมูลที่ใช้คำนวณ Forecast รอบ {round} · ดึงเมื่อ {pulled}"
+    trend_link: "ยอดขายจริงล่าสุดดูที่แท็บ Trend"
+    plan_stock: "stock และออเดอร์ที่รับแล้วดึงเมื่อ {pulled}"
+    plan_stock_only: "stock ดึงเมื่อ {pulled}"
+    plan_backlog: "ออเดอร์ที่รับแล้วดึงเมื่อ {pulled}"
+    plan_master: "{n} รหัสไม่พบใน DB (Cube_ItemList) ดึงข้อมูลเมื่อ {pulled}"
+    plan_round: "ข้อมูลรอบ Forecast {round} · ดึงเมื่อ {pulled}"
+    plan_peak: "Historical peak คิดจากประวัติผลิต {first} ถึง {last}"
+    material_stock: "stock วัตถุดิบและใบสั่งซื้อที่ค้างรับดึงเมื่อ {pulled}"
+    material_plan: "จาก Production Plan ที่สร้างเมื่อ {built}"
+    late_count_date: "นับ ณ {date}"
+    trend_note: "ยอดนับตามวันที่รับ PO จึงไม่เท่ากับยอดในหน้าพยากรณ์ ซึ่งนับตามเดือนที่ต้องส่งของ · ข้อมูลขายใน DB (cube_Sale_APD) มียอดจริงล่าสุดวันที่ {last} · ดึงเมื่อ {pulled}"
+    exec_sales: "ข้อมูล ณ ยอดขาย คาดการณ์ทั้งปี และความแม่นของ Forecast: ยอดจริงถึง {data_month} · ข้อมูลรอบ Forecast {round} ดึงเมื่อ {pulled}"
+    exec_plan: "ข้อมูล ณ แผนผลิต: stock และออเดอร์ที่รับแล้วดึงเมื่อ {pulled}"
+    exec_peak: "ข้อมูล ณ Historical peak: ประวัติผลิต {first} ถึง {last}"
+    exec_material: "ข้อมูล ณ วัตถุดิบ: stock และใบสั่งซื้อดึงเมื่อ {pulled} · นับเลยกำหนดสั่ง ณ {date}"
+    exec_pem107: "ข้อมูล ณ การส่งของ PEM107: ดึงเมื่อ {pulled}"
 
 # ============================================================
 # Statistics (src/significance_topdown.py, METRICS.md Sec.41): the criteria of the sales report's "does Top-down beat

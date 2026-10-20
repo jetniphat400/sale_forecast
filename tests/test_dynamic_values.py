@@ -352,25 +352,26 @@ def test_sales_report_numbers_follow_their_sources(two_builds):
 
 
 def _pilot_row(html_text):
-    """(shown data date, status) of the 'ช่วงข้อมูลหลัก' row of the page's per-section freshness table."""
-    m = re.search(r"<td><!-- source: [^>]*-->ช่วงข้อมูลหลัก</td><td>([^<]*)</td><td>([^<]*)</td>", html_text)
+    """The text of the 'ช่วงข้อมูลหลัก' row of the page's per-section table: the model round and its pull date (no status column)."""
+    m = re.search(r"<td><!-- source: [^>]*-->ช่วงข้อมูลหลัก</td><td>(.*?)</td></tr>", html_text)
     assert m, "the freshness table has no row for the pilot section"
-    return m.group(1), m.group(2)
+    return re.sub(r"<[^>]+>", "", m.group(1))
 
 
-@pytest.mark.parametrize("days_before_cutoff,expect_notice", [(1, True), (0, False)])
-def test_pilot_data_date_against_the_monthly_cutoff_drives_the_stale_tag_in_both_directions(tmp_path, monkeypatch, days_before_cutoff, expect_notice):
-    """The sales report's sources are monthly-pulled: a pilot data date one day before the latest monthly run day is tagged old, one ON that day is fresh (Prompt 29).
+@pytest.mark.parametrize("age_days", [0, 40])
+def test_pilot_data_date_drives_the_shown_pull_date_and_never_a_status_word(tmp_path, monkeypatch, age_days):
+    """The sales report's sections are MODEL-ROUND (Prompt 49): whatever the age of the pilot file's data date, the row names the round and that pull date and carries no Fresh or Stale wording.
     The pilot file's data date is set by the test (set_pilot_data_date), whatever the real file's age."""
     import build_report
-    from datetime import date, timedelta
-    cutoff = rv.freshness_cutoff("monthly", date.today(), build_report.load_config())
-    stamp = set_pilot_data_date(monkeypatch, (date.today() - (cutoff - timedelta(days=days_before_cutoff))).days)
+    stamp = set_pilot_data_date(monkeypatch, age_days)
     path = build_report.build_report(output_path=str(tmp_path / "sales.html"))
     with open(path, encoding="utf-8") as f:
-        shown, status = _pilot_row(f.read())
-    assert shown == rv.thai_datetime_short(stamp, seconds=True), "the page must show the data date the test set"
-    assert status == ("เก่า (Stale)" if expect_notice else "ใหม่ (Fresh)")
+        page = f.read()
+    shown = _pilot_row(page)
+    assert shown.startswith("ข้อมูลที่ใช้คำนวณ Forecast รอบ ") and f"ดึงเมื่อ {rv.thai_date_short(stamp)}" in shown, "the page must show the data date the test set"
+    assert "Fresh" not in shown and "Stale" not in shown and "ยอดขายจริงล่าสุดดูที่แท็บ Trend" in shown
+    table = page.split('id="page-data-line"')[1].split("</details>")[0]
+    assert "Fresh" not in table and "Stale" not in table and 'href="../index.html#trend"' in table
 
 
 # ------------------------------------------------------------------ inventory page (static text and data)
@@ -481,20 +482,20 @@ def test_operation_plan_page_numbers_dates_and_items_follow_their_sources():
     """The plan page is built twice from fixture plans that differ in one source each (stock pull time, forecast run date, first month, opening stock,
     backlog, item codes). Every figure, date and item code in its text must change with its source; a typed value would render the same twice."""
     import re as _re
-    from test_operation_plan_page_builder import _plan
+    from test_operation_plan_page_builder import _plan, _labels
     import build_operation_plan_page as bp
     im, dm, meta = _plan()
-    base = bp.render(bp.compute_values(im, dm, meta, {}, "2026-10-02", ["PEM101", "PEM107"]))
+    base = bp.render(bp.compute_values(im, dm, meta, {}, "2026-10-02", ["PEM101", "PEM107"], labels=_labels(meta, "2026-10-02")))
     im2, dm2, meta2 = _plan(extra107={"Z9": 400.0, "Y9": 100.0, "X9": 30.0}, refill101=True)
     im2 = im2.copy()
     im2["month"] = im2["month"].map({"2026-10": "2027-02", "2026-11": "2027-03", "2026-12": "2027-04"})
     dm2 = dm2.copy()
     dm2["month"] = dm2["month"].map({"2026-10": "2027-02", "2026-11": "2027-03", "2026-12": "2027-04"})
-    meta2 = dict(meta2, months=["2027-02", "2027-03", "2027-04"], stock_pull={"pulled_at_local": "2027-01-15 17:45:10"})
-    pert = bp.render(bp.compute_values(im2, dm2, meta2, {}, "2027-01-04", ["PEM101", "PEM107"]))
+    meta2 = dict(meta2, months=["2027-02", "2027-03", "2027-04"], stock_pull={"pulled_at_local": "2027-01-15 17:45:10"}, backlog_pull={"pulled_at_local": "2027-01-15 17:45:10"})
+    pert = bp.render(bp.compute_values(im2, dm2, meta2, {}, "2027-01-04", ["PEM101", "PEM107"], labels=_labels(meta2, "2027-01-04")))
     lines = lambda page: _re.findall(r'<p class="note-line">(.*?)</p>', page)
     assert "6 ต.ค. 69 08:00" in base and "15 ม.ค. 70 17:45" in pert and "6 ต.ค. 69" not in pert
-    assert "Forecast = ยอดขายที่ระบบคาดการณ์ · รอบ Forecast รันเมื่อ ต.ค. 69" in base and "Forecast = ยอดขายที่ระบบคาดการณ์ · รอบ Forecast รันเมื่อ ม.ค. 70" in pert
+    assert "ข้อมูลรอบ Forecast ต.ค. 69 · ดึงเมื่อ" in base and "ข้อมูลรอบ Forecast ม.ค. 70 · ดึงเมื่อ" in pert
     lb, lp = lines(base), lines(pert)
     assert lb[0].startswith("ต.ค. 69 PEM101") and lp[0].startswith("ก.พ. 70 PEM101")
     assert "A7" in lb[1] and "Z9" in lp[1] and "Z9" not in lb[1] and "A7" not in lp[1]
@@ -535,10 +536,16 @@ def _material_frames(n_months, today, pulled, warehouses, divisions, open_used, 
 
 def test_material_plan_page_text_values_follow_their_sources():
     import build_material_plan_page as bm
-    a = bm.render(bm.compute_values(*_material_frames(5, "2026-10-06", "2026-10-06 07:30:00", ["WH21", "WH22"], ["PEM101", "PEM103"], True, 50.0, 20.0, "2026-09-11"), 30))
-    b = bm.render(bm.compute_values(*_material_frames(3, "2027-01-04", "2027-01-15 17:45:10", ["WH90"], ["CI101"], False, 77.0, 33.0, "2027-01-20"), 45))
+    fa = _material_frames(5, "2026-10-06", "2026-10-06 07:30:00", ["WH21", "WH22"], ["PEM101", "PEM103"], True, 50.0, 20.0, "2026-09-11")
+    fb = _material_frames(3, "2027-01-04", "2027-01-15 17:45:10", ["WH90"], ["CI101"], False, 77.0, 33.0, "2027-01-20")
+    la = bm.page_labels(rv.PROJECT_ROOT, fa[2], {"built_at": "2026-10-06T08:00:00"}, "2026-10-06")
+    lb = bm.page_labels(rv.PROJECT_ROOT, fb[2], {"built_at": "2027-01-04T09:30:00"}, "2027-01-04")
+    a = bm.render(dict(bm.compute_values(*fa, 30), labels=la))
+    b = bm.render(dict(bm.compute_values(*fb, 45), labels=lb))
     assert "แผนวัตถุดิบ 5 เดือน" in a and "แผนวัตถุดิบ 3 เดือน" in b
-    assert "จาก Production Plan รอบ ต.ค. 69 · stock วัตถุดิบดึงเมื่อ 6 ต.ค. 69 07:30" in a and "จาก Production Plan รอบ ม.ค. 70 · stock วัตถุดิบดึงเมื่อ 15 ม.ค. 70 17:45" in b
+    assert "จาก Production Plan ที่สร้างเมื่อ 6 ต.ค. 69 08:00 · <span" in a and "stock วัตถุดิบและใบสั่งซื้อที่ค้างรับดึงเมื่อ 6 ต.ค. 69 07:30 · <span" in a
+    assert "จาก Production Plan ที่สร้างเมื่อ 4 ม.ค. 70 09:30 · <span" in b and "stock วัตถุดิบและใบสั่งซื้อที่ค้างรับดึงเมื่อ 15 ม.ค. 70 17:45 · <span" in b
+    assert "นับ ณ 6 ต.ค. 69" in a and "นับ ณ 4 ม.ค. 70" in b
     assert "stock วัตถุดิบนับจากคลัง WH21, WH22" in a and "stock วัตถุดิบนับจากคลัง WH90" in b
     assert 'id="divisions-covered">ฝ่ายที่รวมในแผนนี้: PEM101, PEM103<' in a and 'id="divisions-covered">ฝ่ายที่รวมในแผนนี้: CI101<' in b
     assert "นับของที่สั่งแล้วรอรับตามวันที่คาดว่าจะได้" in a and "ยังไม่นับของที่สั่งแล้วรอรับ" in b
@@ -562,8 +569,8 @@ def test_new_sales_report_lines_and_tables_follow_their_sources(two_builds):
     b, p = base.sales_html, pert.sales_html
     # the round, the last month of the sales used and the build time come from the vintage and the clock
     fb, fp = _first(r'id="freshness-line">(.*?)</span>', b), _first(r'id="freshness-line">(.*?)</span>', p)
-    assert fb != fp and fp.startswith("Forecast = ยอดขายที่ระบบคาดการณ์ · รอบ Forecast รันเมื่อ ม.ค. 70 · ใช้ยอดขายถึง พ.ย. 69 · หน้าสร้างเมื่อ ")
-    assert re.fullmatch(r"Forecast = ยอดขายที่ระบบคาดการณ์ · รอบ Forecast รันเมื่อ \S+ \d\d · ใช้ยอดขายถึง \S+ \d\d · หน้าสร้างเมื่อ \d{1,2} \S+ \d\d \d\d:\d\d", fb)
+    assert fb != fp and fp.startswith("Forecast = ยอดขายที่ระบบคาดการณ์ · ข้อมูลรอบ Forecast ม.ค. 70 · ใช้ยอดขายถึง พ.ย. 69 · หน้าสร้างเมื่อ ")
+    assert re.fullmatch(r"Forecast = ยอดขายที่ระบบคาดการณ์ · ข้อมูลรอบ Forecast \S+ \d\d · ใช้ยอดขายถึง \S+ \d\d · หน้าสร้างเมื่อ \d{1,2} \S+ \d\d \d\d:\d\d", fb)
     # the fit window, the forecast months
     rb, rp = _first(r'id="fit-range-line">(.*?)</td>', b), _first(r'id="fit-range-line">(.*?)</td>', p)
     assert rb != rp and rp == "ยอดขายที่ใช้คำนวณ Forecast พ.ค. 67 ถึง พ.ย. 69"

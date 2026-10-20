@@ -77,15 +77,20 @@ def _plan(extra107=None, refill101=True, capacity=(1000.0, 100.0)):
                           "share_of_capacity": total / cap, "above_capacity": total > cap, "load_not_counted": 0.0})
     first = im[im["month"] == MONTHS[0]]
     per = lambda mask: {d: int(((first["division"] == d) & mask).sum()) for d in ("PEM101", "PEM107")}
-    meta = {"months": MONTHS, "stock_pull": {"pulled_at_local": "2026-10-06 08:00:40"}, "vintage_id": 2,
+    meta = {"months": MONTHS, "stock_pull": {"pulled_at_local": "2026-10-06 08:00:40"}, "backlog_pull": {"pulled_at_local": "2026-10-06 08:00:40"}, "capacity_range": {"first_date": "2023-01-03", "last_date": "2026-10-02"}, "vintage_id": 2,
             "counts": {"stock_items_by_division": per(first["class"] == "stock_policy"), "no_forecast_items_by_division": per(first["status_category"] != "forecast"),
                        "no_production_items_by_division": per(~first["counted"])}}
     return im, pd.DataFrame(drows, columns=op.DIVISION_MONTH_COLUMNS), meta
 
 
+def _labels(meta, run_date="2026-10-02", master=None):
+    """The page's dated labels from the real config (page_timestamps) and the plan's meta."""
+    return bp.page_labels(PROJECT_ROOT, meta, master, run_date)
+
+
 def _values(**kw):
     im, dm, meta = _plan(**{k: v for k, v in kw.items() if k in ("extra107", "refill101", "capacity")})
-    return bp.compute_values(im, dm, meta, {"S1": "Name S1"}, kw.get("run_date", "2026-10-02"), ["PEM101", "PEM107"])
+    return bp.compute_values(im, dm, meta, {"S1": "Name S1"}, kw.get("run_date", "2026-10-02"), ["PEM101", "PEM107"], labels=_labels(meta, kw.get("run_date", "2026-10-02")))
 
 
 # ------------------------------------------------------------------ the split
@@ -197,7 +202,10 @@ def test_the_heading_months_and_the_data_line_come_from_the_plan_not_from_typing
     v = _values()
     page = bp.render(v)
     assert f"Production Plan {len(MONTHS)} เดือน · ทุกฝ่าย" in page and "PEM101 และ PEM107" not in page
-    assert f"ข้อมูล stock จาก DB (Cube_Inventory_Exact) ดึงเมื่อ {v['pull_time']} · Forecast = ยอดขายที่ระบบคาดการณ์ · รอบ Forecast รันเมื่อ {v['forecast_run_month']}" in page
+    facts = bp.rv.model_round_facts("2026-10-02")
+    assert "ข้อมูล stock จาก DB (Cube_Inventory_Exact) · Forecast = ยอดขายที่ระบบคาดการณ์ · <span" in page and f"stock และออเดอร์ที่รับแล้วดึงเมื่อ {v['pull_time']} · <span" in page
+    assert f"ข้อมูลรอบ Forecast {facts['round']} · ดึงเมื่อ {facts['pulled']}" in page and "Forecast รันเมื่อ" not in page
+    assert "Historical peak คิดจากประวัติผลิต 3 ม.ค. 66 ถึง 2 ต.ค. 69" in page and 'data-pulled="2026-10-02"' in page and 'data-pulled="2026-10-06"' in page
     im, dm, meta = _plan()
     meta4 = dict(meta, months=MONTHS)
     assert "6 เดือน" not in page
@@ -247,7 +255,7 @@ def _plan_all():
                           "above_capacity": bool(cap is not None and total > cap), "load_not_counted": 0.0})
     first = im[im["month"] == MONTHS[0]]
     per = lambda mask: {d: int(((first["division"] == d) & mask).sum()) for d in SIX}
-    meta = {"months": MONTHS, "stock_pull": {"pulled_at_local": "2026-10-06 08:00:40"}, "vintage_id": 2,
+    meta = {"months": MONTHS, "stock_pull": {"pulled_at_local": "2026-10-06 08:00:40"}, "backlog_pull": {"pulled_at_local": "2026-10-06 08:00:40"}, "capacity_range": {"first_date": "2023-01-03", "last_date": "2026-10-02"}, "vintage_id": 2,
             "counts": {"stock_items_by_division": per(first["class"] == "stock_policy"), "no_forecast_items_by_division": per(first["status_category"] != "forecast"),
                        "no_production_items_by_division": per(~first["counted"]),
                        "never_sold_items_by_division": {d: (6 if d == "PEM101" else 0) for d in SIX}}}
@@ -479,7 +487,11 @@ def test_the_new_page_shows_heading_data_line_summary_flag_lines_and_item_table(
     edge.open(site + "/forecast/operation_plan.html")
     assert _wait(edge, "document.querySelectorAll('#item-table-body tr').length > 0")
     assert edge.ev("document.getElementById('page-title').innerText") == f"Production Plan {v['n_months']} เดือน · ทุกฝ่าย"
-    assert edge.ev("document.getElementById('data-line').innerText") == f"ข้อมูล stock จาก DB (Cube_Inventory_Exact) ดึงเมื่อ {v['pull_time']} · Forecast = ยอดขายที่ระบบคาดการณ์ · รอบ Forecast รันเมื่อ {v['forecast_run_month']}"
+    line = edge.ev("document.getElementById('data-line').innerText")
+    assert line.startswith("ข้อมูล stock จาก DB (Cube_Inventory_Exact) · Forecast = ยอดขายที่ระบบคาดการณ์ · stock และออเดอร์ที่รับแล้วดึงเมื่อ " + v["pull_time"] + " · ")
+    after_round = line.split("ข้อมูลรอบ Forecast")[1]
+    assert ("ใหม่ (Fresh)" in line) != ("เก่า (Stale)" in line) and "Fresh" not in after_round and "Stale" not in after_round     # the model round carries no status
+    assert edge.ev("document.getElementById('peak-line').innerText").startswith("Historical peak คิดจากประวัติผลิต ")
     heads = edge.ev("[...document.querySelectorAll('#summary-PEM101 thead th')].map(t=>t.innerText.replace('รวมทุกช่องทาง','').trim())")
     assert heads == ["เดือน", "Demand-driven (ผลิตตาม Forecast หรือออเดอร์ แล้วแต่อันไหนมากกว่า)", "Build to Max (ผลิตเติม stock ให้ถึง Max)", "ผลิตตามสั่ง (MTO: Make to Order)", "รวม", "เทียบกับ Historical peak (ยอดผลิตเสร็จสูงสุดต่อเดือนในอดีต ไม่ใช่กำลังผลิตเต็มที่)"]
     for d in v["divisions"]:
@@ -616,7 +628,9 @@ def test_the_material_plan_page_shows_its_approved_text_sections_and_tables(edge
     edge.open(site + "/forecast/material_plan.html")
     assert _wait(edge, "document.querySelectorAll('#material-table tbody tr').length > 0")
     assert edge.ev("document.getElementById('page-title').innerText") == f"แผนวัตถุดิบ {v['n_months']} เดือน"
-    assert edge.ev("document.getElementById('data-line').innerText") == f"จาก Production Plan รอบ {v['plan_month']} · stock วัตถุดิบดึงเมื่อ {v['pull_time']}"
+    line = edge.ev("document.getElementById('data-line').innerText")
+    assert line.startswith("จาก Production Plan ที่สร้างเมื่อ ") and f"stock วัตถุดิบและใบสั่งซื้อที่ค้างรับดึงเมื่อ {v['pull_time']} · " in line and ("ใหม่ (Fresh)" in line or "เก่า (Stale)" in line)
+    assert v["labels"]["count_date"] in edge.ev("document.getElementById('late-summary').innerText")
     n = v["n_days"]
     assert n == 30
     assert edge.ev("document.getElementById('within-title').innerText") == f"ต้องสั่งภายใน {n} วัน"
@@ -811,10 +825,11 @@ def test_the_remark_is_shown_next_to_each_missing_code_and_the_note_counts_them_
     im, dm, meta = _plan_all()
     codes = sorted(im["item"].unique())
     base = bp.compute_values(im, dm, meta, {}, "2026-10-02", SIX)
-    marked = bp.compute_values(im, dm, meta, {}, "2026-10-02", SIX, master={"missing": set(codes[:2]), "unchecked": {codes[2]}, "pulled_at": "9 ต.ค. 69"})
+    _master = {"missing": set(codes[:2]), "unchecked": {codes[2]}, "pulled_at": "9 ต.ค. 69", "pulled_iso": "2026-10-09"}
+    marked = bp.compute_values(im, dm, meta, {}, "2026-10-02", SIX, master=_master, labels=_labels(meta, "2026-10-02", _master))
     page = bp.render(marked)
     assert page.count('class="nomaster"') == 2 and "ไม่พบรหัสนี้ใน DB (Cube_ItemList)" in page
-    assert "2 รหัสไม่พบใน DB (Cube_ItemList) ดึงข้อมูลเมื่อ 9 ต.ค. 69" in page and "ยังไม่ได้ตรวจ 1 รหัสกับ DB (Cube_ItemList)" in page
+    assert "2 รหัสไม่พบใน DB (Cube_ItemList) ดึงข้อมูลเมื่อ 9 ต.ค. 69 · <span" in page and "ยังไม่ได้ตรวจ 1 รหัสกับ DB (Cube_ItemList)" in page
     for code in codes[:2]:
         assert re.search(r"<td>%s<span class=\"nomaster\"" % re.escape(code), page)
     assert [i["months"] for i in marked["items"]] == [i["months"] for i in base["items"]] and marked["summary"].equals(base["summary"])
@@ -873,7 +888,7 @@ def test_no_legacy_item_master_input_is_configured_and_the_remark_date_is_the_da
     pd.to_pickle({"pulled_at_local": "2026-10-15 11:48:11", "codes_requested": ["A", "B", "C", "D"], "master": pd.DataFrame({"ItemCode": ["A", "B  "]})}, str(tmp_path / "pulls" / "now.pkl"))
     pd.to_pickle({"pulled_at_local": "2026-10-09 15:39:00", "master": pd.DataFrame({"ItemCode": ["A", "B", "C", "D"]})}, str(tmp_path / "pulls" / "old.pkl"))      # an older file nobody reads
     r = bp.item_master_check(root, {"item_master_files": ["pulls/now.pkl"]}, ["A", "B", "C", "D"])
-    assert r["pulled_at"] == "15 ต.ค. 69" and r["missing"] == {"C", "D"} and r["unchecked"] == set()                  # the date of the one pull; the missing count is what that pull lacks
+    assert r["pulled_at"] == "15 ต.ค. 69" and r["pulled_iso"] == "2026-10-15" and r["missing"] == {"C", "D"} and r["unchecked"] == set()                  # the date of the one pull; the missing count is what that pull lacks
 
 
 def test_the_recorded_remark_of_the_page_equals_the_saved_item_master_pull():
@@ -887,4 +902,4 @@ def test_the_recorded_remark_of_the_page_equals_the_saved_item_master_pull():
     m = re.search(r"(\d+) รหัสไม่พบใน DB \(Cube_ItemList\) ดึงข้อมูลเมื่อ ([^<]+)<", page)
     assert m, "the page carries no missing-code note"
     pulled = str(pd.read_pickle(attributes)["pulled_at_local"])[:10]
-    assert int(m.group(1)) == len(check["missing"]) and m.group(2).strip() == check["pulled_at"] == bp.rv.thai_date_short(pulled)
+    assert int(m.group(1)) == len(check["missing"]) and m.group(2).strip().rstrip("·").strip() == check["pulled_at"] == bp.rv.thai_date_short(pulled)

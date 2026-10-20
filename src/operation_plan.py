@@ -251,6 +251,12 @@ def capacity_reference(cube_final_path: str, item_division_path: str, cfg_capaci
     return out
 
 
+def capacity_data_range(cube_final_path: str, date_column: str) -> dict:
+    """First and last date (ISO) of the production history the capacity reference (Historical peak) is computed from: the date column of the capacity file, all rows."""
+    d = pd.to_datetime(pd.read_csv(cube_final_path, usecols=[date_column])[date_column])
+    return {"first_date": str(d.min().date()), "last_date": str(d.max().date())}
+
+
 # ------------------------------------------------------------------ item classes, the week 3 inputs, the backlog's channel scope
 CLASS_FILE_COLUMNS = ["code", "division", "status_category", "class_used", "class_label", "data_inconsistent", "no_production_in_system"]
 
@@ -441,7 +447,7 @@ def build_plan(root: str = PROJECT_ROOT, today: pd.Timestamp = None, open_orders
                    "item_months_backlog_above_forecast": int(((item_month["status_category"] == "forecast") & (item_month["backlog_due"] > item_month["forecast"])).sum()),
                    "backlog_rows_after_last_month": n_backlog_after, "backlog_rows_dropped_by_channel_scope": n_dropped_channel},
         "replenishment_by_month": {m: float(by_month.get(m, 0.0)) for m in months},
-        "capacity": cap,
+        "capacity": cap, "capacity_range": capacity_data_range(path_of(root, cfg["capacity"]["cube_final_file"]), cfg["capacity"]["date_column"]),
         "open_orders": {"usable": bool(cfg["open_orders_usable"]), "counted": bool(use_open),
                         "n_rows": int(len(open_orders)) if use_open else 0},
         "assumptions": ["open production orders are not counted (Part 1 test)", "sellable warehouses are the configured assumption (phase_e1_assumptions)",

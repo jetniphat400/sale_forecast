@@ -339,7 +339,7 @@ def project(tmp_path):
     """A recorded operation plan (written by operation_plan.write_outputs), the saved week 3 pulls and a config; production quantities FG1 10, 0, 0 and FG2 0, 20, 0."""
     root = str(tmp_path)
     real = op.load_full_config(PROJECT_ROOT)
-    full = {"operation_plan": copy.deepcopy(real["operation_plan"]), "material_plan": copy.deepcopy(real["material_plan"]), "lead_time_v1": real["lead_time_v1"]}
+    full = {"operation_plan": copy.deepcopy(real["operation_plan"]), "material_plan": copy.deepcopy(real["material_plan"]), "lead_time_v1": real["lead_time_v1"], "page_timestamps": real["page_timestamps"]}
     full["material_plan"]["rm_warehouses"] = ["WH21", "WH22"]
     _write(os.path.join(root, "config", "config.yaml"), yaml.safe_dump(full))
     cols = op.ITEM_MONTH_COLUMNS
@@ -464,8 +464,9 @@ def test_the_page_text_is_the_approved_text_and_every_braced_value_comes_from_th
     page, v = _page(project)
     mm, sm, meta = mp.read_outputs(project)
     assert f"แผนวัตถุดิบ {len(meta['months'])} เดือน" in page and v["n_months"] == 3
-    assert f"จาก Production Plan รอบ {bp.thai_month(meta['operation_plan_today'][:7])} · stock วัตถุดิบดึงเมื่อ {bp.thai_datetime(meta['rm_pulled_at_local'])}" in page
-    assert "จาก Production Plan รอบ ต.ค. 69 · stock วัตถุดิบดึงเมื่อ 6 ต.ค. 69 07:30" in page
+    built = bp.thai_datetime(str(meta["operation_plan_built_at"]).replace("T", " "))
+    assert f"จาก Production Plan ที่สร้างเมื่อ {built} · <span" in page and f"stock วัตถุดิบและใบสั่งซื้อที่ค้างรับดึงเมื่อ {bp.thai_datetime(meta['rm_pulled_at_local'])} · <span" in page
+    assert "stock วัตถุดิบและใบสั่งซื้อที่ค้างรับดึงเมื่อ 6 ต.ค. 69 07:30" in page and 'data-pulled="2026-10-06"' in page
     assert "stock วัตถุดิบนับจากคลัง WH21, WH22" in page and "นับของที่สั่งแล้วรอรับตามวันที่คาดว่าจะได้" in page and "ยังไม่นับของที่สั่งแล้วรอรับ" not in page
     n = int(mp.load_config(project)["order_window_days"])
     assert n == 30 and v["n_days"] == n
@@ -729,7 +730,7 @@ def test_the_pull_stage_saves_the_inputs_and_the_class_evidence_beside_each_othe
     import contextlib
     import db
     real = op.load_full_config(PROJECT_ROOT)
-    full = {"operation_plan": copy.deepcopy(real["operation_plan"]), "material_plan": copy.deepcopy(real["material_plan"]), "lead_time_v1": real["lead_time_v1"]}
+    full = {"operation_plan": copy.deepcopy(real["operation_plan"]), "material_plan": copy.deepcopy(real["material_plan"]), "lead_time_v1": real["lead_time_v1"], "page_timestamps": real["page_timestamps"]}
     _write(os.path.join(str(tmp_path), "config", "config.yaml"), yaml.safe_dump(full))
     monkeypatch.setattr(db, "run_query", _fake_run_query([]))
     sessions = []
@@ -762,7 +763,7 @@ def test_the_pull_stage_saves_the_inputs_and_the_class_evidence_beside_each_othe
 def test_an_open_session_is_reused_and_never_nested(tmp_path, monkeypatch):
     import db
     real = op.load_full_config(PROJECT_ROOT)
-    full = {"operation_plan": copy.deepcopy(real["operation_plan"]), "material_plan": copy.deepcopy(real["material_plan"]), "lead_time_v1": real["lead_time_v1"]}
+    full = {"operation_plan": copy.deepcopy(real["operation_plan"]), "material_plan": copy.deepcopy(real["material_plan"]), "lead_time_v1": real["lead_time_v1"], "page_timestamps": real["page_timestamps"]}
     _write(os.path.join(str(tmp_path), "config", "config.yaml"), yaml.safe_dump(full))
     monkeypatch.setattr(db, "run_query", _fake_run_query([]))
     monkeypatch.setattr(db, "session", lambda: (_ for _ in ()).throw(AssertionError("a second session was opened")))
@@ -850,7 +851,7 @@ def test_the_page_says_how_many_plan_items_are_exploded_and_why_the_others_are_n
                       page.split('id="coverage-table"')[1])
     assert [(r[0], r[2], r[3]) for r in rows] == [("FG9", "PEM103", "ไม่มีบันทึกผลิตใน DB (cube_final)")]
     assert page.index('id="divisions-covered"') < page.index('id="coverage-details"') < page.index('id="within-title"')
-    assert "{" not in re.sub(r"<style.*?</style>", "", page, flags=re.S)
+    assert "{" not in re.sub(r"<style.*?</style>|<script.*?</script>", "", page, flags=re.S)
 
 
 def test_the_divisions_without_production_each_get_their_line_and_are_not_in_the_list_of_included_divisions(project):

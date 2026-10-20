@@ -975,8 +975,8 @@ function renderCurveTarget(divisionData) {{
   applyCurveTarget(p1.not_late_pct);
 }}
 
-// Freshness by pull cadence (Prompt 29, METRICS.md Sec.26): a monthly source is old when its pull date is before the latest monthly run day on or before the build date
-// (DATA.freshness.monthly_cutoff, fixed at build); a daily source is old when its date is before the previous weekday of the day it is read against.
+// Labels (METRICS.md Sec.26, Prompt 49): a DATA label (stock, reserved, the PEM107 alert) carries a status judged against the day the page is read: old when its date is before the
+// previous weekday (holidays not modelled). A MODEL-ROUND label (the sales the forecast round was fitted on) names the round and its pull date and has no status.
 function ymdOf(s) {{
   const m = /^(\\d{{4}}-\\d{{2}}-\\d{{2}})/.exec(String(s || ''));
   return m ? m[1] : null;
@@ -991,12 +991,18 @@ function prevWeekday(iso, back) {{
   }}
   return d.toISOString().slice(0, 10);
 }}
-function oldCutoff(cadence, pulled, today) {{
-  // The cutoff date (ISO) when a source of this cadence pulled on `pulled` is old on `today`, '' when it is fresh or a date is missing.
-  const p = ymdOf(pulled), t = ymdOf(today);
-  if (!p || !t) return '';
-  const cut = cadence === 'monthly' ? DATA.freshness.monthly_cutoff : prevWeekday(t, DATA.freshness.daily_weekdays_back);
-  return p < cut ? cut : '';
+function dataStatus(pulled) {{
+  // The approved status text of a DATA label dated `pulled`, against the viewer's today; '' when the date is missing.
+  const p = ymdOf(pulled);
+  if (!p) return '';
+  const d = new Date();
+  const today = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  const txt = DATA.freshness.text;
+  return p < prevWeekday(today, DATA.freshness.daily_weekdays_back)
+    ? ' · <span class="data-status" style="color:#c0392b">&#9888; ' + txt.data_stale + '</span>' : ' · <span class="data-status">' + txt.data_fresh + '</span>';
+}}
+function modelRoundText(pulled) {{
+  return DATA.freshness.text.model_round.replace('{{round}}', DATA.model_round.round).replace('{{pulled}}', thaiDateShort(pulled));
 }}
 function parseYmdHm(s) {{
   // Parses 'YYYY-MM-DD HH:MM[:SS]' (this machine's own clock, ICT/UTC+7 -- confirmed this task
@@ -1060,11 +1066,9 @@ function renderPem107Alert(division) {{
     tbody.appendChild(tr);
   }}
 
-  // freshness by pull cadence (config page_timestamps): the alert is pulled by the monthly job, so it is old when it was pulled before the latest monthly round
-  const alertCut = oldCutoff(DATA.freshness.cadence.pem107_alert, a.data_pulled_at, DATA.page_built_at);
-  const alertStale = alertCut ? ' <span class="note-box" style="display:inline;padding:2px 8px;">&#9888; ข้อมูลเก่า ดึงก่อนรอบดึงรายเดือนล่าสุด (' + thaiDateShort(alertCut) + ')</span>' : '';
+  // DATA label: the alert's own pull time and its status against the day the page is read
   document.getElementById('pem107-alert-source').innerHTML =
-    `ข้อมูลดึงเมื่อ ${{thaiDateTime(a.data_pulled_at, true)}}` + alertStale +
+    `ข้อมูลดึงเมื่อ ${{thaiDateTime(a.data_pulled_at, true)}}` + dataStatus(a.data_pulled_at) +
     htmlComment('source: ' + a.source.pricelist + ' · ' + a.source.delivery + ' · ' + a.source.metric);
   const lbl = a.split_label;
   document.getElementById('pem107-alert-limitations').innerHTML =
@@ -1086,16 +1090,11 @@ function onDivisionChange() {{
   noMinMax.textContent = divisionData.no_min_max_line || '';
   noMinMax.style.display = divisionData.no_min_max_line ? '' : 'none';
   renderPem107Alert(currentDivision);
-  let staleNote = '';
-  const monthlyCut = oldCutoff(DATA.freshness.cadence.pilot_sales, divisionData.snapshot_pull_date, DATA.page_built_at);
-  if (monthlyCut) {{
-    staleNote = ' <span class="note-box" style="display:inline;padding:2px 8px;">&#9888; ข้อมูลเก่า ดึงก่อนรอบดึงรายเดือนล่าสุด (' + thaiDateShort(monthlyCut) + ')</span>';
-  }}
   // A trailing "(live pull, ...)" explanation stays off screen, in an HTML comment.
   const pullShown = String(divisionData.snapshot_pull_date).split(' (')[0];
   const pullNote = String(divisionData.snapshot_pull_date).slice(pullShown.length).trim();
   document.getElementById('snapshot-note').innerHTML =
-    htmlComment('data_pulled_at') + '<b>ข้อมูลดึงเมื่อ:</b> ' + thaiDateTime(pullShown, true) + ' ICT (UTC+7)' + (pullNote ? htmlComment(pullNote) : '') + staleNote;
+    htmlComment('data_pulled_at; MODEL-ROUND label: ' + thaiDateTime(pullShown, true) + ' ICT (UTC+7)') + modelRoundText(pullShown) + (pullNote ? htmlComment(pullNote) : '');
   renderWarehouseChecklist(divisionData);
   renderNoPolicyTable(divisionData);
   renderCurveTarget(divisionData);
@@ -1165,20 +1164,16 @@ function renderStockLabels() {{
   const el = document.getElementById('stock-labels');
   el.style.display = '';
   if (!STOCK_OK) {{ el.textContent = STOCK_FAIL_MSG; return; }}
-  function stale(t, cadence) {{
-    const cut = oldCutoff(cadence, t, STOCK.pull_time);
-    return cut ? ' <span style="color:#c0392b">&#9888; ข้อมูลเก่า ดึงก่อนวันทำการก่อนหน้า (' + thaiDateShort(cut) + ')</span>' : '';
-  }}
   el.innerHTML =
-    '<span id="stock-label-stock">ข้อมูล stock ใน DB (Cube_Inventory_Exact) ณ ' + thaiDateTime(STOCK.stock_source_load_time) + '</span>' + stale(STOCK.stock_source_load_time, DATA.freshness.cadence.stock) + '<br>' +
+    '<span id="stock-label-stock">ข้อมูล stock ใน DB (Cube_Inventory_Exact) ณ ' + thaiDateTime(STOCK.stock_source_load_time) + '</span>' + dataStatus(STOCK.stock_source_load_time) + '<br>' +
     '<span id="stock-label-reserved">ยอดจองใน DB (Cube_CES) ณ ' + thaiDateTime(STOCK.reserved_source_load_time) + '</span>' +
-      (STOCK.reserved_source_load_time ? stale(STOCK.reserved_source_load_time, DATA.freshness.cadence.reserved) : '') + '<br>' +
+      (STOCK.reserved_source_load_time ? dataStatus(STOCK.reserved_source_load_time) : '') + '<br>' +
     '<span id="stock-label-pulled">ดึงข้อมูลเมื่อ ' + thaiDateTime(STOCK.pull_time) + '</span>';
 }}
 
 function renderDataLine() {{
-  document.getElementById('data-line').textContent =
-    'Forecast = ยอดขายที่ระบบคาดการณ์ · รอบ Forecast รันเมื่อ ' + DATA.forecast_round_label + ' · ข้อมูล stock จาก DB (Cube_Inventory_Exact) ดึงเมื่อ ' + (STOCK_OK ? thaiDateTime(STOCK.pull_time) : STOCK_UNKNOWN);
+  document.getElementById('data-line').innerHTML =
+    'Forecast = ยอดขายที่ระบบคาดการณ์ · ' + modelRoundText(DATA.model_round.pulled_iso) + ' · ข้อมูล stock จาก DB (Cube_Inventory_Exact) ดึงเมื่อ ' + (STOCK_OK ? thaiDateTime(STOCK.pull_time) + dataStatus(STOCK.pull_time) : STOCK_UNKNOWN);
   document.getElementById('scope-line').textContent = DATA.scope_line;
 }}
 

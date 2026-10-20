@@ -268,7 +268,7 @@ def test_the_three_approved_lines_are_on_the_page_with_their_values_filled():
     import reader_values as rv
     h = _tracked_sales_html()
     vf = rv.vintage_facts()
-    m = re.search(r'id="freshness-line">Forecast = ยอดขายที่ระบบคาดการณ์ · รอบ Forecast รันเมื่อ (.*?) · ใช้ยอดขายถึง (.*?) · หน้าสร้างเมื่อ (\d{1,2} \S+ \d{2} \d{2}:\d{2})</span>', h)
+    m = re.search(r'id="freshness-line">Forecast = ยอดขายที่ระบบคาดการณ์ · ข้อมูลรอบ Forecast (.*?) · ใช้ยอดขายถึง (.*?) · หน้าสร้างเมื่อ (\d{1,2} \S+ \d{2} \d{2}:\d{2})</span>', h)
     assert m, "the freshness line is missing or not in the approved shape"
     assert m.group(1) == rv.thai_month_short(vf["run_date"]) and m.group(2) == rv.thai_month_short(vf["fit_last"])
     assert f'id="fit-range-line">ยอดขายที่ใช้คำนวณ Forecast {rv.thai_month_short(vf["fit_first"])} ถึง {rv.thai_month_short(vf["fit_last"])}</td>' in h

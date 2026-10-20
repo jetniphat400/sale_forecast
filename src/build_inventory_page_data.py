@@ -584,14 +584,13 @@ STOCK_SOURCE = "stock (หน้า Min-Max และแผง stock)"
 RESERVED_SOURCE = "ยอดจอง (หน้า Min-Max และแผง stock)"
 
 
-def freshness_block(config: dict, today=None) -> dict:
-    """What the page's script needs to judge freshness by pull cadence (config page_timestamps, METRICS.md Sec.26): the cadence of each tagged source (a source config does not
-    classify stops the build), the monthly cutoff on the build date and the number of weekdays a daily source may lag."""
-    today = rv._as_date(today if today is not None else rv.date_today())
-    return {"cadence": {"pilot_sales": rv.source_cadence(config, PILOT_SALES_SOURCE), "stock": rv.source_cadence(config, STOCK_SOURCE),
-                        "reserved": rv.source_cadence(config, RESERVED_SOURCE), "pem107_alert": rv.source_cadence(config, PEM107_ALERT_SOURCE)},
-            "monthly_cutoff": rv.freshness_cutoff("monthly", today, config).isoformat(),
-            "daily_weekdays_back": int(config["page_timestamps"]["daily_weekdays_back"])}
+def freshness_block(config: dict) -> dict:
+    """What the page's script needs for its labels (config page_timestamps, METRICS.md Sec.26): the four sources it labels must be classified (an unclassified source stops the build),
+    the number of weekdays a DATA label may lag, and the approved texts. The pilot divisions' sales are MODEL-ROUND (no status); stock, reserved and the PEM107 alert are DATA."""
+    for label, expected in ((PILOT_SALES_SOURCE, "model_round"), (STOCK_SOURCE, "data"), (RESERVED_SOURCE, "data"), (PEM107_ALERT_SOURCE, "data")):
+        if rv.source_class(config, label) != expected:
+            raise rv.ReaderValueError(f"{label!r} is expected to be a {expected} source in config page_timestamps")
+    return {"daily_weekdays_back": int(config["page_timestamps"]["daily_weekdays_back"]), "text": config["page_timestamps"]["text"]}
 
 
 def apply_reader_text(data: dict) -> dict:
@@ -615,7 +614,8 @@ def apply_reader_text(data: dict) -> dict:
     ct = _build_curve_target_pem101()
     data["divisions"]["PEM101"]["curve_target"] = ct
     data["pem107_alert"] = _load_pem107_alert()
-    data["forecast_round_label"] = rv.thai_month_short(rv.vintage_facts()["run_date"])        # the round of the vintage the page uses (shared formatter)
+    data["model_round"] = rv.model_round_facts(rv.vintage_facts()["run_date"])                       # {round, pulled}: the label of the data the forecast round was fitted on
+    data["forecast_round_label"] = data["model_round"]["round"]        # the round of the vintage the page uses (shared formatter)
     # Gap between this page's monthly-prorated stock value and the recorded daily-window figure,
     # PEM101, default scenario (src/reader_values.py::pipeline_gap_pct).
     data["pipeline_gap_pct"] = rv.pipeline_gap_pct(data["divisions"]["PEM101"], data["tier_a_defaults"],

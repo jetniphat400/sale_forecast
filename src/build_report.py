@@ -782,28 +782,24 @@ def render_page(config: dict) -> str:
     freshness = gather_freshness()
     backtest_window = gather_backtest_window(primary_results, results["per_division"])
 
-    # Freshness (METRICS.md Sec.26, amended 2026-10-14): each source is judged by its own pull cadence (config page_timestamps), against the build date.
+    # Labels (METRICS.md Sec.26, amended 2026-10-20): every section of this page is MODEL-ROUND data (what the forecast round was fitted on and scored on), so each carries the
+    # round and its own pull date and no Fresh or Stale wording; the actual sales to date are on the Trend tab (config page_timestamps.text).
     page_built_at = datetime.now().strftime("%Y-%m-%d %H:%M")
-    built_dt = datetime.strptime(page_built_at, "%Y-%m-%d %H:%M")
     data_pulled_at = freshness["data_pulled_at_min"]
+    texts = config["page_timestamps"]["text"]
+    round_label = rv.thai_month_short(vf["run_date"])
+    for label in freshness["sections"]:
+        if rv.source_class(config, label) != "model_round":
+            raise ReportSourceError(f"the sales report section {label!r} is not a model-round source in config page_timestamps")
 
-    # METRICS.md Sec.26 (amended 2026-09-25, per-section staleness): "the staleness notice is
-    # evaluated per section, not from the single oldest input on the page, so one stale section
-    # never marks a whole page stale." Each section's own age against page_built_at is checked
-    # independently -- no single global is_stale flag any more.
-    stale_sections = [label for label, pulled_at in freshness["sections"].items()
-                      if rv.is_old(rv.source_cadence(config, label), pulled_at, built_dt, config)]
+    def section_text(label, value):
+        key = "sales_main" if label == "ช่วงข้อมูลหลัก" else "model_round"
+        return texts[key].format(round=round_label, pulled=rv.thai_date_short(value))
 
     freshness_rows = "".join(
-        f"<tr><td><!-- source: {freshness['section_sources'][label]} -->{html.escape(label)}</td><td>{rv.thai_datetime_short(value, seconds=len(str(value).strip()) >= 19)}</td>"
-        f"<td>{'เก่า (Stale)' if label in stale_sections else 'ใหม่ (Fresh)'}</td></tr>"
+        f"<tr><td><!-- source: {freshness['section_sources'][label]} -->{html.escape(label)}</td><td>{html.escape(section_text(label, value))}"
+        + (f' · <a id="trend-link" href="../index.html#trend">{html.escape(texts["trend_link"])}</a>' if label == "ช่วงข้อมูลหลัก" else "") + "</td></tr>"
         for label, value in freshness["sections"].items()
-    )
-    staleness_html = (
-        f"""<p class="note-box"><b>⚠ บางส่วนของหน้านี้ใช้ข้อมูลที่เก่ากว่ารอบดึงล่าสุด (ประเมินแยกทีละส่วน):</b>
-        {"; ".join(html.escape(s) for s in stale_sections)} — ส่วนอื่นของหน้านี้ที่ไม่อยู่ในรายการนี้
-        ยังคงใช้ข้อมูลที่ทันสมัย (ไม่ถือว่าทั้งหน้าเก่าเพียงเพราะส่วนใดส่วนหนึ่งเก่า)<!-- METRICS.md §26 --></p>"""
-        if stale_sections else ""
     )
     freshness_line = report["freshness_line"].format(round=rv.thai_month_short(vf["run_date"]), fit_last=rv.thai_month_short(vf["fit_last"]),
                                                      built_at=rv.thai_datetime_short(page_built_at))
@@ -813,11 +809,10 @@ def render_page(config: dict) -> str:
         --><span id="freshness-line">{html.escape(freshness_line)}</span><!-- source: src/build_report.py rv.vintage_facts()/datetime.now(), this build run --></summary>
       <h3 style="margin-top:10px">ข้อมูลแต่ละส่วนดึงเมื่อ</h3>
       <table class="report-table" style="margin-top:8px">
-        <thead><tr><th>ส่วน</th><th>ดึงเมื่อ</th><th>สถานะ</th></tr></thead>
+        <thead><tr><th>ส่วน</th><th>ข้อมูลที่ใช้</th></tr></thead>
         <tbody>{freshness_rows}</tbody>
       </table>
-    </details>
-    {staleness_html}"""
+    </details>"""
 
     report_data = embed_report_data(scope_table, biz, model_chart, results, fva, primary_results, notlate, backtest_window)
     report_data_json = json.dumps(report_data, ensure_ascii=False)

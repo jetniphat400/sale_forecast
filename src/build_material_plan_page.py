@@ -28,7 +28,6 @@ DASH = "-"
 # Approved Thai text, verbatim. {braces} are computed values.
 TEXT = {
     "heading": "แผนวัตถุดิบ {n_months} เดือน",
-    "data_line": "จาก Production Plan รอบ {plan_month} · stock วัตถุดิบดึงเมื่อ {pull_time}",
     "within_title": "ต้องสั่งภายใน {n_days} วัน",
     "within_line": "วัตถุดิบที่ต้องสั่งภายใน {n_days} วันข้างหน้า ถึงจะได้ของทันตามแผน",
     "late_title": "เลยกำหนดสั่ง (Late to order) สั่งวันนี้ของมาไม่ทันแผน",
@@ -185,6 +184,8 @@ def summary_html(v: dict, key: str, element_id: str) -> str:
     """The line under a list: all lines, the lines counted, the paid-remark lines left out of the count (and the lines waiting for a check, which are counted); every number computed."""
     c = v["summaries"][key]
     text = TEXT["summary_line"].format(all=c["all"], counted=c["counted"], paid=c["paid"]) + (TEXT["summary_pending"].format(pending=c["pending"]) if c["pending"] else "")
+    if v.get("labels") and key in ("within", "late"):         # the counts of the two lists are of the day the plan was built: the reference date shows beside them (config page_timestamps.text.late_count_date)
+        text += " · " + v["labels"]["count_date"]
     return f'<p class="note-line summary-line" id="{element_id}">{_e(text)}</p>'
 
 
@@ -225,7 +226,7 @@ def render(values: dict) -> str:
     heading = T["heading"].format(n_months=v["n_months"])
     parts = [f'<div class="notice" id="verification-notice">{_e(T["notice"])}</div>', f'<a class="back-link" href="../index.html">{_e(T["back_link"])}</a>',
              f'<h1 id="page-title">{_e(heading)}</h1>',
-             f'<p class="scope-note" id="data-line">{_e(T["data_line"].format(plan_month=v["plan_month"], pull_time=v["pull_time"]))}</p>',
+             *([f'<p class="scope-note" id="data-line">{_e(v["labels"]["plan"])} · {v["labels"]["stock"]}</p>'] if v.get("labels") else []),
              f'<p class="scope-note" id="divisions-covered">{_e(T["divisions_label"])} {_e(v["divisions"])}</p>',
              *[f'<p class="scope-note division-no-production" data-division="{_e(d)}">{_e(T["division_no_production"].format(division=d))}</p>'
                for d in (v["coverage"]["divisions_without_production"] if v["coverage"] else [])],
@@ -252,7 +253,21 @@ def render(values: dict) -> str:
                "latest order date: within the next order_window_days days (config) and already past. A material with no purchase unit in the system, or whose "
                "purchase unit differs from its BOM unit, carries a flag beside its code and a dash in place of its order quantity, order date and net requirement. Net columns are the month's own net requirement (the increase of the cumulative net requirement). -->")
     return (f'<!DOCTYPE html>\n<html lang="th">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1">\n'
-            f'<title>{_e(heading)}</title>\n<style>{CSS}{CSS_EXTRA}</style>\n</head>\n<body>\n{comment}\n<div class="wrap">\n' + "\n".join(parts) + "\n</div>\n</body>\n</html>\n")
+            f'<title>{_e(heading)}</title>\n<style>{CSS}{CSS_EXTRA}</style>\n</head>\n<body>\n{comment}\n<div class="wrap">\n' + "\n".join(parts) + "\n</div>\n"
+            + (f"<script>{v['labels']['js']}</script>\n" if v.get("labels") else "") + "</body>\n</html>\n")
+
+
+def page_labels(root: str, meta: dict, op_meta: dict, today: str) -> dict:
+    """The dated labels of the page (config page_timestamps.text): the raw-material stock and open purchase orders pull is DATA (with a status judged when the page is read), the
+    Production Plan it was built from is named by its build time, and the date the late and within-window counts are of (the day the plan was built)."""
+    config = op.load_full_config(root)
+    t = config["page_timestamps"]["text"]
+    if rv.source_class(config, "stock วัตถุดิบและใบสั่งซื้อที่ค้างรับ (แผนวัตถุดิบ)") != "data":
+        raise mp.MaterialPlanError("the raw-material stock label is expected to be a data source in config page_timestamps")
+    pulled = str(meta["rm_pulled_at_local"])
+    return {"plan": t["material_plan"].format(built=thai_datetime(str(op_meta["built_at"]).replace("T", " "))),
+            "stock": rv.data_age(pulled[:10], t["material_stock"].format(pulled=thai_datetime(pulled)), config),
+            "rm_pulled": pulled, "count_date": t["late_count_date"].format(date=rv.thai_date_short(today)), "js": rv.data_age_js(config)}
 
 
 def build_values(root: str = PROJECT_ROOT, out_dir: str = None) -> dict:
@@ -265,7 +280,9 @@ def build_values(root: str = PROJECT_ROOT, out_dir: str = None) -> dict:
         raise mp.MaterialPlanError(f"the recorded operation plan was built {op_meta['built_at']}, the material plan used the one built {meta['operation_plan_built_at']}")
     parents = set(mp.bom_component_lines(op.load_week3_inputs(root, cfg["operation_plan"])["bom_tree"])["parent"])
     coverage = mp.plan_item_coverage(im, list(op_meta["months"]), parents)
-    return compute_values(mm, sm, meta, int(cfg["order_window_days"]), coverage, product_names(root))
+    values = compute_values(mm, sm, meta, int(cfg["order_window_days"]), coverage, product_names(root))
+    values["labels"] = page_labels(root, meta, op_meta, values["today"])
+    return values
 
 
 def build_page(root: str = PROJECT_ROOT, out_dir: str = None, out_path: str = None) -> str:

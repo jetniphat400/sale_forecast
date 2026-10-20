@@ -636,6 +636,13 @@ Every dashboard page and panel displays, near its title:
   Daily: the stock and the reserved figures of the Min-Max page and of the stock panel. The two thresholds are manual values (`stale_monthly`, `stale_daily`, replacing
   `stale_days`). The build clock is the real clock. On 2026-10-14 the 2026-10-05 pull of every monthly source is fresh (the latest run day is 2026-10-05); under the 7-day rule
   the same page would have shown all seven sections as old on that day.
+- **Amended 2026-10-20 (Prompt 49): two classes of label replace the two cadences.** DATA labels (stock, backlog, raw-material stock, open purchase orders, sales actuals on the
+  Trend tab, PEM107 deliveries, the production history of the Historical peak; config `page_timestamps.data_sources`) carry a status judged against the day the page is read: old when
+  the label's date (the pull date; for the static production-history file its last data date) is before the previous weekday (`daily_weekdays_back`, 1); holidays are not modelled.
+  MODEL-ROUND labels (the data the forecast round was fitted on, the forecast, its accuracy, the Min and Max calibration; `model_round_sources`) carry no Fresh or Stale wording and
+  read "ข้อมูลรอบ Forecast {round} · ดึงเมื่อ {date}". A labelled source in neither list stops the build. The monthly cutoff and `stale_monthly` are removed. The status is re-judged
+  by a script when the page is read (`reader_values.data_age_js`); the text written at build time is the status on the build day. The late-material count states the date it is of
+  (the day the plan was built); the Historical peak states the date range of its production history.
 - The forward-test log is never refreshed or rewritten; it keeps the
   cutoff it was generated at.
 - Where a page's sections draw on inputs with different pull dates, each

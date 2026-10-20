@@ -299,21 +299,6 @@ def _cfg():
 
 
 @pytest.mark.parametrize("today,pulled,old", [
-    ("2026-10-04", "2026-09-07", False),    # before October's run day (Monday 5 October): the latest run day is 7 September (the 5th of September was a Saturday)
-    ("2026-10-04", "2026-09-06", True),
-    ("2026-10-05", "2026-10-05", False),    # on the run day, a pull of that day is fresh
-    ("2026-10-05", "2026-10-04", True),     # ... and one from the day before is old
-    ("2026-10-14", "2026-10-05", False),    # the 2026-10-05 pull is fresh all month, until the next run day
-    ("2026-11-04", "2026-10-05", False),
-    ("2026-11-05", "2026-10-05", True),     # the next run day has come and no new pull yet: old
-    ("2026-11-05", "2026-11-05", False),
-])
-def test_a_monthly_source_is_old_when_pulled_before_the_latest_run_day(today, pulled, old):
-    import reader_values as rv
-    assert rv.is_old("monthly", pulled, today, _cfg()) is old
-
-
-@pytest.mark.parametrize("today,pulled,old", [
     ("2026-10-12", "2026-10-09", False),    # Monday: the previous weekday is the Friday, a Friday pull is fresh
     ("2026-10-12", "2026-10-08", True),     # ... a Thursday pull is old
     ("2026-10-13", "2026-10-12", False),    # Tuesday: the previous weekday is Monday
@@ -321,32 +306,72 @@ def test_a_monthly_source_is_old_when_pulled_before_the_latest_run_day(today, pu
     ("2026-10-10", "2026-10-09", False),    # Saturday: the previous weekday is Friday
     ("2026-10-11", "2026-10-08", True),     # Sunday
 ])
-def test_a_daily_source_is_old_when_pulled_before_the_previous_weekday(today, pulled, old):
+def test_a_data_source_is_old_when_dated_before_the_previous_weekday(today, pulled, old):
     import reader_values as rv
-    assert rv.is_old("daily", pulled, today, _cfg()) is old
+    assert rv.data_is_stale(pulled, today, _cfg()) is old
+    assert rv.data_status_text(pulled, today, _cfg()) == _cfg()["page_timestamps"]["text"]["data_stale" if old else "data_fresh"]
 
 
-def test_every_freshness_tagged_source_is_classified_once_and_an_unclassified_one_stops_the_build():
+def test_every_labelled_source_is_classified_once_as_data_or_model_round_and_an_unclassified_one_stops_the_build():
     import reader_values as rv
     cfg = _cfg()
     pt = cfg["page_timestamps"]
-    assert not set(pt["monthly_sources"]) & set(pt["daily_sources"])
-    assert {rv.source_cadence(cfg, s) for s in pt["monthly_sources"]} == {"monthly"} and {rv.source_cadence(cfg, s) for s in pt["daily_sources"]} == {"daily"}
+    assert not set(pt["data_sources"]) & set(pt["model_round_sources"])
+    assert {rv.source_class(cfg, s) for s in pt["data_sources"]} == {"data"} and {rv.source_class(cfg, s) for s in pt["model_round_sources"]} == {"model_round"}
     with pytest.raises(rv.ReaderValueError, match="neither list"):
-        rv.source_cadence(cfg, "a new section")
-    with pytest.raises(rv.ReaderValueError, match="unknown freshness cadence"):
-        rv.freshness_cutoff("weekly", "2026-10-14", cfg)
-    # every section of the sales report is on the monthly list
-    import build_report
-    assert {"ช่วงข้อมูลหลัก", "ผลทดสอบต่อฝ่าย", "กราฟ Rolling-origin", "กราฟระยะเวลาแจ้งล่วงหน้า", "กราฟ MAE โมเดลพื้นฐาน", "กราฟส่งตรงวันพอดี", "กราฟส่งทัน"} <= set(pt["monthly_sources"])
+        rv.source_class(cfg, "a new section")
+    # the rule of Prompt 49: stock, backlog, raw-material stock, open purchase orders, Trend sales, PEM107 deliveries and the production history are DATA; what the forecast round was fitted on is MODEL-ROUND
+    assert {"stock (หน้า Min-Max และแผง stock)", "ยอดจอง (หน้า Min-Max และแผง stock)", "แจ้งเตือน PEM107 (หน้า Min-Max)", "stock และออเดอร์ที่รับแล้ว (Production Plan)",
+            "stock วัตถุดิบและใบสั่งซื้อที่ค้างรับ (แผนวัตถุดิบ)", "ยอดขายจริงล่าสุด (แท็บ Trend)", "ประวัติการผลิตของ Historical peak"} <= set(pt["data_sources"])
+    # every section of the sales report is MODEL-ROUND
+    assert {"ช่วงข้อมูลหลัก", "ผลทดสอบต่อฝ่าย", "กราฟ Rolling-origin", "กราฟระยะเวลาแจ้งล่วงหน้า", "กราฟ MAE โมเดลพื้นฐาน", "กราฟส่งตรงวันพอดี", "กราฟส่งทัน"} <= set(pt["model_round_sources"])
+
+
+def test_a_model_round_label_has_no_status_wording_and_a_data_label_has_one(monkeypatch):
+    import reader_values as rv
+    cfg = _cfg()
+    t = cfg["page_timestamps"]["text"]
+    assert "Fresh" not in t["model_round"] and "Stale" not in t["model_round"] and "Fresh" not in t["sales_main"] and "Stale" not in t["sales_main"]
+    facts = rv.model_round_facts("2026-10-05")
+    assert facts["round"] == "ต.ค. 69" and facts["pulled"] == rv.thai_date_short(facts["pulled_iso"])
+    span = rv.data_age("2026-10-02", "x", cfg, today="2026-10-05")           # Monday: the previous weekday is Friday 2026-10-02, which is not before it
+    assert 'data-pulled="2026-10-02"' in span and t["data_fresh"] in span
+    assert t["data_stale"] in rv.data_age("2026-10-01", "x", cfg, today="2026-10-05")
+    js = rv.data_age_js(cfg)
+    assert str(cfg["page_timestamps"]["daily_weekdays_back"]) in js and t["data_stale"] in js and "monthly" not in js
 
 
 def test_the_two_thresholds_are_manual_values_and_the_manual_uses_them_and_the_old_one_is_gone():
     import reader_values as rv
     cfg = _cfg()
     values = rv.manual_values(cfg)
-    assert "stale_days" not in values and values["stale_daily"] == str(cfg["page_timestamps"]["daily_weekdays_back"])
-    assert values["stale_monthly"] == rv.thai_date_short(rv.latest_run_day(rv.date_today(), int(cfg["shadow"]["monthly_run_day_of_month"])).isoformat())
+    assert "stale_days" not in values and "stale_monthly" not in values and values["stale_daily"] == str(cfg["page_timestamps"]["daily_weekdays_back"])
     manual = open(os.path.join(PROJECT_ROOT, "docs", "user_manual.md"), encoding="utf-8").read()
-    assert "{stale_monthly}" in manual and "{stale_daily}" in manual and "{stale_days}" not in manual
+    assert "{stale_monthly}" not in manual and "{stale_daily}" in manual and "{stale_days}" not in manual
     assert "staleness_threshold_days" not in cfg["page_timestamps"]
+
+
+def test_the_sales_report_numbers_do_not_depend_on_the_label_texts(tmp_path, monkeypatch):
+    """Prompt 49: the labels are the only thing the new rule changes on the sales report. Building it with other label texts changes the label block (page-data-line) and nothing else, so no figure moves."""
+    import copy
+    import re
+    import build_report
+    base = build_report.load_config()
+    changed = copy.deepcopy(base)
+    t = changed["page_timestamps"]["text"]
+    t["sales_main"], t["model_round"], t["trend_link"] = "AAA {round} {pulled}", "BBB {round} {pulled}", "CCC"
+    mask = lambda page: re.sub(r'<details class="note-box" style="margin:10px 0" id="page-data-line">.*?</details>', "@@", page, flags=re.S)
+    a = open(build_report.build_report(output_path=str(tmp_path / "a.html")), encoding="utf-8").read()
+    monkeypatch.setattr(build_report, "load_config", lambda: changed)
+    b = open(build_report.build_report(output_path=str(tmp_path / "b.html")), encoding="utf-8").read()
+    assert a != b and "AAA " in b and "CCC" in b and "AAA " not in a
+    assert mask(a).replace("@@", "") and mask(a) == mask(b)
+
+
+def test_the_historical_peak_range_is_the_first_and_last_date_of_the_production_history_file(tmp_path):
+    import operation_plan as op
+    path = tmp_path / "cube_final.csv"
+    path.write_text("itemcode,final_date,transfer_qty\nA,2023-01-03 09:07:28,5\nB,2026-10-02 17:04:08,7\nC,2024-05-01 00:00:00,1\n", encoding="utf-8")
+    assert op.capacity_data_range(str(path), "final_date") == {"first_date": "2023-01-03", "last_date": "2026-10-02"}
+    meta = op.read_outputs(PROJECT_ROOT, op.load_config(PROJECT_ROOT))[2]
+    assert set(meta["capacity_range"]) == {"first_date", "last_date"} and meta["capacity_range"]["first_date"] <= meta["capacity_range"]["last_date"]

@@ -168,7 +168,12 @@ def test_stock_panel_available_note_and_three_labels(page):
 def test_trend_note_is_first_in_the_tab_and_follows_the_data(page):
     text = open(INDEX, encoding="utf-8").read()
     omni = json.loads(_embedded_lines(text)["OMNI"][len("const OMNI = "):].rstrip(";"))
-    expected = f"ยอดนับตามวันที่รับ PO จึงไม่เท่ากับยอดในหน้าพยากรณ์ ซึ่งนับตามเดือนที่ต้องส่งของ · ข้อมูลขายใน DB (cube_Sale_APD) ถึง {omni['meta']['pull']}"
+    import yaml
+    cfg = yaml.safe_load(open(os.path.join(PROJECT_ROOT, "config", "config.yaml"), encoding="utf-8"))
+    import reader_values as rv
+    expected = cfg["page_timestamps"]["text"]["trend_note"].format(last=rv.thai_date_short(omni["meta"]["last_date"]), pulled=omni["meta"]["pull"])
+    assert omni["meta"]["data_note"] == expected and "ยอดนับตามวันที่รับ PO จึงไม่เท่ากับยอดในหน้าพยากรณ์" in expected and "ยอดจริงล่าสุดวันที่" in expected
+    assert page["trend"].lstrip().startswith(expected + " · ") and ("ใหม่ (Fresh)" in page["trend"] or "เก่า (Stale)" in page["trend"])          # a DATA label: the status is added when the page is read
     assert page["trend"].lstrip().startswith(expected), page["trend"][:200]
     assert page["trend_first"] == "trendDataNote"
     assert re.fullmatch(r"\d{1,2} \S+ \d{2}", omni["meta"]["pull"])                      # the shared Thai date format (d MMM yy)
@@ -180,8 +185,8 @@ def test_trend_note_is_first_in_the_tab_and_follows_the_data(page):
 def test_trend_values_change_when_their_sources_change(edge, tmp_path_factory):
     text = open(INDEX, encoding="utf-8", newline="").read()
     omni = json.loads(_embedded_lines(text)["OMNI"][len("const OMNI = "):].rstrip(";"))
-    pull, label = omni["meta"]["pull"], omni["meta"]["pricelist"]
-    changed = text.replace(f'"pull":"{pull}"', '"pull":"1 ม.ค. 70"', 1).replace(f'"pricelist":"{label}"', "\"pricelist\":\"Q9-2099\"", 1)
+    note, label = omni["meta"]["data_note"], omni["meta"]["pricelist"]
+    changed = text.replace(json.dumps(note, ensure_ascii=False), '"ทดสอบ ดึงเมื่อ 1 ม.ค. 70"', 1).replace(f'"pricelist":"{label}"', "\"pricelist\":\"Q9-2099\"", 1)
     assert changed != text
     site = _site(tmp_path_factory, "w3_perturbed", index_text=changed)
     server, url = _serve(site)
@@ -193,12 +198,12 @@ def test_trend_values_change_when_their_sources_change(edge, tmp_path_factory):
         pl = edge.ev("document.getElementById('trendPlLabel').textContent")
     finally:
         server.shutdown()
-    assert note.endswith("ข้อมูลขายใน DB (cube_Sale_APD) ถึง 1 ม.ค. 70") and pl == "Q9-2099", (note, pl)
+    assert note.startswith("ทดสอบ ดึงเมื่อ 1 ม.ค. 70 · ") and pl == "Q9-2099", (note, pl)
 
 
 def test_trend_note_stays_hidden_when_the_data_carry_no_pull_date(edge, tmp_path_factory):
     text = open(INDEX, encoding="utf-8", newline="").read()
-    changed = re.sub(r'"pull":"[^"]*"', '"pull":""', text, count=1)
+    changed = re.sub(r'"data_note":"[^"]*"', '"data_note":""', text, count=1)
     assert changed != text
     site = _site(tmp_path_factory, "w3_no_pull", index_text=changed)
     server, url = _serve(site)
@@ -298,12 +303,12 @@ def test_the_manual_shows_an_unresolved_placeholder_visibly_never_blank(edge, tm
     del data["manual_values"]["trend_data_through"]
     path.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
     text = _manual_text(edge, site)
-    assert "[ค่าไม่พบ: trend_data_through]" in text and "[ค่าไม่พบ: stale_monthly]" not in text
+    assert "[ค่าไม่พบ: trend_data_through]" in text and "[ค่าไม่พบ: stale_daily]" not in text
     # the file cannot be read at all: every name stays visible as unresolved
     site2 = _site(tmp_path_factory, "w3_manual_no_values")
     os.remove(site2 / "data" / "assumptions.json")
     text2 = _manual_text(edge, site2)
-    assert "[ค่าไม่พบ: stale_monthly]" in text2 and "[ค่าไม่พบ: stale_daily]" in text2 and "[ค่าไม่พบ: run_day_base]" in text2
+    assert "[ค่าไม่พบ: stale_daily]" in text2 and "[ค่าไม่พบ: run_day_base]" in text2
 
 
 def test_trend_embedded_data_is_what_the_builder_makes_from_the_saved_pull():
@@ -447,7 +452,7 @@ def _fixture_pull():
         {"itemcode": "D-4", "productName": "Switch 22 kV 600 A", "n": 1},
         {"itemcode": "F-6", "productName": "Other 5 A", "n": 1}, {"itemcode": "F-6", "productName": "Another 5 A", "n": 1},
     ])
-    totals = {"pulled_at": "2024-03-15T10:00:00", "n_rows": 8, "qty": 30.0, "sale": 1200.0}
+    totals = {"pulled_at": "2024-03-15T10:00:00", "last_date": "2024-03-14", "n_rows": 8, "qty": 30.0, "sale": 1200.0}
     return daily, names, totals, pl
 
 
@@ -564,18 +569,31 @@ def _exec_block(text: str) -> str:
 
 def _exec_visible(block: str) -> list:
     import html as _html
+    block = re.sub(r"<script.*?</script>", "", block, flags=re.S)
     t = re.sub(r"</(?:div|tr|li|p|h3|ul|table|thead|tbody)>", "\n", block)
     t = re.sub(r"</t[dh]>", " | ", t)
     return [" ".join(x.split()) for x in _html.unescape(re.sub(r"<[^>]+>", "", t)).split("\n") if x.strip()]
 
 
+def _fixed_labels(cfg: dict) -> dict:
+    """The executive tab's "ข้อมูล ณ" lines for fixed data (config page_timestamps.text): the sales line is MODEL-ROUND, the others are DATA with a status."""
+    import reader_values as rv
+    t = cfg["page_timestamps"]["text"]
+    return {"sales": t["exec_sales"].format(data_month="ส.ค. 69", round="ต.ค. 69", pulled="5 ต.ค. 69"),
+            "plan": rv.data_age("2026-10-20", t["exec_plan"].format(pulled="20 ต.ค. 69 08:00"), cfg), "peak": rv.data_age("2026-10-02", t["exec_peak"].format(first="3 ม.ค. 66", last="2 ต.ค. 69"), cfg),
+            "material": rv.data_age("2026-10-20", t["exec_material"].format(pulled="20 ต.ค. 69 09:42", date="20 ต.ค. 69"), cfg),
+            "pem107": rv.data_age("2026-10-20", t["exec_pem107"].format(pulled="20 ต.ค. 69 09:46"), cfg), "js": rv.data_age_js(cfg)}
+
+
 def _fixed_exec_data():
     """A small fixed data set: two forecast divisions and every watch-out condition off."""
+    import build_trend_tab as _bt
+    cfg = _bt.load_config()
     rows = [{"division": "AAA", "ytd": 100e6, "last_ytd": 80e6, "change": 0.25, "forecast_remaining": 50e6, "projection": 150e6, "relative_mae": 0.6},
             {"division": "BBB", "ytd": 30e6, "last_ytd": 40e6, "change": -0.25, "forecast_remaining": 10e6, "projection": 40e6, "relative_mae": 1.2}]
     tot = {"ytd": 130e6, "last_ytd": 120e6, "forecast_remaining": 60e6, "projection": 190e6, "change": 130 / 120 - 1}
     return {"data_month": "2026-08", "data_month_label": "ส.ค. 69", "year": 2026, "year_be": 69, "remaining_months": ["2026-09"], "rows": rows, "total": tot, "n_forecast_divisions": 2,
-            "n_beat_naive": 1, "thresholds": {"good": 0.7, "pass": 1.0, "limit": 4.0}, "watch": [], "pending": [{"topic": "หัวข้อ", "to_decide": "ต้องตัดสินอะไร"}],
+            "n_beat_naive": 1, "thresholds": {"good": 0.7, "pass": 1.0, "limit": 4.0}, "watch": [], "pending": [{"topic": "หัวข้อ", "to_decide": "ต้องตัดสินอะไร"}], "labels": _fixed_labels(cfg),
             "monthly": {"actual": {f"2026-{m:02d}": v * 1e6 for m, v in zip(range(1, 9), [10, 12, 14, 16, 18, 20, 20, 20])},
                         "last_year": {f"2025-{m:02d}": v * 1e6 for m, v in zip(range(1, 13), [15] * 8 + [10] * 4)}, "projection": {"2026-09": 60e6}}}
 
@@ -631,7 +649,7 @@ def test_exec_render_handles_a_division_with_no_relative_mae_and_a_data_month_ot
     block = bx.exec_render(d, cfg)
     shown = _chart_values(block)
     assert len(shown["actual"]) == 10 and shown["actual"][-1] == "ต.ค. 69: 10.0 ล้านบาท" and shown["proj"] == ["พ.ย. 69: 15.0 ล้านบาท", "ธ.ค. 69: 15.0 ล้านบาท"]
-    assert shown["bars"] == ["0.60"] and "PEM104 ไม่ได้ทำ Forecast (ผลิตตามสั่งทั้งหมด)" in block and "{" not in block and "}" not in block
+    assert shown["bars"] == ["0.60"] and "PEM104 ไม่ได้ทำ Forecast (ผลิตตามสั่งทั้งหมด)" in block and "{" not in re.sub(r"<script.*?</script>", "", block, flags=re.S) and "}" not in re.sub(r"<script.*?</script>", "", block, flags=re.S)
     assert 'class="ec-bar-pass"' in block and 'class="ec-bar-above"' not in block                      # the one value (0.60) is below the pass threshold of 1.0
     d["monthly"]["projection"] = {}                                                                     # the data month is December: nothing remaining, no dashed line, no error
     d.update(data_month="2026-12", remaining_months=[])
@@ -674,8 +692,8 @@ def test_each_watch_out_line_appears_only_when_its_condition_holds():
     assert none == []                                                                                    # at the limit or inside it: no line; no plan line, no late material, no alert
     low = bx.exec_watch([{"group": "G", "value": -6.0, "points": [("2026-01", -3), ("2026-02", -3), ("2026-03", -3), ("2026-04", -3), ("2026-05", -3), ("2026-06", -3)]}], 4.0, [], 0, None)          # six points below the actual: -6.0, still -5.0 without any one point: no suffix
     high = bx.exec_watch([{"group": "H", "value": 6.7, "points": [("2026-01", 1), ("2026-02", -1), ("2026-03", 1), ("2026-04", -1), ("2026-05", 1), ("2026-06", -1), ("2026-07", 1), ("2026-08", 30)]}], 4.0, [], 0, None)   # 5 of 8 above, 6.7; without the 30 it is 1.0, within the limit: suffix for the 8th month
-    plan = bx.exec_watch([], 4.0, [{"division": "D1", "month": "ต.ค. 69", "pct": "119.9%"}], 0, None)
-    mat = bx.exec_watch([], 4.0, [], 584, None)
+    plan = bx.exec_watch([], 4.0, [{"division": "D1", "month": "ต.ค. 69", "pct": "119.9%", "first": "3 ม.ค. 66", "last": "2 ต.ค. 69"}], 0, None)
+    mat = bx.exec_watch([], 4.0, [], 584, None, "6 ต.ค. 69")
     alert = bx.exec_watch([], 4.0, [], 0, {"since": "พ.ค. 69", "pct": "57.7%"})
     assert [w["kind"] for w in low + high + plan + mat + alert] == ["low", "high", "plan", "material", "pem107"]
     d = _fixed_exec_data()
@@ -684,8 +702,8 @@ def test_each_watch_out_line_appears_only_when_its_condition_holds():
     assert "G Forecast ต่ำกว่าจริง 6 จาก 6 จุดวัด (Tracking Signal -6.0) คาดการณ์ทั้งปีของกลุ่มนี้อาจต่ำกว่าที่จะเกิดจริง" in lines and (low[0]["k"], low[0]["n"], low[0]["month"]) == (6, 6, None)
     assert "H Forecast สูงกว่าจริง 5 จาก 8 จุดวัด (Tracking Signal 6.7) ส่วนใหญ่มาจากเดือน ส.ค. 69 เดือนเดียว คาดการณ์ทั้งปีของกลุ่มนี้อาจสูงกว่าที่จะเกิดจริง" in lines and (high[0]["k"], high[0]["n"], high[0]["month"]) == (5, 8, "2026-08")
     assert not any("ต่อเนื่อง" in x for x in lines)
-    assert "แผนผลิต D1 เดือน ต.ค. 69 สูงกว่า Historical peak (ยอดผลิตเสร็จสูงสุดต่อเดือนในอดีต ไม่ใช่กำลังผลิตเต็มที่) (119.9%)" in lines
-    assert "วัตถุดิบ 584 รายการเลยกำหนดสั่ง (Late to order) สั่งวันนี้ของมาไม่ทันแผน" in lines
+    assert "แผนผลิต D1 เดือน ต.ค. 69 สูงกว่า Historical peak (ยอดผลิตเสร็จสูงสุดต่อเดือนในอดีต ไม่ใช่กำลังผลิตเต็มที่) (119.9%) คิดจากประวัติผลิต 3 ม.ค. 66 ถึง 2 ต.ค. 69" in lines
+    assert "วัตถุดิบ 584 รายการเลยกำหนดสั่ง (Late to order) สั่งวันนี้ของมาไม่ทันแผน (นับ ณ 6 ต.ค. 69)" in lines
     assert "PEM107 ส่งของช่องทาง Omni ส่งทัน (Not-late: ส่งไม่ช้ากว่าวันนัด) น้อยลงตั้งแต่ พ.ค. 69 (57.7%)" in lines
     assert "5 เรื่อง" in "\n".join(lines)                                                                 # card 4 counts the lines shown
     assert not any("Forecast ต่ำกว่าจริง" in x for x in _exec_visible(bx.exec_render(dict(d, watch=high), cfg)))
@@ -794,7 +812,7 @@ def test_the_tab_holds_no_customer_or_person_identifier_and_no_revenue_target():
     assert "เป้า (Revenue)" not in cfg["exec_summary"]["text"]["columns"] and "ถึงเป้า" not in cfg["exec_summary"]["text"]["columns"]
     block = _exec_block(open(INDEX, encoding="utf-8").read())
     assert not re.search(r"CS\d{4,}|CTR-\d{4}|Co\.,|Ltd|บริษัท .* จำกัด|@", block)
-    assert "{" not in block and "}" not in block
+    assert "{" not in re.sub(r"<script.*?</script>", "", block, flags=re.S) and "}" not in re.sub(r"<script.*?</script>", "", block, flags=re.S)
     for gone in ("ถึงเป้า", "เป้า (Revenue)", "เป้ารวมสินค้า Omni", "ไม่พบเป้า", "PEMC"):
         assert gone not in block, gone
 
@@ -979,9 +997,9 @@ def test_prompt_30_source_wording_the_min_max_settings_the_stock_pull_line_and_t
     visible = lambda t: re.sub(r"<!--.*?-->", "", t, flags=re.S)
     # the Min-Max page: the Min and Max settings are named as DB (Cube_Inventory_Exact), the old "ตั้งในระบบตอนนี้" is gone from what is shown
     assert "Min ค่าที่ตั้งใน DB (Cube_Inventory_Exact)" in visible(inv) and "ในระบบตอนนี้" not in visible(inv) and "ระบบตอนนี้" not in visible(plan)
-    assert "ข้อมูล stock จาก DB (Cube_Inventory_Exact) ดึงเมื่อ" in inv and "ข้อมูล stock จาก DB (Cube_Inventory_Exact) ดึงเมื่อ" in plan
+    assert "ข้อมูล stock จาก DB (Cube_Inventory_Exact) ดึงเมื่อ" in inv and "ข้อมูล stock จาก DB (Cube_Inventory_Exact) · Forecast" in plan and "stock และออเดอร์ที่รับแล้วดึงเมื่อ" in plan
     assert "ข้อมูล stock ดึงเมื่อ" not in visible(inv) and "ข้อมูล stock ดึงเมื่อ" not in visible(plan)
-    assert "· ข้อมูลขายใน DB (cube_Sale_APD) ถึง ' + meta.pull" in idx and "ข้อมูลถึง " not in visible(_outside_the_original_tab(idx))
+    assert "ข้อมูลขายใน DB (cube_Sale_APD) มียอดจริงล่าสุดวันที่" in idx and "ข้อมูลถึง " not in visible(_outside_the_original_tab(idx))
     assert manual.count("ข้อมูลขายใน DB (cube_Sale_APD) ถึง {trend_data_through}") == 2 and "ข้อมูลถึง {" not in manual
 
 

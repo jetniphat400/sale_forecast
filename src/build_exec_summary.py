@@ -63,7 +63,7 @@ def exec_ts_counts(points: list, limit: float) -> dict:
     return {"k": k, "n": len(errors), "month": points[big][0] if rest is not None and abs(rest) <= limit else None}
 
 
-def exec_watch(ts_rows: list, limit: float, plan_above: list, n_late: int, pem107_alert) -> list:
+def exec_watch(ts_rows: list, limit: float, plan_above: list, n_late: int, pem107_alert, late_date: str = "") -> list:
     """The lines of "เรื่องที่ต้องระวัง", each only while its condition holds: a group whose Tracking Signal is beyond plus or minus `limit` (below: forecast below the actual), each
     division-month of the plan above the historical peak, materials already late (n_late above 0), the PEM107 not-late alert (a dict with `since` and `pct`, or None)."""
     watch = []
@@ -74,7 +74,7 @@ def exec_watch(ts_rows: list, limit: float, plan_above: list, n_late: int, pem10
     for r in plan_above:
         watch.append({"kind": "plan", **r})
     if n_late > 0:
-        watch.append({"kind": "material", "n": n_late})
+        watch.append({"kind": "material", "n": n_late, "date": late_date})
     if pem107_alert:
         watch.append({"kind": "pem107", **pem107_alert})
     return watch
@@ -146,16 +146,29 @@ def exec_data(root: str = PROJECT_ROOT, plan_dir: str = None) -> dict:
     tot["change"] = (tot["ytd"] / tot["last_ytd"] - 1) if tot["last_ytd"] else None
     cfg_op = op.load_config(root)
     _im, dm, _meta = op.read_outputs(root, cfg_op, plan_dir)
-    plan_above = [{"division": r.division, "month": rv.thai_month_short(r.month), "pct": bopp.fmt_pct(r.share_of_capacity)} for r in dm[dm["above_capacity"].astype(bool)].itertuples()]
-    n_late = int(bmp.build_values(root, plan_dir)["n_late"])
+    rng = _meta["capacity_range"]
+    plan_above = [{"division": r.division, "month": rv.thai_month_short(r.month), "pct": bopp.fmt_pct(r.share_of_capacity), "first": rv.thai_date_short(rng["first_date"]), "last": rv.thai_date_short(rng["last_date"])}
+                  for r in dm[dm["above_capacity"].astype(bool)].itertuples()]
+    material = bmp.build_values(root, plan_dir)
+    n_late, late_date = int(material["n_late"]), rv.thai_date_short(material["today"])
     with open(os.path.join(root, "output", "summary", "task2b_part4_pem107_alert.json"), encoding="utf-8") as f:
         alert = json.load(f)
     watch = exec_watch([{"group": r["label"], "value": r["tracking_signal"], "points": r["points"]} for r in acc["rows"]], th["limit"], plan_above, n_late,
-                       None if alert.get("not_late_from_may_2026_pct") is None else {"since": rv.thai_month_year(alert["split_date"]), "pct": f"{float(alert['not_late_from_may_2026_pct']):.1f}%"})
+                       None if alert.get("not_late_from_may_2026_pct") is None else {"since": rv.thai_month_year(alert["split_date"]), "pct": f"{float(alert['not_late_from_may_2026_pct']):.1f}%"}, late_date)
+    # one "ข้อมูล ณ" line per figure group (config page_timestamps.text): MODEL-ROUND for the sales, projection and accuracy figures (no status), DATA (with a status) for the rest
+    text = config["page_timestamps"]["text"]
+    facts = rv.model_round_facts(vf["run_date"])
+    stock_pull, rm_pull = str(_meta["stock_pull"]["pulled_at_local"]), material["labels"]["rm_pulled"]
+    alert_pull = str(alert["data_pulled_at"])
+    labels = {"sales": text["exec_sales"].format(data_month=rv.thai_month_short(data_month), round=facts["round"], pulled=facts["pulled"]),
+              "plan": rv.data_age(stock_pull[:10], text["exec_plan"].format(pulled=rv.thai_datetime_short(stock_pull)), config),
+              "peak": rv.data_age(rng["last_date"], text["exec_peak"].format(first=rv.thai_date_short(rng["first_date"]), last=rv.thai_date_short(rng["last_date"])), config),
+              "material": rv.data_age(rm_pull[:10], text["exec_material"].format(pulled=rv.thai_datetime_short(rm_pull), date=late_date), config),
+              "pem107": rv.data_age(alert_pull[:10], text["exec_pem107"].format(pulled=rv.thai_datetime_short(alert_pull)), config), "js": rv.data_age_js(config)}
     pending = [r for r in maxmin_v1.pending_criteria_rows() if r["who"] == "ผู้บริหาร"]
     return {"data_month": data_month, "data_month_label": rv.thai_month_short(data_month), "year": year, "year_be": int(rv.thai_year_short(year)), "remaining_months": remaining, "booked_baht": booked_baht, "rows": rows, "total": tot, "monthly": monthly,
             "n_forecast_divisions": len(rows), "n_beat_naive": sum(1 for r in rows if r["relative_mae"] is not None and r["relative_mae"] < th["pass"]), "thresholds": th,
-            "watch": watch, "pending": pending, "vintage_id": vf["vintage_id"]}
+            "watch": watch, "pending": pending, "vintage_id": vf["vintage_id"], "labels": labels}
 
 
 def _money(x) -> str:
@@ -282,23 +295,27 @@ def exec_render(data: dict, config: dict) -> str:
             suffix = T["watch_suffix"].format(month=rv.thai_month_short(w["month"])) if w["month"] else ""
             watch_lines.append(T["watch_" + w["kind"]].format(group=w["group"], value=f"{w['value']:.1f}", k=w["k"], n=w["n"], suffix=suffix))
         elif w["kind"] == "plan":
-            watch_lines.append(T["watch_plan"].format(division=w["division"], month=w["month"], pct=w["pct"]))
+            watch_lines.append(T["watch_plan"].format(division=w["division"], month=w["month"], pct=w["pct"], first=w["first"], last=w["last"]))
         elif w["kind"] == "material":
-            watch_lines.append(T["watch_material"].format(n=w["n"]))
+            watch_lines.append(T["watch_material"].format(n=w["n"], date=w["date"]))
         else:
             watch_lines.append(T["watch_pem107"].format(since=w["since"], pct=w["pct"]))
     watch_html = "".join(f"<li>{esc(x)}</li>" for x in watch_lines)
     decide_html = "".join(f"<li>{esc(r['topic'])} · {esc(r['to_decide'])}</li>" for r in d["pending"])
     charts_html = (f'<div class="ec-row" id="execCharts"><div class="ec-chart ec-chart1"><h3>{esc(T["chart1_title"])}</h3>{_chart_monthly(d, T)}<p class="hint">{esc(T["chart1_note"])}</p></div>'
                    f'<div class="ec-chart ec-chart2"><h3>{esc(T["chart2_title"])}</h3>{_chart_relative_mae(d, T, config)}</div></div>')
+    lab = d["labels"]
     return (f'<div class="kpis" id="execCards">{cards_html}</div>'
             f'{charts_html}'
             f'<p class="hint" id="execUnit">{esc(T["unit_note"])}</p>'
             f'<div class="table-scroll"><table id="execTable"><thead><tr>{head}</tr></thead><tbody>{"".join(body)}</tbody></table></div>'
+            f'<p class="hint" id="execDataSales">{esc(lab["sales"])}</p>'
             f'<h3 id="execWatchTitle">{esc(T["watch_heading"])}</h3><ul id="execWatch">{watch_html}</ul>'
+            f'<ul class="hint" id="execDataWatch"><li id="execDataPlan">{lab["plan"]}</li><li id="execDataPeak">{lab["peak"]}</li><li id="execDataMaterial">{lab["material"]}</li><li id="execDataPem107">{lab["pem107"]}</li></ul>'
             f'<h3 id="execDecideTitle">{esc(T["decide_heading"])}</h3><ul id="execDecide">{decide_html}</ul>'
             f'<p><a id="execToAssump" href="#" onclick="omniShowTab(4);return false">{esc(T["decide_link"])}</a></p>'
-            f'<p class="hint" id="execFooter">{esc(T["footer"].format(data_month=month))}</p>')
+            f'<p class="hint" id="execFooter">{esc(T["footer"].format(data_month=month))}</p>'
+            f'<script>{lab["js"]}</script>')
 
 
 def exec_gate(data: dict, sales_report_path: str) -> dict:

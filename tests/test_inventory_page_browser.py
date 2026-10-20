@@ -419,8 +419,12 @@ def test_the_data_line_shows_the_round_and_the_stock_pull_time_and_the_script_fo
     import reader_values as rv
     from page_helpers import load_stock_payload
     payload = load_stock_payload()
-    expected = f"Forecast = ยอดขายที่ระบบคาดการณ์ · รอบ Forecast รันเมื่อ {rv.thai_month_short(rv.vintage_facts()['run_date'])} · ข้อมูล stock จาก DB (Cube_Inventory_Exact) ดึงเมื่อ {rv.thai_datetime_short(payload['pull_time'])}"
-    assert desktop.ev("document.getElementById('data-line').innerText") == expected
+    facts = rv.model_round_facts(rv.vintage_facts()["run_date"])
+    line = desktop.ev("document.getElementById('data-line').innerText")
+    stock = "ข้อมูล stock จาก DB (Cube_Inventory_Exact) ดึงเมื่อ " + rv.thai_datetime_short(payload["pull_time"])
+    assert line.startswith("Forecast = ยอดขายที่ระบบคาดการณ์ · " + f"ข้อมูลรอบ Forecast {facts['round']} · ดึงเมื่อ {facts['pulled']} · " + stock + " · ")
+    tail = line.split(stock)[1]
+    assert ("ใหม่ (Fresh)" in tail) != ("เก่า (Stale)" in tail) and "Fresh" not in line.split(stock)[0] and "Stale" not in line.split(stock)[0]       # the stock pull has a status, the model round has none
     assert desktop.ev("document.getElementById('page-title').nextElementSibling.id") == "data-line"
     for stamp in ("2026-10-08 08:01:01", "2027-01-05 00:09:59", "2026-12-31 23:59:00", "2026-03-09 12:00:00"):
         assert desktop.ev(f"thaiDateTime('{stamp}')") == rv.thai_datetime_short(stamp), stamp

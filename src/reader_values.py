@@ -155,39 +155,58 @@ def previous_weekday(today, weekdays_back: int = 1):
     return d
 
 
-def latest_run_day(today, base_day: int = None):
-    """The latest monthly run day (monthly_refresh.run_day) that is on or before `today`: this month's if it has come, otherwise last month's."""
-    import monthly_refresh
-    d = _as_date(today)
-    run = monthly_refresh.run_day(d.year, d.month, base_day)
-    if run <= d:
-        return run
-    y, m = (d.year - 1, 12) if d.month == 1 else (d.year, d.month - 1)
-    return monthly_refresh.run_day(y, m, base_day)
+def data_cutoff(today, config: dict):
+    """The date a DATA source's date must not be before to read as fresh on `today`: the previous weekday (config page_timestamps.daily_weekdays_back weekdays back; holidays are not
+    modelled)."""
+    return previous_weekday(today, int(config["page_timestamps"]["daily_weekdays_back"]))
 
 
-def freshness_cutoff(cadence: str, today, config: dict):
-    """The date a source's pull date must not be before to count as fresh on `today`: monthly = the latest run day on or before today, daily = the previous weekday
-    (config page_timestamps.daily_weekdays_back weekdays back). Raises for any other cadence."""
-    if cadence == "monthly":
-        return latest_run_day(today, int(config["shadow"]["monthly_run_day_of_month"]))
-    if cadence == "daily":
-        return previous_weekday(today, int(config["page_timestamps"]["daily_weekdays_back"]))
-    raise ReaderValueError(f"unknown freshness cadence {cadence!r}: expected 'monthly' or 'daily'")
-
-
-def source_cadence(config: dict, label: str) -> str:
-    """The cadence ('monthly' or 'daily') config page_timestamps classifies the freshness-tagged source `label` under. A source in neither list, or in both, stops the build."""
+def source_class(config: dict, label: str) -> str:
+    """'data' or 'model_round': the class config page_timestamps gives the labelled source `label`. A source in neither list, or in both, stops the build."""
     pt = config["page_timestamps"]
-    monthly, daily = label in pt["monthly_sources"], label in pt["daily_sources"]
-    if monthly == daily:
-        raise ReaderValueError(f"the freshness-tagged source {label!r} is in {'both lists' if monthly else 'neither list'} of config page_timestamps (monthly_sources, daily_sources)")
-    return "monthly" if monthly else "daily"
+    data, model = label in pt["data_sources"], label in pt["model_round_sources"]
+    if data == model:
+        raise ReaderValueError(f"the labelled source {label!r} is in {'both lists' if data else 'neither list'} of config page_timestamps (data_sources, model_round_sources)")
+    return "data" if data else "model_round"
 
 
-def is_old(cadence: str, pull_date, today, config: dict) -> bool:
-    """True when a source of this cadence pulled on `pull_date` is old on `today` (its pull date is before the cadence's cutoff)."""
-    return _as_date(pull_date) < freshness_cutoff(cadence, today, config)
+def data_is_stale(date, today, config: dict) -> bool:
+    """True when a DATA source dated `date` (its pull date; for a static file its last data date) is old on `today`."""
+    return _as_date(date) < data_cutoff(today, config)
+
+
+def data_status_text(date, today, config: dict) -> str:
+    """The approved status wording for a DATA label on `today`."""
+    t = config["page_timestamps"]["text"]
+    return t["data_stale"] if data_is_stale(date, today, config) else t["data_fresh"]
+
+
+def data_age(date, shown: str, config: dict, today=None) -> str:
+    """HTML of a DATA label: `shown` and its status, in a span the page's script (DATA_AGE_JS) re-judges against the day the page is read; the text written here is the status on `today`
+    (the build day by default), for a reader without the script and for the tests."""
+    import html as _html
+    status = data_status_text(date, today if today is not None else date_today(), config)
+    return (f'<span class="data-age" data-pulled="{_html.escape(str(date)[:10])}">{_html.escape(shown)} · <span class="data-status">{_html.escape(status)}</span></span>')
+
+
+def data_age_js(config: dict) -> str:
+    """The script that re-judges every `.data-age` element against the viewer's today (same rule as data_cutoff). Idempotent: a page that carries it twice runs it twice with the same result."""
+    import json as _json
+    t = config["page_timestamps"]["text"]
+    params = _json.dumps({"back": int(config["page_timestamps"]["daily_weekdays_back"]), "fresh": t["data_fresh"], "stale": t["data_stale"]}, ensure_ascii=False)
+    return ("(function(){var P=" + params + ";"
+            "function iso(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}"
+            "function prev(back){var d=new Date(),n=0;while(n<back){d.setDate(d.getDate()-1);if(d.getDay()!==0&&d.getDay()!==6)n++;}return iso(d);}"
+            "window.applyDataAge=function(){var cut=prev(P.back);document.querySelectorAll('.data-age').forEach(function(e){var s=e.querySelector('.data-status');"
+            "if(s&&e.dataset.pulled)s.textContent=e.dataset.pulled<cut?P.stale:P.fresh;});};"
+            "window.applyDataAge();document.addEventListener('DOMContentLoaded',window.applyDataAge);})();")
+
+
+def model_round_facts(run_date: str) -> dict:
+    """{"round": 'ต.ค. 69', "pulled": '5 ต.ค. 69', "pulled_iso": '2026-10-05'}: the run month of the forecast vintage (`run_date`, from its forward-test log rows) and the date the data of the round
+    was pulled (the snapshot_pull_date of the series the report is built on, under this project's output/data)."""
+    pulled = str(pd.read_csv(os.path.join(PROJECT_ROOT, "output", "data", "processed_full_category_sales_monthly_forecastDate.csv"), usecols=["snapshot_pull_date"])["snapshot_pull_date"].iloc[0])
+    return {"round": thai_month_short(run_date), "pulled": thai_date_short(pulled), "pulled_iso": pulled[:10]}
 
 
 def pipeline_gap_pct(pem101: dict, controls: dict, days_per_month: float) -> float:
@@ -496,7 +515,6 @@ def manual_values(config: dict = None, root: str = PROJECT_ROOT) -> dict:
     base = int(config["shadow"]["monthly_run_day_of_month"])
     return {
         "n_calibration_items": str(len(json.load(open(os.path.join(root, *config["maxmin_v1"]["ensemble_stock_items_file"].split("/")), encoding="utf-8")))),
-        "stale_monthly": thai_date_short(latest_run_day(date_today(), base).isoformat()),
         "stale_daily": str(int(config["page_timestamps"]["daily_weekdays_back"])),
         "n_rounds": str(backtest_rounds(config)), "holdout_months": str(config["backtest"]["holdout_months"]),
         "n_focus_items": str(len(backtest_all_divisions.FOCUS_ITEMS)),

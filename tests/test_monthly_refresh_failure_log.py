@@ -799,12 +799,13 @@ def test_a_failed_pem107_pull_is_a_warning_and_the_run_is_partial_with_exit_code
     assert mr.cli([]) == 2 and not os.path.exists(mr.MONTHLY_STATE_PATH)                  # exit code 2, not marked done: it runs again on the next weekday
 
 
-def test_the_pem107_alert_is_judged_by_the_monthly_cadence():
+def test_the_pem107_alert_is_a_data_source_judged_by_the_previous_weekday():
     import yaml
     import reader_values as rv
     import build_inventory_page_data as bipd
     cfg = yaml.safe_load(open(os.path.join(PROJECT_ROOT, "config", "config.yaml"), encoding="utf-8"))
-    assert bipd.freshness_block(cfg, _date(2026, 11, 6))["cadence"]["pem107_alert"] == "monthly"
-    assert rv.is_old("monthly", "2026-09-28", _date(2026, 10, 15), cfg) is True and rv.is_old("monthly", "2026-10-15", _date(2026, 10, 15), cfg) is False
+    assert rv.source_class(cfg, bipd.PEM107_ALERT_SOURCE) == "data" and rv.source_class(cfg, bipd.PILOT_SALES_SOURCE) == "model_round"
+    assert bipd.freshness_block(cfg)["daily_weekdays_back"] == 1
+    assert rv.data_is_stale("2026-10-13", _date(2026, 10, 15), cfg) is True and rv.data_is_stale("2026-10-14", _date(2026, 10, 15), cfg) is False
     page = open(os.path.join(PROJECT_ROOT, "src", "build_inventory_page.py"), encoding="utf-8").read()
-    assert "oldCutoff(DATA.freshness.cadence.pem107_alert, a.data_pulled_at" in page
+    assert "dataStatus(a.data_pulled_at)" in page

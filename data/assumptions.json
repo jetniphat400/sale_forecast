@@ -8,7 +8,7 @@
    "used_now": "1-30 วัน",
    "affects": "Min/Max ของ PEM101",
    "value_source": "lead_time_days over the distinct members of the lead-time-free calibration, minimum and maximum (output/summary/week1_recal_control_members_PEM101_92.csv)",
-   "updated_date": "2026-10-15"
+   "updated_date": "2026-10-20"
   },
   {
    "id": "production_time",
@@ -17,7 +17,7 @@
    "used_now": "26 วัน (87 รายการ)",
    "affects": "แผนสั่งวัตถุดิบ",
    "value_source": "production_days and production_source of the items with source assumed (output/summary/item_lead_time_v1.csv)",
-   "updated_date": "2026-10-15"
+   "updated_date": "2026-10-20"
   },
   {
    "id": "material_without_purchase_history",
@@ -26,7 +26,7 @@
    "used_now": "เวลาที่ผู้ขายแจ้ง หรือค่าสูงของวัตถุดิบอื่น",
    "affects": "แผนสั่งวัตถุดิบ",
    "value_source": "METRICS.md Sec.5 item lead time version 1: supplier-quoted delivery time, else config lead_time_v1.fallback_material_days",
-   "updated_date": "2026-10-15"
+   "updated_date": "2026-10-20"
   },
   {
    "id": "sellable_warehouses",
@@ -35,7 +35,7 @@
    "used_now": "FG01, FG21, WH21",
    "affects": "stock ที่ใช้เทียบกับ Min",
    "value_source": "config phase_e1_assumptions.sellable_warehouse_codes.PEM101",
-   "updated_date": "2026-10-15"
+   "updated_date": "2026-10-20"
   },
   {
    "id": "pem101_undetermined_items",
@@ -44,7 +44,7 @@
    "used_now": "ไม่มี Min/Max",
    "affects": "Min/Max",
    "value_source": "items of class conflict under METRICS.md Sec.23 after config fulfilment_class_decisions (output/summary/task2b_part2_item_level.csv)",
-   "updated_date": "2026-10-15"
+   "updated_date": "2026-10-20"
   },
   {
    "id": "production_capacity",
@@ -53,7 +53,7 @@
    "used_now": "ใช้ Historical peak เป็นค่าต่ำสุดที่กำลังผลิตน่าจะทำได้ (Lower bound ไม่ใช่ขีดความสามารถจริง)",
    "affects": "Production Plan",
    "value_source": "STATUS.md, Q20: the highest sustained monthly output per division and Type, a lower bound",
-   "updated_date": "2026-10-15"
+   "updated_date": "2026-10-20"
   },
   {
    "id": "open_production_orders",
@@ -62,7 +62,7 @@
    "used_now": "ไม่นำมาหักจากแผน (Open production orders ยังไม่ถูกนับ)",
    "affects": "Production Plan",
    "value_source": "config operation_plan.open_orders_usable (false) and output/summary/week2_open_orders_test.json: the planned finish does not hold and no way of telling an open order passed",
-   "updated_date": "2026-10-15"
+   "updated_date": "2026-10-20"
   },
   {
    "id": "fmto_fmts_warehouses",
@@ -71,7 +71,7 @@
    "used_now": "ไม่นับ",
    "affects": "stock ที่ใช้เทียบกับ Min และ Production Plan",
    "value_source": "config phase_e1_assumptions.sellable_warehouse_codes does not list FMTO or FMTS; week 2 October decomposition (STATUS.md): 4,054 units of the items below Min",
-   "updated_date": "2026-10-15"
+   "updated_date": "2026-10-20"
   },
   {
    "id": "forecast_range",
@@ -80,7 +80,7 @@
    "used_now": "ใช้ค่าเดียวต่อเดือน (point forecast)",
    "affects": "Production Plan",
    "value_source": "the forward-test log holds one forecast per item and month (METRICS.md Sec.27), no interval",
-   "updated_date": "2026-10-15"
+   "updated_date": "2026-10-20"
   },
   {
    "id": "calibration_window",
@@ -89,7 +89,7 @@
    "used_now": "ม.ค. 67 ถึง ธ.ค. 68",
    "affects": "Min/Max ของ PEM101",
    "value_source": "config maxmin_v1.calibration_window (decision D4, 2026-10-06; the J3 window); the shorter window is the sensitivity in docs/reports/summary/week1_leadtime_calibration.md",
-   "updated_date": "2026-10-15"
+   "updated_date": "2026-10-20"
   }
  ],
  "pending_criteria": [
@@ -138,7 +138,6 @@
  ],
  "manual_values": {
   "n_calibration_items": "92",
-  "stale_monthly": "5 ต.ค. 69",
   "stale_daily": "1",
   "n_rounds": "7",
   "holdout_months": "6",
@@ -146,7 +145,7 @@
   "notice_bucket_first": "30",
   "notice_bucket_second": "60",
   "notice_bucket_last": "180",
-  "trend_data_through": "14 ต.ค. 69",
+  "trend_data_through": "19 ต.ค. 69",
   "trend_first_month": "ม.ค. 67",
   "trend_last_month": "ต.ค. 69",
   "n_codes_trend": "445",
