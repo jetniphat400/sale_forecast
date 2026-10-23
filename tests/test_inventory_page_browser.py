@@ -420,12 +420,14 @@ def test_the_data_line_shows_the_round_and_the_stock_pull_time_and_the_script_fo
     from page_helpers import load_stock_payload
     payload = load_stock_payload()
     facts = rv.model_round_facts(rv.vintage_facts()["run_date"])
-    line = desktop.ev("document.getElementById('data-line').innerText")
-    stock = "ข้อมูล stock จาก DB (Cube_Inventory_Exact) ดึงเมื่อ " + rv.thai_datetime_short(payload["pull_time"])
-    assert line.startswith("Forecast = ยอดขายที่ระบบคาดการณ์ · " + f"ข้อมูลรอบ Forecast {facts['round']} · ดึงเมื่อ {facts['pulled']} · " + stock + " · ")
-    tail = line.split(stock)[1]
-    assert ("ใหม่ (Fresh)" in tail) != ("เก่า (Stale)" in tail) and "Fresh" not in line.split(stock)[0] and "Stale" not in line.split(stock)[0]       # the stock pull has a status, the model round has none
-    assert desktop.ev("document.getElementById('page-title').nextElementSibling.id") == "data-line"
+    line = desktop.ev("document.getElementById('data-header-data').innerText")
+    stock = "ไฟล์ stock ประจำวัน ดึงเมื่อ " + rv.thai_datetime_short(payload["pull_time"])
+    assert line.startswith("ข้อมูลอัปเดตล่าสุด: ") and stock + " · " in line and f"ยอดขายที่ใช้ทำตารางและกราฟ ดึงเมื่อ {facts['pulled']}" in line
+    tail = line.split(stock)[1].split(chr(10))[0]
+    assert ("ใหม่ (Fresh)" in tail) != ("เก่า (Stale)" in tail)                                                         # the stock pull has a status
+    assert "Fresh" not in line.split("ยอดขายที่ใช้ทำตารางและกราฟ")[1] and "Stale" not in line.split("ยอดขายที่ใช้ทำตารางและกราฟ")[1]   # the sales of the round have none
+    assert desktop.ev("document.getElementById('page-title').nextElementSibling.id") == "data-header"
+    assert desktop.ev("document.getElementById('data-header-forecast').innerText").startswith("Forecast ล่าสุด: รอบ " + facts["round"] + " · คำนวณเมื่อ ")
     for stamp in ("2026-10-08 08:01:01", "2027-01-05 00:09:59", "2026-12-31 23:59:00", "2026-03-09 12:00:00"):
         assert desktop.ev(f"thaiDateTime('{stamp}')") == rv.thai_datetime_short(stamp), stamp
 

@@ -208,6 +208,36 @@ def data_age_js(config: dict) -> str:
             "window.applyDataAge();document.addEventListener('DOMContentLoaded',window.applyDataAge);})();")
 
 
+def forecast_header_text(config: dict, vf: dict = None) -> str:
+    """The text of the "Forecast ล่าสุด" line, from the latest vintage's own metadata (`vintage_facts`: forecast_run_date of the log, fit_last_month of its metadata)."""
+    vf = vf or vintage_facts()
+    t = config["page_timestamps"]["text"]
+    return t["header_forecast"].format(round=thai_month_short(vf["run_date"]), run=thai_date_short(vf["run_date"]), fit_last=thai_month_short(vf["fit_last"]))
+
+
+def header_when(value) -> str:
+    """A pull stamp as the header writes it: date and time when it has a time, else the date."""
+    s = str(value).strip()
+    return thai_datetime_short(s) if len(s) > 10 and s[10] in " T" else thai_date_short(s[:10])
+
+
+def data_header(config: dict, items: list, forecast: bool = True, vf: dict = None, today=None) -> str:
+    """The one standard header of a page or tab (Prompt 52): "ข้อมูลอัปเดตล่าสุด:" with every dated source the page uses, then "Forecast ล่าสุด:" where the page uses the forecast.
+    `items` are (key of config page_timestamps.text.header_items, date or stamp, kind); kind 'data' (pulled: a status against the day the page is read), 'file' (a file's last data
+    date: the file wording of the status) or 'round' (what the forecast round was fitted on: a date and no status). The page build time is not part of it."""
+    import html as _html
+    t = config["page_timestamps"]["text"]
+    rows = []
+    for key, date, kind in items:
+        shown = t["header_items"][key].format(when=header_when(date))
+        rows.append(data_age(str(date)[:10], shown, config, today, file_date=(kind == "file")) if kind in ("data", "file") else _html.escape(shown))
+    out = (f'<div class="data-header" id="data-header"><p class="note-line" id="data-header-data"><b>{_html.escape(t["header_data_label"])}</b> '
+           f'{"<br>".join(rows) if rows else _html.escape(t["header_none"])}</p>')
+    if forecast:
+        out += f'<p class="note-line" id="data-header-forecast"><b>{_html.escape(t["header_forecast_label"])}</b> {_html.escape(forecast_header_text(config, vf))}</p>'
+    return out + "</div>"
+
+
 def model_round_facts(run_date: str) -> dict:
     """{"round": 'ต.ค. 69', "pulled": '5 ต.ค. 69', "pulled_iso": '2026-10-05'}: the run month of the forecast vintage (`run_date`, from its forward-test log rows) and the date the data of the round
     was pulled (the snapshot_pull_date of the series the report is built on, under this project's output/data)."""
@@ -326,6 +356,22 @@ function thaiDateTime(s, seconds) {
   return Number(m[3]) + ' ' + THAI_MONTHS[Number(m[2]) - 1] + ' ' + thaiYearShort(m[1]) + ' ' + m[4] + ':' + m[5] + (seconds && m[6] ? ':' + m[6] : '');
 }
 function thaiQuarter(label) { return String(label).replace(/Q(\d)'?(\d{4})/g, function (m, q, y) { return 'Q' + q + ' ' + thaiYearShort(y); }); }
+// The one standard header of a page that loads its data in the browser (Prompt 52; the Python twin is reader_values.data_header). T = config page_timestamps.text with T.back (weekdays back);
+// items = [{key, date, kind: 'data' | 'file' | 'round', id}]; forecastText = the "Forecast ล่าสุด" text or ''.
+function dataHeaderHtml(T, items, forecastText) {
+  const z = n => String(n).padStart(2, '0'), c = new Date(); let n = 0;
+  while (n < T.back) { c.setDate(c.getDate() - 1); if (c.getDay() !== 0 && c.getDay() !== 6) n++; }
+  const cut = c.getFullYear() + '-' + z(c.getMonth() + 1) + '-' + z(c.getDate());
+  const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const rows = items.map(function (it) {
+    const s = String(it.date || '');
+    let h = esc(T.header_items[it.key].replace('{when}', !s ? 'ไม่ทราบ' : (s.length > 10 ? thaiDateTime(s) : thaiDateShort(s))));
+    if (it.kind !== 'round' && s) h += ' · <span class="data-status">' + esc(s.slice(0, 10) < cut ? (it.kind === 'file' ? T.data_stale_file : T.data_stale) : T.data_fresh) + '</span>';
+    return '<span' + (it.id ? ' id="' + it.id + '"' : '') + '>' + h + '</span>';
+  });
+  return '<p class="note-line" id="data-header-data"><b>' + esc(T.header_data_label) + '</b> ' + (rows.length ? rows.join('<br>') : esc(T.header_none)) + '</p>' +
+    (forecastText ? '<p class="note-line" id="data-header-forecast"><b>' + esc(T.header_forecast_label) + '</b> ' + esc(forecastText) + '</p>' : '');
+}
 /*TH-DATES-END*/"""
 
 

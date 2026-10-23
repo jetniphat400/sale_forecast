@@ -349,7 +349,8 @@ def build_data(daily: pd.DataFrame, names: pd.DataFrame, completeness: dict, pl:
         raise TrendTotalsMismatch(f"the Trend tab's totals differ from the completeness query: {bad}")
     omni = {"months": months, "n31": n_complete, "cates": sorted({i["cat"] for i in items}), "types": sorted({i["pt"] for i in items}), "items": items,
             "meta": {"pull": rv.thai_date_short(completeness["pulled_at"]), "pull_iso": completeness["pulled_at"][:10], "last_date": completeness["last_date"], "pricelist": pricelist_quarter,
-                     "data_note": config["page_timestamps"]["text"]["trend_note"].format(last=rv.thai_date_short(completeness["last_date"]), pulled=rv.thai_date_short(completeness["pulled_at"])),
+                     "data_note": config["page_timestamps"]["text"]["trend_note"],
+                     "header_html": rv.data_header(config, [("sales_actual", completeness["last_date"], "round"), ("sales_pulled", completeness["pulled_at"], "data")], False),
                      "first_year": int(months[0][:4]), "last_year": int(months[-1][:4]),
                      "month_incomplete": rv.thai_month_short(months[-1]), "base_first": rv.thai_month_short(months[0]), "base_last": rv.thai_month_short(months[n_complete - 1])}}
     report = {"n_items": len(items), "n_months": n_months, "n_complete": n_complete, "months": [months[0], months[-1]], "n_codes_on_more_than_one_sheet": n_multi_sheet,

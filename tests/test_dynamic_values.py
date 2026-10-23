@@ -368,7 +368,7 @@ def test_pilot_data_date_drives_the_shown_pull_date_and_never_a_status_word(tmp_
     with open(path, encoding="utf-8") as f:
         page = f.read()
     shown = _pilot_row(page)
-    assert shown.startswith("ข้อมูลที่ใช้คำนวณ Forecast รอบ ") and f"ดึงเมื่อ {rv.thai_date_short(stamp)}" in shown, "the page must show the data date the test set"
+    assert shown.startswith("ยอดขายที่ใช้ทำหน้านี้ ") and f"ดึงเมื่อ {rv.thai_date_short(stamp)}" in shown, "the page must show the data date the test set"
     assert "Fresh" not in shown and "Stale" not in shown and "ยอดขายจริงล่าสุดดูที่แท็บ Trend" in shown
     table = page.split('id="page-data-line"')[1].split("</details>")[0]
     assert "Fresh" not in table and "Stale" not in table and 'href="../index.html#trend"' in table
@@ -495,7 +495,7 @@ def test_operation_plan_page_numbers_dates_and_items_follow_their_sources():
     pert = bp.render(bp.compute_values(im2, dm2, meta2, {}, "2027-01-04", ["PEM101", "PEM107"], labels=_labels(meta2, "2027-01-04")))
     lines = lambda page: _re.findall(r'<p class="note-line">(.*?)</p>', page)
     assert "6 ต.ค. 69 08:00" in base and "15 ม.ค. 70 17:45" in pert and "6 ต.ค. 69" not in pert
-    assert "ข้อมูลรอบ Forecast ต.ค. 69 · ดึงเมื่อ" in base and "ข้อมูลรอบ Forecast ม.ค. 70 · ดึงเมื่อ" in pert
+    assert "รอบ ต.ค. 69 · คำนวณเมื่อ 2 ต.ค. 69" in base and "รอบ ม.ค. 70 · คำนวณเมื่อ 4 ม.ค. 70" in pert
     lb, lp = lines(base), lines(pert)
     assert lb[0].startswith("ต.ค. 69 PEM101") and lp[0].startswith("ก.พ. 70 PEM101")
     assert "A7" in lb[1] and "Z9" in lp[1] and "Z9" not in lb[1] and "A7" not in lp[1]
@@ -543,8 +543,8 @@ def test_material_plan_page_text_values_follow_their_sources():
     a = bm.render(dict(bm.compute_values(*fa, 30), labels=la))
     b = bm.render(dict(bm.compute_values(*fb, 45), labels=lb))
     assert "แผนวัตถุดิบ 5 เดือน" in a and "แผนวัตถุดิบ 3 เดือน" in b
-    assert "จาก Production Plan ที่สร้างเมื่อ 6 ต.ค. 69 08:00 · <span" in a and "stock วัตถุดิบและใบสั่งซื้อที่ค้างรับดึงเมื่อ 6 ต.ค. 69 07:30 · <span" in a
-    assert "จาก Production Plan ที่สร้างเมื่อ 4 ม.ค. 70 09:30 · <span" in b and "stock วัตถุดิบและใบสั่งซื้อที่ค้างรับดึงเมื่อ 15 ม.ค. 70 17:45 · <span" in b
+    assert "ที่สร้างเมื่อ" not in a and "stock วัตถุดิบและใบสั่งซื้อที่ค้างรับ ดึงเมื่อ 6 ต.ค. 69 07:30 · <span" in a
+    assert "ที่สร้างเมื่อ" not in b and "stock วัตถุดิบและใบสั่งซื้อที่ค้างรับ ดึงเมื่อ 15 ม.ค. 70 17:45 · <span" in b
     assert "ณ 6 ต.ค. 69: " in a and "ณ 4 ม.ค. 70: " in b
     assert "stock วัตถุดิบนับจากคลัง WH21, WH22" in a and "stock วัตถุดิบนับจากคลัง WH90" in b
     assert 'id="divisions-covered">ฝ่ายที่รวมในแผนนี้: PEM101, PEM103<' in a and 'id="divisions-covered">ฝ่ายที่รวมในแผนนี้: CI101<' in b
@@ -568,9 +568,9 @@ def test_new_sales_report_lines_and_tables_follow_their_sources(two_builds):
     base, pert = two_builds
     b, p = base.sales_html, pert.sales_html
     # the round, the last month of the sales used and the build time come from the vintage and the clock
-    fb, fp = _first(r'id="freshness-line">(.*?)</span>', b), _first(r'id="freshness-line">(.*?)</span>', p)
-    assert fb != fp and fp.startswith("Forecast = ยอดขายที่ระบบคาดการณ์ · ข้อมูลรอบ Forecast ม.ค. 70 · ใช้ยอดขายถึง พ.ย. 69 · หน้าสร้างเมื่อ ")
-    assert re.fullmatch(r"Forecast = ยอดขายที่ระบบคาดการณ์ · ข้อมูลรอบ Forecast \S+ \d\d · ใช้ยอดขายถึง \S+ \d\d · หน้าสร้างเมื่อ \d{1,2} \S+ \d\d \d\d:\d\d", fb)
+    fb, fp = _first(r'id="data-header-forecast"><b>Forecast ล่าสุด:</b> (.*?)</p>', b), _first(r'id="data-header-forecast"><b>Forecast ล่าสุด:</b> (.*?)</p>', p)
+    assert fb != fp and fp.startswith("รอบ ม.ค. 70 · คำนวณเมื่อ ") and fp.endswith("ใช้ยอดขายถึง พ.ย. 69") and "หน้าสร้างเมื่อ" not in p
+    assert re.fullmatch(r"รอบ \S+ \d\d · คำนวณเมื่อ \d{1,2} \S+ \d\d · ใช้ยอดขายถึง \S+ \d\d", fb)
     # the fit window, the forecast months
     rb, rp = _first(r'id="fit-range-line">(.*?)</td>', b), _first(r'id="fit-range-line">(.*?)</td>', p)
     assert rb != rp and rp == "ยอดขายที่ใช้คำนวณ Forecast พ.ค. 67 ถึง พ.ย. 69"

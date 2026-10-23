@@ -267,8 +267,8 @@ def render(values: dict) -> str:
     parts.append(f'<h1 id="page-title">{_e(heading)}</h1>')
     lab = v.get("labels")
     if lab:         # DATA labels carry a status judged when the page is read; the MODEL-ROUND label carries none (config page_timestamps)
-        parts.append(f'<p class="scope-note" id="data-line">{_e(T["data_prefix"])} · {lab["stock"]} · {_e(lab["round"])}</p>')
-        parts.append(f'<p class="scope-note" id="peak-line">{lab["peak"]}</p>')
+        parts.append(f'<p class="scope-note" id="data-line">{_e(T["data_prefix"])}</p>')
+        parts.append(f'<!-- Production Plan built at {_e(lab["plan_built_at"])} (maintainers only) -->{lab["header"]}')
     parts.append(f'<div class="links"><a class="page-link" id="material-plan-link" href="{MATERIAL_PAGE_RELATIVE}">{_e(T["material_link"])}</a></div>')
     for d in divisions:
         parts.append(f'<h2>{d}</h2>')
@@ -378,13 +378,13 @@ def page_labels(root: str, meta: dict, master: dict, run_date: str) -> dict:
         if rv.source_class(config, label) != "data":
             raise op.OperationPlanError(f"{label!r} is expected to be a data source in config page_timestamps")
     stock, backlog = str(meta["stock_pull"]["pulled_at_local"]), str(meta["backlog_pull"]["pulled_at_local"])
-    shown = t["plan_stock"].format(pulled=thai_datetime(stock)) if backlog == stock else (
-        t["plan_stock_only"].format(pulled=thai_datetime(stock)) + " · " + t["plan_backlog"].format(pulled=thai_datetime(backlog)))
     rng = meta["capacity_range"]
-    facts = rv.model_round_facts(run_date)
-    return {"stock": rv.data_age(stock[:10], shown, config), "round": t["plan_round"].format(round=facts["round"], pulled=facts["pulled"]),
-            "peak": rv.data_age(rng["last_date"], t["plan_peak"].format(first=rv.thai_date_short(rng["first_date"]), last=rv.thai_date_short(rng["last_date"])), config, file_date=True),
-            "master": lambda n: rv.data_age(master["pulled_iso"], t["plan_master"].format(n=n, pulled=master["pulled_at"]), config) if master and master.get("pulled_iso") else "",
+    items = [("plan_stock", stock, "data")] if backlog == stock else [("plan_stock_only", stock, "data"), ("plan_backlog", backlog, "data")]
+    if master and master.get("pulled_iso"):
+        items.append(("master", master["pulled_iso"], "data"))
+    items.append(("peak", rng["last_date"], "file"))
+    return {"plan_built_at": str(meta.get("built_at", "")).replace("T", " "), "header": rv.data_header(config, items, True, {**rv.vintage_facts(), "run_date": run_date}),
+            "master": lambda n: _e(t["plan_master"].format(n=n)) if master and master.get("pulled_iso") else "",
             "js": rv.data_age_js(config)}
 
 

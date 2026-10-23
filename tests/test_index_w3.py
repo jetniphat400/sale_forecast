@@ -157,9 +157,9 @@ def test_sop_row_labels_and_section5_heading(page):
 def test_stock_panel_available_note_and_three_labels(page):
     assert page["avail_th"]["note"] == AVAILABLE_NOTE
     assert page["avail_th"]["text"].startswith("Available")
-    assert re.search(r"ข้อมูล stock ใน DB \(Cube_Inventory_Exact\) ณ \d{1,2} \S+ \d{2} \d{2}:\d{2}", page["stock"])
-    assert re.search(r"ของที่ออเดอร์ที่รับแล้วจองไว้ \(Reserved\) ใน DB \(Cube_CES\) ณ \d{1,2} \S+ \d{2} \d{2}:\d{2}", page["stock"])
-    assert re.search(r"ดึงข้อมูลเมื่อ \d{1,2} \S+ \d{2} \d{2}:\d{2}", page["stock"])
+    assert re.search(r"stock ดึงเมื่อ \d{1,2} \S+ \d{2} \d{2}:\d{2}", page["stock"])
+    assert re.search(r"ของที่ออเดอร์ที่รับแล้วจองไว้ \(Reserved\) ดึงเมื่อ \d{1,2} \S+ \d{2} \d{2}:\d{2}", page["stock"])
+    assert re.search(r"ไฟล์ stock ประจำวัน ดึงเมื่อ \d{1,2} \S+ \d{2} \d{2}:\d{2}", page["stock"])
     for gone in ("Cube_", "task 2a", "DATA_MAP", "METRICS", "config.yaml", "inventory.json"):
         assert gone not in re.sub(r"DB \(Cube_\w+\)", "DB", page["stock"]), gone          # a table name only inside the approved DB (<table>) form
 
@@ -171,11 +171,12 @@ def test_trend_note_is_first_in_the_tab_and_follows_the_data(page):
     import yaml
     cfg = yaml.safe_load(open(os.path.join(PROJECT_ROOT, "config", "config.yaml"), encoding="utf-8"))
     import reader_values as rv
-    expected = cfg["page_timestamps"]["text"]["trend_note"].format(last=rv.thai_date_short(omni["meta"]["last_date"]), pulled=omni["meta"]["pull"])
-    assert omni["meta"]["data_note"] == expected and "ยอดนับตามวันที่รับ PO จึงไม่เท่ากับยอดในหน้าพยากรณ์" in expected and "ยอดจริงล่าสุดวันที่" in expected
-    assert page["trend"].lstrip().startswith(expected + " · ") and ("ใหม่ (Fresh)" in page["trend"] or "เก่า (Stale)" in page["trend"])          # a DATA label: the status is added when the page is read
-    assert page["trend"].lstrip().startswith(expected), page["trend"][:200]
-    assert page["trend_first"] == "trendDataNote"
+    expected = cfg["page_timestamps"]["text"]["trend_note"]
+    assert omni["meta"]["data_note"] == expected and "ยอดนับตามวันที่รับ PO จึงไม่เท่ากับยอดในหน้าพยากรณ์" in expected
+    lead = page["trend"].lstrip()
+    assert lead.startswith("ข้อมูลอัปเดตล่าสุด: ยอดขายจริงล่าสุด " + rv.thai_date_short(omni["meta"]["last_date"])) and expected in page["trend"]
+    assert ("ใหม่ (Fresh)" in lead or "เก่า (Stale)" in lead) and "Forecast ล่าสุด" not in lead          # a DATA label: the status is added when the page is read; the Trend tab uses no forecast
+    assert page["trend_first"] == "trendHeader"
     assert re.fullmatch(r"\d{1,2} \S+ \d{2}", omni["meta"]["pull"])                      # the shared Thai date format (d MMM yy)
     assert "{" not in expected and "}" not in expected
     for gone in ("data_pulled_at", "62b1e81", "git blame", "DATA_MAP", "cube_Sale_APD", "pricelist_reader", "ไม่อัปเดต"):
@@ -198,7 +199,7 @@ def test_trend_values_change_when_their_sources_change(edge, tmp_path_factory):
         pl = edge.ev("document.getElementById('trendPlLabel').textContent")
     finally:
         server.shutdown()
-    assert note.startswith("ทดสอบ ดึงเมื่อ 1 ม.ค. 70 · ") and pl == "Q9-2099", (note, pl)
+    assert note == "ทดสอบ ดึงเมื่อ 1 ม.ค. 70" and pl == "Q9-2099", (note, pl)
 
 
 def test_trend_note_stays_hidden_when_the_data_carry_no_pull_date(edge, tmp_path_factory):
@@ -579,10 +580,8 @@ def _fixed_labels(cfg: dict) -> dict:
     """The executive tab's "ข้อมูล ณ" lines for fixed data (config page_timestamps.text): the sales line is MODEL-ROUND, the others are DATA with a status."""
     import reader_values as rv
     t = cfg["page_timestamps"]["text"]
-    return {"sales": t["exec_sales"].format(data_month="ส.ค. 69", round="ต.ค. 69", pulled="5 ต.ค. 69"),
-            "plan": rv.data_age("2026-10-20", t["exec_plan"].format(pulled="20 ต.ค. 69 08:00"), cfg), "peak": rv.data_age("2026-10-02", t["exec_peak"].format(first="3 ม.ค. 66", last="2 ต.ค. 69"), cfg),
-            "material": rv.data_age("2026-10-20", t["exec_material"].format(pulled="20 ต.ค. 69 09:42", date="20 ต.ค. 69"), cfg),
-            "pem107": rv.data_age("2026-10-20", t["exec_pem107"].format(pulled="20 ต.ค. 69 09:46"), cfg), "js": rv.data_age_js(cfg)}
+    items = [("sales_round", "2026-10-05", "round"), ("plan_stock", "2026-10-20 08:00:00", "data"), ("peak", "2026-10-02", "file"), ("material", "2026-10-20 09:42:00", "data"), ("pem107_alert", "2026-10-20 09:46:00", "data")]
+    return {"header": rv.data_header(cfg, items, False), "js": rv.data_age_js(cfg)}
 
 
 def _fixed_exec_data():
@@ -960,7 +959,7 @@ def test_no_page_or_manual_text_outside_the_original_tab_calls_a_database_table_
         t = re.sub(r"<!--.*?-->", "", t, flags=re.S)                  # an off-screen comment may quote the old wording
         for phrase in gone:
             assert phrase not in t, f"{name}: {phrase!r}"
-    assert "ข้อมูล stock ใน DB (Cube_Inventory_Exact) ณ" in texts["forecast/inventory.html"] and "ของที่ออเดอร์ที่รับแล้วจองไว้ (Reserved) ใน DB (Cube_CES) ณ" in texts["forecast/inventory.html"]
+    assert "header_items" in texts["forecast/inventory.html"] and "dataHeaderHtml(T, items, DATA.forecast_header)" in texts["forecast/inventory.html"]
     assert "DB (cube_Sale_APD)" in texts["forecast/sales_report.html"] and "DB (cube_final)" in texts["forecast/operation_plan.html"]
     assert "DB (Cube_BOM_Exact)" in texts["forecast/material_plan.html"] or "ไม่มี BOM ใน DB" not in texts["forecast/material_plan.html"]
 
@@ -972,7 +971,7 @@ def test_the_stock_panel_script_judges_its_two_daily_sources_by_the_previous_wee
     base = json.load(open(os.path.join(PROJECT_ROOT, "data", "inventory.json"), encoding="utf-8"))
     import reader_values as rv
     today = rv.date_today()          # the panel judges its sources against the day it is read
-    for generated, loaded, old in (("2026-10-12T02:00:00Z", f"{rv.previous_weekday(today, 1)} 21:00:00", False), ("2026-10-12T02:00:00Z", f"{rv.previous_weekday(today, 2)} 21:00:00", True)):
+    for generated, loaded, old in ((f"{today}T01:00:00Z", f"{rv.previous_weekday(today, 1)} 21:00:00", False), (f"{today}T01:00:00Z", f"{rv.previous_weekday(today, 2)} 21:00:00", True)):
         inv = json.loads(json.dumps(base))
         inv["snapshot"].update(generated_at=generated, loaded_at=loaded)
         inv["backlog"]["loaded_at"] = loaded
@@ -987,7 +986,7 @@ def test_the_stock_panel_script_judges_its_two_daily_sources_by_the_previous_wee
             server.shutdown()
         assert [bool(x) for x in shown] == [old, old], (generated, loaded, shown)
         labels = edge.ev("document.getElementById('invSnapshotLabel').textContent + ' | ' + document.getElementById('invBacklogLabel').textContent")
-        assert labels.count("เก่า (Stale)") == (2 if old else 0) and labels.count("ใหม่ (Fresh)") == (0 if old else 2), labels
+        assert labels.count("เก่า (Stale)") == (2 if old else 0) and labels.count("ใหม่ (Fresh)") == (1 if old else 3), labels      # stock, Reserved and the daily file each carry a status; the file was built today
         if old:
             assert all("ข้อมูล" in x and "เก่า" in x and "ดึงก่อนวันทำการก่อนหน้า" in x and "page_built_at" not in x for x in shown)
 
@@ -1000,9 +999,9 @@ def test_prompt_30_source_wording_the_min_max_settings_the_stock_pull_line_and_t
     visible = lambda t: re.sub(r"<!--.*?-->", "", t, flags=re.S)
     # the Min-Max page: the Min and Max settings are named as DB (Cube_Inventory_Exact), the old "ตั้งในระบบตอนนี้" is gone from what is shown
     assert "Min ค่าที่ตั้งใน DB (Cube_Inventory_Exact)" in visible(inv) and "ในระบบตอนนี้" not in visible(inv) and "ระบบตอนนี้" not in visible(plan)
-    assert "ข้อมูล stock จาก DB (Cube_Inventory_Exact) ดึงเมื่อ" in inv and "ข้อมูล stock จาก DB (Cube_Inventory_Exact) · Forecast" in plan and "stock และออเดอร์ที่รับแล้วดึงเมื่อ" in plan
+    assert "header_items" in inv and "ข้อมูล stock จาก DB (Cube_Inventory_Exact) · Forecast" in plan and "stock และออเดอร์ที่รับแล้ว ดึงเมื่อ" in plan
     assert "ข้อมูล stock ดึงเมื่อ" not in visible(inv) and "ข้อมูล stock ดึงเมื่อ" not in visible(plan)
-    assert "ข้อมูลขายใน DB (cube_Sale_APD) มียอดจริงล่าสุดวันที่" in idx and "ข้อมูลถึง " not in visible(_outside_the_original_tab(idx))
+    assert "ข้อมูลขายใน DB (cube_Sale_APD)" in idx and "ข้อมูลถึง " not in visible(_outside_the_original_tab(idx))
     assert manual.count("ข้อมูลขายใน DB (cube_Sale_APD) ถึง {trend_data_through}") == 2 and "ข้อมูลถึง {" not in manual
 
 

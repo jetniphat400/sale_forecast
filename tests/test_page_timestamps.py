@@ -361,7 +361,7 @@ def test_the_sales_report_numbers_do_not_depend_on_the_label_texts(tmp_path, mon
     changed = copy.deepcopy(base)
     t = changed["page_timestamps"]["text"]
     t["sales_main"], t["model_round"], t["trend_link"] = "AAA {round} {pulled}", "BBB {round} {pulled}", "CCC"
-    mask = lambda page: re.sub(r'<details class="note-box" style="margin:10px 0" id="page-data-line">.*?</details>', "@@", page, flags=re.S)
+    mask = lambda page: re.sub(r'<!-- page_built_at \(maintainers only.*?</details>', "@@", page, flags=re.S)
     a = open(build_report.build_report(output_path=str(tmp_path / "a.html")), encoding="utf-8").read()
     monkeypatch.setattr(build_report, "load_config", lambda: changed)
     b = open(build_report.build_report(output_path=str(tmp_path / "b.html")), encoding="utf-8").read()
@@ -376,3 +376,57 @@ def test_the_historical_peak_range_is_the_first_and_last_date_of_the_production_
     assert op.capacity_data_range(str(path), "final_date") == {"first_date": "2023-01-03", "last_date": "2026-10-02"}
     meta = op.read_outputs(PROJECT_ROOT, op.load_config(PROJECT_ROOT))[2]
     assert set(meta["capacity_range"]) == {"first_date", "last_date"} and meta["capacity_range"]["first_date"] <= meta["capacity_range"]["last_date"]
+
+
+# ---------------------------------------------------------------------------------------------
+# Prompt 52: the one standard header, and no page build time on screen
+# ---------------------------------------------------------------------------------------------
+def _visible_text(path):
+    text = open(path, encoding="utf-8").read()
+    return re.sub(r"<!--.*?-->", "", re.sub(r"<(script|style).*?</\1>", "", text, flags=re.S), flags=re.S)
+
+
+def test_data_header_lists_each_source_with_its_status_and_the_forecast_line_only_when_asked():
+    import reader_values as rv
+    cfg = yaml.safe_load(open(CONFIG_PATH, encoding="utf-8"))
+    vf = {"run_date": "2026-10-02", "fit_last": "2026-08"}
+    h = rv.data_header(cfg, [("stock", "2026-10-20 08:00:28", "data"), ("peak", "2026-10-02", "file"), ("sales_round", "2026-10-05 07:41:11", "round")], True, vf, today="2026-10-21")
+    assert "<b>ข้อมูลอัปเดตล่าสุด:</b> " in h and "stock ดึงเมื่อ 20 ต.ค. 69 08:00 · " in h and "ประวัติผลิตของ Historical peak ถึง 2 ต.ค. 69 · " in h
+    assert h.count("ใหม่ (Fresh)") == 1 and h.count("เก่า (Stale)") == 1                                   # the data and file sources carry a status, the round does not
+    assert h.endswith("<b>Forecast ล่าสุด:</b> รอบ ต.ค. 69 · คำนวณเมื่อ 2 ต.ค. 69 · ใช้ยอดขายถึง ส.ค. 69</p></div>")
+    assert "Forecast ล่าสุด" not in rv.data_header(cfg, [("stock", "2026-10-20", "data")], False) and "ไม่มีข้อมูลที่ดึงจาก DB" in rv.data_header(cfg, [], False)
+
+
+@pytest.mark.parametrize("path,forecast", [(SALES_REPORT_HTML, True), (os.path.join(PROJECT_ROOT, "forecast", "operation_plan.html"), True), (os.path.join(PROJECT_ROOT, "forecast", "material_plan.html"), True)])
+def test_a_built_page_has_the_standard_header_with_the_latest_vintage_and_no_build_time(path, forecast):
+    import reader_values as rv
+    cfg = yaml.safe_load(open(CONFIG_PATH, encoding="utf-8"))
+    text = open(path, encoding="utf-8").read()
+    assert 'id="data-header-data"><b>ข้อมูลอัปเดตล่าสุด:</b> ' in text
+    assert ('id="data-header-forecast"><b>Forecast ล่าสุด:</b> ' + rv.forecast_header_text(cfg)) in text
+    shown = _visible_text(path)
+    assert "หน้าสร้างเมื่อ" not in shown and "สร้างหน้าเมื่อ" not in shown and "ที่สร้างเมื่อ" not in shown
+    assert "page_built_at" in text or "built at" in text            # the build time stays for maintainers, in a comment
+
+
+def test_the_forecast_line_is_the_latest_vintage_own_metadata_not_the_pull_of_the_page_data():
+    import reader_values as rv
+    cfg = yaml.safe_load(open(CONFIG_PATH, encoding="utf-8"))
+    vf = rv.vintage_facts()
+    meta = json.load(open(os.path.join(SUMMARY_DIR, "forward_test_log_all_divisions_metadata.json"), encoding="utf-8"))[str(vf["vintage_id"])]
+    assert vf["run_date"] == meta["forecast_run_date"] and vf["fit_last"] == meta["fit_last_month"]
+    assert rv.forecast_header_text(cfg) == f"รอบ {rv.thai_month_short(meta['forecast_run_date'])} · คำนวณเมื่อ {rv.thai_date_short(meta['forecast_run_date'])} · ใช้ยอดขายถึง {rv.thai_month_short(meta['fit_last_month'])}"
+
+
+def test_the_stock_panel_header_texts_in_index_html_equal_the_config_and_the_panel_has_no_forecast_line():
+    cfg = yaml.safe_load(open(CONFIG_PATH, encoding="utf-8"))
+    pt = cfg["page_timestamps"]
+    t = pt["text"]
+    text = open(INDEX_HTML, encoding="utf-8").read()
+    m = re.search(r"const INV_HEADER = (\{.*?\});", text)
+    panel = json.loads(m.group(1))
+    assert panel == {"back": pt["daily_weekdays_back"], "header_data_label": t["header_data_label"], "header_none": t["header_none"],
+                     "header_items": {k: t["header_items"][k] for k in ("stock", "reserved", "pulled")},
+                     "data_fresh": t["data_fresh"], "data_stale": t["data_stale"], "data_stale_file": t["data_stale_file"]}
+    assert "], '');" in text                                          # the third argument of dataHeaderHtml is empty: no forecast line on the stock panel
+    assert f'<b>{t["header_data_label"]}</b> {t["header_none"]}' in text   # the assumptions tab: no data pulled from the DB

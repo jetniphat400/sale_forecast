@@ -808,4 +808,4 @@ def test_the_pem107_alert_is_a_data_source_judged_by_the_previous_weekday():
     assert bipd.freshness_block(cfg)["daily_weekdays_back"] == 1
     assert rv.data_is_stale("2026-10-13", _date(2026, 10, 15), cfg) is True and rv.data_is_stale("2026-10-14", _date(2026, 10, 15), cfg) is False
     page = open(os.path.join(PROJECT_ROOT, "src", "build_inventory_page.py"), encoding="utf-8").read()
-    assert "dataStatus(a.data_pulled_at)" in page
+    assert "key: 'pem107_alert', date: DATA.pem107_alert.data_pulled_at, kind: 'data'" in page

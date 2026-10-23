@@ -806,13 +806,12 @@ def render_page(config: dict) -> str:
         + (f' · <a id="trend-link" href="../index.html#trend">{html.escape(texts["trend_link"])}</a>' if label == "ช่วงข้อมูลหลัก" else "") + "</td></tr>"
         for label, value in freshness["sections"].items()
     )
-    freshness_line = report["freshness_line"].format(round=rv.thai_month_short(vf["run_date"]), fit_last=rv.thai_month_short(vf["fit_last"]),
-                                                     built_at=rv.thai_datetime_short(page_built_at))
+    header_html = rv.data_header(config, [("sales_round", data_pulled_at, "round")], True, vf)
     timestamps_html = f"""
+    <!-- page_built_at (maintainers only, never shown): {page_built_at} {ICT_LABEL}; vintage {vf['vintage_id']} of the forward-test log; oldest data_pulled_at of the page: {data_pulled_at} -->
+    {header_html}
     <details class="note-box" style="margin:10px 0" id="page-data-line">
-      <summary style="cursor:pointer"><!-- round = run month of vintage {vf['vintage_id']} of the forward-test log; fit_last = that vintage's last fit month; built_at = page_built_at; oldest data_pulled_at of the page: {data_pulled_at} {ICT_LABEL}, per section below
-        --><span id="freshness-line">{html.escape(freshness_line)}</span><!-- source: src/build_report.py rv.vintage_facts()/datetime.now(), this build run --></summary>
-      <h3 style="margin-top:10px">ข้อมูลแต่ละส่วนดึงเมื่อ</h3>
+      <summary style="cursor:pointer">ข้อมูลแต่ละส่วนดึงเมื่อ (คลิกเพื่อดู)<!-- source: src/build_report.py rv.vintage_facts(), rv.data_header() --></summary>
       <table class="report-table" style="margin-top:8px">
         <thead><tr><th>ส่วน</th><th>ข้อมูลที่ใช้</th></tr></thead>
         <tbody>{freshness_rows}</tbody>

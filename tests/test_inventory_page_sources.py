@@ -67,7 +67,7 @@ def test_page_embeds_no_stock_the_stock_file_carries_it():
         for it in dd["items"]:
             assert "by_warehouse" not in it and "on_hand_sellable" not in it, (division, it["code"])
     assert "stock_meta" not in data
-    assert 'id="stock-labels"' in page and "data/stock_daily.json" in page
+    assert 'id="data-header"' in page and "data/stock_daily.json" in page
     # Min, Max and the current settings stay embedded
     first = next(iter(data["divisions"].values()))["items"][0]
     assert "current_min" in first and "forecast" in first

@@ -437,7 +437,7 @@ def test_no_windows_login_or_db_login_appears_in_a_tracked_file():
 # ====================================================================================================
 from html.parser import HTMLParser
 
-BANNED_WORDS = ("ยอด" + "ทาย", "วิธี" + "เดาง่าย", "ของ" + "ค้าง", "สต็อ" + "ค", "สต็อ" + "ก", "Price" + "list", "ความคลาด" + "สะสม", "ค่า" + "ทาย", "ท" + "าย", "แผน" + "การผลิต", "เ" + "ดา", "ปรับให้ตรง" + "กับผลจริง", "ICT (" + "UTC+7)")
+BANNED_WORDS = ("ยอด" + "ทาย", "วิธี" + "เดาง่าย", "ของ" + "ค้าง", "สต็อ" + "ค", "สต็อ" + "ก", "Price" + "list", "ความคลาด" + "สะสม", "ค่า" + "ทาย", "ท" + "าย", "แผน" + "การผลิต", "เ" + "ดา", "ปรับให้ตรง" + "กับผลจริง", "ICT (" + "UTC+7)", "หน้า" + "สร้างเมื่อ")
 BANNED_PAGES = ("index.html", "forecast/sales_report.html", "forecast/inventory.html", "forecast/operation_plan.html", "forecast/material_plan.html")
 BANNED_SOURCES = ("config/config.yaml", "config/manual_notes.yaml", "data/assumptions.json", "docs/user_manual.md")
 # Words and DB product-name text that contain the letters of the verb without being it (found in the saved pulls: a paint colour in product names; the others are ordinary Thai words).

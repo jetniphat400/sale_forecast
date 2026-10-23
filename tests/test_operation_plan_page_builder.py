@@ -203,9 +203,9 @@ def test_the_heading_months_and_the_data_line_come_from_the_plan_not_from_typing
     page = bp.render(v)
     assert f"Production Plan {len(MONTHS)} เดือน · ทุกฝ่าย" in page and "PEM101 และ PEM107" not in page
     facts = bp.rv.model_round_facts("2026-10-02")
-    assert "ข้อมูล stock จาก DB (Cube_Inventory_Exact) · Forecast = ยอดขายที่ระบบคาดการณ์ · ออเดอร์ที่รับแล้ว (Backlog) = ลูกค้าสั่งแล้วแต่ยังไม่ส่ง · <span" in page and f"stock และออเดอร์ที่รับแล้วดึงเมื่อ {v['pull_time']} · <span" in page
-    assert f"ข้อมูลรอบ Forecast {facts['round']} · ดึงเมื่อ {facts['pulled']}" in page and "Forecast รันเมื่อ" not in page
-    assert "Historical peak คิดจากประวัติผลิต 3 ม.ค. 66 ถึง 2 ต.ค. 69" in page and 'data-pulled="2026-10-02"' in page and 'data-pulled="2026-10-06"' in page
+    assert "ข้อมูล stock จาก DB (Cube_Inventory_Exact) · Forecast = ยอดขายที่ระบบคาดการณ์ · ออเดอร์ที่รับแล้ว (Backlog) = ลูกค้าสั่งแล้วแต่ยังไม่ส่ง</p>" in page and f"stock และออเดอร์ที่รับแล้ว ดึงเมื่อ {v['pull_time']} · <span" in page
+    assert "<b>Forecast ล่าสุด:</b> " + bp.rv.forecast_header_text(bp.op.load_full_config(PROJECT_ROOT)) in page and "Forecast รันเมื่อ" not in page
+    assert "ประวัติผลิตของ Historical peak ถึง 2 ต.ค. 69" in page and 'data-pulled="2026-10-02"' in page and 'data-pulled="2026-10-06"' in page
     im, dm, meta = _plan()
     meta4 = dict(meta, months=MONTHS)
     assert "6 เดือน" not in page
@@ -488,10 +488,11 @@ def test_the_new_page_shows_heading_data_line_summary_flag_lines_and_item_table(
     assert _wait(edge, "document.querySelectorAll('#item-table-body tr').length > 0")
     assert edge.ev("document.getElementById('page-title').innerText") == f"Production Plan {v['n_months']} เดือน · ทุกฝ่าย"
     line = edge.ev("document.getElementById('data-line').innerText")
-    assert line.startswith("ข้อมูล stock จาก DB (Cube_Inventory_Exact) · Forecast = ยอดขายที่ระบบคาดการณ์ · ออเดอร์ที่รับแล้ว (Backlog) = ลูกค้าสั่งแล้วแต่ยังไม่ส่ง · stock และออเดอร์ที่รับแล้วดึงเมื่อ " + v["pull_time"] + " · ")
-    after_round = line.split("ข้อมูลรอบ Forecast")[1]
-    assert ("ใหม่ (Fresh)" in line) != ("เก่า (Stale)" in line) and "Fresh" not in after_round and "Stale" not in after_round     # the model round carries no status
-    assert edge.ev("document.getElementById('peak-line').innerText").startswith("Historical peak คิดจากประวัติผลิต ")
+    assert line == "ข้อมูล stock จาก DB (Cube_Inventory_Exact) · Forecast = ยอดขายที่ระบบคาดการณ์ · ออเดอร์ที่รับแล้ว (Backlog) = ลูกค้าสั่งแล้วแต่ยังไม่ส่ง"
+    hdr = edge.ev("document.getElementById('data-header-data').innerText")
+    assert hdr.startswith("ข้อมูลอัปเดตล่าสุด: stock และออเดอร์ที่รับแล้ว ดึงเมื่อ " + v["pull_time"] + " · ") and "ประวัติผลิตของ Historical peak ถึง " in hdr
+    assert edge.ev("document.getElementById('data-header-forecast').innerText").startswith("Forecast ล่าสุด: รอบ ")      # the forecast line has no status
+    assert "Fresh" not in edge.ev("document.getElementById('data-header-forecast').innerText")
     heads = edge.ev("[...document.querySelectorAll('#summary-PEM101 thead th')].map(t=>t.innerText.replace('รวมทุกช่องทาง','').trim())")
     assert heads == ["เดือน", "Demand-driven (ผลิตตาม Forecast หรือออเดอร์ แล้วแต่อันไหนมากกว่า)", "Build to Max (ผลิตเติม stock ให้ถึง Max)", "ผลิตตามสั่ง (MTO: Make to Order)", "รวม", "% ของ Historical peak"]
     for d in v["divisions"]:
@@ -548,7 +549,7 @@ def test_the_item_table_shows_the_plans_numbers_and_blank_min_max_for_items_with
 
 def test_the_two_min_max_texts_the_link_and_the_heading_suffix_show(edge, site):
     edge.open(site + "/forecast/inventory.html")
-    assert _wait(edge, "document.getElementById('stock-labels').style.display !== 'none'"), "the page did not finish loading"
+    assert _wait(edge, "!!document.getElementById('data-header-data')"), "the page did not finish loading"
     edge.ev("document.getElementById('division-select').value='PEM101'; onDivisionChange(); 1")
     assert _wait(edge, "document.getElementById('curve-item-table-body').children.length > 0")
     assert edge.ev("document.querySelector('#curve-target-section h2').innerText") == "PEM101 — เลือกเป้าการส่งทัน (Not-late: ส่งไม่ช้ากว่าวันนัด) แล้วดูว่าต้องถือของเท่าไหร่ (ผลจำลอง)"
@@ -628,8 +629,9 @@ def test_the_material_plan_page_shows_its_approved_text_sections_and_tables(edge
     edge.open(site + "/forecast/material_plan.html")
     assert _wait(edge, "document.querySelectorAll('#material-table tbody tr').length > 0")
     assert edge.ev("document.getElementById('page-title').innerText") == f"แผนวัตถุดิบ {v['n_months']} เดือน"
-    line = edge.ev("document.getElementById('data-line').innerText")
-    assert line.startswith("จาก Production Plan ที่สร้างเมื่อ ") and f"stock วัตถุดิบและใบสั่งซื้อที่ค้างรับดึงเมื่อ {v['pull_time']} · " in line and ("ใหม่ (Fresh)" in line or "เก่า (Stale)" in line)
+    line = edge.ev("document.getElementById('data-header-data').innerText")
+    assert line.startswith("ข้อมูลอัปเดตล่าสุด: stock วัตถุดิบและใบสั่งซื้อที่ค้างรับ ดึงเมื่อ " + v['pull_time'] + " · ") and ("ใหม่ (Fresh)" in line or "เก่า (Stale)" in line) and "ที่สร้างเมื่อ" not in line
+    assert edge.ev("document.getElementById('data-header-forecast').innerText").startswith("Forecast ล่าสุด: รอบ ")
     assert v["labels"]["count_date"] in edge.ev("document.getElementById('late-summary').innerText")
     n = v["n_days"]
     assert n == 30
@@ -687,7 +689,7 @@ def test_pem103_has_no_min_max_row_keeps_its_scope_note_and_shows_the_approved_l
 
 def test_pem103_on_the_rendered_page_shows_the_line_the_note_and_no_min_max_figure(edge, site):
     edge.open(site + "/forecast/inventory.html")
-    assert _wait(edge, "document.getElementById('stock-labels').style.display !== 'none'"), "the page did not finish loading"
+    assert _wait(edge, "!!document.getElementById('data-header-data')"), "the page did not finish loading"
     edge.ev("document.getElementById('division-select').value='PEM103'; onDivisionChange(); 1")
     edge.pump(0.5)
     assert edge.ev("document.getElementById('no-min-max-line').innerText") == "ไม่มีสินค้าที่เข้าเกณฑ์เก็บ stock"
@@ -829,7 +831,7 @@ def test_the_remark_is_shown_next_to_each_missing_code_and_the_note_counts_them_
     marked = bp.compute_values(im, dm, meta, {}, "2026-10-02", SIX, master=_master, labels=_labels(meta, "2026-10-02", _master))
     page = bp.render(marked)
     assert page.count('class="nomaster"') == 2 and "ไม่พบรหัสนี้ใน DB (Cube_ItemList)" in page
-    assert "2 รหัสไม่พบใน DB (Cube_ItemList) ดึงข้อมูลเมื่อ 9 ต.ค. 69 · <span" in page and "ยังไม่ได้ตรวจ 1 รหัสกับ DB (Cube_ItemList)" in page
+    assert "2 รหัสไม่พบใน DB (Cube_ItemList)</p>" in page and "รหัสสินค้าใน DB (Cube_ItemList) ดึงเมื่อ 9 ต.ค. 69 · <span" in page and "ยังไม่ได้ตรวจ 1 รหัสกับ DB (Cube_ItemList)" in page
     for code in codes[:2]:
         assert re.search(r"<td>%s<span class=\"nomaster\"" % re.escape(code), page)
     assert [i["months"] for i in marked["items"]] == [i["months"] for i in base["items"]] and marked["summary"].equals(base["summary"])
@@ -899,7 +901,7 @@ def test_the_recorded_remark_of_the_page_equals_the_saved_item_master_pull():
     im, _, _ = op.read_outputs(PROJECT_ROOT, cfg)
     check = bp.item_master_check(PROJECT_ROOT, cfg, im["item"].unique())
     page = open(os.path.join(PROJECT_ROOT, "forecast", "operation_plan.html"), encoding="utf-8").read()
-    m = re.search(r"(\d+) รหัสไม่พบใน DB \(Cube_ItemList\) ดึงข้อมูลเมื่อ ([^<]+)<", page)
+    m = re.search(r"รหัสสินค้าใน DB \(Cube_ItemList\) ดึงเมื่อ ([^<]+?) · <span.*?(\d+) รหัสไม่พบใน DB \(Cube_ItemList\)</p>", page, re.S)
     assert m, "the page carries no missing-code note"
     pulled = str(pd.read_pickle(attributes)["pulled_at_local"])[:10]
-    assert int(m.group(1)) == len(check["missing"]) and m.group(2).strip().rstrip("·").strip() == check["pulled_at"] == bp.rv.thai_date_short(pulled)
+    assert int(m.group(2)) == len(check["missing"]) and m.group(1).strip() == check["pulled_at"] == bp.rv.thai_date_short(pulled)

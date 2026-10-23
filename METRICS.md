@@ -651,6 +651,14 @@ Every dashboard page and panel displays, near its title:
   read "ข้อมูลรอบ Forecast {round} · ดึงเมื่อ {date}". A labelled source in neither list stops the build. The monthly cutoff and `stale_monthly` are removed. The status is re-judged
   by a script when the page is read (`reader_values.data_age_js`); the text written at build time is the status on the build day. The late-material count states the date it is of
   (the day the plan was built); the Historical peak states the date range of its production history.
+- **Amended 2026-10-23 (Prompt 52): one standard header, and the page build time is never shown.** Every page and tab that shows data (executive, Trend, assumptions, stock panel,
+  sales report, Min-Max, Production Plan, material plan) opens with "ข้อมูลอัปเดตล่าสุด:" (every dated source the page uses, as "<name> ดึงเมื่อ <date and time>"; a DATA source or
+  a static file carries its status, the data the forecast round was fitted on carries none; a page with no pulled data says so) and, where the page uses the forecast,
+  "Forecast ล่าสุด:" (round, `forecast_run_date` of the latest vintage, `fit_last_month` of its metadata: the vintage's own record, not the pull date of the page's data). Texts in
+  config `page_timestamps.text` (`header_*`), built by `reader_values.data_header` (pages built in Python) and `dataHeaderHtml` (pages that load data in the browser). `page_built_at` is
+  kept only as an HTML comment; "หน้าสร้างเมื่อ" is a banned reader word (tests/test_guards.py). The Trend tab, the stock panel and the assumptions tab use no forecast and have no
+  "Forecast ล่าสุด" line; the manual has no header (it holds no data of its own). The sales report's per-section table keeps each section's own pull date ("ข้อมูลที่ใช้ทำส่วนนี้
+  ดึงเมื่อ"): the series behind its tables and charts was pulled after vintage 2's forecast run (vintage 2: run and data cutoff 2026-10-02, series file saved 2026-10-05).
 - The forward-test log is never refreshed or rewritten; it keeps the
   cutoff it was generated at.
 - Where a page's sections draw on inputs with different pull dates, each

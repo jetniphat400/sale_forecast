@@ -609,6 +609,7 @@ def apply_reader_text(data: dict) -> dict:
     data["disabled_division_labels"] = DISABLED_DIVISION_LABELS
     data["model_calibrated_at"] = model_calibrated_at()
     data["freshness"] = freshness_block(config)
+    data["forecast_header"] = rv.forecast_header_text(config)         # the "Forecast ล่าสุด" line, from the latest vintage's own metadata
     data["tier_a_ranges"] = config["inventory_page"]["tier_a_ranges"]
     data["service_level_chart_step"] = config["inventory_page"]["service_level_chart_step"]
     data["fulfilment_notice_days"] = rv.fulfilment_notice_threshold_days()

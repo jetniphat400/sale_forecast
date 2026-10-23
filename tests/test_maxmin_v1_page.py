@@ -76,7 +76,7 @@ def _build(tmp_path_factory, name, mutate=None):
 
 def _open_inventory(edge, path):
     edge.open(path)
-    assert _wait(edge, "document.getElementById('stock-labels').style.display !== 'none'"), "the page did not finish loading"
+    assert _wait(edge, "!!document.getElementById('data-header-data')"), "the page did not finish loading"
     edge.ev("document.getElementById('division-select').value='PEM101'; onDivisionChange(); 1")
     edge.pump(0.5)
     assert _wait(edge, "document.getElementById('curve-item-table-body').children.length > 0"), "the calibrated section did not render"

@@ -160,11 +160,8 @@ def exec_data(root: str = PROJECT_ROOT, plan_dir: str = None) -> dict:
     facts = rv.model_round_facts(vf["run_date"])
     stock_pull, rm_pull = str(_meta["stock_pull"]["pulled_at_local"]), material["labels"]["rm_pulled"]
     alert_pull = str(alert["data_pulled_at"])
-    labels = {"sales": text["exec_sales"].format(data_month=rv.thai_month_short(data_month), round=facts["round"], pulled=facts["pulled"]),
-              "plan": rv.data_age(stock_pull[:10], text["exec_plan"].format(pulled=rv.thai_datetime_short(stock_pull)), config),
-              "peak": rv.data_age(rng["last_date"], text["exec_peak"].format(first=rv.thai_date_short(rng["first_date"]), last=rv.thai_date_short(rng["last_date"])), config, file_date=True),
-              "material": rv.data_age(rm_pull[:10], text["exec_material"].format(pulled=rv.thai_datetime_short(rm_pull), date=late_date), config),
-              "pem107": rv.data_age(alert_pull[:10], text["exec_pem107"].format(pulled=rv.thai_datetime_short(alert_pull)), config), "js": rv.data_age_js(config)}
+    items = [("sales_round", facts["pulled_iso"], "round"), ("plan_stock", stock_pull, "data"), ("peak", rng["last_date"], "file"), ("material", rm_pull, "data"), ("pem107_alert", alert_pull, "data")]
+    labels = {"header": rv.data_header(config, items, True, vf), "js": rv.data_age_js(config)}
     pending = [r for r in maxmin_v1.pending_criteria_rows() if r["who"] == "ผู้บริหาร"]
     return {"data_month": data_month, "data_month_label": rv.thai_month_short(data_month), "year": year, "year_be": int(rv.thai_year_short(year)), "remaining_months": remaining, "booked_baht": booked_baht, "rows": rows, "total": tot, "monthly": monthly,
             "n_forecast_divisions": len(rows), "n_beat_naive": sum(1 for r in rows if r["relative_mae"] is not None and r["relative_mae"] < th["pass"]), "thresholds": th,
@@ -305,13 +302,11 @@ def exec_render(data: dict, config: dict) -> str:
     charts_html = (f'<div class="ec-row" id="execCharts"><div class="ec-chart ec-chart1"><h3>{esc(T["chart1_title"])}</h3>{_chart_monthly(d, T)}<p class="hint">{esc(T["chart1_note"])}</p></div>'
                    f'<div class="ec-chart ec-chart2"><h3>{esc(T["chart2_title"])}</h3>{_chart_relative_mae(d, T, config)}</div></div>')
     lab = d["labels"]
-    return (f'<div class="kpis" id="execCards">{cards_html}</div>'
+    return (f'{lab["header"]}<div class="kpis" id="execCards">{cards_html}</div>'
             f'{charts_html}'
             f'<p class="hint" id="execUnit">{esc(T["unit_note"])}</p>'
             f'<div class="table-scroll"><table id="execTable"><thead><tr>{head}</tr></thead><tbody>{"".join(body)}</tbody></table></div>'
-            f'<p class="hint" id="execDataSales">{esc(lab["sales"])}</p>'
             f'<h3 id="execWatchTitle">{esc(T["watch_heading"])}</h3><ul id="execWatch">{watch_html}</ul>'
-            f'<ul class="hint" id="execDataWatch"><li id="execDataPlan">{lab["plan"]}</li><li id="execDataPeak">{lab["peak"]}</li><li id="execDataMaterial">{lab["material"]}</li><li id="execDataPem107">{lab["pem107"]}</li></ul>'
             f'<h3 id="execDecideTitle">{esc(T["decide_heading"])}</h3><ul id="execDecide">{decide_html}</ul>'
             f'<p><a id="execToAssump" href="#" onclick="omniShowTab(4);return false">{esc(T["decide_link"])}</a></p>'
             f'<p class="hint" id="execFooter">{esc(T["footer"].format(data_month=month))}</p>'

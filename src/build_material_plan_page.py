@@ -226,7 +226,7 @@ def render(values: dict) -> str:
     heading = T["heading"].format(n_months=v["n_months"])
     parts = [f'<div class="notice" id="verification-notice">{_e(T["notice"])}</div>', f'<a class="back-link" href="../index.html">{_e(T["back_link"])}</a>',
              f'<h1 id="page-title">{_e(heading)}</h1>',
-             *([f'<p class="scope-note" id="data-line">{_e(v["labels"]["plan"])} · {v["labels"]["stock"]}</p>'] if v.get("labels") else []),
+             *([f'<!-- Production Plan built at {_e(v["labels"]["plan_built_at"])} (maintainers only) -->', v["labels"]["header"]] if v.get("labels") else []),
              f'<p class="scope-note" id="divisions-covered">{_e(T["divisions_label"])} {_e(v["divisions"])}</p>',
              *[f'<p class="scope-note division-no-production" data-division="{_e(d)}">{_e(T["division_no_production"].format(division=d))}</p>'
                for d in (v["coverage"]["divisions_without_production"] if v["coverage"] else [])],
@@ -265,8 +265,8 @@ def page_labels(root: str, meta: dict, op_meta: dict, today: str) -> dict:
     if rv.source_class(config, "stock วัตถุดิบและใบสั่งซื้อที่ค้างรับ (แผนวัตถุดิบ)") != "data":
         raise mp.MaterialPlanError("the raw-material stock label is expected to be a data source in config page_timestamps")
     pulled = str(meta["rm_pulled_at_local"])
-    return {"plan": t["material_plan"].format(built=thai_datetime(str(op_meta["built_at"]).replace("T", " "))),
-            "stock": rv.data_age(pulled[:10], t["material_stock"].format(pulled=thai_datetime(pulled)), config),
+    items = [("material", pulled, "data")] + ([("plan_stock", str(op_meta["stock_pull"]["pulled_at_local"]), "data")] if op_meta.get("stock_pull") else [])
+    return {"plan_built_at": str(op_meta["built_at"]).replace("T", " "), "header": rv.data_header(config, items, True),
             "rm_pulled": pulled, "count_date": t["late_count_date"].format(date=rv.thai_date_short(today)), "js": rv.data_age_js(config)}
 
 

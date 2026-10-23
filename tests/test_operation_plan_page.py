@@ -47,7 +47,7 @@ def site(tmp_path_factory):
 def edge(site):
     e = Edge(require_browser())
     e.open(site[0])
-    assert _wait(e, "document.getElementById('stock-labels').style.display !== 'none'"), "the page did not finish loading"
+    assert _wait(e, "!!document.getElementById('data-header-data')"), "the page did not finish loading"
     yield e
     e.close()
 

@@ -465,8 +465,9 @@ def test_the_page_text_is_the_approved_text_and_every_braced_value_comes_from_th
     mm, sm, meta = mp.read_outputs(project)
     assert f"แผนวัตถุดิบ {len(meta['months'])} เดือน" in page and v["n_months"] == 3
     built = bp.thai_datetime(str(meta["operation_plan_built_at"]).replace("T", " "))
-    assert f"จาก Production Plan ที่สร้างเมื่อ {built} · <span" in page and f"stock วัตถุดิบและใบสั่งซื้อที่ค้างรับดึงเมื่อ {bp.thai_datetime(meta['rm_pulled_at_local'])} · <span" in page
-    assert "stock วัตถุดิบและใบสั่งซื้อที่ค้างรับดึงเมื่อ 6 ต.ค. 69 07:30" in page and 'data-pulled="2026-10-06"' in page
+    assert "ที่สร้างเมื่อ" not in re.sub(r"<!--.*?-->", "", page, flags=re.S) and f"stock วัตถุดิบและใบสั่งซื้อที่ค้างรับ ดึงเมื่อ {bp.thai_datetime(meta['rm_pulled_at_local'])} · <span" in page
+    assert "Forecast ล่าสุด:" in page and "ข้อมูลอัปเดตล่าสุด:" in page
+    assert "stock วัตถุดิบและใบสั่งซื้อที่ค้างรับ ดึงเมื่อ 6 ต.ค. 69 07:30" in page and 'data-pulled="2026-10-06"' in page
     assert "stock วัตถุดิบนับจากคลัง WH21, WH22" in page and "นับของที่สั่งแล้วรอรับตามวันที่คาดว่าจะได้" in page and "ยังไม่นับของที่สั่งแล้วรอรับ" not in page
     n = int(mp.load_config(project)["order_window_days"])
     assert n == 30 and v["n_days"] == n

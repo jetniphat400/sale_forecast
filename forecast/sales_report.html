@@ -65,13 +65,13 @@
   <h1>รายงานการพยากรณ์ยอดขาย (Sales Forecast Report) — PEM Group</h1>
   <!-- สร้างโดย src/build_report.py — ทุกตัวเลขมีที่มาระบุไว้ในซอร์สโค้ด HTML (ดู source comments) -->
   
+    <!-- page_built_at (maintainers only, never shown): 2026-10-23 09:19 (clock of UTC+7); vintage 2 of the forward-test log; oldest data_pulled_at of the page: 2026-10-05 07:41 -->
+    <div class="data-header" id="data-header"><p class="note-line" id="data-header-data"><b>ข้อมูลอัปเดตล่าสุด:</b> ยอดขายที่ใช้ทำตารางและกราฟ ดึงเมื่อ 5 ต.ค. 69 07:41</p><p class="note-line" id="data-header-forecast"><b>Forecast ล่าสุด:</b> รอบ ต.ค. 69 · คำนวณเมื่อ 2 ต.ค. 69 · ใช้ยอดขายถึง ส.ค. 69</p></div>
     <details class="note-box" style="margin:10px 0" id="page-data-line">
-      <summary style="cursor:pointer"><!-- round = run month of vintage 2 of the forward-test log; fit_last = that vintage's last fit month; built_at = page_built_at; oldest data_pulled_at of the page: 2026-10-05 07:41 (clock of UTC+7), per section below
-        --><span id="freshness-line">Forecast = ยอดขายที่ระบบคาดการณ์ · ข้อมูลรอบ Forecast ต.ค. 69 · ใช้ยอดขายถึง ส.ค. 69 · หน้าสร้างเมื่อ 20 ต.ค. 69 15:12</span><!-- source: src/build_report.py rv.vintage_facts()/datetime.now(), this build run --></summary>
-      <h3 style="margin-top:10px">ข้อมูลแต่ละส่วนดึงเมื่อ</h3>
+      <summary style="cursor:pointer">ข้อมูลแต่ละส่วนดึงเมื่อ (คลิกเพื่อดู)<!-- source: src/build_report.py rv.vintage_facts(), rv.data_header() --></summary>
       <table class="report-table" style="margin-top:8px">
         <thead><tr><th>ส่วน</th><th>ข้อมูลที่ใช้</th></tr></thead>
-        <tbody><tr><td><!-- source: output/data/processed_full_category_sales_monthly_forecastDate.csv (forecast/actual, scope, usable range), column snapshot_pull_date -->ช่วงข้อมูลหลัก</td><td>ข้อมูลที่ใช้คำนวณ Forecast รอบ ต.ค. 69 · ดึงเมื่อ 5 ต.ค. 69 · <a id="trend-link" href="../index.html#trend">ยอดขายจริงล่าสุดดูที่แท็บ Trend</a></td></tr><tr><td><!-- source: phaseC_step2_transferability_per_division.csv / phaseC_step2_per_division_summary_qty.csv, column snapshot_pull_date -->ผลทดสอบต่อฝ่าย</td><td>ข้อมูลรอบ Forecast ต.ค. 69 · ดึงเมื่อ 5 ต.ค. 69</td></tr><tr><td><!-- source: phaseC_step2_rolling_origin_qty.csv, column snapshot_pull_date -->กราฟ Rolling-origin</td><td>ข้อมูลรอบ Forecast ต.ค. 69 · ดึงเมื่อ 5 ต.ค. 69</td></tr><tr><td><!-- source: leadtime_notice_buckets_overall.csv, column snapshot_pull_date -->กราฟระยะเวลาแจ้งล่วงหน้า</td><td>ข้อมูลรอบ Forecast ต.ค. 69 · ดึงเมื่อ 5 ต.ค. 69</td></tr><tr><td><!-- source: focus_items_test_all.csv, column snapshot_pull_date -->กราฟ MAE โมเดลพื้นฐาน</td><td>ข้อมูลรอบ Forecast ต.ค. 69 · ดึงเมื่อ 5 ต.ค. 69</td></tr><tr><td><!-- source: delivery_by_year.csv, column snapshot_pull_date -->กราฟส่งตรงวันพอดี</td><td>ข้อมูลรอบ Forecast ต.ค. 69 · ดึงเมื่อ 5 ต.ค. 69</td></tr><tr><td><!-- source: delivery_not_late_by_year.csv, column snapshot_pull_date, itself read forward from the same Cube_CES pull as the on-time chart (no new DB call) -->กราฟส่งทัน</td><td>ข้อมูลรอบ Forecast ต.ค. 69 · ดึงเมื่อ 5 ต.ค. 69</td></tr></tbody>
+        <tbody><tr><td><!-- source: output/data/processed_full_category_sales_monthly_forecastDate.csv (forecast/actual, scope, usable range), column snapshot_pull_date -->ช่วงข้อมูลหลัก</td><td>ยอดขายที่ใช้ทำหน้านี้ ดึงเมื่อ 5 ต.ค. 69 · <a id="trend-link" href="../index.html#trend">ยอดขายจริงล่าสุดดูที่แท็บ Trend</a></td></tr><tr><td><!-- source: phaseC_step2_transferability_per_division.csv / phaseC_step2_per_division_summary_qty.csv, column snapshot_pull_date -->ผลทดสอบต่อฝ่าย</td><td>ข้อมูลที่ใช้ทำส่วนนี้ ดึงเมื่อ 5 ต.ค. 69</td></tr><tr><td><!-- source: phaseC_step2_rolling_origin_qty.csv, column snapshot_pull_date -->กราฟ Rolling-origin</td><td>ข้อมูลที่ใช้ทำส่วนนี้ ดึงเมื่อ 5 ต.ค. 69</td></tr><tr><td><!-- source: leadtime_notice_buckets_overall.csv, column snapshot_pull_date -->กราฟระยะเวลาแจ้งล่วงหน้า</td><td>ข้อมูลที่ใช้ทำส่วนนี้ ดึงเมื่อ 5 ต.ค. 69</td></tr><tr><td><!-- source: focus_items_test_all.csv, column snapshot_pull_date -->กราฟ MAE โมเดลพื้นฐาน</td><td>ข้อมูลที่ใช้ทำส่วนนี้ ดึงเมื่อ 5 ต.ค. 69</td></tr><tr><td><!-- source: delivery_by_year.csv, column snapshot_pull_date -->กราฟส่งตรงวันพอดี</td><td>ข้อมูลที่ใช้ทำส่วนนี้ ดึงเมื่อ 5 ต.ค. 69</td></tr><tr><td><!-- source: delivery_not_late_by_year.csv, column snapshot_pull_date, itself read forward from the same Cube_CES pull as the on-time chart (no new DB call) -->กราฟส่งทัน</td><td>ข้อมูลที่ใช้ทำส่วนนี้ ดึงเมื่อ 5 ต.ค. 69</td></tr></tbody>
       </table>
     </details>
   
@@ -285,6 +285,22 @@ function thaiDateTime(s, seconds) {
   return Number(m[3]) + ' ' + THAI_MONTHS[Number(m[2]) - 1] + ' ' + thaiYearShort(m[1]) + ' ' + m[4] + ':' + m[5] + (seconds && m[6] ? ':' + m[6] : '');
 }
 function thaiQuarter(label) { return String(label).replace(/Q(\d)'?(\d{4})/g, function (m, q, y) { return 'Q' + q + ' ' + thaiYearShort(y); }); }
+// The one standard header of a page that loads its data in the browser (Prompt 52; the Python twin is reader_values.data_header). T = config page_timestamps.text with T.back (weekdays back);
+// items = [{key, date, kind: 'data' | 'file' | 'round', id}]; forecastText = the "Forecast ล่าสุด" text or ''.
+function dataHeaderHtml(T, items, forecastText) {
+  const z = n => String(n).padStart(2, '0'), c = new Date(); let n = 0;
+  while (n < T.back) { c.setDate(c.getDate() - 1); if (c.getDay() !== 0 && c.getDay() !== 6) n++; }
+  const cut = c.getFullYear() + '-' + z(c.getMonth() + 1) + '-' + z(c.getDate());
+  const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const rows = items.map(function (it) {
+    const s = String(it.date || '');
+    let h = esc(T.header_items[it.key].replace('{when}', !s ? 'ไม่ทราบ' : (s.length > 10 ? thaiDateTime(s) : thaiDateShort(s))));
+    if (it.kind !== 'round' && s) h += ' · <span class="data-status">' + esc(s.slice(0, 10) < cut ? (it.kind === 'file' ? T.data_stale_file : T.data_stale) : T.data_fresh) + '</span>';
+    return '<span' + (it.id ? ' id="' + it.id + '"' : '') + '>' + h + '</span>';
+  });
+  return '<p class="note-line" id="data-header-data"><b>' + esc(T.header_data_label) + '</b> ' + (rows.length ? rows.join('<br>') : esc(T.header_none)) + '</p>' +
+    (forecastText ? '<p class="note-line" id="data-header-forecast"><b>' + esc(T.header_forecast_label) + '</b> ' + esc(forecastText) + '</p>' : '');
+}
 /*TH-DATES-END*/
 const yearLabel = y => 'ปี ' + thaiYearShort(y);
 const CHART_FAIL_MSG = 'แสดงกราฟไม่ได้ (เครือข่ายอาจไม่ให้โหลดตัวแสดงกราฟ) ตัวเลขและตารางยังใช้ได้ตามปกติ';
