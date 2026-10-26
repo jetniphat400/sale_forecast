@@ -203,9 +203,9 @@ def test_the_heading_months_and_the_data_line_come_from_the_plan_not_from_typing
     page = bp.render(v)
     assert f"Production Plan {len(MONTHS)} เดือน · ทุกฝ่าย" in page and "PEM101 และ PEM107" not in page
     facts = bp.rv.model_round_facts("2026-10-02")
-    assert "ข้อมูล stock จาก DB (Cube_Inventory_Exact) · Forecast = ยอดขายที่ระบบคาดการณ์ · ออเดอร์ที่รับแล้ว (Backlog) = ลูกค้าสั่งแล้วแต่ยังไม่ส่ง</p>" in page and f"stock และออเดอร์ที่รับแล้ว ดึงเมื่อ {v['pull_time']} · <span" in page
+    assert "ข้อมูล stock จาก DB (Cube_Inventory_Exact) · Forecast = ยอดขายที่ระบบคาดการณ์ · ออเดอร์ที่รับแล้ว (Backlog) = ลูกค้าสั่งแล้วแต่ยังไม่ส่ง</p>" in page and f"Production Plan คำนวณจาก stock และออเดอร์ที่รับแล้ว ณ {v['pull_time']} · คำนวณใหม่รอบถัดไป " in page and "stock ล่าสุดของวันนี้ดูที่แผง stock และหน้า Min-Max" in page
     assert "<b>Forecast ล่าสุด:</b> " + bp.rv.forecast_header_text(bp.op.load_full_config(PROJECT_ROOT)) in page and "Forecast รันเมื่อ" not in page
-    assert "ประวัติผลิตของ Historical peak ถึง 2 ต.ค. 69" in page and 'data-pulled="2026-10-02"' in page and 'data-pulled="2026-10-06"' in page
+    assert "ประวัติผลิตของ Historical peak ถึง 2 ต.ค. 69" in page and 'data-pulled="2026-10-02"' in page and 'data-pulled="2026-10-06"' not in page      # the plan's stock is a calculation date: no data-pulled span, no status
     im, dm, meta = _plan()
     meta4 = dict(meta, months=MONTHS)
     assert "6 เดือน" not in page
@@ -490,7 +490,7 @@ def test_the_new_page_shows_heading_data_line_summary_flag_lines_and_item_table(
     line = edge.ev("document.getElementById('data-line').innerText")
     assert line == "ข้อมูล stock จาก DB (Cube_Inventory_Exact) · Forecast = ยอดขายที่ระบบคาดการณ์ · ออเดอร์ที่รับแล้ว (Backlog) = ลูกค้าสั่งแล้วแต่ยังไม่ส่ง"
     hdr = edge.ev("document.getElementById('data-header-data').innerText")
-    assert hdr.startswith("ข้อมูลอัปเดตล่าสุด: stock และออเดอร์ที่รับแล้ว ดึงเมื่อ " + v["pull_time"] + " · ") and "ประวัติผลิตของ Historical peak ถึง " in hdr
+    assert hdr.startswith("ข้อมูลอัปเดตล่าสุด: Production Plan คำนวณจาก stock และออเดอร์ที่รับแล้ว ณ " + v["pull_time"] + " · คำนวณใหม่รอบถัดไป ") and hdr.splitlines()[0].count("Fresh") + hdr.splitlines()[0].count("Stale") == 0 and hdr.splitlines()[-1] == "stock ล่าสุดของวันนี้ดูที่แผง stock และหน้า Min-Max" and "ประวัติผลิตของ Historical peak ถึง " in hdr
     assert edge.ev("document.getElementById('data-header-forecast').innerText").startswith("Forecast ล่าสุด: รอบ ")      # the forecast line has no status
     assert "Fresh" not in edge.ev("document.getElementById('data-header-forecast').innerText")
     heads = edge.ev("[...document.querySelectorAll('#summary-PEM101 thead th')].map(t=>t.innerText.replace('รวมทุกช่องทาง','').trim())")

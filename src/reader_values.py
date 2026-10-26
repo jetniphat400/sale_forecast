@@ -168,12 +168,12 @@ def data_cutoff(today, config: dict):
 
 
 def source_class(config: dict, label: str) -> str:
-    """'data' or 'model_round': the class config page_timestamps gives the labelled source `label`. A source in neither list, or in both, stops the build."""
+    """'data', 'model_round' or 'computed': the class config page_timestamps gives the labelled source `label`. A source in none of the three lists, or in more than one, stops the build."""
     pt = config["page_timestamps"]
-    data, model = label in pt["data_sources"], label in pt["model_round_sources"]
-    if data == model:
-        raise ReaderValueError(f"the labelled source {label!r} is in {'both lists' if data else 'neither list'} of config page_timestamps (data_sources, model_round_sources)")
-    return "data" if data else "model_round"
+    found = [name for name, key in (("data", "data_sources"), ("model_round", "model_round_sources"), ("computed", "computed_sources")) if label in pt.get(key, [])]
+    if len(found) != 1:
+        raise ReaderValueError(f"the labelled source {label!r} is in {'more than one list' if found else 'none of the lists'} of config page_timestamps (data_sources, model_round_sources, computed_sources)")
+    return found[0]
 
 
 def data_is_stale(date, today, config: dict) -> bool:
@@ -224,12 +224,16 @@ def header_when(value) -> str:
 def data_header(config: dict, items: list, forecast: bool = True, vf: dict = None, today=None) -> str:
     """The one standard header of a page or tab (Prompt 52): "ข้อมูลอัปเดตล่าสุด:" with every dated source the page uses, then "Forecast ล่าสุด:" where the page uses the forecast.
     `items` are (key of config page_timestamps.text.header_items, date or stamp, kind); kind 'data' (pulled: a status against the day the page is read), 'file' (a file's last data
-    date: the file wording of the status) or 'round' (what the forecast round was fitted on: a date and no status). The page build time is not part of it."""
+    date: the file wording of the status), 'round' (what the forecast round was fitted on: a date and no status), 'computed' (a result calculated on that date from pulled data: a calculation
+    date, no status, and the next monthly calculation `{next}`) or 'note' (a line with no date). The page build time is not part of it."""
     import html as _html
     t = config["page_timestamps"]["text"]
     rows = []
     for key, date, kind in items:
-        shown = t["header_items"][key].format(when=header_when(date))
+        if kind == "note":                       # a line with no date and no status (where to find today's figures)
+            rows.append(_html.escape(t["header_items"][key]))
+            continue
+        shown = t["header_items"][key].format(when=header_when(date), next=thai_date_short(next_run_date(date)) if kind == "computed" else "")
         rows.append(data_age(str(date)[:10], shown, config, today, file_date=(kind == "file")) if kind in ("data", "file") else _html.escape(shown))
     out = (f'<div class="data-header" id="data-header"><p class="note-line" id="data-header-data"><b>{_html.escape(t["header_data_label"])}</b> '
            f'{"<br>".join(rows) if rows else _html.escape(t["header_none"])}</p>')
@@ -373,6 +377,19 @@ function dataHeaderHtml(T, items, forecastText) {
     (forecastText ? '<p class="note-line" id="data-header-forecast"><b>' + esc(T.header_forecast_label) + '</b> ' + esc(forecastText) + '</p>' : '');
 }
 /*TH-DATES-END*/"""
+
+
+def next_run_date(after) -> str:
+    """The ISO date of the first monthly run (monthly_refresh.run_day) strictly after the date `after`: what a computed line says as "คำนวณใหม่รอบถัดไป". Never typed."""
+    import monthly_refresh
+    d = _as_date(after)
+    year, month = d.year, d.month
+    for _ in range(3):
+        rd = monthly_refresh.run_day(year, month)
+        if rd > d:
+            return rd.isoformat()
+        year, month = (year + 1, 1) if month == 12 else (year, month + 1)
+    raise ReaderValueError(f"no monthly run day found after {d}")
 
 
 def criteria_decision_date(values: dict) -> str:

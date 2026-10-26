@@ -580,7 +580,7 @@ def _fixed_labels(cfg: dict) -> dict:
     """The executive tab's "ข้อมูล ณ" lines for fixed data (config page_timestamps.text): the sales line is MODEL-ROUND, the others are DATA with a status."""
     import reader_values as rv
     t = cfg["page_timestamps"]["text"]
-    items = [("sales_round", "2026-10-05", "round"), ("plan_stock", "2026-10-20 08:00:00", "data"), ("peak", "2026-10-02", "file"), ("material", "2026-10-20 09:42:00", "data"), ("pem107_alert", "2026-10-20 09:46:00", "data")]
+    items = [("sales_round", "2026-10-05", "round"), ("exec_calc", "2026-10-20 08:00:00", "computed"), ("peak", "2026-10-02", "file"), ("material", "2026-10-20 09:42:00", "data"), ("pem107_alert", "2026-10-20 09:46:00", "data"), ("plan_where", None, "note")]
     return {"header": rv.data_header(cfg, items, False), "js": rv.data_age_js(cfg)}
 
 
@@ -691,7 +691,7 @@ def test_each_watch_out_line_appears_only_when_its_condition_holds():
     assert none == []                                                                                    # at the limit or inside it: no line; no plan line, no late material, no alert
     low = bx.exec_watch([{"group": "G", "value": -6.0, "points": [("2026-01", -3), ("2026-02", -3), ("2026-03", -3), ("2026-04", -3), ("2026-05", -3), ("2026-06", -3)]}], 4.0, [], 0, None)          # six points below the actual: -6.0, still -5.0 without any one point: no suffix
     high = bx.exec_watch([{"group": "H", "value": 6.7, "points": [("2026-01", 1), ("2026-02", -1), ("2026-03", 1), ("2026-04", -1), ("2026-05", 1), ("2026-06", -1), ("2026-07", 1), ("2026-08", 30)]}], 4.0, [], 0, None)   # 5 of 8 above, 6.7; without the 30 it is 1.0, within the limit: suffix for the 8th month
-    plan = bx.exec_watch([], 4.0, [{"division": "D1", "month": "ต.ค. 69", "pct": "119.9%", "first": "3 ม.ค. 66", "last": "2 ต.ค. 69"}], 0, None)
+    plan = bx.exec_watch([], 4.0, [{"division": "D1", "month": "ต.ค. 69", "pct": "119.9%", "first": "3 ม.ค. 66", "last": "2 ต.ค. 69", "calc": "6 ต.ค. 69"}], 0, None)
     mat = bx.exec_watch([], 4.0, [], 584, None, "6 ต.ค. 69")
     alert = bx.exec_watch([], 4.0, [], 0, {"since": "พ.ค. 69", "pct": "57.7%"})
     assert [w["kind"] for w in low + high + plan + mat + alert] == ["low", "high", "plan", "material", "pem107"]
@@ -701,8 +701,8 @@ def test_each_watch_out_line_appears_only_when_its_condition_holds():
     assert "G Forecast ต่ำกว่าจริง 6 จาก 6 จุดวัด (Tracking Signal -6.0) คาดการณ์ทั้งปีของกลุ่มนี้อาจต่ำกว่าที่จะเกิดจริง" in lines and (low[0]["k"], low[0]["n"], low[0]["month"]) == (6, 6, None)
     assert "H Forecast สูงกว่าจริง 5 จาก 8 จุดวัด (Tracking Signal 6.7) ส่วนใหญ่มาจากเดือน ส.ค. 69 เดือนเดียว คาดการณ์ทั้งปีของกลุ่มนี้อาจสูงกว่าที่จะเกิดจริง" in lines and (high[0]["k"], high[0]["n"], high[0]["month"]) == (5, 8, "2026-08")
     assert not any("ต่อเนื่อง" in x for x in lines)
-    assert "แผนผลิต D1 เดือน ต.ค. 69 สูงกว่า Historical peak (ยอดผลิตเสร็จสูงสุดต่อเดือนในอดีต ไม่ใช่กำลังผลิตเต็มที่) (119.9%) คิดจากประวัติผลิต 3 ม.ค. 66 ถึง 2 ต.ค. 69" in lines
-    assert "วัตถุดิบ 584 รายการเลยกำหนดสั่ง (Late to order) สั่งวันนี้ของมาไม่ทันแผน (ณ 6 ต.ค. 69)" in lines
+    assert "แผนผลิต D1 เดือน ต.ค. 69 สูงกว่า Historical peak (ยอดผลิตเสร็จสูงสุดต่อเดือนในอดีต ไม่ใช่กำลังผลิตเต็มที่) (119.9%) คิดจากประวัติผลิต 3 ม.ค. 66 ถึง 2 ต.ค. 69 (แผนคำนวณ ณ 6 ต.ค. 69)" in lines
+    assert "วัตถุดิบ 584 รายการเลยกำหนดสั่ง (Late to order) สั่งวันนี้ของมาไม่ทันแผน (คำนวณ ณ 6 ต.ค. 69)" in lines
     assert "PEM107 ส่งของช่องทาง Omni ส่งทัน (Not-late: ส่งไม่ช้ากว่าวันนัด) น้อยลงตั้งแต่ พ.ค. 69 (57.7%)" in lines
     assert "5 เรื่อง" in "\n".join(lines)                                                                 # card 4 counts the lines shown
     assert not any("Forecast ต่ำกว่าจริง" in x for x in _exec_visible(bx.exec_render(dict(d, watch=high), cfg)))
@@ -999,7 +999,7 @@ def test_prompt_30_source_wording_the_min_max_settings_the_stock_pull_line_and_t
     visible = lambda t: re.sub(r"<!--.*?-->", "", t, flags=re.S)
     # the Min-Max page: the Min and Max settings are named as DB (Cube_Inventory_Exact), the old "ตั้งในระบบตอนนี้" is gone from what is shown
     assert "Min ค่าที่ตั้งใน DB (Cube_Inventory_Exact)" in visible(inv) and "ในระบบตอนนี้" not in visible(inv) and "ระบบตอนนี้" not in visible(plan)
-    assert "header_items" in inv and "ข้อมูล stock จาก DB (Cube_Inventory_Exact) · Forecast" in plan and "stock และออเดอร์ที่รับแล้ว ดึงเมื่อ" in plan
+    assert "header_items" in inv and "ข้อมูล stock จาก DB (Cube_Inventory_Exact) · Forecast" in plan and "Production Plan คำนวณจาก stock และออเดอร์ที่รับแล้ว ณ" in plan
     assert "ข้อมูล stock ดึงเมื่อ" not in visible(inv) and "ข้อมูล stock ดึงเมื่อ" not in visible(plan)
     assert "ข้อมูลขายใน DB (cube_Sale_APD)" in idx and "ข้อมูลถึง " not in visible(_outside_the_original_tab(idx))
     assert manual.count("ข้อมูลขายใน DB (cube_Sale_APD) ถึง {trend_data_through}") == 2 and "ข้อมูลถึง {" not in manual

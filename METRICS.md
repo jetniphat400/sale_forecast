@@ -659,6 +659,11 @@ Every dashboard page and panel displays, near its title:
   kept only as an HTML comment; "หน้าสร้างเมื่อ" is a banned reader word (tests/test_guards.py). The Trend tab, the stock panel and the assumptions tab use no forecast and have no
   "Forecast ล่าสุด" line; the manual has no header (it holds no data of its own). The sales report's per-section table keeps each section's own pull date ("ข้อมูลที่ใช้ทำส่วนนี้
   ดึงเมื่อ"): the series behind its tables and charts was pulled after vintage 2's forecast run (vintage 2: run and data cutoff 2026-10-02, series file saved 2026-10-05).
+- **Amended 2026-10-26 (Prompt 55): a third class, COMPUTED.** A result calculated from pulled data (the Production Plan, the material plan built from it, and the executive-tab lines and header entry that come from them; config `page_timestamps.computed_sources`)
+  is labelled with its calculation date and the next monthly calculation, as "<name> คำนวณจาก … ณ <date> · คำนวณใหม่รอบถัดไป <date>", and carries no Fresh or Stale status (header item kind `computed` of `reader_values.data_header`). The status
+  stays on the lines of data pulled directly (stock panel, Min-Max stock, raw-material stock and open purchase orders, PEM107, Trend, the Historical peak source). The next-run date is the first
+  `monthly_refresh.run_day` strictly after the calculation date (`reader_values.next_run_date`), never typed. The late-material and within-window counts read "คำนวณ ณ <date>"; the executive
+  watch lines for the plan and the late materials carry the calculation date. A short note line points to where today's stock is shown (stock panel, Min-Max page). Labels only: no number changed.
 - The forward-test log is never refreshed or rewritten; it keeps the
   cutoff it was generated at.
 - Where a page's sections draw on inputs with different pull dates, each

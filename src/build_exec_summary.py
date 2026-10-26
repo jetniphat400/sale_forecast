@@ -147,7 +147,7 @@ def exec_data(root: str = PROJECT_ROOT, plan_dir: str = None) -> dict:
     cfg_op = op.load_config(root)
     _im, dm, _meta = op.read_outputs(root, cfg_op, plan_dir)
     rng = _meta["capacity_range"]
-    plan_above = [{"division": r.division, "month": rv.thai_month_short(r.month), "pct": bopp.fmt_pct(r.share_of_capacity), "first": rv.thai_date_short(rng["first_date"]), "last": rv.thai_date_short(rng["last_date"])}
+    plan_above = [{"division": r.division, "month": rv.thai_month_short(r.month), "pct": bopp.fmt_pct(r.share_of_capacity), "first": rv.thai_date_short(rng["first_date"]), "last": rv.thai_date_short(rng["last_date"]), "calc": rv.thai_date_short(_meta["today"])}
                   for r in dm[dm["above_capacity"].astype(bool)].itertuples()]
     material = bmp.build_values(root, plan_dir)
     n_late, late_date = int(material["n_late"]), rv.thai_date_short(material["today"])
@@ -160,7 +160,7 @@ def exec_data(root: str = PROJECT_ROOT, plan_dir: str = None) -> dict:
     facts = rv.model_round_facts(vf["run_date"])
     stock_pull, rm_pull = str(_meta["stock_pull"]["pulled_at_local"]), material["labels"]["rm_pulled"]
     alert_pull = str(alert["data_pulled_at"])
-    items = [("sales_round", facts["pulled_iso"], "round"), ("plan_stock", stock_pull, "data"), ("peak", rng["last_date"], "file"), ("material", rm_pull, "data"), ("pem107_alert", alert_pull, "data")]
+    items = [("sales_round", facts["pulled_iso"], "round"), ("exec_calc", stock_pull, "computed"), ("peak", rng["last_date"], "file"), ("material", rm_pull, "data"), ("pem107_alert", alert_pull, "data"), ("plan_where", None, "note")]
     labels = {"header": rv.data_header(config, items, True, vf), "js": rv.data_age_js(config)}
     pending = [r for r in maxmin_v1.pending_criteria_rows() if r["who"] == "ผู้บริหาร"]
     return {"data_month": data_month, "data_month_label": rv.thai_month_short(data_month), "year": year, "year_be": int(rv.thai_year_short(year)), "remaining_months": remaining, "booked_baht": booked_baht, "rows": rows, "total": tot, "monthly": monthly,
@@ -292,7 +292,7 @@ def exec_render(data: dict, config: dict) -> str:
             suffix = T["watch_suffix"].format(month=rv.thai_month_short(w["month"])) if w["month"] else ""
             watch_lines.append(T["watch_" + w["kind"]].format(group=T["watch_group_names"].get(w["group"], w["group"]), value=f"{w['value']:.1f}", k=w["k"], n=w["n"], suffix=suffix))
         elif w["kind"] == "plan":
-            watch_lines.append(T["watch_plan"].format(division=w["division"], month=w["month"], pct=w["pct"], first=w["first"], last=w["last"]))
+            watch_lines.append(T["watch_plan"].format(division=w["division"], month=w["month"], pct=w["pct"], first=w["first"], last=w["last"], calc=w["calc"]))
         elif w["kind"] == "material":
             watch_lines.append(T["watch_material"].format(n=w["n"], date=w["date"]))
         else:

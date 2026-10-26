@@ -1207,8 +1207,8 @@ exec_summary:
     watch_high: "{group} Forecast สูงกว่าจริง {k} จาก {n} จุดวัด (Tracking Signal {value}){suffix} คาดการณ์ทั้งปีของกลุ่มนี้อาจสูงกว่าที่จะเกิดจริง"
     watch_group_names: {"Surge Arrester": "Surge Arrester (Medium Voltage)", "Fuse Cutout": "Fuse Cutout (กลุ่มนำร่อง)"}      # how the two pilot groups read on the watch lines
     watch_suffix: " ส่วนใหญ่มาจากเดือน {month} เดือนเดียว"            # added after the parenthesis only when the signal without its largest point is within the limit (METRICS.md Sec.49)
-    watch_plan: "แผนผลิต {division} เดือน {month} สูงกว่า Historical peak (ยอดผลิตเสร็จสูงสุดต่อเดือนในอดีต ไม่ใช่กำลังผลิตเต็มที่) ({pct}) คิดจากประวัติผลิต {first} ถึง {last}"
-    watch_material: "วัตถุดิบ {n} รายการเลยกำหนดสั่ง (Late to order) สั่งวันนี้ของมาไม่ทันแผน (ณ {date})"
+    watch_plan: "แผนผลิต {division} เดือน {month} สูงกว่า Historical peak (ยอดผลิตเสร็จสูงสุดต่อเดือนในอดีต ไม่ใช่กำลังผลิตเต็มที่) ({pct}) คิดจากประวัติผลิต {first} ถึง {last} (แผนคำนวณ ณ {calc})"
+    watch_material: "วัตถุดิบ {n} รายการเลยกำหนดสั่ง (Late to order) สั่งวันนี้ของมาไม่ทันแผน (คำนวณ ณ {date})"
     watch_pem107: "PEM107 ส่งของช่องทาง Omni ส่งทัน (Not-late: ส่งไม่ช้ากว่าวันนัด) น้อยลงตั้งแต่ {since} ({pct})"
     decide_heading: "เรื่องที่รอผู้บริหารตัดสิน"
     decide_link: "สมมติฐานที่ใช้อยู่"
@@ -1524,11 +1524,13 @@ page_timestamps:
     - "stock (หน้า Min-Max และแผง stock)"
     - "ยอดจอง (หน้า Min-Max และแผง stock)"
     - "แจ้งเตือน PEM107 (หน้า Min-Max)"
-    - "stock และออเดอร์ที่รับแล้ว (Production Plan)"
     - "stock วัตถุดิบและใบสั่งซื้อที่ค้างรับ (แผนวัตถุดิบ)"
     - "ข้อมูลรหัสสินค้าใน DB (Production Plan)"
     - "ยอดขายจริงล่าสุด (แท็บ Trend)"
     - "ประวัติการผลิตของ Historical peak"
+  # Prompt 55: a COMPUTED result (the Production Plan and what is built from it) states its calculation date and the next monthly calculation; it carries no Fresh or Stale status
+  computed_sources:
+    - "stock และออเดอร์ที่รับแล้ว (Production Plan)"
   model_round_sources:
     - "ช่วงข้อมูลหลัก"
     - "ผลทดสอบต่อฝ่าย"
@@ -1547,7 +1549,7 @@ page_timestamps:
     sales_main: "ยอดขายที่ใช้ทำหน้านี้ ดึงเมื่อ {pulled}"
     trend_link: "ยอดขายจริงล่าสุดดูที่แท็บ Trend"
     plan_master: "{n} รหัสไม่พบใน DB (Cube_ItemList)"
-    late_count_date: "ณ {date}: "
+    late_count_date: "คำนวณ ณ {date}: "
     trend_note: "ยอดนับตามวันที่รับ PO จึงไม่เท่ากับยอดในหน้าพยากรณ์ ซึ่งนับตามเดือนที่ต้องส่งของ · ข้อมูลขายใน DB (cube_Sale_APD)"
     # Prompt 52: the one standard header of every page and tab (reader_values.data_header, and its script twin in JS_THAI_DATES). The page build time is never shown.
     header_data_label: "ข้อมูลอัปเดตล่าสุด:"
@@ -1559,9 +1561,12 @@ page_timestamps:
       reserved: "ของที่ออเดอร์ที่รับแล้วจองไว้ (Reserved) ดึงเมื่อ {when}"
       pulled: "ไฟล์ stock ประจำวัน ดึงเมื่อ {when}"
       pem107_alert: "การส่งของ PEM107 ดึงเมื่อ {when}"
-      plan_stock: "stock และออเดอร์ที่รับแล้ว ดึงเมื่อ {when}"
-      plan_stock_only: "stock ดึงเมื่อ {when}"
-      plan_backlog: "ออเดอร์ที่รับแล้ว ดึงเมื่อ {when}"
+      plan_calc: "Production Plan คำนวณจาก stock และออเดอร์ที่รับแล้ว ณ {when} · คำนวณใหม่รอบถัดไป {next}"      # kind computed: a calculation date, no Fresh or Stale (Prompt 55)
+      plan_calc_stock: "Production Plan คำนวณจาก stock ณ {when}"
+      plan_calc_backlog: "Production Plan คำนวณจากออเดอร์ที่รับแล้ว ณ {when} · คำนวณใหม่รอบถัดไป {next}"
+      material_calc: "แผนวัตถุดิบ คำนวณจาก Production Plan ซึ่งคำนวณจาก stock และออเดอร์ที่รับแล้ว ณ {when} · คำนวณใหม่รอบถัดไป {next}"
+      exec_calc: "Production Plan และแผนวัตถุดิบ (ใช้ในเรื่องที่ต้องระวัง) คำนวณจาก stock และออเดอร์ที่รับแล้ว ณ {when} · คำนวณใหม่รอบถัดไป {next}"
+      plan_where: "stock ล่าสุดของวันนี้ดูที่แผง stock และหน้า Min-Max"                                          # kind note: no date, no status
       master: "รหัสสินค้าใน DB (Cube_ItemList) ดึงเมื่อ {when}"
       peak: "ประวัติผลิตของ Historical peak ถึง {when}"
       material: "stock วัตถุดิบและใบสั่งซื้อที่ค้างรับ ดึงเมื่อ {when}"

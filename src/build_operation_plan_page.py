@@ -374,15 +374,16 @@ def page_labels(root: str, meta: dict, master: dict, run_date: str) -> dict:
     status), the forecast round is MODEL-ROUND (no status). `master` is the item-master check; its note is a function of the number of codes. Returns strings and one function."""
     config = op.load_full_config(root)
     t = config["page_timestamps"]["text"]
-    for label in ("stock และออเดอร์ที่รับแล้ว (Production Plan)", "ข้อมูลรหัสสินค้าใน DB (Production Plan)", "ประวัติการผลิตของ Historical peak"):
-        if rv.source_class(config, label) != "data":
-            raise op.OperationPlanError(f"{label!r} is expected to be a data source in config page_timestamps")
+    for label, expected in (("stock และออเดอร์ที่รับแล้ว (Production Plan)", "computed"), ("ข้อมูลรหัสสินค้าใน DB (Production Plan)", "data"), ("ประวัติการผลิตของ Historical peak", "data")):
+        if rv.source_class(config, label) != expected:      # the plan is a calculation (date, no status); the item master and the peak's source are pulled data (status)
+            raise op.OperationPlanError(f"{label!r} is expected to be a {expected} source in config page_timestamps")
     stock, backlog = str(meta["stock_pull"]["pulled_at_local"]), str(meta["backlog_pull"]["pulled_at_local"])
     rng = meta["capacity_range"]
-    items = [("plan_stock", stock, "data")] if backlog == stock else [("plan_stock_only", stock, "data"), ("plan_backlog", backlog, "data")]
+    items = [("plan_calc", stock, "computed")] if backlog == stock else [("plan_calc_stock", stock, "computed"), ("plan_calc_backlog", backlog, "computed")]
     if master and master.get("pulled_iso"):
         items.append(("master", master["pulled_iso"], "data"))
     items.append(("peak", rng["last_date"], "file"))
+    items.append(("plan_where", None, "note"))
     return {"plan_built_at": str(meta.get("built_at", "")).replace("T", " "), "header": rv.data_header(config, items, True, {**rv.vintage_facts(), "run_date": run_date}),
             "master": lambda n: _e(t["plan_master"].format(n=n)) if master and master.get("pulled_iso") else "",
             "js": rv.data_age_js(config)}

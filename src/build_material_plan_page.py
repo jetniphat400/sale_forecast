@@ -265,7 +265,7 @@ def page_labels(root: str, meta: dict, op_meta: dict, today: str) -> dict:
     if rv.source_class(config, "stock วัตถุดิบและใบสั่งซื้อที่ค้างรับ (แผนวัตถุดิบ)") != "data":
         raise mp.MaterialPlanError("the raw-material stock label is expected to be a data source in config page_timestamps")
     pulled = str(meta["rm_pulled_at_local"])
-    items = [("material", pulled, "data")] + ([("plan_stock", str(op_meta["stock_pull"]["pulled_at_local"]), "data")] if op_meta.get("stock_pull") else [])
+    items = [("material", pulled, "data")] + ([("material_calc", str(op_meta["stock_pull"]["pulled_at_local"]), "computed")] if op_meta.get("stock_pull") else []) + [("plan_where", None, "note")]
     return {"plan_built_at": str(op_meta["built_at"]).replace("T", " "), "header": rv.data_header(config, items, True),
             "rm_pulled": pulled, "count_date": t["late_count_date"].format(date=rv.thai_date_short(today)), "js": rv.data_age_js(config)}
 

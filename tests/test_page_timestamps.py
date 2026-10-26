@@ -319,11 +319,12 @@ def test_every_labelled_source_is_classified_once_as_data_or_model_round_and_an_
     pt = cfg["page_timestamps"]
     assert not set(pt["data_sources"]) & set(pt["model_round_sources"])
     assert {rv.source_class(cfg, s) for s in pt["data_sources"]} == {"data"} and {rv.source_class(cfg, s) for s in pt["model_round_sources"]} == {"model_round"}
-    with pytest.raises(rv.ReaderValueError, match="neither list"):
+    assert not set(pt["computed_sources"]) & (set(pt["data_sources"]) | set(pt["model_round_sources"]))
+    assert {rv.source_class(cfg, s) for s in pt["computed_sources"]} == {"computed"} and "stock และออเดอร์ที่รับแล้ว (Production Plan)" in pt["computed_sources"]     # Prompt 55: the plan is a calculation
+    with pytest.raises(rv.ReaderValueError, match="none of the lists"):
         rv.source_class(cfg, "a new section")
     # the rule of Prompt 49: stock, backlog, raw-material stock, open purchase orders, Trend sales, PEM107 deliveries and the production history are DATA; what the forecast round was fitted on is MODEL-ROUND
-    assert {"stock (หน้า Min-Max และแผง stock)", "ยอดจอง (หน้า Min-Max และแผง stock)", "แจ้งเตือน PEM107 (หน้า Min-Max)", "stock และออเดอร์ที่รับแล้ว (Production Plan)",
-            "stock วัตถุดิบและใบสั่งซื้อที่ค้างรับ (แผนวัตถุดิบ)", "ยอดขายจริงล่าสุด (แท็บ Trend)", "ประวัติการผลิตของ Historical peak"} <= set(pt["data_sources"])
+    assert {"stock (หน้า Min-Max และแผง stock)", "ยอดจอง (หน้า Min-Max และแผง stock)", "แจ้งเตือน PEM107 (หน้า Min-Max)", "stock วัตถุดิบและใบสั่งซื้อที่ค้างรับ (แผนวัตถุดิบ)", "ยอดขายจริงล่าสุด (แท็บ Trend)", "ประวัติการผลิตของ Historical peak"} <= set(pt["data_sources"])
     # every section of the sales report is MODEL-ROUND
     assert {"ช่วงข้อมูลหลัก", "ผลทดสอบต่อฝ่าย", "กราฟ Rolling-origin", "กราฟระยะเวลาแจ้งล่วงหน้า", "กราฟ MAE โมเดลพื้นฐาน", "กราฟส่งตรงวันพอดี", "กราฟส่งทัน"} <= set(pt["model_round_sources"])
 
@@ -384,6 +385,37 @@ def test_the_historical_peak_range_is_the_first_and_last_date_of_the_production_
 def _visible_text(path):
     text = open(path, encoding="utf-8").read()
     return re.sub(r"<!--.*?-->", "", re.sub(r"<(script|style).*?</\1>", "", text, flags=re.S), flags=re.S)
+
+
+def test_next_run_date_is_the_first_monthly_run_day_after_the_date_and_comes_from_run_day():
+    import reader_values as rv
+    import monthly_refresh as mr
+    assert rv.next_run_date("2026-10-23") == mr.run_day(2026, 11).isoformat() == "2026-11-05"
+    assert rv.next_run_date("2026-11-05") == mr.run_day(2026, 12).isoformat()           # on the run day itself the next one is a month later
+    assert rv.next_run_date("2026-10-02") == mr.run_day(2026, 10).isoformat() == "2026-10-05"
+    assert rv.next_run_date("2026-12-20 08:00:00") == mr.run_day(2027, 1).isoformat()   # across the year end, a stamp with a time works
+
+
+def test_a_computed_header_line_states_its_calculation_date_and_next_run_and_has_no_status_and_a_note_has_no_date():
+    import reader_values as rv
+    cfg = _cfg()
+    assert rv.source_class(cfg, "stock และออเดอร์ที่รับแล้ว (Production Plan)") == "computed"
+    h = rv.data_header(cfg, [("plan_calc", "2026-10-23 08:00:29", "computed"), ("material", "2026-10-20 09:42:00", "data"), ("plan_where", None, "note")], False, today="2026-10-26")
+    assert "Production Plan คำนวณจาก stock และออเดอร์ที่รับแล้ว ณ 23 ต.ค. 69 08:00 · คำนวณใหม่รอบถัดไป 5 พ.ย. 69" in h
+    assert "stock ล่าสุดของวันนี้ดูที่แผง stock และหน้า Min-Max" in h
+    computed = h.split("<br>")[0]
+    assert "Fresh" not in computed and "Stale" not in computed and "data-age" not in computed       # the status stays on the line of the data pulled directly
+    assert h.count("เก่า (Stale)") == 1 and "data-pulled=\"2026-10-20\"" in h
+
+
+def test_the_plan_pages_and_the_executive_tab_say_calculated_not_pulled_for_the_plan_lines():
+    for rel in ("forecast/operation_plan.html", "forecast/material_plan.html", "index.html"):
+        text = _visible_text(os.path.join(PROJECT_ROOT, *rel.split("/")))
+        assert "คำนวณจาก" in text and "คำนวณใหม่รอบถัดไป" in text and "stock ล่าสุดของวันนี้ดูที่แผง stock และหน้า Min-Max" in text, rel
+        assert "stock และออเดอร์ที่รับแล้ว ดึงเมื่อ" not in text, rel                             # the plan's stock is a calculation date, not a data pull
+    mat = _visible_text(os.path.join(PROJECT_ROOT, "forecast", "material_plan.html"))
+    assert "stock วัตถุดิบและใบสั่งซื้อที่ค้างรับ ดึงเมื่อ" in mat                                 # the raw-material pull keeps its pulled date and its status
+    assert re.search(r"คำนวณ ณ \d+ \S+ \d+: มี ", mat) and not re.search(r"(?<!คำนวณ )ณ \d+ \S+ \d+: มี ", mat)
 
 
 def test_data_header_lists_each_source_with_its_status_and_the_forecast_line_only_when_asked():
