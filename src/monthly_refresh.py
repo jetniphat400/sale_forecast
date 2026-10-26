@@ -152,6 +152,7 @@ STEP_ORDER = ["1_pull_data", "2_validate", "3_frozen_snapshot", "4_backtest", "5
 
 EXIT_OK, EXIT_ABORTED, EXIT_PARTIAL, EXIT_LOGIN_REFUSED, EXIT_GATE_HELD = 0, 1, 2, 3, 4
 MONTHLY_STATE_PATH = os.path.join(PROJECT_ROOT, "output", "state", "monthly_run_state.json")      # not in git: the month of the last successful monthly run
+MONTHLY_ATTEMPT_PATH = os.path.join(PROJECT_ROOT, "output", "state", "monthly_attempt.json")      # not in git: the last real start that passed the run-day gate (Prompt 56)
 
 
 def run_day(year: int, month: int, base_day: int = None) -> date:
@@ -193,6 +194,25 @@ def record_monthly_success(run_id: str, today: date = None, path: str = None) ->
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, "w", encoding="utf-8") as f:
         json.dump({"last_success_month": f"{today.year}-{today.month:02d}", "run_id": run_id, "recorded_at": datetime.now().isoformat(timespec="seconds")}, f)
+
+
+def read_monthly_attempt(path: str = None) -> dict:
+    """The record of the last real start that passed the run-day gate ({date, run_id, started_at, pid}), or {} when there is none or it cannot be read."""
+    try:
+        with open(path or MONTHLY_ATTEMPT_PATH, encoding="utf-8") as f:
+            return json.load(f)
+    except (OSError, ValueError):
+        return {}
+
+
+def record_monthly_attempt(run_id: str, today: date, path: str = None) -> None:
+    """Writes the attempt record atomically (a temporary file, then a replace). Raises OSError when the folder cannot be written."""
+    path = path or MONTHLY_ATTEMPT_PATH
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    tmp = path + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump({"date": today.isoformat(), "run_id": run_id, "started_at": datetime.now().isoformat(timespec="seconds"), "pid": os.getpid()}, f)
+    os.replace(tmp, path)
 
 
 class MonthlyRefreshAbort(Exception):
@@ -2030,7 +2050,7 @@ def run_dry_run_in_sandbox(force_new_vintage: bool = False, offline: bool = Fals
 
 
 def main(dry_run: bool, force_new_vintage: bool = False, sandbox: bool = False, run_id: str = None,
-         run_log_dir: str = None, offline: bool = False, skip_tests: bool = False) -> dict:
+         run_log_dir: str = None, offline: bool = False, skip_tests: bool = False, ignore_attempt: bool = False) -> dict:
     if dry_run and not sandbox:
         return run_dry_run_in_sandbox(force_new_vintage, offline, skip_tests)
     run_id = run_id or datetime.now().strftime("%Y%m%dT%H%M%S")
@@ -2044,6 +2064,8 @@ def main(dry_run: bool, force_new_vintage: bool = False, sandbox: bool = False, 
     run_log = {"run_id": run_id, "dry_run": dry_run, "dry_run_in_temporary_copy": sandbox, "offline": offline,
                "force_new_vintage": force_new_vintage,
                "started_at": datetime.now().isoformat(timespec="seconds"), "steps": {}}
+    if ignore_attempt:
+        run_log["ignore_attempt"] = True          # a deliberate same-day retry (Prompt 56)
     global _DB_STAGE_FAILURE
     _DB_STAGE_FAILURE = None
     _PARTIAL_WARNINGS.clear()
@@ -2156,7 +2178,7 @@ def cli(argv=None) -> int:
     """Command line entry. Exit codes: 0 a run that completed every step (or a start that was not due: a weekend, before this month's run day, or already done this month: nothing is done, before the
     lock check, the preflight or any login); 1 an abort or failure; 2 a run that completed but with an auxiliary pull that failed (a WARN line, the previous file kept); 3 the database login was refused (the
     lock file is written; no job logs in until it is deleted); 4 a real run in which a gate failed (step 2 validation, leakage guard, vintage, Trend totals, executive, tests, sensitive-content scan, change-magnitude gates) or the push was held or failed (GitHub
-    unreachable, commit or push refused): the run log names the failed step or gates and the reason, the success state is NOT written, so the next weekday start runs again. The run log has already been written by main()."""
+    unreachable, commit or push refused): the run log names the failed step or gates and the reason, the success state is NOT written, so the next weekday start runs again. The run log has already been written by main(). A due start also writes output/state/monthly_attempt.json (Prompt 56): a second start the same day, such as a Task Scheduler restart after a run that began and ended 1 to 4, exits 0 at once; --ignore-attempt overrides it."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--dry-run", action="store_true",
                          help="Exercise every step's logic without writing/committing/pushing anything tracked.")
@@ -2165,6 +2187,7 @@ def cli(argv=None) -> int:
                               "task 2cfix2) for a deliberate second real run in the same month. "
                               "Its use is recorded in the run log.")
     parser.add_argument("--ignore-run-day", action="store_true", help="Run although it is not the run day (a manual run); the weekday and lock rules of the jobs still apply to nothing else.")
+    parser.add_argument("--ignore-attempt", action="store_true", help="Start although a real start already passed the run-day gate today (a deliberate same-day retry by a person after a real failure). Its use is recorded in the run log. A start with --ignore-run-day neither reads nor writes the attempt record.")
     parser.add_argument("--in-sandbox", action="store_true", help=argparse.SUPPRESS)
     parser.add_argument("--run-id", default=None, help=argparse.SUPPRESS)
     parser.add_argument("--run-log-dir", default=None, help=argparse.SUPPRESS)
@@ -2181,6 +2204,20 @@ def cli(argv=None) -> int:
             logger.info("Monthly refresh not started: %s.", reason)
             return EXIT_OK
         logger.info("Monthly refresh starts: %s.", reason)
+        # Same-day attempt guard (Prompt 56): Task Scheduler restarts a task that ends non-zero, but a run that STARTED and ended 1, 2, 3 or 4 must not be repeated the same day (the next weekday makes it up).
+        # A start that never reached Python writes no record, so a restart after it still runs. Before the refused-login lock, the publishing check, the runner lock, the preflight and any login.
+        attempt = read_monthly_attempt()
+        if attempt.get("date") == date.today().isoformat():
+            if not args.ignore_attempt:
+                logger.info("Monthly refresh not started: already attempted today (run %s at %s); the next weekday start makes it up.", attempt.get("run_id"), attempt.get("started_at"))
+                return EXIT_OK
+            logger.warning("--ignore-attempt: the start of today (run %s at %s) is ignored; this is a deliberate same-day retry.", attempt.get("run_id"), attempt.get("started_at"))
+        args.run_id = args.run_id or datetime.now().strftime("%Y%m%dT%H%M%S")
+        try:
+            record_monthly_attempt(args.run_id, date.today())
+        except OSError as e:        # fail closed: with an unwritable state folder the success state could not be written either, so a long run would only be repeated; stop loudly (exit 1, visible in Task Scheduler)
+            logger.error("MONTHLY REFRESH NOT STARTED: the attempt record cannot be written (%s: %s).", type(e).__name__, e)
+            return EXIT_ABORTED
     if real_run:
         try:
             db_module_for_exit.check_refused_lock()
@@ -2196,7 +2233,7 @@ def cli(argv=None) -> int:
     try:
         with _runner_lock(real_run=real_run):
             log = main(dry_run=args.dry_run, force_new_vintage=args.force_new_vintage, sandbox=args.in_sandbox,
-                       run_id=args.run_id, run_log_dir=args.run_log_dir, offline=args.offline, skip_tests=args.skip_tests)
+                       run_id=args.run_id, run_log_dir=args.run_log_dir, offline=args.offline, skip_tests=args.skip_tests, ignore_attempt=args.ignore_attempt)
     except (MonthlyLoginRefused, db_module_for_exit.LoginRefused) as e:
         db_module_for_exit.write_refused_lock("monthly_refresh.py")
         logger.error("MONTHLY REFRESH STOPPED, the database login was refused: %s", e)

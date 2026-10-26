@@ -840,6 +840,8 @@ Max and every sales-derived figure stay monthly.
 - Every run writes a log under `output/runs/daily/`. A failed gate or step writes the failed gate or step and the error,
   makes no commit or push and exits non-zero; the posting-delay measurement written in step 1 is kept.
 
+- **Note 2026-10-26 (Prompt 56), same-day attempt guard of `src/monthly_refresh.py`:** Task Scheduler now restarts the monthly task (RestartOnFailure 15 minutes, 4 times) after any non-zero result. A real start (not `--dry-run`, `--offline`, `--in-sandbox`, `--ignore-run-day`) that passes the run-day gate (`monthly_run_due`) writes `output/state/monthly_attempt.json` ({date, run_id, started_at, pid}, atomically) before the refused-login lock check, the publishing check, the runner lock, the preflight and any login. A later start the same day (a restart after a run that began and ended 1, 2, 3 or 4) finds the record, logs "Monthly refresh not started: already attempted today" and exits 0; the success state is not touched, so the next weekday makes the run up as before. A launch that failed before Python (git pull or interpreter, no start marker) wrote no record, so its restart still runs. `--ignore-attempt` skips the check for a deliberate retry by a person (it logs a warning, writes a new record and puts `ignore_attempt: true` in the run log). If the state folder cannot be written the start stops with exit 1 and a log line (fail closed: the success state could not be written either, and a long run would only be repeated). The run-day gate, the success state, the exit codes and the runner lock are unchanged.
+
 ## 29. omni_trend_demand_classification
 
 **Drafted from the existing Trend Pricelist Omni tab's current implementation, pending user

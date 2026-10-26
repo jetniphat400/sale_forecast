@@ -227,11 +227,14 @@ class _Today(_date):
         return cls.fixed
 
 
-def _cli_env(monkeypatch, tmp_path, today, main_log=None, main_exc=None):
+def _cli_env(monkeypatch, tmp_path, today, main_log=None, main_exc=None, keep_attempt=False):
     """The monthly command with a fixed day, a temporary state file, no lock file and no publishing check; returns the list of main() calls."""
     _Today.fixed = today
     monkeypatch.setattr(mr, "date", _Today)
     monkeypatch.setattr(mr, "MONTHLY_STATE_PATH", str(tmp_path / "state" / "monthly_run_state.json"))
+    monkeypatch.setattr(mr, "MONTHLY_ATTEMPT_PATH", str(tmp_path / "state" / "monthly_attempt.json"))       # never the real file; a start of the same day is cleared unless the test keeps it (Prompt 56)
+    if not keep_attempt and os.path.exists(mr.MONTHLY_ATTEMPT_PATH):
+        os.remove(mr.MONTHLY_ATTEMPT_PATH)
     monkeypatch.setattr(mr, "_runner_lock", lambda real_run: _contextlib.nullcontext())
     import daily_stock_job
     monkeypatch.setattr(daily_stock_job, "check_publishing_setup", lambda *a, **k: {})
@@ -809,3 +812,88 @@ def test_the_pem107_alert_is_a_data_source_judged_by_the_previous_weekday():
     assert rv.data_is_stale("2026-10-13", _date(2026, 10, 15), cfg) is True and rv.data_is_stale("2026-10-14", _date(2026, 10, 15), cfg) is False
     page = open(os.path.join(PROJECT_ROOT, "src", "build_inventory_page.py"), encoding="utf-8").read()
     assert "key: 'pem107_alert', date: DATA.pem107_alert.data_pulled_at, kind: 'data'" in page
+
+
+# ------------------------------------------------------------------ the same-day attempt guard (Prompt 56)
+def _attempt_trap(monkeypatch):
+    """Everything after the guard must stay unreached: the refused-login lock check, the publishing check, the runner lock and main()."""
+    monkeypatch.setattr(_db, "check_refused_lock", lambda: (_ for _ in ()).throw(AssertionError("the lock was checked")))
+    import daily_stock_job
+    monkeypatch.setattr(daily_stock_job, "check_publishing_setup", lambda *a, **k: (_ for _ in ()).throw(AssertionError("the publishing check ran")))
+    monkeypatch.setattr(mr, "_runner_lock", lambda real_run: (_ for _ in ()).throw(AssertionError("the runner lock was taken")))
+
+
+def test_a_due_start_with_no_attempt_writes_the_attempt_and_runs(monkeypatch, tmp_path):
+    calls = _cli_env(monkeypatch, tmp_path, _date(2026, 12, 7))
+    assert not os.path.exists(mr.MONTHLY_ATTEMPT_PATH)
+    assert mr.cli([]) == 0 and len(calls) == 1
+    a = mr.read_monthly_attempt()
+    assert a["date"] == "2026-12-07" and a["run_id"] == calls[0]["run_id"] and a["pid"] == os.getpid() and a["started_at"]
+    assert not os.path.exists(mr.MONTHLY_ATTEMPT_PATH + ".tmp")                              # written atomically, no temporary file left
+
+
+def test_a_second_start_the_same_day_after_a_real_failure_exits_0_and_reaches_nothing_after_the_guard(monkeypatch, tmp_path):
+    calls = _cli_env(monkeypatch, tmp_path, _date(2026, 12, 7), main_log={"run_id": "r1", "steps": {}, "aborted_at_step": "6_fill_and_score"})
+    assert mr.cli([]) == 1 and len(calls) == 1                                               # the real run started and failed: exit 1, success state not written
+    first = mr.read_monthly_attempt()
+    original_lock_check = _db.check_refused_lock
+    calls = _cli_env(monkeypatch, tmp_path, _date(2026, 12, 7), keep_attempt=True)          # Task Scheduler restarts it the same day
+    _attempt_trap(monkeypatch)
+    assert mr.cli([]) == 0 and calls == []
+    assert mr.read_monthly_attempt() == first and not os.path.exists(mr.MONTHLY_STATE_PATH)  # nothing rewritten; still not done, so the next weekday makes it up
+    monkeypatch.setattr(_db, "check_refused_lock", original_lock_check)
+    _cli_env(monkeypatch, tmp_path, _date(2026, 12, 8), keep_attempt=True)
+    assert mr.cli([]) == 0 and mr.read_monthly_state()["last_success_month"] == "2026-12"
+
+
+def test_an_attempt_of_an_earlier_day_does_not_stop_the_start_and_is_overwritten(monkeypatch, tmp_path):
+    calls = _cli_env(monkeypatch, tmp_path, _date(2026, 12, 7))
+    mr.record_monthly_attempt("old", _date(2026, 12, 4))
+    assert mr.cli([]) == 0 and len(calls) == 1
+    assert mr.read_monthly_attempt()["date"] == "2026-12-07" and mr.read_monthly_attempt()["run_id"] != "old"
+
+
+def test_a_start_that_is_not_due_writes_no_attempt(monkeypatch, tmp_path):
+    for day in (_date(2026, 12, 5), _date(2026, 12, 4)):                                     # a Saturday and the Friday before the run day
+        calls = _cli_env(monkeypatch, tmp_path, day)
+        assert mr.cli([]) == 0 and calls == [] and not os.path.exists(mr.MONTHLY_ATTEMPT_PATH)
+    _cli_env(monkeypatch, tmp_path, _date(2026, 12, 7), main_log={"run_id": "r1", "steps": {}})
+    assert mr.cli([]) == 0                                                                   # done this month
+    _cli_env(monkeypatch, tmp_path, _date(2026, 12, 8))
+    assert mr.cli([]) == 0 and not os.path.exists(mr.MONTHLY_ATTEMPT_PATH)                  # already done: the gate answers first, no attempt
+
+
+@pytest.mark.parametrize("flag", ["--dry-run", "--offline", "--in-sandbox"])
+def test_a_dry_offline_or_sandbox_start_never_reads_or_writes_the_attempt(monkeypatch, tmp_path, flag):
+    calls = _cli_env(monkeypatch, tmp_path, _date(2026, 12, 7))
+    monkeypatch.setattr(mr, "read_monthly_attempt", lambda *a, **k: (_ for _ in ()).throw(AssertionError("the attempt was read")))
+    monkeypatch.setattr(mr, "record_monthly_attempt", lambda *a, **k: (_ for _ in ()).throw(AssertionError("the attempt was written")))
+    assert mr.cli([flag]) == 0 and len(calls) == 1 and not os.path.exists(mr.MONTHLY_ATTEMPT_PATH)
+
+
+def test_ignore_attempt_starts_despite_todays_attempt_and_the_run_log_records_it(monkeypatch, tmp_path):
+    real_main = mr.main                                                                     # _cli_env replaces main() with a fake
+    calls = _cli_env(monkeypatch, tmp_path, _date(2026, 12, 7))
+    mr.record_monthly_attempt("earlier-today", _date(2026, 12, 7))
+    assert mr.cli(["--ignore-attempt"]) == 0 and len(calls) == 1 and calls[0]["ignore_attempt"] is True
+    assert mr.read_monthly_attempt()["run_id"] != "earlier-today"                            # the new start is recorded
+    os.remove(mr.MONTHLY_STATE_PATH)                                                         # the fake run succeeded and marked December done; clear it to start again on another day
+    calls = _cli_env(monkeypatch, tmp_path, _date(2026, 12, 9))
+    assert mr.cli([]) == 0 and calls[0]["ignore_attempt"] is False
+    # the run log: main() writes the flag into the log of a run that stops at step 1
+    monkeypatch.setattr(mr, "RUNS_DIR", str(tmp_path / "runs"))
+    monkeypatch.setattr(mr, "step1_pull_data", lambda *a, **k: (_ for _ in ()).throw(RuntimeError("stop here")))
+    with pytest.raises(RuntimeError):
+        real_main(dry_run=True, sandbox=True, run_id="t1", run_log_dir=str(tmp_path / "logs"), ignore_attempt=True)
+    assert json.load(open(tmp_path / "logs" / "monthly_refresh_t1.json", encoding="utf-8"))["ignore_attempt"] is True
+    with pytest.raises(RuntimeError):
+        real_main(dry_run=True, sandbox=True, run_id="t2", run_log_dir=str(tmp_path / "logs"))
+    assert "ignore_attempt" not in json.load(open(tmp_path / "logs" / "monthly_refresh_t2.json", encoding="utf-8"))
+
+
+def test_an_unwritable_state_folder_stops_the_real_start_with_exit_1_and_reaches_nothing_after_the_guard(monkeypatch, tmp_path):
+    calls = _cli_env(monkeypatch, tmp_path, _date(2026, 12, 7))
+    (tmp_path / "blocked").write_text("a file where the folder should be")
+    monkeypatch.setattr(mr, "MONTHLY_ATTEMPT_PATH", str(tmp_path / "blocked" / "monthly_attempt.json"))
+    _attempt_trap(monkeypatch)
+    assert mr.cli([]) == 1 and calls == []                                                   # fail closed and loud: no run that could not record its own start
