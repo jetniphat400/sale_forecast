@@ -1520,6 +1520,9 @@ backtest:
 # ============================================================
 page_timestamps:
   daily_weekdays_back: 1
+  # When the plans are next calculated: the daily job's start (task SaleForecast_PostingDelaySnapshot, 08:00) on a weekday, the monthly runner's start (07:00) on the monthly run day. Mirrors the two
+  # tasks' triggers; reader_values.next_calc_text computes the date from them and from monthly_refresh.run_day.
+  calc_times: {daily: "08:00", monthly: "07:00"}
   data_sources:
     - "stock (หน้า Min-Max และแผง stock)"
     - "ยอดจอง (หน้า Min-Max และแผง stock)"
@@ -1561,11 +1564,11 @@ page_timestamps:
       reserved: "ของที่ออเดอร์ที่รับแล้วจองไว้ (Reserved) ดึงเมื่อ {when}"
       pulled: "ไฟล์ stock ประจำวัน ดึงเมื่อ {when}"
       pem107_alert: "การส่งของ PEM107 ดึงเมื่อ {when}"
-      plan_calc: "Production Plan คำนวณจาก stock และออเดอร์ที่รับแล้ว ณ {when} · คำนวณใหม่รอบถัดไป {next}"      # kind computed: a calculation date, no Fresh or Stale (Prompt 55)
+      plan_calc: "Production Plan คำนวณจาก stock และออเดอร์ที่รับแล้ว ณ {when} · คำนวณใหม่ทุกวันทำการ ครั้งถัดไป {next}"      # kind computed: a calculation date, no Fresh or Stale (Prompt 55)
       plan_calc_stock: "Production Plan คำนวณจาก stock ณ {when}"
-      plan_calc_backlog: "Production Plan คำนวณจากออเดอร์ที่รับแล้ว ณ {when} · คำนวณใหม่รอบถัดไป {next}"
-      material_calc: "แผนวัตถุดิบ คำนวณจาก Production Plan ซึ่งคำนวณจาก stock และออเดอร์ที่รับแล้ว ณ {when} · คำนวณใหม่รอบถัดไป {next}"
-      exec_calc: "Production Plan และแผนวัตถุดิบ (ใช้ในเรื่องที่ต้องระวัง) คำนวณจาก stock และออเดอร์ที่รับแล้ว ณ {when} · คำนวณใหม่รอบถัดไป {next}"
+      plan_calc_backlog: "Production Plan คำนวณจากออเดอร์ที่รับแล้ว ณ {when} · คำนวณใหม่ทุกวันทำการ ครั้งถัดไป {next}"
+      material_calc: "แผนวัตถุดิบ คำนวณจาก Production Plan ซึ่งคำนวณจาก stock และออเดอร์ที่รับแล้ว ณ {when} · คำนวณใหม่ทุกวันทำการ ครั้งถัดไป {next}"
+      exec_calc: "Production Plan และแผนวัตถุดิบ (ใช้ในเรื่องที่ต้องระวัง) คำนวณจาก stock และออเดอร์ที่รับแล้ว ณ {when} · คำนวณใหม่ทุกวันทำการ ครั้งถัดไป {next}"
       plan_where: "stock ล่าสุดของวันนี้ดูที่แผง stock และหน้า Min-Max"                                          # kind note: no date, no status
       master: "รหัสสินค้าใน DB (Cube_ItemList) ดึงเมื่อ {when}"
       peak: "ประวัติผลิตของ Historical peak ถึง {when}"
@@ -1635,6 +1638,31 @@ daily_stock:
   # modified). A run that starts when a daily run of today already finished with one of these statuses exits at once and logs that it skipped.
   success_statuses: [published, nothing_to_publish]
   skip_status: skipped_success_exists_today
+
+# ============================================================
+# Daily extra pulls and rebuild (Prompt 57, src/daily_rebuild.py). After the stock publish, in the same database session, the sources that can be pulled every day are pulled (Trend sales, PEM107
+# deliveries, raw-material stock and open purchase orders; existing pull functions, existing SQL), and after the session the pages that depend on them are rebuilt with the existing builders and
+# committed in a second commit. The model stays monthly: the files below must be byte-identical after the rebuild or it is put back.
+# ============================================================
+daily_rebuild:
+  # The only tracked files the rebuild may change and commit (all four are in the monthly runner's GENERATED_PATHS; tests pin it).
+  allowed_files: [forecast/operation_plan.html, forecast/material_plan.html, forecast/inventory.html, index.html]
+  commit_message_prefix: "Daily rebuild, stock pulled"
+  # The day's status when the stock was published but an extra pull or the rebuild failed (put back): the noon start runs again for the failed parts; the exit code of the job.
+  partial_status: published_partial
+  partial_exit_code: 2
+  # Skip the extras and the rebuild when the monthly runner is alive (daily_stock.monthly_lock_file) or one of these records says the monthly run started or finished today.
+  monthly_attempt_file: output/state/monthly_attempt.json
+  monthly_state_file: output/state/monthly_run_state.json
+  # Once a month, before the first daily overwrite, the plan records the monthly run built are copied here (untracked).
+  archive_dir: output/summary/archive_monthly_plan
+  pem107_files: [output/summary/task2b_part4_pem107_alert.json, output/summary/task2b_part4_pem107_alert_items.csv, output/summary/task2b_part4_cube_ces_raw.csv]
+  # Never re-pulled or rewritten by the daily job; hashed before and after the rebuild (the sales report page and the forward-test log are the model's outputs).
+  model_files: [output/data/raw_all_divisions_sales.csv, output/data/processed_all_divisions_monthly_qty.csv, output/data/processed_all_divisions_monthly_sale.csv,
+                output/data/processed_full_category_sales_monthly_forecastDate.csv, forecast/sales_report.html, output/summary/forward_test_log_all_divisions.csv,
+                output/summary/forward_test_log_all_divisions_metadata.json]
+  # ASSUMPTIONS (owner: Modeler default, no business figure exists): a pull whose row count is further than this from the previous one is not used; the number of materials of the rebuilt plan likewise.
+  bands_pct: {trend_rows: 10, pem107_rows: 30, material_rm_inventory: 30, material_open_orders: 60, materials: 10}
 
 # ============================================================
 # Publishing clone (decision D1, option A, by the user 2026-10-06). The daily stock job and the monthly runner publish only from this separate

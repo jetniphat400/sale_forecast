@@ -620,6 +620,16 @@ def _chunks(codes: list) -> list:
     return [codes[i:i + CHUNK] for i in range(0, len(codes), CHUNK)]
 
 
+# The two statements of the current state (raw-material stock, open purchase orders): shared by the full pull below and by the daily split pull (Prompt 57); the text is unchanged.
+RM_STOCK_SQL = "SELECT warehouse, itemcode, stock, unit FROM Cube_Inventory_Exact WHERE itemcode IN ('{codes}')"
+OPEN_PO_SQL = "SELECT fulfill_date, po_number, itemcode, quantity, unit, warehouse, order_date FROM Cube_tobe_received WHERE itemcode IN ('{codes}')"
+
+
+def _pull_many(sql_tmpl: str, comps: list) -> pd.DataFrame:
+    from db import run_query
+    return pd.concat([run_query(sql_tmpl.format(codes=_in_list(ch))) for ch in _chunks(comps)], ignore_index=True)
+
+
 def pull_material_inputs(root_codes: list, since: str, max_levels: int = 25) -> dict:
     """Reads, through the open database session (db.run_query; the caller owns the session; read-only), what the material plan needs for the items `root_codes`:
     the BOM tree (Cube_BOM_Exact, level by level: every component code is looked up as a parent until none is new), raw-material stock (Cube_Inventory_Exact),
@@ -641,10 +651,10 @@ def pull_material_inputs(root_codes: list, since: str, max_levels: int = 25) -> 
     comps = sorted(set(bom_component_lines(bom)["comp"]) | {str(c).strip() for c in bom["ItemRawmat"].dropna()} - {""})
 
     def many(sql_tmpl):
-        return pd.concat([run_query(sql_tmpl.format(codes=_in_list(ch))) for ch in _chunks(comps)], ignore_index=True)
+        return _pull_many(sql_tmpl, comps)
     return {"bom_tree": bom,
-            "inventory": many("SELECT warehouse, itemcode, stock, unit FROM Cube_Inventory_Exact WHERE itemcode IN ('{codes}')"),
-            "tobe": many("SELECT fulfill_date, po_number, itemcode, quantity, unit, warehouse, order_date FROM Cube_tobe_received WHERE itemcode IN ('{codes}')"),
+            "inventory": many(RM_STOCK_SQL),
+            "tobe": many(OPEN_PO_SQL),
             "po": many(f"SELECT po_no, item_code, po_date, planed_date, po_quantity, received_quantity FROM Cube_PO_Exact WHERE item_code IN ('{{codes}}') AND po_date >= '{since}'"),
             "receipts": many(f"SELECT PO, Itemcode, Receive_date, Items_Received FROM Cube_ReceiveRM WHERE Itemcode IN ('{{codes}}') AND Receive_date >= '{since}'"),
             "price": many("SELECT ItemCode, SupplierNumber, Unit, DeliveryTime FROM Cube_PriceList WHERE ItemCode IN ('{codes}')"),
@@ -743,6 +753,27 @@ def pull_inputs_only(root: str = PROJECT_ROOT, in_open_session: bool = False) ->
     pd.to_pickle(bundle, out)
     return {"pulled_at_local": pulled_at, "rows": {k: int(len(v)) for k, v in {**material, **({"item_master": attributes["master"], "item_aging": attributes["aging"]} if attributes else {})}.items()},
             "written_to": op._display_path(out, root)}
+
+
+def pull_rm_stock_and_open_orders(root: str = PROJECT_ROOT, in_open_session: bool = False) -> dict:
+    """The daily part of the material plan's inputs (Prompt 57): ONLY raw-material stock (RM_STOCK_SQL) and open purchase orders (OPEN_PO_SQL), for the components of the BOM tree already saved in the
+    bundle. The BOM tree, purchase orders, receipts, prices, item names and the item master attributes stay as the last full pull (`pull_inputs_only`, monthly) left them; the bundle's
+    `rm_pulled_at_local` becomes this pull's time. ONE read-only session (`in_open_session` True when the caller holds it). A failure before the bundle is written leaves it as it was."""
+    import contextlib
+    import db
+    cfg = load_config(root)
+    out = op.path_of(root, cfg["operation_plan"]["week3_inputs_file"])
+    previous = pd.read_pickle(out)
+    bom = previous["bom_tree"]
+    comps = sorted(set(bom_component_lines(bom)["comp"]) | {str(c).strip() for c in bom["ItemRawmat"].dropna()} - {""})     # the same rule as pull_material_inputs
+    started = datetime.now()
+    with (contextlib.nullcontext() if in_open_session else db.session()):
+        inventory = _pull_many(RM_STOCK_SQL, comps)
+        tobe = _pull_many(OPEN_PO_SQL, comps)
+    bundle = {**previous, "rm_inventory": inventory[["warehouse", "itemcode", "stock", "unit"]], "rm_pulled_at_local": started.strftime("%Y-%m-%d %H:%M:%S"),
+              "open_orders": tobe[["fulfill_date", "po_number", "itemcode", "quantity", "unit", "warehouse", "order_date"]]}
+    pd.to_pickle(bundle, out)
+    return {"pulled_at_local": bundle["rm_pulled_at_local"], "rows": {"rm_inventory": int(len(inventory)), "open_orders": int(len(tobe))}, "written_to": op._display_path(out, root)}
 
 
 # ------------------------------------------------------------------ the saved pulls (offline use, tests and the one-off bundle of week 3)

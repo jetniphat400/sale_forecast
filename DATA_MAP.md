@@ -2073,3 +2073,21 @@ Source: STATUS.md "Week 4, prompt 49"; docs/reports/summary/prompt5_g2_vintage_t
 - **The Historical peak's production history (`output/data/lead_time_inputs/cube_final_all.csv`, a file written 2026-10-05) covers 3 January 2023 to 2 October 2026** (45,671 rows, `final_date`). Nothing refreshes it. **V1** (recomputed by the implementer; the operation plan meta now records the range).
 - **The three current-state pulls of 2026-10-20 took one session of about 4 minutes** (material inputs 09:42, Trend 09:46, PEM107 alert 09:46; 1 login). Trend: 38,722 rows, last sale date 2026-10-19; PEM107 alert: not-late from 2026-05 60.3 percent on 3,029 units. **V1.**
 - **PEM107 Production Plan, 2026-10: 1,888 units, 30.3 percent of the Historical peak (6,221, month 2024-11)**; material plan 2,247 materials, 617 late of which 565 counted (the counted figure leaves out 52 paid-remark lines), 159 within 30 days (143 counted), 624 to order now (572 counted). **V2.**
+
+
+## Prompt 57 (2026-10-26): pull cadence per source -- verified facts
+
+Level: read from the code and the saved pull files (file:line below); the one-off timings are those of the session of 2026-10-20 (`output/data/trend_pull/completeness.json` pulled_at 09:46:37, the PEM107 alert 09:46:41, the material inputs 09:42:42), no new database session was opened.
+
+| source | cadence now | function | tables | rows in the latest saved pull | files written | model input |
+|---|---|---|---|---|---|---|
+| stock and accepted orders | every weekday 08:00 (noon retry) | `build_inventory_dataset.save_pulls` via `daily_stock_job.pull_stage` | Cube_Inventory_Exact, Cube_CES (Status Backlog) | 2,496 stock rows, 752 backlog rows (2026-10-26) | `output/data/daily_stock_pull/`, `data/inventory.json`, `data/stock_daily.json` | no |
+| Trend sales | every weekday (new) | `build_trend_tab.pull` (`src/build_trend_tab.py:189`) | cube_Sale_APD | 38,722 rows in scope, 22,972 daily rows, 388 name rows; about 4 s | `output/data/trend_pull/{daily.csv,names.csv,completeness.json}` | no |
+| PEM107 deliveries | every weekday (new) | `cube_ces_pull.pull_pem107_alert` (`src/cube_ces_pull.py:185`) | Cube_CES (Omni Channel, PEM107 codes) | 12,045 rows, 74 items; about 3 s | `output/summary/task2b_part4_pem107_alert.json`, `..._alert_items.csv`, `task2b_part4_cube_ces_raw.csv` | no (read by the Min-Max page and the executive tab only) |
+| raw-material stock | every weekday (new) | `material_plan.pull_rm_stock_and_open_orders` (`src/material_plan.py:758`, SQL `RM_STOCK_SQL` line 624) | Cube_Inventory_Exact for the BOM components | 18,662 rows | `output/data/material_pull/material_inputs.pkl` (keys `rm_inventory`, `rm_pulled_at_local`) | no |
+| open purchase orders | every weekday (new) | same function (SQL `OPEN_PO_SQL` line 625) | Cube_tobe_received | 456 rows | same file (key `open_orders`) | no |
+| BOM tree, purchase orders, receipts, prices, item names, item master | monthly (`pull_inputs_only`, `src/material_plan.py:717` region, called by the monthly runner) | unchanged | Cube_BOM_Exact, Cube_PO_Exact, Cube_ReceiveRM, Cube_PriceList, Cube_ItemList | 25,843 / 36,619 / 50,223 / 7,460 / 4,863 / 5,261 | same pickle and `item_attributes.pkl` | no |
+| production history (Historical peak) | static: no pull exists | none | cube_final | `cube_final_all.csv` 45,671 rows to 2026-10-02 | written once on 2026-10-05 | no |
+| sales series behind the forecast | monthly | `load_data_all_divisions.py` (monthly step 1) | cube_Sale_APD | file `raw_all_divisions_sales.csv` | `output/data/raw_all_divisions_sales.csv`, `processed_all_divisions_monthly_*.csv` | YES: never written by the daily job (config `daily_rebuild.model_files`, hashed before and after every rebuild) |
+
+The BOM, purchase-order and receipt proofs (`rm_warehouse_proof`, `open_orders_proof`, `bom_source_proof`, `unit_proof`, `src/material_plan.py`) are one-off proofs run by tests and investigations, not by any job; their results are recorded in config (`material_plan.rm_warehouses`, `open_orders_usable`, `bom_source`). With only raw-material stock and open orders fresh, the daily run applies row-count bands (`daily_rebuild.bands_pct`) instead of re-running a proof. UNDETERMINED: the time of the split pull alone (the full pull of the session of 2026-10-20 took 235 s; the two statements are part of it).

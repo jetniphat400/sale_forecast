@@ -387,21 +387,25 @@ def _visible_text(path):
     return re.sub(r"<!--.*?-->", "", re.sub(r"<(script|style).*?</\1>", "", text, flags=re.S), flags=re.S)
 
 
-def test_next_run_date_is_the_first_monthly_run_day_after_the_date_and_comes_from_run_day():
+def test_the_next_calculation_is_the_next_weekday_start_of_the_daily_job_except_on_the_monthly_run_day_and_comes_from_run_day():
     import reader_values as rv
     import monthly_refresh as mr
-    assert rv.next_run_date("2026-10-23") == mr.run_day(2026, 11).isoformat() == "2026-11-05"
-    assert rv.next_run_date("2026-11-05") == mr.run_day(2026, 12).isoformat()           # on the run day itself the next one is a month later
-    assert rv.next_run_date("2026-10-02") == mr.run_day(2026, 10).isoformat() == "2026-10-05"
-    assert rv.next_run_date("2026-12-20 08:00:00") == mr.run_day(2027, 1).isoformat()   # across the year end, a stamp with a time works
+    cfg = _cfg()
+    assert mr.run_day(2026, 11).isoformat() == "2026-11-05"
+    assert rv.next_calc_text("2026-10-26 08:00:46", cfg) == "27 ต.ค. 69 08:00"            # after Monday's daily start: Tuesday's
+    assert rv.next_calc_text("2026-10-23 08:00:29", cfg) == "26 ต.ค. 69 08:00"            # Friday: the next weekday is Monday
+    assert rv.next_calc_text("2026-10-23 07:00:00", cfg) == "23 ต.ค. 69 08:00"            # before the day's start: the same day
+    assert rv.next_calc_text("2026-11-04 08:00:10", cfg) == "5 พ.ย. 69 07:00"              # the monthly run day is calculated by the monthly run
+    assert rv.next_calc_text("2026-11-05 07:20:00", cfg) == "6 พ.ย. 69 08:00"              # after it, the next daily start
+    assert rv.next_calc_text("2026-10-26", cfg) == "26 ต.ค. 69 08:00"                      # a date without a time counts from the start of that day
 
 
-def test_a_computed_header_line_states_its_calculation_date_and_next_run_and_has_no_status_and_a_note_has_no_date():
+def test_a_computed_header_line_states_its_calculation_date_and_next_calculation_and_has_no_status_and_a_note_has_no_date():
     import reader_values as rv
     cfg = _cfg()
     assert rv.source_class(cfg, "stock และออเดอร์ที่รับแล้ว (Production Plan)") == "computed"
     h = rv.data_header(cfg, [("plan_calc", "2026-10-23 08:00:29", "computed"), ("material", "2026-10-20 09:42:00", "data"), ("plan_where", None, "note")], False, today="2026-10-26")
-    assert "Production Plan คำนวณจาก stock และออเดอร์ที่รับแล้ว ณ 23 ต.ค. 69 08:00 · คำนวณใหม่รอบถัดไป 5 พ.ย. 69" in h
+    assert "Production Plan คำนวณจาก stock และออเดอร์ที่รับแล้ว ณ 23 ต.ค. 69 08:00 · คำนวณใหม่ทุกวันทำการ ครั้งถัดไป 26 ต.ค. 69 08:00" in h
     assert "stock ล่าสุดของวันนี้ดูที่แผง stock และหน้า Min-Max" in h
     computed = h.split("<br>")[0]
     assert "Fresh" not in computed and "Stale" not in computed and "data-age" not in computed       # the status stays on the line of the data pulled directly
@@ -411,7 +415,7 @@ def test_a_computed_header_line_states_its_calculation_date_and_next_run_and_has
 def test_the_plan_pages_and_the_executive_tab_say_calculated_not_pulled_for_the_plan_lines():
     for rel in ("forecast/operation_plan.html", "forecast/material_plan.html", "index.html"):
         text = _visible_text(os.path.join(PROJECT_ROOT, *rel.split("/")))
-        assert "คำนวณจาก" in text and "คำนวณใหม่รอบถัดไป" in text and "stock ล่าสุดของวันนี้ดูที่แผง stock และหน้า Min-Max" in text, rel
+        assert "คำนวณจาก" in text and "คำนวณใหม่ทุกวันทำการ ครั้งถัดไป" in text and "stock ล่าสุดของวันนี้ดูที่แผง stock และหน้า Min-Max" in text, rel
         assert "stock และออเดอร์ที่รับแล้ว ดึงเมื่อ" not in text, rel                             # the plan's stock is a calculation date, not a data pull
     mat = _visible_text(os.path.join(PROJECT_ROOT, "forecast", "material_plan.html"))
     assert "stock วัตถุดิบและใบสั่งซื้อที่ค้างรับ ดึงเมื่อ" in mat                                 # the raw-material pull keeps its pulled date and its status

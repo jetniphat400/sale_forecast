@@ -1,7 +1,9 @@
 """The daily job's entry point (the scheduled task starts it). Once per run, inside ONE database session
 (src/db.py session()): the per-item, per-warehouse stock snapshot of the Price List codes
 (output/snapshots/inventory_daily_YYYY-MM-DD.csv, one file per day, overwritten if run again the same day), then
-the daily stock job (src/daily_stock_job.py: the published data files).
+the daily stock job (src/daily_stock_job.py: the published data files), then (Prompt 57, src/daily_rebuild.py) the extra pulls of the other daily sources in the same session and, after the session
+has closed, the rebuild of the pages that depend on them. The stock publish comes first and is unchanged; nothing after it can stop it. Exit code 2 and status published_partial when the stock was
+published but an extra pull or the rebuild failed (everything it touched is put back).
 
 The prospective posting-delay measurement that used to run here (a daily row count of cube_Sale_APD and of
 cube_final, appended to output/snapshots/posting_delay.csv) was removed on 2026-10-12 (Prompt 27): it was not limited
@@ -118,6 +120,9 @@ def main():
         djob.record_failure(PROJECT_ROOT, root_config, "database host unreachable", exc)
         raise SystemExit(1)
     base = djob.load_base(PROJECT_ROOT, root_config)      # before today's snapshot file is written below
+    import daily_rebuild as dr
+    done = dr.done_sources(dr.partial_run_today(PROJECT_ROOT, root_config))          # the noon retry of a partial day pulls only what failed
+    log, extras, backup, skip = None, None, None, None
     try:
         with session():
             try:
@@ -126,7 +131,18 @@ def main():
                 logger.error("DATABASE ACCESS RULE: first connection attempt failed, stopping. Error: %s", exc)
                 raise
             write_inventory_snapshot(inv_snapshot)
-            djob.run(PROJECT_ROOT, base=base, config=root_config)
+            log = djob.run(PROJECT_ROOT, base=base, config=root_config)
+            if log["status"] in root_config["daily_stock"]["success_statuses"]:       # the stock is published; only now the extras (each in its own try/except)
+                try:
+                    skip = dr.skip_reason(PROJECT_ROOT, root_config)
+                    if skip:
+                        logger.info("Extra pulls and rebuild skipped: %s.", skip)
+                    else:
+                        backup = dr.begin(PROJECT_ROOT, root_config)
+                        extras = dr.run_extras(PROJECT_ROOT, root_config, backup, done)
+                except Exception as exc:     # noqa: BLE001 -- nothing may stop the published stock: the day is partial, the log says why
+                    logger.error("Extra pulls not started: %s", exc)
+                    extras = [{"source": "setup", "status": "failed", "error": f"{type(exc).__name__}: {exc}"[:400]}]
     except db.LoginRefused as exc:       # the server refused the login: the lock is written, the job ends with exit code 3
         logger.error("%s", exc)
         djob.record_failure(PROJECT_ROOT, root_config, "database login refused", RuntimeError("Login failed (SQLSTATE 28000, refused by the server)"))
@@ -137,6 +153,19 @@ def main():
     except Exception as exc:     # login failure or a failure of the snapshot itself: no stock job log exists yet
         djob.record_failure(PROJECT_ROOT, root_config, "database session or stock snapshot", exc)
         raise
+    if log is None:
+        return
+    if backup is not None:
+        rebuild = dr.run_rebuild(PROJECT_ROOT, root_config, backup)
+        backup.close()
+    else:
+        rebuild = {"status": "skipped", "reason": skip or ("the extra pulls did not start" if extras else "the stock job did not publish")}
+    log["extras"], log["rebuild"] = extras or [], rebuild
+    log["status"], code = dr.finalize(log["status"], extras, rebuild, root_config)
+    djob._write_log(PROJECT_ROOT, root_config, log)
+    logger.info("Daily run finished: status %s, extras %s, rebuild %s.", log["status"], [(e["source"], e["status"]) for e in log["extras"]], rebuild.get("status"))
+    if code:
+        raise SystemExit(code)
 
 
 if __name__ == "__main__":

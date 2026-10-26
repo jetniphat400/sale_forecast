@@ -233,7 +233,7 @@ def data_header(config: dict, items: list, forecast: bool = True, vf: dict = Non
         if kind == "note":                       # a line with no date and no status (where to find today's figures)
             rows.append(_html.escape(t["header_items"][key]))
             continue
-        shown = t["header_items"][key].format(when=header_when(date), next=thai_date_short(next_run_date(date)) if kind == "computed" else "")
+        shown = t["header_items"][key].format(when=header_when(date), next=next_calc_text(date, config) if kind == "computed" else "")
         rows.append(data_age(str(date)[:10], shown, config, today, file_date=(kind == "file")) if kind in ("data", "file") else _html.escape(shown))
     out = (f'<div class="data-header" id="data-header"><p class="note-line" id="data-header-data"><b>{_html.escape(t["header_data_label"])}</b> '
            f'{"<br>".join(rows) if rows else _html.escape(t["header_none"])}</p>')
@@ -379,17 +379,22 @@ function dataHeaderHtml(T, items, forecastText) {
 /*TH-DATES-END*/"""
 
 
-def next_run_date(after) -> str:
-    """The ISO date of the first monthly run (monthly_refresh.run_day) strictly after the date `after`: what a computed line says as "คำนวณใหม่รอบถัดไป". Never typed."""
+def next_calc_text(after, config: dict) -> str:
+    """When the plans are next calculated after the stamp `after`, as "<date> <time>": the next weekday at the daily job's start (config page_timestamps.calc_times.daily), except on the monthly run
+    day (`monthly_refresh.run_day`), which the monthly runner calculates at its own start (calc_times.monthly). Computed, never typed."""
+    import datetime as _dt
     import monthly_refresh
-    d = _as_date(after)
-    year, month = d.year, d.month
-    for _ in range(3):
-        rd = monthly_refresh.run_day(year, month)
-        if rd > d:
-            return rd.isoformat()
-        year, month = (year + 1, 1) if month == 12 else (year, month + 1)
-    raise ReaderValueError(f"no monthly run day found after {d}")
+    times = config["page_timestamps"]["calc_times"]
+    text = str(after).strip()
+    stamp = _dt.datetime.fromisoformat(text[:19].replace(" ", "T")) if len(text) > 10 else _dt.datetime.combine(_as_date(text), _dt.time())
+    day = stamp.date()
+    for _ in range(14):
+        if day.weekday() < 5:
+            hhmm = times["monthly"] if day == monthly_refresh.run_day(day.year, day.month) else times["daily"]
+            if _dt.datetime.combine(day, _dt.time.fromisoformat(hhmm)) > stamp:
+                return f"{thai_date_short(day.isoformat())} {hhmm}"
+        day += _dt.timedelta(days=1)
+    raise ReaderValueError(f"no calculation time found after {stamp}")
 
 
 def criteria_decision_date(values: dict) -> str:
