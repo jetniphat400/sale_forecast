@@ -103,14 +103,20 @@ class Backup:
                 os.makedirs(os.path.dirname(dst), exist_ok=True)
                 shutil.copy2(src, dst)
 
-    def restore(self, rels: list = None) -> None:
+    def restore(self, rels: list = None) -> list:
+        """Puts the files back, trying every one even when an earlier one fails (Prompt 58); returns [{file, error}] for the ones that could not be put back, [] when all were."""
+        errors = []
         for rel in (rels or self.rels):
-            dst = os.path.join(self.root, *rel.split("/"))
-            if self.hashes[rel] is None:
-                if os.path.exists(dst):
-                    os.remove(dst)
-            else:
-                shutil.copy2(os.path.join(self.dir, *rel.split("/")), dst)
+            try:
+                dst = os.path.join(self.root, *rel.split("/"))
+                if self.hashes[rel] is None:
+                    if os.path.exists(dst):
+                        os.remove(dst)
+                else:
+                    shutil.copy2(os.path.join(self.dir, *rel.split("/")), dst)
+            except Exception as e:  # noqa: BLE001 -- the other files must still be put back
+                errors.append({"file": rel, "error": f"{type(e).__name__}: {e}"[:300]})
+        return errors
 
     def verify(self, rels: list = None) -> list:
         return [rel for rel in (rels or self.rels) if _sha(os.path.join(self.root, *rel.split("/"))) != self.hashes[rel]]
@@ -191,8 +197,9 @@ def run_extras(root: str, config: dict, backup: Backup, done=(), pulls: dict = N
             check_band(name, counts, before.get(name), bands)
             results.append({"source": name, "status": "ok", "rows": counts, "seconds": round(time.time() - started, 1)})
         except Exception as e:  # noqa: BLE001 -- every failure must reach the log, and the earlier files stay
-            backup.restore(files[name])
-            results.append({"source": name, "status": "failed", "error": f"{type(e).__name__}: {e}"[:400], "seconds": round(time.time() - started, 1)})
+            restore_errors = backup.restore(files[name])
+            results.append({"source": name, "status": "failed", "error": f"{type(e).__name__}: {e}"[:400], "seconds": round(time.time() - started, 1),
+                            **({"restore_errors": restore_errors} if restore_errors else {})})
             logger.error("extra pull %s failed: %s", name, e)
     return results
 
@@ -386,15 +393,21 @@ def run_rebuild(root: str, config: dict, backup: Backup, git: bool = True, steps
             result.update(commit_and_push(root, config, pull_time))
     except Exception as e:  # noqa: BLE001
         result.update({"status": "failed", "failed_step": getattr(e, "step", None) or "rebuild", "error": f"{type(e).__name__}: {e}"[:600]})
-        import daily_stock_job as djob
-        if djob.monthly_runner_running(root, config):
+        try:
+            import daily_stock_job as djob
+            if djob.monthly_runner_running(root, config):
+                result["restored"] = False
+                result["note"] = "the monthly runner is running: nothing was put back (it rewrites these files)"
+            else:
+                restore_errors = backup.restore()
+                if git:
+                    djob.git(root, "checkout", "--", *config["daily_rebuild"]["allowed_files"], check=False)
+                result["restored"] = not restore_errors and not backup.verify()
+                if restore_errors:
+                    result["restore_errors"] = restore_errors
+        except Exception as e2:  # noqa: BLE001 -- a failure while putting back must still reach the log
             result["restored"] = False
-            result["note"] = "the monthly runner is running: nothing was put back (it rewrites these files)"
-        else:
-            backup.restore()
-            if git:
-                djob.git(root, "checkout", "--", *config["daily_rebuild"]["allowed_files"], check=False)
-            result["restored"] = not backup.verify()
+            result["restore_errors"] = result.get("restore_errors") or [{"file": "(restore step)", "error": f"{type(e2).__name__}: {e2}"[:300]}]
         logger.error("daily rebuild failed at %s: %s", result["failed_step"], e)
     return result
 

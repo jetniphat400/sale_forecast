@@ -468,3 +468,35 @@ def test_the_noon_start_after_a_failed_restored_morning_rebuild_pulls_every_sour
     _run_main(monkeypatch, tmp_path, None, {"status": "ok"}, partial=morning, pulls={n: pull(n) for n in ("trend", "pem107", "material")})
     assert pulled == ["pem107"]
 
+
+def test_an_exception_escaping_run_rebuild_is_logged_as_a_failed_rebuild_and_the_day_ends_partial(monkeypatch, tmp_path):
+    code, written, order = _run_main(monkeypatch, tmp_path, [{"source": "trend", "status": "ok"}], FileNotFoundError("backup copy gone"))
+    assert code == 2 and written[-1]["status"] == "published_partial"
+    rb = written[-1]["rebuild"]
+    assert rb["status"] == "failed" and rb["failed_step"] == "rebuild (unexpected)" and "FileNotFoundError" in rb["error"] and rb["restored"] is False
+    assert written[-1]["extras"][0]["source"] == "trend" and order[-1] == "backup closed"      # the log has the extras, and the backup folder is always removed
+
+
+def test_restore_continues_past_a_failing_file_and_names_it(project):
+    root, config = project
+    rels = dr.backup_paths(config)[:4]
+    backup = dr.Backup(root, rels)
+    for rel in rels:
+        _write(root, rel, "changed " + rel)
+    os.remove(os.path.join(backup.dir, *rels[1].split("/")))                            # the saved copy of the second file is gone
+    errors = backup.restore()
+    assert [e["file"] for e in errors] == [rels[1]] and "FileNotFoundError" in errors[0]["error"]
+    assert backup.verify() == [rels[1]]                                                  # the other three were put back
+    assert backup.restore([rels[0]]) == []
+
+
+def test_a_restore_that_fails_during_a_failed_rebuild_is_reported_not_raised(project, monkeypatch):
+    root, config = project
+    _snapshot_free(monkeypatch)
+    rels = dr.backup_paths(config)
+    backup = dr.Backup(root, rels)
+    os.remove(os.path.join(backup.dir, *rels[2].split("/")))
+    result = dr.run_rebuild(root, config, backup, git=False, steps=_steps(root, fail_at="material plan"), gates=lambda *a: [])
+    assert result["status"] == "failed" and result["restored"] is False
+    assert [e["file"] for e in result["restore_errors"]] == [rels[2]]
+    assert dr.finalize("published", [{"source": "trend", "status": "ok"}], result, config) == (config["daily_rebuild"]["partial_status"], 2)

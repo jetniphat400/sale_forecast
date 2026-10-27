@@ -156,8 +156,13 @@ def main():
     if log is None:
         return
     if backup is not None:
-        rebuild = dr.run_rebuild(PROJECT_ROOT, root_config, backup)
-        backup.close()
+        try:
+            rebuild = dr.run_rebuild(PROJECT_ROOT, root_config, backup)
+        except Exception as exc:     # noqa: BLE001 -- run_rebuild reports its own failures; anything that still escapes must not skip the day log, the status or the exit code (Prompt 58)
+            logger.error("Daily rebuild raised: %s", exc)
+            rebuild = {"status": "failed", "failed_step": "rebuild (unexpected)", "error": f"{type(exc).__name__}: {exc}"[:600], "restored": False}
+        finally:
+            backup.close()
     else:
         rebuild = {"status": "skipped", "reason": skip or ("the extra pulls did not start" if extras else "the stock job did not publish")}
     log["extras"], log["rebuild"] = extras or [], rebuild
