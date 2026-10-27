@@ -481,7 +481,8 @@ scheduled as follow-up work, not yet done. **PEM101 value statement, refined 202
   `output/runs/daily/daily_stock_20261027T091104.json`, rebuild commit `fdb29b6`)**. After the stock publish it pulls Trend sales, the PEM107 deliveries and raw-material
   stock with open purchase orders (each in its own try/except, row bands), then rebuilds the Trend tab, the Min-Max page, the Production Plan, the material plan and
   the executive tab behind gates and commits four pages; the model stays monthly. Open: the noon-retry and restore fixes of Prompt 58 are in code and tests; the
-  task-launch collision options and the 2026-10 archive verdict are PENDING a user decision (STATUS.md, "Week 4, prompt 58"). Depends on: T2's daily stock files; feeds G3's
+  task-launch collision (cause confirmed) is answered by the shared launcher `src/task_launcher.ps1` of Prompt 59 (ready; install state in STATUS.md, "Week 4, prompt 59"); the plan-record
+  archive now needs a real successful monthly run log (the 2026-10 folder is a development copy, labelled). Next gate: the first real monthly run 2026-11-05 (readiness table in STATUS.md, prompt 59). Depends on: T2's daily stock files; feeds G3's
   operation and material plan pages (STATUS.md, "Week 4, prompt 57").
 
 ## Dead ends (detail)
