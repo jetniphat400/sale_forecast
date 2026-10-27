@@ -234,10 +234,26 @@ def test_the_assumptions_file_holds_the_approved_texts_and_the_computed_values(r
     assert list(rows) == list(expected), "the records are in the approved order"
 
 
-def test_the_assumptions_file_is_what_the_builder_writes_today(recorded, tmp_path):
+def test_the_assumptions_file_is_what_the_builder_writes_today(recorded, tmp_path, monkeypatch):
+    """data/assumptions.json is written by the monthly run, so the manual_values that come from sources the daily job refreshes (Trend pull, stock publish: `reader_values.DAILY_REFRESHED_MANUAL_VALUES`)
+    are the monthly build's own and may differ from the live sources. Those are taken from the tracked file here (their shape is checked in test_the_daily_refreshed_manual_values_keep_their_shape);
+    everything else, including every assumption record and every other manual value, must equal what the builder writes today."""
+    import reader_values as rv
     tracked = json.load(open(TRACKED_ASSUMPTIONS, encoding="utf-8"))
+    live = rv.manual_values
+    monkeypatch.setattr(rv, "manual_values", lambda *a, **k: {**live(*a, **k), **{n: tracked["manual_values"][n] for n in rv.DAILY_REFRESHED_MANUAL_VALUES}})
     out = mm.write_assumptions(str(tmp_path / "data" / "assumptions.json"), CFG, today=tracked["assumptions"][0]["updated_date"])
     assert json.load(open(out, encoding="utf-8")) == tracked
+
+
+def test_the_daily_refreshed_manual_values_keep_their_shape(recorded):
+    import re
+    import reader_values as rv
+    published = json.load(open(TRACKED_ASSUMPTIONS, encoding="utf-8"))["manual_values"]
+    live = rv.manual_values()
+    assert set(rv.DAILY_REFRESHED_MANUAL_VALUES) <= set(published) and set(published) == set(live)
+    for name, pattern in (("trend_data_through", r"\d{1,2} \S+ \d{2}"), ("trend_first_month", r"\S+ \d{2}"), ("trend_last_month", r"\S+ \d{2}"), ("n_codes_trend", r"\d+"), ("n_codes_pages", r"\d+")):
+        assert re.fullmatch(pattern, published[name]) and re.fullmatch(pattern, live[name]), name
 
 
 def test_a_perturbed_source_changes_the_written_values(recorded, monkeypatch, tmp_path):

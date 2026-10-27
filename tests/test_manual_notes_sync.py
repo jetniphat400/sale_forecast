@@ -119,7 +119,12 @@ def test_the_published_manual_values_are_what_the_sources_compute_now():
     import reader_values as rv
     with open(ASSUMPTIONS_JSON, "r", encoding="utf-8") as f:
         published = json.load(f)["manual_values"]
-    assert published == rv.manual_values(), "data/assumptions.json manual_values is out of date: rebuild it with src/maxmin_v1.py write_assumptions"
+    live = rv.manual_values()
+    # data/assumptions.json is written by the monthly run; the names read from sources the daily job refreshes (rv.DAILY_REFRESHED_MANUAL_VALUES) may differ from the live sources until the next monthly
+    # run, so they are left out of the exact comparison (their shape is checked in tests/test_maxmin_v1.py) and every other name must be equal.
+    exact = {n for n in live if n not in rv.DAILY_REFRESHED_MANUAL_VALUES}
+    assert {n: published.get(n) for n in exact} == {n: live[n] for n in exact}, "data/assumptions.json manual_values is out of date: rebuild it with src/maxmin_v1.py write_assumptions"
+    assert set(published) == set(live)
 
 
 def test_no_manual_number_that_describes_the_data_or_the_schedule_is_typed():

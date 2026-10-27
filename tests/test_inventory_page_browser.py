@@ -10,11 +10,12 @@ page has no charts message when the charting library fails, or if the console re
 No tracked file is modified. With no browser available every test here is SKIPPED with a message,
 never passed silently.
 """
+import json
 import time
 
 import pytest
 
-from page_helpers import Edge, build_inventory_html, require_browser
+from page_helpers import Edge, build_inventory_html, load_stock_payload, require_browser
 
 DIVISIONS = ["PEM101", "PEM103", "PEM107"]
 # PEM103 follows METRICS.md Sec.23 since 2026-10-06 and has no stock_policy item, so it shows no Min and Max rows: the tests that move a control and expect
@@ -71,6 +72,35 @@ def edge():
     e = Edge(exe)
     yield e
     e.close()
+
+
+def _cover_probe(edge, page_path):
+    """(code, sellable warehouse, mean monthly forecast) of the first PEM107 Min-Max item with a positive forecast, from the page's own computation (computeItemMinMax)."""
+    edge.open(page_path, width=1440, height=900)
+    edge.ev("document.getElementById('division-select').value='PEM107'; onDivisionChange(); 1")
+    edge.pump(0.5)
+    found = edge.ev("""(function(){var d=DATA.divisions.PEM107; var c=readControls();
+      for (var i=0;i<d.items.length;i++){var it=d.items[i]; if(!getsMinMax(it)) continue; var r=computeItemMinMax(it,c);
+        if (r.meanMonthlyForecast>0) return JSON.stringify([it.code, d.sellable_warehouse_codes[0], r.meanMonthlyForecast]);}
+      return null})()""")
+    assert found, "no PEM107 Min-Max item has a positive forecast: the fixture cannot place a stock level on it"
+    return json.loads(found)
+
+
+@pytest.fixture(scope="module")
+def page_path_with_a_crossing_pem107_item(edge, page_path, tmp_path_factory):
+    """The page built from the tracked stock EXCEPT that one PEM107 Min-Max item holds 3.5 months of its own mean forecast in its sellable warehouse: between the 1 month and the 6 month
+    threshold the obsolescence test moves, so at least one PEM107 flag always changes, whatever the live stock of the day is (Prompt 59; with the stock of 2026-10-27 no item had a cover between them)."""
+    code, warehouse, mean = _cover_probe(edge, page_path)
+    payload = load_stock_payload()
+    payload["items"][code] = [[warehouse, round(3.5 * mean, 3)]]
+    return build_inventory_html(str(tmp_path_factory.mktemp("inventory_browser_crossing") / "forecast" / "inventory.html"), stock=payload)
+
+
+@pytest.fixture
+def desktop_with_a_crossing_item(edge, page_path_with_a_crossing_pem107_item):
+    edge.open(page_path_with_a_crossing_pem107_item, width=1440, height=900)
+    return edge
 
 
 @pytest.fixture
@@ -143,8 +173,8 @@ def test_scenario_control_changes_its_numbers(desktop, division, key, value, exp
 
 
 @pytest.mark.parametrize("division", DIVISIONS)
-def test_obsolescence_threshold_changes_excess_flags(desktop, division):
-    e = desktop
+def test_obsolescence_threshold_changes_excess_flags(desktop_with_a_crossing_item, division):
+    e = desktop_with_a_crossing_item          # a stock fixture with one PEM107 item between the two thresholds; the other divisions are the tracked stock
     select_division(e, division)
     before = e.ev(SNAP)
     set_slider(e, "obsolescence_threshold_months", 1)

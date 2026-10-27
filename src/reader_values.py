@@ -568,6 +568,12 @@ def months_of_lag(guard_days: int, base_day: int, reference: str = "2026-10") ->
         lag += 1
 
 
+# The manual_values read from sources the DAILY job refreshes (the Trend pull's completeness.json since Prompt 57; data/inventory.json with every daily stock publish). data/assumptions.json is written
+# by the monthly run only, so its copy of these names is the value of the monthly build and differs from the live sources after any daily run: tests compare every other name exactly and check
+# only the shape of these (Prompt 59).
+DAILY_REFRESHED_MANUAL_VALUES = ("trend_data_through", "trend_first_month", "trend_last_month", "n_codes_trend", "n_codes_pages")
+
+
 def manual_values(config: dict = None, root: str = PROJECT_ROOT) -> dict:
     """{name: text} for every {braced} name in docs/user_manual.md. Sources: config.yaml (page_timestamps, backtest, leakage_guard, shadow, phase_e1_assumptions, inventory_page), the Trend
     pull's completeness.json (what the Trend tab was built from), data/inventory.json (the codes the stock panel and the other pages cover), the notice-bucket recorded output and the
