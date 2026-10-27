@@ -296,7 +296,7 @@ def test_status_and_exit_code_of_the_day(stock, extras, rebuild, expected):
 
 
 # ------------------------------------------------------------------ the daily job: order, isolation, exit code
-def _run_main(monkeypatch, tmp_path, extras, rebuild, stock_status="published", skip=None, order=None):
+def _run_main(monkeypatch, tmp_path, extras, rebuild, stock_status="published", skip=None, order=None, partial=None, pulls=None):
     import db
     import snapshot_daily as sd
     order = order if order is not None else []
@@ -319,15 +319,27 @@ def _run_main(monkeypatch, tmp_path, extras, rebuild, stock_status="published", 
     monkeypatch.setattr(sd, "take_inventory_snapshot", lambda: "snap")
     monkeypatch.setattr(sd, "write_inventory_snapshot", lambda s: None)
     monkeypatch.setattr(djob, "run", lambda *a, **k: order.append("stock publish") or log)
-    monkeypatch.setattr(dr, "partial_run_today", lambda *a, **k: None)
+    monkeypatch.setattr(dr, "partial_run_today", lambda *a, **k: partial)
     monkeypatch.setattr(dr, "skip_reason", lambda *a, **k: skip)
 
     class _Backup:
         def close(self):
             order.append("backup closed")
     monkeypatch.setattr(dr, "begin", lambda *a, **k: _Backup())
-    monkeypatch.setattr(dr, "run_extras", lambda *a, **k: order.append("extras") or extras)
-    monkeypatch.setattr(dr, "run_rebuild", lambda *a, **k: order.append("rebuild") or rebuild)
+    if pulls is None:
+        monkeypatch.setattr(dr, "run_extras", lambda *a, **k: order.append("extras") or extras)
+    else:                                                  # the real run_extras with fake pulls: which sources the start pulls is the point of the test
+        monkeypatch.setattr(dr, "PULLS", pulls)
+        monkeypatch.setattr(dr, "previous_counts", lambda *a, **k: {})
+        real_extras = dr.run_extras
+        monkeypatch.setattr(dr, "run_extras", lambda *a, **k: order.append("extras") or real_extras(*a, **k))
+
+    def fake_rebuild(*a, **k):
+        order.append("rebuild")
+        if isinstance(rebuild, BaseException):
+            raise rebuild
+        return rebuild
+    monkeypatch.setattr(dr, "run_rebuild", fake_rebuild)
     code = 0
     try:
         sd.main()
@@ -413,3 +425,46 @@ def test_the_split_material_pull_asks_for_the_two_statements_only_and_keeps_the_
     with pytest.raises(RuntimeError):
         mp.pull_rm_stock_and_open_orders(str(tmp_path), in_open_session=True)
     assert out.read_bytes() == before                                                                     # a failed pull leaves the bundle as it was
+
+
+# ------------------------------------------------------------------ Prompt 58: the noon retry after a failed (and restored) rebuild, and a failure while putting back
+def _partial_log(rebuild, extras=("ok", "ok", "ok")):
+    return {"run_id": "r1", "status": "published_partial", "extras": [{"source": n, "status": st} for n, st in zip(("trend", "pem107", "material"), extras)], "rebuild": rebuild}
+
+
+def test_a_failed_and_restored_rebuild_means_the_noon_retry_pulls_every_source_again(project):
+    root, config = project
+    log = _partial_log({"status": "failed", "failed_step": "pair check", "restored": True})
+    assert dr.done_sources(log) == set()                                              # the restore put yesterday's source files back, so no "ok" of the morning counts
+    backup = dr.Backup(root, dr.backup_paths(config))
+    results = dr.run_extras(root, config, backup, done=dr.done_sources(log), pulls=_fake_pulls(root, config))
+    assert {r["source"]: r["status"] for r in results} == {"trend": "ok", "pem107": "ok", "material": "ok"}
+
+
+def test_a_failed_pull_with_an_ok_rebuild_keeps_the_sources_that_were_ok(project):
+    log = _partial_log({"status": "ok"}, extras=("ok", "failed", "ok"))
+    assert dr.done_sources(log) == {"trend", "material"}
+    assert dr.done_sources(_partial_log({"status": "skipped", "reason": "x"}, extras=("ok", "failed", "ok"))) == {"trend", "material"}
+    assert dr.done_sources(None) == set() and dr.done_sources({}) == set()
+
+
+def test_a_failed_rebuild_that_was_not_restored_also_pulls_every_source_again(project):
+    # restored False = the monthly runner was running (nothing put back) or the restore itself failed (files half restored): either way the files on disk are not known to be today's pull.
+    assert dr.done_sources(_partial_log({"status": "failed", "restored": False, "note": "the monthly runner is running"})) == set()
+    assert dr.done_sources(_partial_log({"status": "failed", "restored": False, "restore_errors": [{"file": "a", "error": "x"}]})) == set()
+
+
+def test_the_noon_start_after_a_failed_restored_morning_rebuild_pulls_every_source_through_main(monkeypatch, tmp_path):
+    pulled = []
+
+    def pull(name):
+        return lambda root: pulled.append(name) or {"rows": 1}
+    morning = _partial_log({"status": "failed", "failed_step": "executive", "restored": True})
+    code, written, order = _run_main(monkeypatch, tmp_path, None, {"status": "ok"}, partial=morning, pulls={n: pull(n) for n in ("trend", "pem107", "material")})
+    assert sorted(pulled) == ["material", "pem107", "trend"] and code == 0
+    assert [(e["source"], e["status"]) for e in written[-1]["extras"]] == [("trend", "ok"), ("pem107", "ok"), ("material", "ok")]
+    pulled.clear()                                                                      # control: a morning whose rebuild was ok and whose pem107 pull failed pulls only that one
+    morning = _partial_log({"status": "ok"}, extras=("ok", "failed", "ok"))
+    _run_main(monkeypatch, tmp_path, None, {"status": "ok"}, partial=morning, pulls={n: pull(n) for n in ("trend", "pem107", "material")})
+    assert pulled == ["pem107"]
+

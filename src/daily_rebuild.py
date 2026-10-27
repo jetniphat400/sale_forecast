@@ -421,4 +421,9 @@ def partial_run_today(root: str, config: dict, today=None):
 
 
 def done_sources(log: dict) -> set:
+    """The sources the noon retry may skip: those the partial log of today records as ok. When that log's rebuild failed, none (Prompt 58): a failed rebuild puts back EVERY backed-up file, the
+    freshly pulled source files included, so a source logged "ok" has yesterday's data on disk again and a skipped pull would feed the noon rebuild stale data that then passes as a full success.
+    This holds whether or not the restore was complete (`restored` False = the files are in an unknown, possibly half-restored state, so they are pulled again as well)."""
+    if ((log or {}).get("rebuild") or {}).get("status") == "failed":
+        return set()
     return {e["source"] for e in (log or {}).get("extras", []) if e.get("status") in ("ok", "done_earlier_today")}
