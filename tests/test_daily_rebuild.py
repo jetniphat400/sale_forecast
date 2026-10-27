@@ -500,3 +500,71 @@ def test_a_restore_that_fails_during_a_failed_rebuild_is_reported_not_raised(pro
     assert result["status"] == "failed" and result["restored"] is False
     assert [e["file"] for e in result["restore_errors"]] == [rels[2]]
     assert dr.finalize("published", [{"source": "trend", "status": "ok"}], result, config) == (config["daily_rebuild"]["partial_status"], 2)
+
+
+# ------------------------------------------------------------------ Prompt 59: the monthly plan-record archive needs a real, successful monthly run log of the month
+def _put(root, rel, text):
+    os.makedirs(os.path.dirname(os.path.join(root, *rel.split("/"))), exist_ok=True)
+    _write(root, rel, text)
+
+
+def _monthly_log(root, config, name, month="2026-11", dry=False, sandbox=False, offline=False, step7b="ok", pushed=True, finished=True, other="ok"):
+    steps = {"1_pull_data": {"status": other}, "11_commit_and_push": {"status": "ok", "result": {"pushed": pushed}}}
+    if step7b is not None:                                      # None: a run without the plan step, like the real monthly run of 2026-10-05, which came before step 7b existed
+        steps["7b_operation_plan"] = {"status": step7b}
+    log = {"run_id": name, "dry_run": dry, "dry_run_in_temporary_copy": sandbox, "offline": offline, "started_at": f"{month}-05T07:00:00", "steps": steps}
+    if finished:
+        log["finished_at"] = f"{month}-05T07:40:00"
+    _put(root, f"{config['daily_rebuild']['monthly_run_logs_dir']}/monthly_refresh_{name}.json", json.dumps(log))
+
+
+def _archive_ready(project):
+    root, config = project
+    rd = config["daily_rebuild"]
+    _put(root, rd["monthly_state_file"], json.dumps({"last_success_month": "2026-11", "recorded_at": "2026-11-05T07:40:00"}))
+    return root, config, date(2026, 11, 9)
+
+
+def _archive_dir(root, config):
+    return os.path.join(root, *config["daily_rebuild"]["archive_dir"].split("/"), "2026-11")
+
+
+def test_no_monthly_log_means_no_archive_even_when_the_success_state_says_the_month_is_done(project):
+    root, config, today = _archive_ready(project)
+    assert dr.archive_monthly_records(root, config, today) is None and not os.path.exists(_archive_dir(root, config))
+
+
+@pytest.mark.parametrize("kind", ["dry_run", "sandbox_copy", "offline"])
+def test_a_dry_run_sandbox_or_offline_log_means_no_archive(project, kind):
+    root, config, today = _archive_ready(project)
+    _monthly_log(root, config, "d1", dry=kind == "dry_run", sandbox=kind == "sandbox_copy", offline=kind == "offline")
+    assert dr.archive_monthly_records(root, config, today) is None and not os.path.exists(_archive_dir(root, config))
+
+
+@pytest.mark.parametrize("flaw", [{"step7b": "FAILED"}, {"step7b": None}, {"pushed": False}, {"finished": False}, {"other": "FAILED"}, {"month": "2026-10"}])
+def test_a_real_log_that_did_not_build_the_plan_or_did_not_end_successfully_or_is_of_another_month_means_no_archive(project, flaw):
+    root, config, today = _archive_ready(project)
+    _monthly_log(root, config, "r1", **flaw)
+    assert dr.archive_monthly_records(root, config, today) is None and not os.path.exists(_archive_dir(root, config))
+
+
+def test_a_real_successful_log_archives_once_and_a_second_call_the_same_month_changes_nothing(project):
+    root, config, today = _archive_ready(project)
+    _monthly_log(root, config, "r1")
+    dst = dr.archive_monthly_records(root, config, today)
+    assert dst == _archive_dir(root, config)
+    copied = sorted(os.listdir(dst))
+    assert len(copied) == 6 and "operation_plan_v1_meta.json" in copied
+    first = {n: dr._sha(os.path.join(dst, n)) for n in copied}
+    _put(root, config["operation_plan"]["output_meta_file"], "changed by a later daily rebuild")
+    assert dr.archive_monthly_records(root, config, today) is None
+    assert sorted(os.listdir(dst)) == copied and {n: dr._sha(os.path.join(dst, n)) for n in copied} == first       # the first copy is untouched
+
+
+def test_an_existing_archive_folder_is_never_overwritten_even_with_a_good_log(project):
+    root, config, today = _archive_ready(project)
+    _monthly_log(root, config, "r1")
+    os.makedirs(_archive_dir(root, config))
+    _put(root, config["daily_rebuild"]["archive_dir"] + "/2026-11/README.md", "a development copy")
+    assert dr.archive_monthly_records(root, config, today) is None
+    assert os.listdir(_archive_dir(root, config)) == ["README.md"]

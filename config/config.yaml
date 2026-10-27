@@ -1656,6 +1656,7 @@ daily_rebuild:
   monthly_state_file: output/state/monthly_run_state.json
   # Once a month, before the first daily overwrite, the plan records the monthly run built are copied here (untracked).
   archive_dir: output/summary/archive_monthly_plan
+  monthly_run_logs_dir: output/runs        # where the monthly runner writes monthly_refresh_<run id>.json; the archive needs a real, successful log of the month that built the plan (Prompt 59)
   pem107_files: [output/summary/task2b_part4_pem107_alert.json, output/summary/task2b_part4_pem107_alert_items.csv, output/summary/task2b_part4_cube_ces_raw.csv]
   # Never re-pulled or rewritten by the daily job; hashed before and after the rebuild (the sales report page and the forward-test log are the model's outputs).
   model_files: [output/data/raw_all_divisions_sales.csv, output/data/processed_all_divisions_monthly_qty.csv, output/data/processed_all_divisions_monthly_sale.csv,

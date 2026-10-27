@@ -320,14 +320,32 @@ def check_gates(root: str, config: dict, snap: dict, git: bool = True) -> list:
 
 
 # ----------------------------------------------------------------------------------------------- archive, commit, the stage
+def monthly_built_log(root: str, config: dict, month: str):
+    """The latest real monthly run log of `month` (YYYY-MM) that built the plan records and ended successfully, or None (Prompt 59). Real = not a dry run, not a run in a temporary copy, not offline;
+    built the plan = step 7b_operation_plan ok; ended successfully = every step ok, the push of step 11 done, and a finish time. The seeded success state alone is not evidence: no monthly run had
+    built the plan records when the 2026-10 archive was made (STATUS.md, "Week 4, prompt 58")."""
+    log_dir, found = os.path.join(root, *config["daily_rebuild"]["monthly_run_logs_dir"].split("/")), None
+    for name in sorted(os.listdir(log_dir)) if os.path.isdir(log_dir) else []:
+        if not (name.startswith("monthly_refresh_") and name.endswith(".json")):
+            continue
+        log = _read_json(os.path.join(log_dir, name))
+        steps = log.get("steps") or {}
+        if (log.get("dry_run") is False and not log.get("dry_run_in_temporary_copy") and not log.get("offline") and str(log.get("started_at", ""))[:7] == month and log.get("finished_at")
+                and (steps.get("7b_operation_plan") or {}).get("status") == "ok" and steps and all((v or {}).get("status") == "ok" for v in steps.values())
+                and ((steps.get("11_commit_and_push") or {}).get("result") or {}).get("pushed") is True):
+            found = log
+    return found
+
+
 def archive_monthly_records(root: str, config: dict, today=None) -> str:
-    """Once per month, before the first daily overwrite of the plan records: copies the records the monthly run built into output/summary/<archive_dir>/<YYYY-MM>/ (only when the monthly success of this month is recorded)."""
+    """Once per month, before the first daily overwrite of the plan records: copies the records the monthly run built into output/summary/<archive_dir>/<YYYY-MM>/. Only when the monthly success of
+    this month is recorded AND a real monthly run log of this month shows that run built the plan (`monthly_built_log`, Prompt 59); a folder that already exists is never touched."""
     rd, today = config["daily_rebuild"], today or date.today()
     month = f"{today.year}-{today.month:02d}"
     if _read_json(os.path.join(root, rd["monthly_state_file"])).get("last_success_month") != month:
         return None
     dst = os.path.join(root, *rd["archive_dir"].split("/"), month)
-    if os.path.exists(dst):
+    if os.path.exists(dst) or monthly_built_log(root, config, month) is None:
         return None
     op, mp = config["operation_plan"], config["material_plan"]
     os.makedirs(dst)
