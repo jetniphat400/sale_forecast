@@ -1666,7 +1666,7 @@ daily_rebuild:
   bands_pct: {trend_rows: 10, pem107_rows: 30, material_rm_inventory: 30, material_open_orders: 60, materials: 10}
 
 # ============================================================
-# Shared task launcher (Prompt 59, src/task_launcher.ps1). Both scheduled tasks start through it: it takes a lock, pulls the publishing clone, checks HEAD and the tracked tree, releases the lock and
+# Shared task launcher (Prompt 59; Python since Prompt 60b, src/task_launcher.py). Both scheduled tasks start through it: it takes a lock, pulls the publishing clone, checks HEAD and the tracked tree, releases the lock and
 # only then starts Python. The lock covers the git steps only (a monthly run of up to 3 hours must not hold the daily task past its 1 hour limit). The launcher reads this block with a small
 # line reader: keep it flat, one `key: value` per line. ASSUMPTIONS (owner: Modeler default, no business figure exists): the waits and the retry count below.
 # ============================================================

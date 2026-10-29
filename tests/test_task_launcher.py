@@ -1,4 +1,4 @@
-"""The shared task launcher src/task_launcher.ps1 (Prompt 59): lock, retry, HEAD check, exit codes. Every test works in a temporary bare origin and clone; no database, no network, no scheduled task.
+"""The shared task launcher src/task_launcher.py (Prompt 59, Python since Prompt 60b): lock, retry, HEAD check, exit codes. Every test works in a temporary bare origin and clone; no database, no network, no scheduled task.
 
 The race of Prompt 58 (two launches in the same second, both pulls failing 128) is repeated here with 3 pairs; the 25-pair proof is in STATUS.md, "Week 4, prompt 59".
 """
@@ -14,10 +14,9 @@ from datetime import datetime, timedelta
 import pytest
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-LAUNCHER = os.path.join(PROJECT_ROOT, "src", "task_launcher.ps1")
-POWERSHELL = shutil.which("powershell")
+LAUNCHER = os.path.join(PROJECT_ROOT, "src", "task_launcher.py")
 GIT = shutil.which("git")
-pytestmark = pytest.mark.skipif(not (POWERSHELL and GIT), reason="SKIPPED, not passed: the launcher tests need powershell.exe and git on this machine")
+pytestmark = pytest.mark.skipif(not GIT, reason="SKIPPED, not passed: the launcher tests need git on this machine")
 
 PROBE = '''import os
 import sys
@@ -53,13 +52,13 @@ def env(tmp_path):
     git(work, "commit", "-q", "-am", "c2")
     git(work, "push", "-q", "origin", "HEAD:main")
     (clone / "src").mkdir()
-    shutil.copy(LAUNCHER, clone / "src" / "task_launcher.ps1")
+    shutil.copy(LAUNCHER, clone / "src" / "task_launcher.py")
     return origin, clone, work
 
 
 def run_launcher(clone, *args, task="t1", git_exe=None, timeout=120, extra_env=None, script="probe.py", script_args=()):
-    cmd = [POWERSHELL, "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(clone / "src" / "task_launcher.ps1"), "-Task", task, "-Script", script,
-           "-Git", git_exe or GIT, "-Python", sys.executable, "-CloneDir", str(clone), "-RetryWaitMinSeconds", "0", "-RetryWaitMaxSeconds", "0", *args, *script_args]
+    cmd = [sys.executable, str(clone / "src" / "task_launcher.py"), "--task", task, "--script", script,
+           "--git", git_exe or GIT, "--python", sys.executable, "--clone-dir", str(clone), "--retry-wait-min-seconds", "0", "--retry-wait-max-seconds", "0", *args, *script_args]
     return subprocess.run(cmd, capture_output=True, text=True, timeout=timeout, env={**os.environ, **(extra_env or {})})
 
 
@@ -99,7 +98,7 @@ def test_the_launcher_pulls_checks_head_releases_the_lock_before_python_and_retu
 def test_a_held_lock_is_waited_for_and_the_launcher_gives_up_without_starting_python(env):
     _, clone, _ = env
     lock = write_lock(clone, os.getpid())
-    r = run_launcher(clone, "-LockWaitSeconds", "3")
+    r = run_launcher(clone, "--lock-wait-seconds", "3")
     assert r.returncode == 91 and ran(clone) == []
     text = log(clone)
     assert "lock_wait" in text and "lock_timeout" in text and "git_pull" not in text
@@ -110,7 +109,7 @@ def test_a_lock_released_while_waiting_is_taken_and_the_run_goes_on(env):
     _, clone, _ = env
     lock = write_lock(clone, os.getpid())
     threading.Timer(4.0, lambda: lock.unlink()).start()
-    r = run_launcher(clone, "-LockWaitSeconds", "40")
+    r = run_launcher(clone, "--lock-wait-seconds", "40")
     assert r.returncode == 0, r.stdout + r.stderr
     text = log(clone)
     assert "lock_wait" in text and "lock_acquired" in text and "lock_takeover" not in text and len(ran(clone)) == 1
@@ -129,7 +128,7 @@ def test_a_lock_of_a_dead_process_is_taken_over_and_logged(env):
 def test_a_lock_older_than_the_stale_age_is_taken_over_even_when_its_pid_is_alive(env):
     _, clone, _ = env
     write_lock(clone, os.getpid(), started_at=datetime.now() - timedelta(hours=1))
-    r = run_launcher(clone, "-LockStaleSeconds", "60")
+    r = run_launcher(clone, "--lock-stale-seconds", "60")
     assert r.returncode == 0, r.stdout + r.stderr
     assert "lock_takeover" in log(clone) and "over 60 s" in log(clone) and len(ran(clone)) == 1
 
@@ -154,7 +153,7 @@ def _failing_git(tmp_path, fail_first):
 def test_a_failing_pull_is_retried_the_configured_number_of_times_then_python_is_not_started(env, tmp_path):
     _, clone, _ = env
     stub, calls = _failing_git(tmp_path, -1)
-    r = run_launcher(clone, "-GitRetries", "2", git_exe=stub)
+    r = run_launcher(clone, "--git-retries", "2", git_exe=stub)
     assert r.returncode == 92 and ran(clone) == []
     assert len(calls.read_text().split()) == 3                                              # the first try and two retries
     text = log(clone)
@@ -164,7 +163,7 @@ def test_a_failing_pull_is_retried_the_configured_number_of_times_then_python_is
 def test_a_pull_that_fails_once_and_then_works_starts_python(env, tmp_path):
     origin, clone, _ = env
     stub, calls = _failing_git(tmp_path, 1)
-    r = run_launcher(clone, "-GitRetries", "3", git_exe=stub)
+    r = run_launcher(clone, "--git-retries", "3", git_exe=stub)
     assert r.returncode == 0, r.stdout + r.stderr
     assert len(calls.read_text().split()) == 2 and len(ran(clone)) == 1
     assert head(clone) == git(origin, "rev-parse", "main").stdout.strip()
@@ -173,7 +172,7 @@ def test_a_pull_that_fails_once_and_then_works_starts_python(env, tmp_path):
 def test_an_unreachable_remote_exhausts_the_retries_and_starts_no_python(env, tmp_path):
     _, clone, _ = env
     git(clone, "remote", "set-url", "origin", str(tmp_path / "does_not_exist.git"))
-    r = run_launcher(clone, "-GitRetries", "1")
+    r = run_launcher(clone, "--git-retries", "1")
     assert r.returncode == 92 and ran(clone) == []
     text = log(clone)
     assert text.count("git_pull attempt") == 2 and "exit=1 " in text and "does not appear to be a git repository" in text and "Python not started" in text
@@ -211,13 +210,59 @@ def test_a_missing_script_stops_with_94_after_the_pull(env):
 def test_two_launches_in_the_same_second_both_pull_in_turn_and_both_start_python(env, trial):
     origin, clone, _ = env
     procs = []
-    cmd_base = [POWERSHELL, "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(clone / "src" / "task_launcher.ps1"), "-Script", "probe.py", "-Git", GIT, "-Python", sys.executable,
-                "-CloneDir", str(clone), "-RetryWaitMinSeconds", "0", "-RetryWaitMaxSeconds", "0"]
+    cmd_base = [sys.executable, str(clone / "src" / "task_launcher.py"), "--script", "probe.py", "--git", GIT, "--python", sys.executable,
+                "--clone-dir", str(clone), "--retry-wait-min-seconds", "0", "--retry-wait-max-seconds", "0"]
     for name in ("daily", "monthly"):
-        procs.append(subprocess.Popen(cmd_base + ["-Task", name], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True))
+        procs.append(subprocess.Popen(cmd_base + ["--task", name], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True))
     codes = [p.wait(timeout=180) for p in procs]
     assert codes == [0, 0], [p.stdout.read() + p.stderr.read() for p in procs]
     assert len(ran(clone)) == 2 and head(clone) == git(origin, "rev-parse", "main").stdout.strip()
     text = log(clone)
     assert text.count("lock_acquired") == 2 and text.count("lock_released") == 2 and "exit=128" not in text
     assert not (clone / "output" / "runs" / "git_pull.lock").exists()
+
+
+def run_as_scheduled(clone, boot, *script_args):
+    """The launcher started as the task action starts it (cmd /c python task_launcher.py ...): no --clone-dir (the launcher finds its clone from its own path), no test-only waits."""
+    cmd = ["cmd.exe", "/c", sys.executable, str(clone / "src" / "task_launcher.py"), "--task", "t1", "--script", "probe.py", "--git", GIT, "--python", sys.executable, *script_args]
+    return subprocess.run(cmd, capture_output=True, text=True, timeout=120, cwd=str(clone), env={**os.environ, "TASK_LAUNCHER_BOOTSTRAP_LOG": str(boot)})
+
+
+def test_the_launcher_started_without_clone_dir_finds_its_clone_and_runs(env, tmp_path):
+    """Prompt 60b: the PowerShell launcher found its clone with $PSScriptRoot in a param default, which is empty in Windows PowerShell 5.1, so every scheduled start died with exit 1 before any log."""
+    _, clone, _ = env
+    boot = tmp_path / "boot.log"
+    r = run_as_scheduled(clone, boot, "5")
+    assert r.returncode == 5, r.stdout + r.stderr
+    assert f"clone={clone}" in log(clone) and "python_exit code=5" in log(clone)
+    assert ran(clone) == ["ran lock_present=False args=['5']"]
+
+
+def test_the_bootstrap_log_is_written_first_with_the_environment_and_closed_with_the_exit_code(env, tmp_path):
+    _, clone, _ = env
+    boot = tmp_path / "boot.log"
+    run_as_scheduled(clone, boot, "3")
+    lines = boot.read_text(encoding="utf-8").splitlines()
+    assert lines[0].split(" ", 2)[2].startswith("boot user=") and "exe=" in lines[0] and "temp=" in lines[0] and "--task t1" in lines[0]
+    assert lines[-1].endswith("end exitcode=3"), lines
+
+
+def test_a_missing_option_is_written_to_the_bootstrap_log_and_exits_94(env, tmp_path):
+    _, clone, _ = env
+    boot = tmp_path / "boot.log"
+    r = subprocess.run([sys.executable, str(clone / "src" / "task_launcher.py"), "--task", "t1"], capture_output=True, text=True, timeout=60, cwd=str(clone),
+                       env={**os.environ, "TASK_LAUNCHER_BOOTSTRAP_LOG": str(boot)})
+    assert r.returncode == 94
+    text = boot.read_text(encoding="utf-8")
+    assert "launcher_args_error" in text and text.strip().endswith("end exitcode=94") and ran(clone) == []
+
+
+def test_an_error_outside_the_run_is_written_to_the_bootstrap_log_with_its_line(env, tmp_path):
+    _, clone, _ = env
+    boot = tmp_path / "boot.log"
+    (clone / "config").mkdir()
+    (clone / "config" / "config.yaml").write_text("task_launcher:\n  git_retries: not_a_number\n", encoding="utf-8")       # int("not_a_number") raises in the config reader
+    r = run_as_scheduled(clone, boot)
+    assert r.returncode == 94
+    text = boot.read_text(encoding="utf-8")
+    assert "launcher_fatal" in text and "ValueError" in text and "line " in text and ran(clone) == []
