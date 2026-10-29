@@ -1622,6 +1622,11 @@ daily_stock:
   # Total on-hand units. Same threshold as the monthly gate (monthly_refresh.total_on_hand_stock_change_pct): a daily
   # move of more than this is held for a person to look at.
   on_hand_total_band_pct: 30
+  # Reserved rows: Cube_CES rows with Status='Backlog' in the pull (Prompt 60c, after a 0-row pull reached the dashboard on 2026-10-29 12:00). Evidence: the 15 published daily runs of 2026-10-05 to
+  # 2026-10-28 pulled 739 to 873 rows; the largest change from one run to the next was -6.1% (866 to 813). 30% is the on-hand band above (about 5 times the largest step seen) and allows 521 to 967
+  # rows against a base of 744. ASSUMPTION (owner: Modeler default, no business figure exists). A zero count fails whatever the band says unless the switch below is true.
+  reserved_rows_band_pct: 30
+  reserved_rows_zero_allowed: false
   # Files the job may stage, commit and push; anything else it finds changed stops the run.
   published_files:
     - data/inventory.json

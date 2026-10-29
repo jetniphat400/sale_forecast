@@ -159,7 +159,7 @@ def _band(name: str, today: float, base_value: float, pct: float) -> dict:
 
 
 def check_gates(payload: dict, inventory: pd.DataFrame, backlog_ces: pd.DataFrame, base: dict, published: dict,
-                config: dict, replay: bool = False) -> list:
+                config: dict, replay: bool = False, published_backlog_rows: int = None) -> list:
     """Runs every gate and returns one result per gate (it never stops at the first failure, so the log shows all).
     `replay` is for a rehearsal on a saved pull, which by definition is the pull already published: the pull-time gate
     then only requires 'not older than' the published one."""
@@ -187,7 +187,45 @@ def check_gates(payload: dict, inventory: pd.DataFrame, backlog_ces: pd.DataFram
         out.append({"gate": "pull_newer_than_published", "passed": bool(ok),
                     "detail": f"pull {payload['pull_time']} against published {published['pull_time']}"
                               + (" (replay of a saved pull: not older is enough)" if replay else "")})
+    out.extend(reserved_gates(payload, backlog_ces, base, cfg, published_backlog_rows))
     return out
+
+
+def published_backlog_rows(root: str) -> int:
+    """The reserved row count the published data/inventory.json was built from (backlog.raw_rows_before_dedup, the length of the Cube_CES Backlog pull), or None when the file or the figure is missing."""
+    try:
+        with open(os.path.join(root, "data", "inventory.json"), encoding="utf-8") as f:
+            value = json.load(f)["backlog"]["raw_rows_before_dedup"]
+        return int(value) if value and int(value) > 0 else None
+    except (OSError, ValueError, KeyError, TypeError):
+        return None
+
+
+def reserved_gates(payload: dict, backlog_ces, base: dict, cfg: dict, published_rows: int = None) -> list:
+    """The two gates on the reserved (Cube_CES Status='Backlog') pull (Prompt 60c). A pull of 0 rows reached the dashboard on 2026-10-29 12:00 (the source returned nothing; every item then read
+    reserved 0 and available = on hand) because no gate looked at this pull. A zero count is never published unless daily_stock.reserved_rows_zero_allowed says so; otherwise the row count is held to
+    the same kind of band as the stock rows against the last successful run's count (last_success.json `backlog_rows`) or, when that record has none (it was written before this gate existed), the count
+    the published data/inventory.json was built from; with neither the band FAILS CLOSED (it does not skip: an unchecked pull must not publish). The source's own load time must exist, since the page
+    shows 'unknown' for a missing one."""
+    rows = int(len(backlog_ces)) if backlog_ces is not None else 0
+    base_rows, source = (base or {}).get("backlog_rows"), (base or {}).get("source")
+    if not base_rows or base_rows <= 0:
+        base_rows, source = published_rows, "published data/inventory.json"
+    if rows == 0:
+        allowed = bool(cfg.get("reserved_rows_zero_allowed", False))
+        band = {"gate": "reserved_rows_band", "passed": allowed, "today": 0.0, "base": base_rows,
+                "detail": "0 reserved rows in the pull: " + ("allowed by config daily_stock.reserved_rows_zero_allowed" if allowed else "a zero count is not published (config daily_stock.reserved_rows_zero_allowed is false)")
+                          + (f"; the last published count was {base_rows:,}" if base_rows else "")}
+    elif not base_rows or base_rows <= 0:
+        band = {"gate": "reserved_rows_band", "passed": False, "today": float(rows), "base": None,
+                "detail": f"{rows:,} reserved rows but nothing to compare with (no count in the last successful run and none in the published data/inventory.json): held, not published"}
+    else:
+        band = _band("reserved_rows_band", float(rows), float(base_rows), cfg["reserved_rows_band_pct"])
+        band["base_source"] = source
+    loaded = payload.get("reserved_source_load_time")
+    present = {"gate": "reserved_load_time_present", "passed": loaded is not None,
+               "detail": f"the reserved source's load time is {loaded}" if loaded is not None else "the reserved source has no load time (no Timestamp in the pull): the page would show 'unknown'"}
+    return [band, present]
 
 
 def failed_gates(results: list) -> list:
@@ -404,7 +442,7 @@ def run(root: str = PROJECT_ROOT, dry_run: bool = False, pull_dir: str = None, b
         step = "gates"
         pub_path = os.path.join(root, stock_daily.STOCK_JSON_RELATIVE)
         published = stock_daily.read_payload(pub_path) if os.path.exists(pub_path) else None
-        log["gates"] = check_gates(built["payload"], built["inventory"], built["backlog_ces"], base, published, config, replay=dry_run)
+        log["gates"] = check_gates(built["payload"], built["inventory"], built["backlog_ces"], base, published, config, replay=dry_run, published_backlog_rows=published_backlog_rows(root))
         bad = failed_gates(log["gates"])
         if bad:
             raise DailyFailure("; ".join(f"{b['gate']}: {b['detail']}" for b in bad), gate=bad[0]["gate"])
@@ -428,7 +466,7 @@ def run(root: str = PROJECT_ROOT, dry_run: bool = False, pull_dir: str = None, b
                 os.makedirs(os.path.dirname(last_path), exist_ok=True)
                 with open(last_path, "w", encoding="utf-8") as f:
                     json.dump({"pull_time": log["pull_time"], "inventory_rows": int(len(built["inventory"])),
-                               "on_hand_total": float(built["inventory"]["stock"].sum()), "run_id": run_id}, f, indent=2)
+                               "on_hand_total": float(built["inventory"]["stock"].sum()), "backlog_rows": int(len(built["backlog_ces"])), "run_id": run_id}, f, indent=2)
         log["finished_at"] = datetime.now().isoformat(timespec="seconds")
         log["log_path"] = _write_log(root, config, log)
         return log

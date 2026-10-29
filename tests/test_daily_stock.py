@@ -83,14 +83,14 @@ def _stub_build(monkeypatch, tmp_path, **kw):
     monkeypatch.setattr(djob, "build_stage", lambda root, pull_dir, out_dir: _built(tmp_path, **kw))
 
 
-BASE = {"inventory_rows": 100, "on_hand_total": 1000.0, "source": "test", "pull_time": None}
+BASE = {"inventory_rows": 100, "on_hand_total": 1000.0, "backlog_rows": 2, "source": "test", "pull_time": None}
 
 
 # ------------------------------------------------------------------ gates
 def test_every_gate_passes_on_a_normal_day():
     inv, ces = _frames()
     res = djob.check_gates(_payload("2026-10-06 08:00:05"), inv, ces, BASE, _payload("2026-10-05 07:41:40"), CONFIG)
-    assert [r["gate"] for r in res] == ["row_count_band", "on_hand_total_band", "no_null_item_codes", "pull_newer_than_published"]
+    assert [r["gate"] for r in res] == ["row_count_band", "on_hand_total_band", "no_null_item_codes", "pull_newer_than_published", "reserved_rows_band", "reserved_load_time_present"]
     assert all(r["passed"] for r in res), res
 
 
@@ -106,6 +106,86 @@ def test_on_hand_total_gate_band(stock, passes):
     inv, ces = _frames(stock=stock)
     res = {r["gate"]: r for r in djob.check_gates(_payload("2026-10-06 08:00:05"), inv, ces, BASE, None, CONFIG)}
     assert res["on_hand_total_band"]["passed"] is passes, res["on_hand_total_band"]
+
+
+# ------------------------------------------------------------------ reserved gates (Prompt 60c: a 0-row reserved pull reached the dashboard on 2026-10-29 12:00)
+RES_BASE = dict(BASE, backlog_rows=744)
+
+
+def _reserved(rows, base=RES_BASE, payload=None, config=CONFIG, published_rows=None):
+    inv, _ = _frames()
+    ces = pd.DataFrame({"ItemCode": [f"I{i}" for i in range(rows)], "Timestamp": ["2026-10-06 02:00:00"] * rows})
+    pay = payload if payload is not None else sd.build_payload(inv, ces, "2026-10-06 08:00:05")
+    return {r["gate"]: r for r in djob.check_gates(pay, inv, ces, base, None, config, published_backlog_rows=published_rows)}
+
+
+NO_COUNT_BASE = {k: v for k, v in BASE.items() if k != "backlog_rows"}                      # last_success.json from before the gate existed
+
+
+def test_a_zero_row_reserved_pull_fails_the_gate_with_the_previous_count_named():
+    res = _reserved(0)
+    assert not res["reserved_rows_band"]["passed"] and "0 reserved rows" in res["reserved_rows_band"]["detail"] and "744" in res["reserved_rows_band"]["detail"]
+
+
+def test_a_zero_row_reserved_pull_fails_even_when_there_is_no_base_to_compare_with():
+    assert not _reserved(0, base=None)["reserved_rows_band"]["passed"]
+    assert not _reserved(0, base=NO_COUNT_BASE)["reserved_rows_band"]["passed"]                 # a base from before the count was recorded
+
+
+def test_the_zero_rule_can_be_switched_off_in_config_only():
+    lax = {"daily_stock": dict(CONFIG["daily_stock"], reserved_rows_zero_allowed=True)}
+    assert _reserved(0, base=None, config=lax)["reserved_rows_band"]["passed"]
+    assert _reserved(0, config=lax)["reserved_rows_band"]["passed"]                             # allowed also against a base of 744
+
+
+@pytest.mark.parametrize("rows,passes", [(744, True), (700, True), (521, True), (520, False), (967, True), (968, False), (100, False)])
+def test_the_reserved_row_count_is_held_to_the_band_against_the_last_successful_run(rows, passes):
+    gate = _reserved(rows)["reserved_rows_band"]
+    assert gate["passed"] is passes, gate
+
+
+def test_a_normal_reserved_count_passes():
+    assert _reserved(744)["reserved_rows_band"]["passed"]
+
+
+def test_with_no_count_in_the_last_run_the_band_takes_its_base_from_the_published_file_so_a_partial_count_fails():
+    gate = _reserved(100, base=NO_COUNT_BASE, published_rows=744)["reserved_rows_band"]
+    assert not gate["passed"] and gate["base"] == 744.0 and gate["base_source"] == "published data/inventory.json"
+    assert _reserved(744, base=NO_COUNT_BASE, published_rows=744)["reserved_rows_band"]["passed"]
+    assert _reserved(744, base=None, published_rows=744)["reserved_rows_band"]["passed"]       # no earlier run at all: the published file is the base
+
+
+def test_with_no_base_at_all_the_band_fails_closed_instead_of_skipping():
+    for base in (None, NO_COUNT_BASE):
+        gate = _reserved(744, base=base, published_rows=None)["reserved_rows_band"]
+        assert not gate["passed"] and "nothing to compare with" in gate["detail"], gate
+
+
+def test_the_published_count_is_read_from_the_inventory_file_and_is_none_when_missing(tmp_path):
+    (tmp_path / "data").mkdir()
+    assert djob.published_backlog_rows(str(tmp_path)) is None
+    (tmp_path / "data" / "inventory.json").write_text('{"old": true}', encoding="utf-8")
+    assert djob.published_backlog_rows(str(tmp_path)) is None
+    (tmp_path / "data" / "inventory.json").write_text('{"backlog": {"raw_rows_before_dedup": 744}}', encoding="utf-8")
+    assert djob.published_backlog_rows(str(tmp_path)) == 744
+    (tmp_path / "data" / "inventory.json").write_text('{"backlog": {"raw_rows_before_dedup": 0}}', encoding="utf-8")
+    assert djob.published_backlog_rows(str(tmp_path)) is None
+
+
+def test_a_missing_reserved_load_time_fails_the_gate_and_a_present_one_passes():
+    inv, ces = _frames()
+    payload = sd.build_payload(inv, ces, "2026-10-06 08:00:05")
+    assert _reserved(2, payload=payload)["reserved_load_time_present"]["passed"]
+    assert not _reserved(2, payload=dict(payload, reserved_source_load_time=None))["reserved_load_time_present"]["passed"]
+
+
+def test_a_failed_reserved_gate_holds_the_publish_and_nothing_is_committed(repo, tmp_path, monkeypatch):
+    base = dict(BASE, backlog_rows=744)
+    monkeypatch.setattr(djob, "build_stage", lambda root, pull_dir, out_dir: dict(_built(tmp_path), backlog_ces=pd.DataFrame({"ItemCode": [], "Timestamp": []})))
+    before = _g(repo, "rev-parse", "HEAD")
+    with pytest.raises(djob.DailyFailure) as exc:
+        djob.run(str(repo), pull_dir=str(tmp_path / "pulls"), base=base, config=CONFIG)
+    assert exc.value.gate == "reserved_rows_band" and _g(repo, "rev-parse", "HEAD") == before
 
 
 def test_the_bands_come_from_config():
@@ -213,7 +293,7 @@ def test_a_full_run_publishes_and_records_the_base_for_tomorrow(repo, tmp_path, 
     log = djob.run(str(repo), pull_dir=str(tmp_path / "pull"), base=BASE, config=CONFIG, run_id="t3")
     assert log["status"] == "published" and log["pushed"] and all(g["passed"] for g in log["gates"])
     last = json.loads((repo / CONFIG["daily_stock"]["last_success_file"]).read_text(encoding="utf-8"))
-    assert last["pull_time"] == "2026-10-06 08:00:05" and last["inventory_rows"] == 100
+    assert last["pull_time"] == "2026-10-06 08:00:05" and last["inventory_rows"] == 100 and last["backlog_rows"] == 2
     # the same pull again is not newer than what is now published
     _stub_build(monkeypatch, tmp_path)
     with pytest.raises(djob.DailyFailure) as exc:
