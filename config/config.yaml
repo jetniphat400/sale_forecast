@@ -1680,6 +1680,8 @@ task_launcher:
   log_file: output/runs/task_launcher.log     # every lock event and every git attempt with its output and exit code
   lock_wait_seconds: 300                      # how long a launch waits for the lock before it exits 91
   lock_stale_seconds: 900                     # a lock older than this, or whose process is not running, is taken over (a git pull takes seconds)
+  monthly_lock_file: output/runs/monthly_refresh.lock   # Prompt 60c: while this lock names a live process the launcher pulls nothing and exits 95 (the monthly runner works in the clone)
+  monthly_lock_max_seconds: 43200             # a lock older than this whose pid is alive is a reused pid, not the runner (a monthly run takes up to 3 hours)
   git_retries: 3                              # retries after a failed git pull (so up to 4 attempts)
   retry_wait_min_seconds: 20
   retry_wait_max_seconds: 60

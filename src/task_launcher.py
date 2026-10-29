@@ -8,6 +8,10 @@ Why Python and not the PowerShell launcher of Prompt 59: started by Task Schedul
 param default, then "The argument ... to the -File parameter does not exist" for a file that exists, exit 0xFFFD0000), while `cmd /c python ...` never failed in the same conditions.
 
 What it does, in order:
+  0. (Prompt 60c) after taking the lock and BEFORE the pull: if the clone is in use (the monthly runner's lock names a live process, git's index.lock exists, or a tracked file is modified or staged) it
+     releases the lock, logs the reason and exits 95 without pulling and without starting Python: a pull must not rewrite files under a monthly run that began at 07:00 when the 08:00 daily task starts.
+     The monthly-runner check applies to BOTH tasks: the runner takes its lock only after this launcher has finished, so the monthly launcher cannot block itself, while a second monthly start (a manual
+     one) would otherwise pull under a running monthly run just as the daily one would. The only read-only git call before the pull is `git status`;
   1. takes the shared lock (output/runs/git_pull.lock, written atomically, holding PID, task and start time), waiting up to lock_wait_seconds; a lock whose PID is dead or that is older than
      lock_stale_seconds is stale and is taken over (logged);
   2. git pull --ff-only origin main, retried git_retries times after a random wait of retry_wait_min_seconds to retry_wait_max_seconds;
@@ -22,7 +26,7 @@ The bootstrap log (D:\\sale_forecast\\output\\runs\\task_launcher_bootstrap.log,
 when the launcher ends, with any error that escaped, so a start that dies early still leaves a trace.
 
 Exit codes: Python's own code when Python ran; 91 the lock was not obtained in time; 92 git pull failed after every retry; 93 HEAD is not origin/main or a tracked file is modified (Python not started);
-94 the script to start does not exist or the launcher itself failed.
+94 the script to start does not exist or the launcher itself failed; 95 the clone is in use (nothing was pulled, Python not started).
 
 Usage (task action):  cmd.exe /c <python.exe> <clone>\\src\\task_launcher.py --task <task name> --script src\\snapshot_daily.py --git <git.exe> --python <python.exe> [script arguments]
 """
@@ -39,7 +43,8 @@ import traceback
 
 BOOTSTRAP_LOG = r"D:\sale_forecast\output\runs\task_launcher_bootstrap.log"
 DEFAULTS = {"lock_file": "output/runs/git_pull.lock", "log_file": "output/runs/task_launcher.log", "lock_wait_seconds": 300, "lock_stale_seconds": 900, "git_retries": 3,
-            "retry_wait_min_seconds": 20, "retry_wait_max_seconds": 60, "git_timeout_seconds": 300, "lock_poll_seconds": 2}
+            "retry_wait_min_seconds": 20, "retry_wait_max_seconds": 60, "git_timeout_seconds": 300, "lock_poll_seconds": 2,
+            "monthly_lock_file": "output/runs/monthly_refresh.lock", "monthly_lock_max_seconds": 43200}
 MUTEX_NAME = "Global\\SaleForecastGitPullLaunch"
 
 
@@ -140,7 +145,7 @@ class Launcher:
     def __init__(self, args, clone_dir):
         self.args, self.clone = args, clone_dir
         self.cfg = read_config(clone_dir)
-        for key in ("lock_wait_seconds", "lock_stale_seconds", "git_retries", "retry_wait_min_seconds", "retry_wait_max_seconds", "git_timeout_seconds"):
+        for key in ("lock_wait_seconds", "lock_stale_seconds", "git_retries", "retry_wait_min_seconds", "retry_wait_max_seconds", "git_timeout_seconds", "monthly_lock_max_seconds"):
             value = getattr(args, key)
             if value is not None and value >= 0:
                 self.cfg[key] = value
@@ -249,6 +254,30 @@ class Launcher:
         except OSError as e:
             return 125, "", "git could not be started: %s" % e
 
+    def clone_in_use(self):
+        """None when nothing is using the clone, else the reason. Reads only: two files and one `git status`, no pull."""
+        monthly = os.path.join(self.clone, *self.cfg["monthly_lock_file"].split("/"))
+        if os.path.isfile(monthly):
+            try:
+                with open(monthly, encoding="utf-8") as f:
+                    holder = json.load(f)
+                pid = int(holder["pid"])
+                age = time.time() - os.path.getmtime(monthly)
+                if pid_alive(pid):
+                    if age <= self.cfg["monthly_lock_max_seconds"]:
+                        return "the monthly runner is running (lock %s names live pid %d, started %s)" % (self.cfg["monthly_lock_file"], pid, holder.get("started_at"))
+                    self.log("monthly_lock_ignored", "pid %d is alive but the lock is %d s old, over %d s (a reused pid); not treated as in use" % (pid, int(age), self.cfg["monthly_lock_max_seconds"]))
+            except Exception as e:
+                self.log("monthly_lock_unreadable", "%s; not treated as in use" % e)
+        if os.path.isfile(os.path.join(self.clone, ".git", "index.lock")):
+            return "git's index.lock exists in the clone (a git command is running or died)"
+        code, status, err = self.git("--no-optional-locks", "status", "--porcelain", "--untracked-files=no")
+        if code == 0 and status.strip():
+            return "tracked files are modified or staged: %s" % limit_text(status, 400)
+        if code != 0:
+            self.log("git_status_failed", "exit=%d stderr=[%s]; the pull is tried anyway" % (code, limit_text(err)))
+        return None
+
     def update_clone(self):
         attempts = 1 + self.cfg["git_retries"]
         for i in range(1, attempts + 1):
@@ -283,13 +312,19 @@ class Launcher:
                  self.cfg["lock_stale_seconds"], self.cfg["git_retries"], self.cfg["_block_found"]))
         if not self.get_lock():
             return 91
-        pulled, problem = False, None
+        pulled, problem, in_use = False, None, None
         try:
-            pulled = self.update_clone()
+            in_use = self.clone_in_use()
+            if not in_use:
+                pulled = self.update_clone()
             if pulled:
                 problem = self.check_clone()
         finally:
             self.remove_lock()
+        if in_use:
+            self.log("clone_in_use", "%s; nothing pulled, Python not started" % in_use)
+            write_boot("clone_in_use task=%s %s" % (self.args.task, in_use))
+            return 95
         if not pulled:
             self.log("launcher_stop", "git pull failed after every retry; Python not started")
             return 92
@@ -312,7 +347,7 @@ def parse(argv):
     p.add_argument("--git", default="git")
     p.add_argument("--python", default=sys.executable)
     p.add_argument("--clone-dir", default="")
-    for key in ("lock_wait_seconds", "lock_stale_seconds", "git_retries", "retry_wait_min_seconds", "retry_wait_max_seconds", "git_timeout_seconds"):
+    for key in ("lock_wait_seconds", "lock_stale_seconds", "git_retries", "retry_wait_min_seconds", "retry_wait_max_seconds", "git_timeout_seconds", "monthly_lock_max_seconds"):
         p.add_argument("--" + key.replace("_", "-"), dest=key, type=int, default=None)
     args, rest = p.parse_known_args(argv)
     args.script_args = rest

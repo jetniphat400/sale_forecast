@@ -188,7 +188,7 @@ def test_a_head_that_is_not_origin_main_stops_before_python(env):
     assert "is not origin/main" in log(clone) and "Python not started" in log(clone)
 
 
-def test_a_modified_tracked_file_stops_before_python_but_an_untracked_file_does_not(env):
+def test_a_modified_tracked_file_stops_before_python_with_95_but_an_untracked_file_does_not(env):
     _, clone, _ = env
     (clone / "scratch.txt").write_text("untracked", encoding="utf-8")
     r = run_launcher(clone)
@@ -196,8 +196,8 @@ def test_a_modified_tracked_file_stops_before_python_but_an_untracked_file_does_
     git(clone, "pull", "-q", "--ff-only", "origin", "main")
     (clone / "a.txt").write_text("edited by hand", encoding="utf-8")
     r = run_launcher(clone)
-    assert r.returncode == 93 and len(ran(clone)) == 1
-    assert "tracked files are modified" in log(clone)
+    assert r.returncode == 95 and len(ran(clone)) == 1                                    # since Prompt 60c a modified tracked file is found BEFORE the pull (95), not after it (93)
+    assert "tracked files are modified" in log(clone) and "clone_in_use" in log(clone)
 
 
 def test_a_missing_script_stops_with_94_after_the_pull(env):
@@ -266,3 +266,97 @@ def test_an_error_outside_the_run_is_written_to_the_bootstrap_log_with_its_line(
     assert r.returncode == 94
     text = boot.read_text(encoding="utf-8")
     assert "launcher_fatal" in text and "ValueError" in text and "line " in text and ran(clone) == []
+
+
+# ------------------------------------------------------------------ Prompt 60c: no pull while the clone is in use (exit 95)
+def _recording_git(tmp_path):
+    """A git.cmd that appends every call's arguments to calls.txt and then runs the real git."""
+    stub, calls = tmp_path / "git_rec.cmd", tmp_path / "git_calls.txt"
+    stub.write_text("@echo off" + "\r\n" + f"echo %*>>\"{calls}\"" + "\r\n" + f"\"{GIT}\" %*" + "\r\n", encoding="utf-8")
+    return str(stub), calls
+
+
+def _git_calls(calls):
+    return calls.read_text(encoding="utf-8").splitlines() if calls.exists() else []
+
+
+def write_monthly_lock(clone, pid, started_at=None):
+    p = clone / "output" / "runs" / "monthly_refresh.lock"
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text(json.dumps({"pid": pid, "started_at": (started_at or datetime.now()).isoformat(timespec="seconds")}), encoding="utf-8")
+    return p
+
+
+@pytest.mark.parametrize("task", ["SaleForecast_PostingDelaySnapshot", "SaleForecastMonthlyRefresh"])
+def test_a_live_monthly_runner_lock_gives_95_with_no_pull_no_python_and_the_git_lock_released(env, tmp_path, task):
+    _, clone, _ = env
+    stub, calls = _recording_git(tmp_path)
+    boot = tmp_path / "boot.log"
+    before = head(clone)
+    write_monthly_lock(clone, os.getpid())                                                # this process is alive
+    r = run_launcher(clone, task=task, git_exe=stub, extra_env={"TASK_LAUNCHER_BOOTSTRAP_LOG": str(boot)})
+    assert r.returncode == 95 and ran(clone) == [] and head(clone) == before
+    assert not any("pull" in c for c in _git_calls(calls)), _git_calls(calls)
+    text = log(clone)
+    assert "clone_in_use" in text and "the monthly runner is running" in text and "lock_released" in text and "git_pull attempt" not in text
+    assert not (clone / "output" / "runs" / "git_pull.lock").exists()
+    assert "clone_in_use" in boot.read_text(encoding="utf-8") and "end exitcode=95" in boot.read_text(encoding="utf-8")
+
+
+def test_a_monthly_lock_of_a_dead_process_does_not_block(env):
+    _, clone, _ = env
+    dead = subprocess.Popen([sys.executable, "-c", "pass"])
+    dead.wait()
+    write_monthly_lock(clone, dead.pid)
+    r = run_launcher(clone)
+    assert r.returncode == 0 and len(ran(clone)) == 1 and "clone_in_use" not in log(clone)
+
+
+def test_a_live_pid_in_a_monthly_lock_older_than_the_limit_is_a_reused_pid_and_does_not_block(env):
+    _, clone, _ = env
+    lock = write_monthly_lock(clone, os.getpid())
+    old = time.time() - 100000
+    os.utime(lock, (old, old))
+    r = run_launcher(clone)
+    assert r.returncode == 0 and len(ran(clone)) == 1 and "monthly_lock_ignored" in log(clone)
+
+
+def test_an_unreadable_monthly_lock_does_not_block(env):
+    _, clone, _ = env
+    (clone / "output" / "runs").mkdir(parents=True, exist_ok=True)
+    (clone / "output" / "runs" / "monthly_refresh.lock").write_text("not json", encoding="utf-8")
+    r = run_launcher(clone)
+    assert r.returncode == 0 and "monthly_lock_unreadable" in log(clone)
+
+
+def test_a_dirty_tracked_tree_gives_95_before_any_pull_and_a_staged_change_counts_too(env, tmp_path):
+    _, clone, _ = env
+    stub, calls = _recording_git(tmp_path)
+    before = head(clone)
+    (clone / "a.txt").write_text("edited by hand", encoding="utf-8")
+    r = run_launcher(clone, git_exe=stub)
+    assert r.returncode == 95 and ran(clone) == [] and head(clone) == before
+    seen = _git_calls(calls)
+    assert seen and all("status" in c for c in seen) and not any("pull" in c for c in seen), seen         # only the read-only status ran
+    assert "tracked files are modified or staged" in log(clone) and "lock_released" in log(clone)
+    git(clone, "checkout", "--", "a.txt")
+    (clone / "a.txt").write_text("staged", encoding="utf-8")
+    git(clone, "add", "a.txt")
+    assert run_launcher(clone, git_exe=stub).returncode == 95
+
+
+def test_an_index_lock_in_the_clone_gives_95_without_any_git_call(env, tmp_path):
+    _, clone, _ = env
+    stub, calls = _recording_git(tmp_path)
+    (clone / ".git" / "index.lock").write_text("", encoding="utf-8")
+    r = run_launcher(clone, git_exe=stub)
+    assert r.returncode == 95 and _git_calls(calls) == [] and "index.lock" in log(clone)
+
+
+def test_a_clean_tree_and_no_monthly_lock_pull_and_run_as_before(env, tmp_path):
+    origin, clone, _ = env
+    stub, calls = _recording_git(tmp_path)
+    r = run_launcher(clone, git_exe=stub)
+    assert r.returncode == 0 and len(ran(clone)) == 1 and head(clone) == git(origin, "rev-parse", "main").stdout.strip()
+    seen = _git_calls(calls)
+    assert any("status" in c for c in seen) and any("pull" in c for c in seen) and "clone_in_use" not in log(clone)
