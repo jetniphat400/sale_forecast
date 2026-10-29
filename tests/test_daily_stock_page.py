@@ -171,16 +171,44 @@ class _Quiet(http.server.SimpleHTTPRequestHandler):
         pass
 
 
-@pytest.fixture(scope="module")
-def index_site(tmp_path_factory):
-    site = tmp_path_factory.mktemp("index_site")
+def _serve_index(tmp_path_factory, name, mutate):
+    """index.html and a COPY of the tracked data/inventory.json served from a temporary folder. `mutate` fixes the dates in the copy, so the test does not depend on what the last daily run published
+    (Prompt 60c: the reserved source returned 0 rows on 2026-10-29 12:00 and its load time was null; the test then read the date from the tracked file and failed)."""
+    site = tmp_path_factory.mktemp(name)
     shutil.copy(os.path.join(PROJECT_ROOT, "index.html"), site / "index.html")
     (site / "data").mkdir()
-    shutil.copy(os.path.join(PROJECT_ROOT, "data", "inventory.json"), site / "data" / "inventory.json")
+    with open(os.path.join(PROJECT_ROOT, "data", "inventory.json"), encoding="utf-8") as f:
+        data = json.load(f)
+    mutate(data)
+    with open(site / "data" / "inventory.json", "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False)
     handler = functools.partial(_Quiet, directory=str(site))
     server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), handler)
     threading.Thread(target=server.serve_forever, daemon=True).start()
-    yield f"http://127.0.0.1:{server.server_address[1]}/index.html", site
+    return server, f"http://127.0.0.1:{server.server_address[1]}/index.html", site
+
+
+def _fixed_dates(data):
+    data["snapshot"]["loaded_at"] = "2026-10-05 07:30:00.000000"
+    data["backlog"]["loaded_at"] = "2026-10-05 07:35:30.000000"
+
+
+def _no_reserved_date(data):
+    _fixed_dates(data)
+    data["backlog"]["loaded_at"] = None
+
+
+@pytest.fixture(scope="module")
+def index_site(tmp_path_factory):
+    server, url, site = _serve_index(tmp_path_factory, "index_site", _fixed_dates)
+    yield url, site
+    server.shutdown()
+
+
+@pytest.fixture(scope="module")
+def index_site_without_reserved_date(tmp_path_factory):
+    server, url, site = _serve_index(tmp_path_factory, "index_site_null", _no_reserved_date)
+    yield url, site
     server.shutdown()
 
 
@@ -199,4 +227,14 @@ def test_the_index_panel_shows_the_three_dates_from_its_data_file(edge, index_si
     assert edge.ev("document.getElementById('invPageTimestampNote') === null") is True
     shown = edge.ev("document.getElementById('invSnapshotLabel').textContent + document.getElementById('invBacklogLabel').textContent")
     assert "รอบการอัปเดต" not in shown and "คนละรอบการโหลด" not in shown, "a load schedule is stated on the panel"
+    assert not [x for x in edge.errors if x.startswith("exception")], edge.errors
+
+
+def test_the_index_panel_reads_unknown_not_an_error_when_the_reserved_source_has_no_load_time(edge, index_site_without_reserved_date):
+    url, _ = index_site_without_reserved_date
+    edge.open(url)
+    edge.ev("document.getElementById('invMenuRow').click(); 1")
+    assert _wait(edge, "document.getElementById('invContent') && document.getElementById('invContent').style.display !== 'none'", 30), "stock panel did not load"
+    assert edge.ev("document.getElementById('inv-hdr-reserved').textContent") == "ของที่ออเดอร์ที่รับแล้วจองไว้ (Reserved) ดึงเมื่อ ไม่ทราบ"      # readable, with no freshness badge
+    assert edge.ev("document.getElementById('inv-hdr-stock').textContent").startswith("stock ดึงเมื่อ " + thai("2026-10-05 07:30:00") + " · ")
     assert not [x for x in edge.errors if x.startswith("exception")], edge.errors
