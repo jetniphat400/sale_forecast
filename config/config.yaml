@@ -1430,6 +1430,9 @@ trade_off_curve:
 # default, never a business-confirmed number, and is recorded as such rather than left implicit.
 # ============================================================
 monthly_refresh:
+  # Step 8 (run the whole test suite): the longest it may take before the step fails. Raised from 1800 to 3600 seconds in Prompt 64: the real step 8 took 21.5 to 25 minutes on this machine
+  # (1,290 s alone, 1,506 s with a second suite running; Prompt 63), against the old 30 minutes. ASSUMPTION (owner: Modeler default): twice the slowest measured run.
+  step8_timeout_seconds: 3600
   # "the six-month total forecast for a division changes by more than 25%" (METRICS.md Sec.28).
   # 25% is chosen as a round, conservative fraction clearly larger than the ordinary run-to-run
   # noise this project's own re-forecasts have shown (Phase C step 2's per-division MAE moves

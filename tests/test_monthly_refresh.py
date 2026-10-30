@@ -282,3 +282,18 @@ def test_the_executive_summary_step_stops_the_run_when_a_projection_differs_from
     monkeypatch.setattr(bx, "exec_data", wrong)
     with pytest.raises(mr.MonthlyRefreshAbort, match="projection"):
         mr.step7f_exec_summary(True, str(tmp_path), {"rendered_path": os.path.join(mr.PROJECT_ROOT, "forecast", "sales_report.html")})
+
+
+def test_the_step_8_time_limit_is_3600_seconds_from_config_and_the_step_passes_it_on(monkeypatch):
+    """Prompt 64: the real step 8 took 21.5 to 25 minutes, so the 1,800 s limit that was typed in the code is a config value of 3,600."""
+    assert mr.load_config()["monthly_refresh"]["step8_timeout_seconds"] == 3600
+    seen = {}
+
+    class _Done:
+        returncode, stdout, stderr = 0, "10 passed in 1.0s", ""
+    monkeypatch.setattr(mr, "run_process", lambda cmd, **kw: seen.update(kw) or _Done())
+    out = mr.step8_run_tests(False)
+    assert seen["timeout"] == 3600 and out["passed"] is True
+    monkeypatch.setattr(mr, "load_config", lambda: {"monthly_refresh": {"step8_timeout_seconds": 7}})
+    mr.step8_run_tests(False)
+    assert seen["timeout"] == 7                                                      # the value is read from config, not typed in the code

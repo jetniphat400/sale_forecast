@@ -1777,7 +1777,7 @@ def step8_run_tests(skip_tests: bool = False) -> dict:
         # Only for tests of the runner itself (the suite would otherwise run inside its own test).
         return {"skipped": True, "passed": None, "summary_line": "step 8 skipped (--skip-tests)"}
     proc = run_process([sys.executable, "-m", "pytest", "-q"], cwd=PROJECT_ROOT,
-                           capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=1800)
+                           capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=load_config()["monthly_refresh"]["step8_timeout_seconds"])
     tail = proc.stdout.strip().splitlines()[-1] if proc.stdout.strip() else ""
     return {"returncode": proc.returncode, "passed": proc.returncode == 0,
             "summary_line": tail, "stdout_tail": proc.stdout[-3000:]}
