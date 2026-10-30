@@ -1165,3 +1165,17 @@ def test_the_new_line_is_in_the_part_of_the_executive_block_the_daily_rebuild_co
     rest, model = dr._index_parts(text)
     assert 'id="execWhyForecast"' in model and 'id="execWhyForecast"' not in rest
     assert model.count('id="execWhyForecast"') == 1
+
+
+@pytest.mark.parametrize("base_day", [25, 28])
+def test_the_margin_decides_when_a_run_day_falls_less_than_the_margin_after_a_month_end(base_day):
+    """With the run on the 25th or 28th the run of the month right after the vintage is 25 to 30 days after the end of the month to be added: it adds that month only when the margin is at most that many days."""
+    import yaml
+    import reader_values as rv
+    cfg = yaml.safe_load(open(os.path.join(PROJECT_ROOT, "config", "config.yaml"), encoding="utf-8"))
+    guard = int(cfg["leakage_guard"]["min_margin_days"])
+    for margin in (guard - 10, guard, guard + 10):
+        got = rv.next_actual_info("2026-09", "2026-10-02", margin, base_day)
+        month, run = _expected_next_actual("2026-09", "2026-10-02", margin, base_day)
+        assert (got["month"], got["run_date"]) == (month, run), (margin, got)
+    assert rv.next_actual_info("2026-09", "2026-10-02", 20, base_day)["run_date"] < rv.next_actual_info("2026-09", "2026-10-02", 40, base_day)["run_date"]
