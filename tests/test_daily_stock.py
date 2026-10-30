@@ -90,7 +90,7 @@ BASE = {"inventory_rows": 100, "on_hand_total": 1000.0, "backlog_rows": 2, "sour
 def test_every_gate_passes_on_a_normal_day():
     inv, ces = _frames()
     res = djob.check_gates(_payload("2026-10-06 08:00:05"), inv, ces, BASE, _payload("2026-10-05 07:41:40"), CONFIG)
-    assert [r["gate"] for r in res] == ["row_count_band", "on_hand_total_band", "no_null_item_codes", "pull_newer_than_published", "reserved_rows_band", "reserved_load_time_present"]
+    assert [r["gate"] for r in res] == ["row_count_band", "on_hand_total_band", "no_null_item_codes", "pull_newer_than_published", "stock_load_time_present", "reserved_rows_band", "reserved_load_time_present"]
     assert all(r["passed"] for r in res), res
 
 
@@ -119,6 +119,12 @@ def _reserved(rows, base=RES_BASE, payload=None, config=CONFIG, published_rows=N
     return {r["gate"]: r for r in djob.check_gates(pay, inv, ces, base, None, config, published_backlog_rows=published_rows)}
 
 
+def _with_source(config, name, **changes):
+    """A copy of the config with the settings of one source of the shared source guard changed."""
+    guard = config["source_guard"]
+    return {**config, "source_guard": {**guard, "sources": {**guard["sources"], name: {**guard["sources"][name], **changes}}}}
+
+
 NO_COUNT_BASE = {k: v for k, v in BASE.items() if k != "backlog_rows"}                      # last_success.json from before the gate existed
 
 
@@ -133,7 +139,7 @@ def test_a_zero_row_reserved_pull_fails_even_when_there_is_no_base_to_compare_wi
 
 
 def test_the_zero_rule_can_be_switched_off_in_config_only():
-    lax = {"daily_stock": dict(CONFIG["daily_stock"], reserved_rows_zero_allowed=True)}
+    lax = _with_source(CONFIG, "reserved", zero_allowed=True)
     assert _reserved(0, base=None, config=lax)["reserved_rows_band"]["passed"]
     assert _reserved(0, config=lax)["reserved_rows_band"]["passed"]                             # allowed also against a base of 744
 
@@ -190,7 +196,7 @@ def test_a_failed_reserved_gate_holds_the_publish_and_nothing_is_committed(repo,
 
 def test_the_bands_come_from_config():
     assert CONFIG["daily_stock"]["row_count_band_pct"] == 20 and CONFIG["daily_stock"]["on_hand_total_band_pct"] == 30
-    tight = {"daily_stock": dict(CONFIG["daily_stock"], row_count_band_pct=1)}
+    tight = {**CONFIG, "daily_stock": dict(CONFIG["daily_stock"], row_count_band_pct=1)}
     inv, ces = _frames(rows=105, stock=1000.0 / 105)
     res = {r["gate"]: r for r in djob.check_gates(_payload("2026-10-06 08:00:05"), inv, ces, BASE, None, tight)}
     assert not res["row_count_band"]["passed"]

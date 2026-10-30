@@ -34,6 +34,7 @@ import yaml
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import stock_daily  # noqa: E402
 from zero_row_guard import run_process  # noqa: E402
+import source_guard as sg  # noqa: E402
 
 logger = logging.getLogger("daily_stock_job")
 
@@ -187,7 +188,8 @@ def check_gates(payload: dict, inventory: pd.DataFrame, backlog_ces: pd.DataFram
         out.append({"gate": "pull_newer_than_published", "passed": bool(ok),
                     "detail": f"pull {payload['pull_time']} against published {published['pull_time']}"
                               + (" (replay of a saved pull: not older is enough)" if replay else "")})
-    out.extend(reserved_gates(payload, backlog_ces, base, cfg, published_backlog_rows))
+    out.append(sg.check_load_time("stock", config, payload.get("stock_source_load_time"), payload.get("pull_time")))
+    out.extend(reserved_gates(payload, backlog_ces, base, config, published_backlog_rows))
     return out
 
 
@@ -201,31 +203,15 @@ def published_backlog_rows(root: str) -> int:
         return None
 
 
-def reserved_gates(payload: dict, backlog_ces, base: dict, cfg: dict, published_rows: int = None) -> list:
-    """The two gates on the reserved (Cube_CES Status='Backlog') pull (Prompt 60c). A pull of 0 rows reached the dashboard on 2026-10-29 12:00 (the source returned nothing; every item then read
-    reserved 0 and available = on hand) because no gate looked at this pull. A zero count is never published unless daily_stock.reserved_rows_zero_allowed says so; otherwise the row count is held to
-    the same kind of band as the stock rows against the last successful run's count (last_success.json `backlog_rows`) or, when that record has none (it was written before this gate existed), the count
-    the published data/inventory.json was built from; with neither the band FAILS CLOSED (it does not skip: an unchecked pull must not publish). The source's own load time must exist, since the page
-    shows 'unknown' for a missing one."""
+def reserved_gates(payload: dict, backlog_ces, base: dict, config: dict, published_rows: int = None) -> list:
+    """The gates on the reserved (Cube_CES Status='Backlog') pull (Prompt 60c; since Prompt 63 the shared source guard, config `source_guard.sources.reserved`, with the same behaviour). A pull of 0
+    rows reached the dashboard on 2026-10-29 12:00 (the source returned nothing; every item then read reserved 0 and available = on hand) because no gate looked at this pull. A zero count is never
+    published unless the source's zero_allowed says so; otherwise the row count is held to a band against the last successful run's count (last_success.json `backlog_rows`) or, when that record has
+    none (it was written before this gate existed), the count the published data/inventory.json was built from; with neither the band FAILS CLOSED. The source's own load time must exist and be
+    recent (the page shows 'unknown' for a missing one). Gate names: reserved_rows_band, reserved_load_time_present."""
     rows = int(len(backlog_ces)) if backlog_ces is not None else 0
-    base_rows, source = (base or {}).get("backlog_rows"), (base or {}).get("source")
-    if not base_rows or base_rows <= 0:
-        base_rows, source = published_rows, "published data/inventory.json"
-    if rows == 0:
-        allowed = bool(cfg.get("reserved_rows_zero_allowed", False))
-        band = {"gate": "reserved_rows_band", "passed": allowed, "today": 0.0, "base": base_rows,
-                "detail": "0 reserved rows in the pull: " + ("allowed by config daily_stock.reserved_rows_zero_allowed" if allowed else "a zero count is not published (config daily_stock.reserved_rows_zero_allowed is false)")
-                          + (f"; the last published count was {base_rows:,}" if base_rows else "")}
-    elif not base_rows or base_rows <= 0:
-        band = {"gate": "reserved_rows_band", "passed": False, "today": float(rows), "base": None,
-                "detail": f"{rows:,} reserved rows but nothing to compare with (no count in the last successful run and none in the published data/inventory.json): held, not published"}
-    else:
-        band = _band("reserved_rows_band", float(rows), float(base_rows), cfg["reserved_rows_band_pct"])
-        band["base_source"] = source
-    loaded = payload.get("reserved_source_load_time")
-    present = {"gate": "reserved_load_time_present", "passed": loaded is not None,
-               "detail": f"the reserved source's load time is {loaded}" if loaded is not None else "the reserved source has no load time (no Timestamp in the pull): the page would show 'unknown'"}
-    return [band, present]
+    return sg.evaluate("reserved", config, rows=rows, bases=[((base or {}).get("backlog_rows"), (base or {}).get("source") or "last successful daily run"), (published_rows, "published data/inventory.json")],
+                       load_time=payload.get("reserved_source_load_time"), reference_time=payload.get("pull_time"))
 
 
 def failed_gates(results: list) -> list:
@@ -467,6 +453,10 @@ def run(root: str = PROJECT_ROOT, dry_run: bool = False, pull_dir: str = None, b
                 with open(last_path, "w", encoding="utf-8") as f:
                     json.dump({"pull_time": log["pull_time"], "inventory_rows": int(len(built["inventory"])),
                                "on_hand_total": float(built["inventory"]["stock"].sum()), "backlog_rows": int(len(built["backlog_ces"])), "run_id": run_id}, f, indent=2)
+                try:                                                  # the stored base of the shared source guard (Prompt 63); the push has happened, so a failure here is logged, not raised
+                    sg.write_base(root, config, {"stock": int(len(built["inventory"])), "reserved": int(len(built["backlog_ces"]))}, "daily stock job " + run_id)
+                except Exception as e:  # noqa: BLE001
+                    log["source_guard_base_error"] = f"{type(e).__name__}: {e}"[:300]
         log["finished_at"] = datetime.now().isoformat(timespec="seconds")
         log["log_path"] = _write_log(root, config, log)
         return log

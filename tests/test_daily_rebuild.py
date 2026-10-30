@@ -14,6 +14,7 @@ PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(PROJECT_ROOT, "src"))
 import daily_rebuild as dr  # noqa: E402
 import daily_stock_job as djob  # noqa: E402
+import source_guard as sg  # noqa: E402
 
 with open(os.path.join(PROJECT_ROOT, "config", "config.yaml"), encoding="utf-8") as _f:
     REAL = yaml.safe_load(_f)
@@ -31,6 +32,7 @@ def project(tmp_path):
         p.parent.mkdir(parents=True, exist_ok=True)
         p.write_bytes(f"model {rel}".encode())
     (tmp_path / "output" / "runs" / "daily").mkdir(parents=True, exist_ok=True)
+    sg.write_base(str(tmp_path), REAL, {"trend": 100, "pem107": 100, "material_rm_inventory": 100, "material_open_orders": 10}, "fixture")      # the source guard fails closed without a base (Prompt 63)
     return str(tmp_path), REAL
 
 
@@ -102,6 +104,7 @@ def test_each_extra_pull_failing_alone_keeps_its_old_files_and_the_others_still_
 def test_a_pull_whose_row_count_leaves_its_band_is_not_used(project):
     root, config = project
     _write(root, dr.source_files(config)["trend"][2], json.dumps({"n_rows": 1000}))
+    sg.write_base(root, config, {"trend": 1000}, "fixture")                          # the stored base agrees with the file on disk, as it does in real runs
     backup = dr.Backup(root, dr.backup_paths(config))
     results = dr.run_extras(root, config, backup, pulls={"trend": _fake_pulls(root, config, counts={"trend": {"rows": 700}})["trend"]})
     assert results[0]["status"] == "failed" and "allowed +/-10" in results[0]["error"]
@@ -331,6 +334,8 @@ def _run_main(monkeypatch, tmp_path, extras, rebuild, stock_status="published", 
     else:                                                  # the real run_extras with fake pulls: which sources the start pulls is the point of the test
         monkeypatch.setattr(dr, "PULLS", pulls)
         monkeypatch.setattr(dr, "previous_counts", lambda *a, **k: {})
+        monkeypatch.setattr(sg, "read_base", lambda root, config: {n: {"rows": 1} for n in ("trend", "pem107")})       # the real project's stored base is never read or written by a test
+        monkeypatch.setattr(sg, "write_base", lambda *a, **k: None)
         real_extras = dr.run_extras
         monkeypatch.setattr(dr, "run_extras", lambda *a, **k: order.append("extras") or real_extras(*a, **k))
 

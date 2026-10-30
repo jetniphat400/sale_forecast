@@ -1622,11 +1622,7 @@ daily_stock:
   # Total on-hand units. Same threshold as the monthly gate (monthly_refresh.total_on_hand_stock_change_pct): a daily
   # move of more than this is held for a person to look at.
   on_hand_total_band_pct: 30
-  # Reserved rows: Cube_CES rows with Status='Backlog' in the pull (Prompt 60c, after a 0-row pull reached the dashboard on 2026-10-29 12:00). Evidence: the 15 published daily runs of 2026-10-05 to
-  # 2026-10-28 pulled 739 to 873 rows; the largest change from one run to the next was -6.1% (866 to 813). 30% is the on-hand band above (about 5 times the largest step seen) and allows 521 to 967
-  # rows against a base of 744. ASSUMPTION (owner: Modeler default, no business figure exists). A zero count fails whatever the band says unless the switch below is true.
-  reserved_rows_band_pct: 30
-  reserved_rows_zero_allowed: false
+  # The reserved-rows gates (Prompt 60c) and every other pull guard are configured in the source_guard block below (Prompt 63).
   # Files the job may stage, commit and push; anything else it finds changed stops the run.
   published_files:
     - data/inventory.json
@@ -1669,6 +1665,37 @@ daily_rebuild:
                 output/summary/forward_test_log_all_divisions_metadata.json]
   # ASSUMPTIONS (owner: Modeler default, no business figure exists): a pull whose row count is further than this from the previous one is not used; the number of materials of the rebuilt plan likewise.
   bands_pct: {trend_rows: 10, pem107_rows: 30, material_rm_inventory: 30, material_open_orders: 60, materials: 10}
+
+# ============================================================
+# Source guard (Prompt 63, src/source_guard.py): ONE check applied right after every database pull of the daily job and of the monthly runner's step 1, before anything pulled is written to a page,
+# published, or used by a fit or a new vintage. Cube_CES returned 0 rows on 2026-10-29 12:00 (Reserved and PEM107) and the Reserved rows reached the live dashboard; any source table can fail the same way.
+# Per source: rows_band_pct (a count of 0 fails unless zero_allowed; otherwise within +/- this percent of the base: the stored base (output/state/source_guard_base.json, the last good pull of that
+# source, written only after a pull passed), then what the caller can read of the data now on disk or published; no base at all FAILS closed), and, where `load_time` is true, the source table's own
+# load time must exist and be at most max_load_age_hours older than the pull. A failure holds the publish (daily stock), puts back that source's files (daily extras), or aborts the monthly run at step 1.
+# EVIDENCE (output/runs/daily/*.json, 17 daily runs 2026-10-05 to 10-30; every number is a count of one pull): stock rows 2,491 to 2,499, largest step 0.1%; reserved rows 739 to 873 (744 to 765 since
+# 10-20), largest step -6.1% (866 to 813); Trend rows 39,010 to 39,210 (4 runs), largest step 0.2%; PEM107 rows 12,085 to 12,108 (3 runs), 0.1%; raw-material stock rows 18,687 to 18,698 (4 runs), 0.0%;
+# open purchase orders 670 to 732 (4 runs), largest step 7.9%; hours from the stock source's load time to the pull 2.9 to 23.1, from the reserved source's 0.5 to 22.5. The bands of the sources the
+# daily job already banded keep their numbers (20, 10, 30, 30, 60: nothing is weakened); the reserved band is 30 as the on-hand band (about 5 times the largest step). max_load_age_hours 48 is about
+# twice the largest lag seen (a source that did not load for two days). The sources only the monthly step 1 pulls have ONE earlier pull on disk (2026-10-05), so their bands are ASSUMPTIONS (owner:
+# Modeler default, no business figure exists): 20 for the sales pulls (a new month adds about 3% and the sales table grows about 0.5% in 3 days), 50 for the lookup and history tables of the material plan.
+# ============================================================
+source_guard:
+  state_file: output/state/source_guard_base.json
+  defaults: {zero_allowed: false, rows_band_pct: 30}
+  sources:
+    stock:                       {label: stock rows, rows_band_pct: 20, load_time: true, max_load_age_hours: 48}
+    reserved:                    {label: reserved rows, rows_band_pct: 30, load_time: true, max_load_age_hours: 48}
+    trend:                       {label: Trend rows, rows_band_pct: 10}
+    pem107:                      {label: PEM107 delivery rows, rows_band_pct: 30}
+    material_rm_inventory:       {label: raw-material stock rows, rows_band_pct: 30}
+    material_open_orders:        {label: open purchase order rows, rows_band_pct: 60}
+    monthly_sales:               {label: raw sales rows of the 335 items, rows_band_pct: 20}
+    pilot_sales:                 {label: raw sales rows of the 128-item pilot, rows_band_pct: 20}
+    material_bom_tree:           {label: BOM tree rows, rows_band_pct: 50}
+    material_po_lines:           {label: purchase order history rows, rows_band_pct: 50}
+    material_receipts:           {label: raw-material receipt rows, rows_band_pct: 50}
+    material_price:              {label: price list rows, rows_band_pct: 50}
+    material_item_names:         {label: item name rows, rows_band_pct: 50}
 
 # ============================================================
 # Shared task launcher (Prompt 59; Python since Prompt 60b, src/task_launcher.py). Both scheduled tasks start through it: it takes a lock, pulls the publishing clone, checks HEAD and the tracked tree, releases the lock and

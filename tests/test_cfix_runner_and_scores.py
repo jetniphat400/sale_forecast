@@ -273,6 +273,15 @@ def test_step1_pulls_the_pilot_file_and_the_inventory_tables_in_the_same_stage(m
     monkeypatch.setattr(mr, "check_tcp_reachable", lambda *a, **k: (True, None))
     monkeypatch.setattr(mr, "run_script", lambda *a, **k: _Proc())
     monkeypatch.setattr(pd, "read_csv", lambda *a, **k: pd.DataFrame({"snapshot_pull_date": ["2026-10-05 07:00:01"], "itemcode": ["A"], "division": ["PEM101"]}))
+
+    class _NoGuard:                                                  # the source guard has its own tests (test_source_guard.py); here it must neither read nor write the real project
+        rows = {}
+        def __init__(self, stage): pass
+        def check(self): return []
+        def discard(self): pass
+    monkeypatch.setattr(mr, "_StageGuard", _NoGuard)
+    import source_guard as sg
+    monkeypatch.setattr(sg, "write_base", lambda *a, **k: None)
     out = mr.step1_pull_data(False, offline=False)
     assert [s for s, _ in seen] == ["load_data_full.py", "build_inventory_dataset.py", "material_plan.py", "build_trend_tab.py", "cube_ces_pull.py"]      # week 4: the material plan's inputs are a third stage; prompt 11: the Trend tab pull a fourth; prompt 27: no revenue-target pull
     assert seen[1][1][0] == "--save-pulls" and out["pilot_128item_refresh"]["refreshed"] and out["inventory_pull"]["refreshed"]

@@ -355,6 +355,111 @@ def _report_history_flips(before: dict, after: dict) -> dict:
     return {"lost_history": lost, "gained_history": gained, "n_codes": len(after)}
 
 
+# ---------------------------------------------------------------------------------------------
+# Step 1 source guard (Prompt 63): the shared guard (src/source_guard.py, config `source_guard`) applied right after every pull stage of step 1. A stage's files are backed up before it runs; if a
+# source it wrote is empty, out of its band, has no or an old load time, or null key columns, the files are put back and the run ABORTS HERE (MonthlyGateFailed, exit 4), before step 2 and so
+# before any fit, vintage, build or publish. The success state is not written, so the next working day's start is due again (monthly_run_due); the same-day attempt guard (Prompt 56) only keeps
+# Task Scheduler's restarts of the SAME day from repeating a run whose source is still empty.
+# ---------------------------------------------------------------------------------------------
+_GUARD_RESULTS = []          # findings of the stages that passed, in this run (reset at the start of step 1)
+
+
+def _guard_plan() -> dict:
+    """{stage: {"files": [paths relative to the project], "sources": [(source, kind, path, arg, key columns, load-time column)]}} for the six pulls of step 1. kinds: csv, pkl (a DataFrame), bundle
+    (one frame of the material plan's pickled dict), json (a count named `arg`)."""
+    import daily_rebuild
+    cfg = load_config()
+    files = daily_rebuild.source_files(cfg)
+    inv = "output/data/inventory_pull"
+    rel = lambda path: os.path.relpath(path, PROJECT_ROOT).replace(os.sep, "/")      # noqa: E731
+    raw_main, raw_pilot = os.path.join(DATA_DIR, "raw_all_divisions_sales.csv"), os.path.join(DATA_DIR, "raw_full_category_sales.csv")
+    bundle = os.path.join(PROJECT_ROOT, *cfg["operation_plan"]["week3_inputs_file"].split("/"))
+    trend_done = os.path.join(PROJECT_ROOT, *files["trend"][2].split("/"))
+    pem_raw = os.path.join(PROJECT_ROOT, *cfg["daily_rebuild"]["pem107_files"][2].split("/"))
+    return {
+        "main": {"files": [rel(raw_main), "output/data/processed_all_divisions_monthly_qty.csv", "output/data/processed_all_divisions_monthly_sale.csv", "output/summary/phaseC_step2_scope_335items.csv"],
+                 "sources": [("monthly_sales", "csv", raw_main, None, ("itemcode",), None)]},
+        "pilot": {"files": [rel(raw_pilot), rel(PILOT_MONTHLY_PATH), "output/data/processed_full_category_sales_monthly.csv", "output/data/processed_full_category_sales_monthly_createDate.csv",
+                            "output/summary/part1_category_scope_all_codes.csv", "output/summary/part1_scope_report_by_type.csv"],
+                  "sources": [("pilot_sales", "csv", raw_pilot, None, ("itemcode",), None)]},
+        "inventory": {"files": [f"{inv}/{n}" for n in ("inventory.pkl", "backlog_ces.pkl", "pull_meta.json")],            # the two frames `build_inventory_dataset.py --save-pulls` writes (PULL_NAMES)
+                      "sources": [("stock", "pkl", os.path.join(INVENTORY_PULL_DIR, "inventory.pkl"), None, ("itemcode",), "timestamp"),
+                                  ("reserved", "pkl", os.path.join(INVENTORY_PULL_DIR, "backlog_ces.pkl"), None, ("ItemCode",), "Timestamp")]},
+        "material": {"files": files["material"],
+                     "sources": [("material_rm_inventory", "bundle", bundle, "rm_inventory", (), None), ("material_open_orders", "bundle", bundle, "open_orders", (), None),
+                                 ("material_bom_tree", "bundle", bundle, "bom_tree", (), None), ("material_po_lines", "bundle", bundle, "po_lines", (), None),
+                                 ("material_receipts", "bundle", bundle, "receipts", (), None), ("material_price", "bundle", bundle, "price", (), None),
+                                 ("material_item_names", "bundle", bundle, "item_names", (), None)]},
+        "trend": {"files": files["trend"], "sources": [("trend", "json", trend_done, "n_rows", (), None)]},
+        "pem107": {"files": files["pem107"], "sources": [("pem107", "csv", pem_raw, None, ("ItemCode",), None)]},
+    }
+
+
+def _read_source(kind: str, path: str, arg, keys, load_col):
+    """{rows, key_nulls, load_time} of one pulled source as it is on disk, or None when the file is missing or unreadable."""
+    import source_guard as sg
+    if not os.path.exists(path):
+        return None
+    try:
+        if kind == "json":
+            with open(path, encoding="utf-8") as f:
+                return {"rows": int(json.load(f)[arg]), "key_nulls": {}, "load_time": None}
+        df = pd.read_csv(path) if kind == "csv" else pd.read_pickle(path)
+        if kind == "bundle":
+            df = df[arg]
+        return sg.frame_stats(df, keys, load_col)
+    except Exception:      # noqa: BLE001 -- an unreadable pull is a failed check, not an exception of its own
+        return None
+
+
+class _StageGuard:
+    """Created BEFORE a pull stage runs (backs up its files, reads what is on disk now), `check()` AFTER it wrote (guards, restores and aborts on a failure), `discard()` when it wrote nothing."""
+    def __init__(self, stage: str):
+        import daily_rebuild
+        self.stage, self.cfg, self.plan = stage, load_config(), _guard_plan()[stage]
+        self.backup = daily_rebuild.Backup(PROJECT_ROOT, self.plan["files"])
+        self.before = {src[0]: _read_source(*src[1:5], src[5]) for src in self.plan["sources"]}
+        self.rows = {}
+
+    def discard(self) -> None:
+        self.backup.close()
+
+    def check(self) -> list:
+        import source_guard as sg
+        stored, findings, rows = sg.read_base(PROJECT_ROOT, self.cfg), [], {}
+        for name, kind, path, arg, keys, load_col in self.plan["sources"]:
+            now = _read_source(kind, path, arg, keys, load_col)
+            if now is None:
+                findings.append({"gate": f"{name}_rows_band", "source": name, "check": "rows_band", "passed": False, "detail": "the pulled file is missing or unreadable"})
+                continue
+            prev = (self.before.get(name) or {}).get("rows")
+            findings += sg.evaluate(name, self.cfg, rows=now["rows"], bases=[(sg.stored_rows(stored, name), "stored base (last good pull)"), (prev, "the file on disk before the pull")],
+                                    load_time=now["load_time"], key_nulls=now["key_nulls"] if keys else None)
+            rows[name] = now["rows"]
+        bad = sg.failed(findings)
+        if bad:
+            errors = self.backup.restore()
+            self.backup.close()
+            raise MonthlyGateFailed(f"Step 1 (pull data) ABORTED by the source guard at the {self.stage} pull, before any fit, vintage, build or publish; the stage's files were put back"
+                                    + (f" (NOT all: {errors})" if errors else "") + ": " + sg.describe(findings))
+        self.backup.close()
+        _GUARD_RESULTS.extend(findings)
+        self.rows = rows
+        return findings
+
+
+def _guarded_pull_stage(stage: str, label: str, script: str, output_path: str, args: list = None) -> dict:
+    guard = _StageGuard(stage)
+    out = _pull_stage(label, script, output_path, args)
+    if out.get("refreshed"):
+        guard.check()
+        out["source_guard"] = "passed"
+        out["_guard_rows"] = guard.rows
+    else:
+        guard.discard()
+    return out
+
+
 def step1_pull_data(dry_run: bool, offline: bool = False) -> dict:
     if offline:
         # Test/offline mode: no connection at all; the data already under output/data is used as this run's pull.
@@ -389,6 +494,8 @@ def step1_pull_data(dry_run: bool, offline: bool = False) -> dict:
         )
 
     # ---- THE one real DB connection attempt this run makes: the 335-item, 5-division pull ----
+    _GUARD_RESULTS.clear()
+    main_guard = _StageGuard("main")
     proc = run_script("load_data_all_divisions.py")
     result["load_data_all_divisions_returncode"] = proc.returncode
     result["load_data_all_divisions_stdout_tail"] = proc.stdout[-3000:]
@@ -401,6 +508,8 @@ def step1_pull_data(dry_run: bool, offline: bool = False) -> dict:
             f"{proc.returncode}. Never retrying the database (DATABASE ACCESS rule). "
             f"stderr tail:\n{proc.stderr[-2000:]}"
         )
+    main_guard.check()                      # the shared source guard (Prompt 63): the pull is not used until it passed
+    guard_rows = dict(main_guard.rows)
     monthly_qty_path = os.path.join(DATA_DIR, "processed_all_divisions_monthly_qty.csv")
     monthly = pd.read_csv(monthly_qty_path)
     result["rows_pulled"] = len(monthly)
@@ -410,23 +519,29 @@ def step1_pull_data(dry_run: bool, offline: bool = False) -> dict:
     # ---- the other pulls the pages need, in the same pull stage (C-fix Parts 1 and 2). Each is recorded and
     # never aborts the run: a failure leaves the older file in place and the run log says "not refreshed".
     flags_before = _history_flags()
-    result["pilot_128item_refresh"] = _pull_stage("128-item pilot monthly file", "load_data_full.py", PILOT_MONTHLY_PATH)
+    result["pilot_128item_refresh"] = _guarded_pull_stage("pilot", "128-item pilot monthly file", "load_data_full.py", PILOT_MONTHLY_PATH)
     result["has_any_history_flips"] = _report_history_flips(flags_before, _history_flags())
-    result["inventory_pull"] = _pull_stage("inventory.json pulls", "build_inventory_dataset.py",
-                                           os.path.join(INVENTORY_PULL_DIR, "pull_meta.json"),
-                                           args=["--save-pulls", INVENTORY_PULL_DIR])
+    result["inventory_pull"] = _guarded_pull_stage("inventory", "inventory.json pulls", "build_inventory_dataset.py",
+                                                   os.path.join(INVENTORY_PULL_DIR, "pull_meta.json"),
+                                                   args=["--save-pulls", INVENTORY_PULL_DIR])
     # the material plan's inputs and the Sec.23 class evidence (METRICS.md Sec.43): raw-material stock, open orders, purchase history, BOM tree, class evidence
     # in one session of their own; the item-level class file is recomputed from it. A failure leaves the earlier files in place and the log says so.
-    result["material_plan_pull"] = _pull_stage("material plan inputs and class evidence", "material_plan.py",
-                                               os.path.join(PROJECT_ROOT, *load_config()["operation_plan"]["week3_inputs_file"].split("/")), args=["--pull"])
+    result["material_plan_pull"] = _guarded_pull_stage("material", "material plan inputs and class evidence", "material_plan.py",
+                                                       os.path.join(PROJECT_ROOT, *load_config()["operation_plan"]["week3_inputs_file"].split("/")), args=["--pull"])
     # the Trend tab of index.html: its own session (src/build_trend_tab.py --pull); a failure leaves the earlier pull in place and the log says so
-    result["trend_tab_pull"] = _pull_stage("Trend tab pull", "build_trend_tab.py", os.path.join(PROJECT_ROOT, *load_config()["trend_tab"]["pull_dir"].split("/"), "completeness.json"),
-                                           args=["--pull"])
+    result["trend_tab_pull"] = _guarded_pull_stage("trend", "Trend tab pull", "build_trend_tab.py", os.path.join(PROJECT_ROOT, *load_config()["trend_tab"]["pull_dir"].split("/"), "completeness.json"),
+                                                   args=["--pull"])
     # the PEM107 delivery-decline alert of the Min-Max page (src/cube_ces_pull.py, Prompt 35): Cube_CES, Omni Channel in the SQL, in its own session; its output carries its pull time, so the page
     # judges its freshness by the monthly cadence. A failure keeps the earlier alert, is a WARN and makes the run partial (exit code 2).
-    result["pem107_alert_pull"] = _pull_stage("PEM107 alert pull", "cube_ces_pull.py", os.path.join(PROJECT_ROOT, "output", "summary", "task2b_part4_pem107_alert.json"),
-                                              args=["--pem107-alert"])
+    result["pem107_alert_pull"] = _guarded_pull_stage("pem107", "PEM107 alert pull", "cube_ces_pull.py", os.path.join(PROJECT_ROOT, "output", "summary", "task2b_part4_pem107_alert.json"),
+                                                      args=["--pem107-alert"])
     _abort_if_a_database_stage_failed("Step 1 (pull data)")
+    import source_guard as sg
+    for stage_result in result.values():                  # the counts of every source that passed become the stored base of the next run; the private key is not logged
+        if isinstance(stage_result, dict):
+            guard_rows.update(stage_result.pop("_guard_rows", {}))
+    sg.write_base(PROJECT_ROOT, load_config(), guard_rows, "monthly step 1")
+    result["source_guard"] = {"sources_checked": len(guard_rows), "findings": [{k: f[k] for k in ("gate", "passed", "detail")} for f in _GUARD_RESULTS]}
     return result
 
 

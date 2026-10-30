@@ -88,3 +88,16 @@ def _db_refused_lock_in_a_temporary_folder(tmp_path_factory, monkeypatch):
     """No test reads or writes the real shared lock output/state/db_login_refused.lock (a test that fakes a refused login must never stop the real jobs)."""
     import db
     monkeypatch.setattr(db, "REFUSED_LOCK_PATH", str(tmp_path_factory.mktemp("db_lock") / "db_login_refused.lock"))
+
+
+# ------------------------------------------------------------------ the source guard's stored base of the REAL project is never read or written by a test (Prompt 63)
+@pytest.fixture(autouse=True)
+def _real_source_guard_state_is_never_touched(monkeypatch, tmp_path_factory):
+    """A test that runs step 1 of the monthly runner or the daily extras against the real project root would write fake row counts into output/state/source_guard_base.json and block the real run
+    that reads them. Every call that names the real root is pointed at an empty temporary folder instead; a test that passes its own temporary root is not changed."""
+    import source_guard as sg
+    real, scratch, original = os.path.normcase(os.path.abspath(PROJECT_ROOT)), str(tmp_path_factory.mktemp("source_guard_state")), sg.base_path
+
+    def base_path(root, config):
+        return original(scratch if os.path.normcase(os.path.abspath(root)) == real else root, config)
+    monkeypatch.setattr(sg, "base_path", base_path)

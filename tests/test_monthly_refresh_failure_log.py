@@ -783,6 +783,8 @@ def test_step_1_has_the_pem107_alert_stage_and_the_offline_dry_run_reports_it():
     for node in _ast.walk(tree):
         if isinstance(node, _ast.Call) and isinstance(node.func, _ast.Name) and node.func.id == "_pull_stage" and len(node.args) >= 2:
             stages.append((_ast.unparse(node.args[1]), _ast.unparse(node)))
+        if isinstance(node, _ast.Call) and isinstance(node.func, _ast.Name) and node.func.id == "_guarded_pull_stage" and len(node.args) >= 3:      # Prompt 63: (stage, label, script, ...)
+            stages.append((_ast.unparse(node.args[2]), _ast.unparse(node)))
     assert any(script == "'cube_ces_pull.py'" and "--pem107-alert" in call for script, call in stages), stages
     result = mr.step1_pull_data(True, True)                                       # the offline pull step of a dry run: no database
     assert result["pem107_alert_pull"]["refreshed"] is False and "offline" in result["pem107_alert_pull"]["not_refreshed_reason"]

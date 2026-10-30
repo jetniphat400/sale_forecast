@@ -142,6 +142,8 @@ def pull_material(root: str) -> dict:
 
 
 PULLS = {"trend": pull_trend, "pem107": pull_pem107, "material": pull_material}
+# (extra pull, metric of its counts) -> the source of config `source_guard` that checks it (Prompt 63)
+GUARD_SOURCES = {("trend", "rows"): "trend", ("pem107", "rows"): "pem107", ("material", "rm_inventory"): "material_rm_inventory", ("material", "open_orders"): "material_open_orders"}
 
 
 def previous_counts(root: str, config: dict) -> dict:
@@ -186,7 +188,9 @@ def begin(root: str, config: dict, git: bool = True):
 
 def run_extras(root: str, config: dict, backup: Backup, done=(), pulls: dict = None) -> list:
     """Each source in its own try/except; a failed pull (error or band) puts back its own files and is logged as {source, status, error}; `done` = sources already ok today (the noon retry)."""
+    import source_guard as sg
     before, bands, files, results = previous_counts(root, config), config["daily_rebuild"]["bands_pct"], source_files(config), []
+    stored = sg.read_base(root, config)
     for name, fn in (pulls or PULLS).items():
         if name in done:
             results.append({"source": name, "status": "done_earlier_today"})
@@ -195,6 +199,14 @@ def run_extras(root: str, config: dict, backup: Backup, done=(), pulls: dict = N
         try:
             counts = fn(root)
             check_band(name, counts, before.get(name), bands)
+            findings = []                                    # the shared source guard (Prompt 63): zero rows, the stored base, no base at all
+            for metric, n in counts.items():
+                gname = GUARD_SOURCES.get((name, metric))
+                if gname:
+                    findings += sg.evaluate(gname, config, rows=n, bases=[(sg.stored_rows(stored, gname), "stored base (last good pull)"), ((before.get(name) or {}).get(metric), "the files on disk before the pull")])
+            if sg.failed(findings):
+                raise RebuildFailure(sg.describe(findings), step=f"pull {name}")
+            sg.write_base(root, config, {GUARD_SOURCES[(name, m)]: n for m, n in counts.items() if (name, m) in GUARD_SOURCES}, "daily extras")
             results.append({"source": name, "status": "ok", "rows": counts, "seconds": round(time.time() - started, 1)})
         except Exception as e:  # noqa: BLE001 -- every failure must reach the log, and the earlier files stay
             restore_errors = backup.restore(files[name])
