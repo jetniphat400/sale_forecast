@@ -600,6 +600,8 @@ always stated.
 
     MAE   = mean(|forecast − actual|)
     RMSE  = sqrt(mean((forecast − actual)²))
+    relative bias = sum(forecast − actual) / sum(actual) over the same cells (ANALYSIS ONLY, Prompt 64, the hindcast `docs/reports/summary/hindcast_2026.md`: negative = under-forecast; it is not a gate and
+                    not a column of the score record)
 
 - Both in quantity units, over the same window and series as bias.
 - The backtest's division RMSE is the mean of the items' own RMSE; one forecast
@@ -747,7 +749,7 @@ Every dashboard page and panel displays, near its title:
       7c recompute material plan v1 (section 43) from the operation plan
       7d vintage gate: G1 (the latest vintage of the forward-test log), G2 (`forecast_vintage` in forecast/inventory.html's data), G3 (the operation
          plan's meta) and the material plan (its meta) must carry the same forecast vintage id, else the run stops before step 8
-      8 run the full test suite
+      8 run the full test suite (time limit config `monthly_refresh.step8_timeout_seconds`, 3600 s since Prompt 64; it was 1800 s typed in the code, and the real step 8 takes 21.5 to 25 minutes on the machine)
       9 scan staged files for sensitive content
       10 check change magnitude against the previous run
       11 commit and push only if steps 8 to 10 all pass
