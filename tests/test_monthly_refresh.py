@@ -239,6 +239,8 @@ def test_the_trend_tab_step_runs_after_the_vintage_gate_and_before_the_tests_and
 def test_the_trend_tab_step_writes_a_staged_copy_and_stops_when_the_totals_differ(tmp_path, monkeypatch):
     import hashlib
     import build_trend_tab as bt
+    monkeypatch.setattr(mr, "IN_SANDBOX", False)          # Prompt 63: mr.IN_SANDBOX is read from MONTHLY_REFRESH_SANDBOX when the module is imported, and the dry run's step 8 runs this suite with that variable set;
+    #                                                       in a sandbox the step writes the copy's own index.html instead of a staged one, so the test would fail only there (it failed in every rehearsal of step 8)
     cfg = bt.load_config(mr.PROJECT_ROOT)
     if not os.path.exists(os.path.join(mr.PROJECT_ROOT, *cfg["trend_tab"]["pull_dir"].split("/"), "completeness.json")):
         pytest.skip("SKIPPED, not passed: the saved Trend pull (untracked output) is not on this machine")

@@ -312,6 +312,62 @@ def test_the_manual_shows_an_unresolved_placeholder_visibly_never_blank(edge, tm
     assert "โหลดค่าบางตัวของคู่มือไม่ได้" in text2 and "[ค่าไม่พบ" not in text2 and "—" in text2
 
 
+def _skip_unless_the_page_is_from_this_pull(pulled_at):
+    """Prompt 63: a tracked page is compared with the saved pull in output\\ only when the page says it was built from THIS pull (its header carries the pull's date and time). The daily jobs rewrite the
+    page and the saved pull together; after a revert, or between the pull and the rebuild, the two are from different pulls and a comparison would fail for a reason that is not a defect. The same
+    guard is run on a synthetic pull below, whatever the state of the real files."""
+    import reader_values as rv
+    stamp = rv.header_when(str(pulled_at)[:19])
+    if stamp not in open(INDEX, encoding="utf-8").read():
+        pytest.skip(f"SKIPPED, not passed: the page was not built from the saved pull of {stamp} (a daily rebuild is pending or was reverted); the comparison needs both from the same pull")
+
+
+def _synthetic_trend_pull():
+    """(daily, names, completeness, price list rows, config) of a small invented pull for three real price-list codes: no database, no saved file."""
+    import build_trend_tab as bt
+    cfg = bt.load_config()
+    pl = bt.pricelist_rows(PROJECT_ROOT, cfg)
+    codes = sorted(pl["code"].unique())[:3]
+    rows = [{"itemcode": c, "d": f"2026-0{m}-15", "status": s, "q": 5.0 + m, "s": 100.0 * m, "n": 1} for c in codes for m in range(1, 10) for s in ("Actual", "MPS")]
+    daily = pd.DataFrame(rows)
+    names = pd.DataFrame([{"itemcode": c, "productName": f"Name {c}", "n": 3} for c in codes])
+    comp = {"pulled_at": "2026-10-30T08:00:32", "n_rows": len(daily), "qty": float(daily["q"].sum()), "sale": float(daily["s"].sum()), "first_date": "2026-01-15", "last_date": "2026-09-15",
+            "n_codes_in_scope": len(codes)}
+    return daily, names, comp, pl, cfg
+
+
+def test_the_trend_data_the_builder_makes_is_what_the_writer_puts_in_the_page_and_nothing_else_of_the_page_changes(tmp_path):
+    import build_trend_tab as bt
+    daily, names, comp, pl, cfg = _synthetic_trend_pull()
+    omni, match, report = bt.build_data(daily, names, comp, pl, cfg, "Q3'2026")
+    original = open(INDEX, encoding="utf-8", newline="").read()
+    page = tmp_path / "index.html"
+    page.write_text(original, encoding="utf-8", newline="")
+    bt.write_index(str(page), omni, match)
+    written = open(page, encoding="utf-8", newline="").read()                                      # the same newline mode as `original`
+    lines = _embedded_lines(written)
+    assert json.loads(lines["OMNI"][len("const OMNI = "):].rstrip(";")) == json.loads(bt._json(omni))
+    assert json.loads(lines["MATCH"][len("const MATCH = "):].rstrip(";")) == json.loads(bt._json(match))
+    assert written.count(bt.BEGIN_MARK) == 1 and written.count(bt.END_MARK) == 1
+    a, b = original.index(bt.BEGIN_MARK), original.index(bt.END_MARK)
+    wa, wb = written.index(bt.BEGIN_MARK), written.index(bt.END_MARK)
+    head_same, tail_same = written[:wa] == original[:a], written[wb:] == original[b:]               # booleans, not the strings: a failed comparison of two 1.6 MB strings would make pytest build a diff for minutes
+    assert head_same and tail_same                                                                  # only the block between the markers differs
+    assert omni["meta"]["pull_iso"] == "2026-10-30" and report["totals"]["rows"] == len(daily)
+
+
+def test_the_trend_tab_stops_when_its_totals_differ_from_the_completeness_query_and_agree_when_they_do_not():
+    import build_trend_tab as bt
+    daily, names, comp, pl, cfg = _synthetic_trend_pull()
+    omni, _match, _report = bt.build_data(daily, names, comp, pl, cfg, "Q3'2026")
+    assert round(sum(sum(i["qa"]) + sum(i["qm"]) for i in omni["items"]), 3) == round(comp["qty"], 3)
+    assert round(sum(sum(i["sa"]) + sum(i["sm"]) for i in omni["items"]), 1) == round(comp["sale"], 1)
+    assert sum(len(i["dd"]) for i in omni["items"]) > 0 and omni["meta"]["pull_iso"] == comp["pulled_at"][:10] and omni["n31"] == len(omni["months"]) - 1
+    for field, wrong in (("n_rows", comp["n_rows"] - 1), ("qty", comp["qty"] + 1.0), ("sale", comp["sale"] + 10.0)):
+        with pytest.raises(bt.TrendTotalsMismatch):
+            bt.build_data(daily, names, dict(comp, **{field: wrong}), pl, cfg, "Q3'2026")
+
+
 def test_trend_embedded_data_is_what_the_builder_makes_from_the_saved_pull():
     import build_trend_tab as bt
     cfg = bt.load_config()
@@ -319,6 +375,7 @@ def test_trend_embedded_data_is_what_the_builder_makes_from_the_saved_pull():
     if not os.path.exists(os.path.join(pull_dir, "completeness.json")):
         pytest.skip("SKIPPED, not passed: the saved Trend pull (untracked output) is not on this machine")
     daily, names, comp = bt.read_pull(PROJECT_ROOT, cfg)
+    _skip_unless_the_page_is_from_this_pull(comp["pulled_at"])
     omni, match, _ = bt.build_data(daily, names, comp, bt.pricelist_rows(PROJECT_ROOT, cfg), cfg, bt.pricelist_label(PROJECT_ROOT))
     lines = _embedded_lines(open(INDEX, encoding="utf-8").read())
     assert json.loads(lines["OMNI"][len("const OMNI = "):].rstrip(";")) == json.loads(bt._json(omni))
@@ -532,6 +589,7 @@ def test_trend_tab_in_index_html_is_the_saved_pull_and_its_totals_equal_the_comp
     if not os.path.exists(os.path.join(pull_dir, "completeness.json")):
         pytest.skip("SKIPPED, not passed: the saved Trend pull (untracked output) is not on this machine")
     comp = _json.load(open(os.path.join(pull_dir, "completeness.json"), encoding="utf-8"))
+    _skip_unless_the_page_is_from_this_pull(comp["pulled_at"])
     assert round(sum(sum(i["qa"]) + sum(i["qm"]) for i in omni["items"]), 3) == round(comp["qty"], 3)
     assert round(sum(sum(i["sa"]) + sum(i["sm"]) for i in omni["items"]), 1) == round(comp["sale"], 1)
     assert sum(len(i["dd"]) for i in omni["items"]) > 0 and omni["meta"]["pull_iso"] == comp["pulled_at"][:10]
@@ -820,6 +878,10 @@ def test_the_executive_tab_in_index_html_is_what_the_builder_makes_from_the_save
     import build_trend_tab as bt
     import build_exec_summary as bx
     cfg = bt.load_config()
+    comp_path = os.path.join(PROJECT_ROOT, *cfg["trend_tab"]["pull_dir"].split("/"), "completeness.json")
+    if not os.path.exists(comp_path):
+        pytest.skip("SKIPPED, not passed: the saved Trend pull (untracked output) is not on this machine")
+    _skip_unless_the_page_is_from_this_pull(json.load(open(comp_path, encoding="utf-8"))["pulled_at"])
     data = bx.exec_data(PROJECT_ROOT)
     assert "\n" + bx.exec_render(data, cfg) + "\n" == _exec_block(open(INDEX, encoding="utf-8").read())
     # the identities on the real figures: the total row is the sum of its rows, each projection is YTD plus the remaining months' baht of the forecast page

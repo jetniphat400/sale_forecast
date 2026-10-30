@@ -873,6 +873,9 @@ def test_the_counts_on_the_page_follow_the_plan_and_the_three_reasons_add_up_to_
     if not os.path.exists(tracked) or not os.path.exists(p):
         pytest.skip("SKIPPED, not passed: the built material plan page or the saved week 3 pulls are not on this machine")
     page = open(tracked, encoding="utf-8").read()
+    built_at = str(op.read_outputs(PROJECT_ROOT, cfg["operation_plan"])[2]["built_at"]).replace("T", " ")
+    if built_at not in page:         # Prompt 63: the page and the recorded plan are rewritten together by the daily rebuild; after a revert they are from different builds and the counts need not agree
+        pytest.skip(f"SKIPPED, not passed: the built material plan page was not built from the recorded plan of {built_at} (a daily rebuild is pending or was reverted); the comparison needs both from the same build")
     m = re.search(r"สินค้าใน Production Plan (\d+) รหัส คิดวัตถุดิบ (\d+) รหัส ไม่ได้คิด (\d+) รหัส: ไม่มียอดผลิตใน (\d+) เดือนนี้ (\d+) รหัส · ไม่มีบันทึกผลิตใน DB \(cube_final\) (\d+) รหัส · ไม่มี BOM ใน DB \(Cube_BOM_Exact\) (\d+) รหัส", page)
     assert m, "the coverage line is not on the built page"
     n, mexp, k, months, a, b, c = map(int, m.groups())

@@ -131,7 +131,7 @@ def test_the_recalibration_input_producer_writes_the_saved_files_schema_through_
     if os.path.exists(wr.CES_PATH):                                              # the saved file's header is the schema
         assert list(pd.read_csv(wr.CES_PATH, nrows=0).columns) == expected
     items_path = tmp_path / "stock92.json"
-    items_path.write_text('["B-2", "A-1"]')
+    items_path.write_text('["B-2", "A-1"]')                                      # the config names it relative to PROJECT_ROOT (an absolute path with a drive letter breaks os.path.join when the working directory is on another drive)
     seen = {}
 
     @contextlib.contextmanager
@@ -142,8 +142,8 @@ def test_the_recalibration_input_producer_writes_the_saved_files_schema_through_
     row = {c: None for c in expected}
     row.update({"ContractID": "C1", "ItemCode": "A-1", "Status": "Actual", "ActualQty": 3.0, "RevenueType": "Omni Channel"})
     monkeypatch.setattr(cube_ces_pull, "run_query", lambda sql: seen.setdefault("sql", sql) and pd.DataFrame([{**row, "Extra": 1}]))
-    cfg = {"maxmin_v1": {"ensemble_stock_items_file": str(items_path).replace("\\", "/")}}
-    monkeypatch.setattr(wr, "PROJECT_ROOT", "")
+    cfg = {"maxmin_v1": {"ensemble_stock_items_file": "stock92.json"}}
+    monkeypatch.setattr(wr, "PROJECT_ROOT", str(tmp_path))
     out = tmp_path / "ces_92.csv"
     res = wr.pull_ces_input(str(out), cfg)
     assert seen["session"] and seen["preflight"] is True                           # through db.py, with the preflight

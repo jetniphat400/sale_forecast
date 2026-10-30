@@ -204,7 +204,8 @@ def test_the_heading_months_and_the_data_line_come_from_the_plan_not_from_typing
     assert f"Production Plan {len(MONTHS)} เดือน · ทุกฝ่าย" in page and "PEM101 และ PEM107" not in page
     facts = bp.rv.model_round_facts("2026-10-02")
     assert "ข้อมูล stock จาก DB (Cube_Inventory_Exact) · Forecast = ยอดขายที่ระบบคาดการณ์ · ออเดอร์ที่รับแล้ว (Backlog) = ลูกค้าสั่งแล้วแต่ยังไม่ส่ง</p>" in page and f"Production Plan คำนวณจาก stock และออเดอร์ที่รับแล้ว ณ {v['pull_time']} · คำนวณใหม่ทุกวันทำการ ครั้งถัดไป " in page and "stock ล่าสุดของวันนี้ดูที่แผง stock และหน้า Min-Max" in page
-    assert "<b>Forecast ล่าสุด:</b> " + bp.rv.forecast_header_text(bp.op.load_full_config(PROJECT_ROOT)) in page and "Forecast รันเมื่อ" not in page
+    # the page takes the run date it is given (the fixture's 2026-10-02) over the latest vintage's own; the expected text is built the same way, so it no longer depends on how many vintages the real forward-test log holds
+    assert "<b>Forecast ล่าสุด:</b> " + bp.rv.forecast_header_text(bp.op.load_full_config(PROJECT_ROOT), {**bp.rv.vintage_facts(), "run_date": "2026-10-02"}) in page and "Forecast รันเมื่อ" not in page
     assert "ประวัติผลิตของ Historical peak ถึง 2 ต.ค. 69" in page and 'data-pulled="2026-10-02"' in page and 'data-pulled="2026-10-06"' not in page      # the plan's stock is a calculation date: no data-pulled span, no status
     im, dm, meta = _plan()
     meta4 = dict(meta, months=MONTHS)
@@ -342,6 +343,7 @@ def test_every_braced_value_equals_a_direct_recomputation_from_the_recorded_plan
     ex = (b["backlog_due"] - b["forecast"]).clip(lower=0)
     assert v["backlog_above_forecast"] == f"{int(round(ex.sum())):,}"
     order = ex.groupby(b["item"]).sum().sort_values(ascending=False)
+    order = order[order > 1e-9]                                  # an item with no excess is never "the item that contributes most" (an empty or all-zero backlog picks none, Prompt 63)
     run, picked = 0.0, []
     for code, x in order.items():
         picked.append(code)

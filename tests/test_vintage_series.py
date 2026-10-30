@@ -162,6 +162,9 @@ def _evidence_in(tmp_path, monkeypatch):
     vs.save_series(SERIES, 3, str(src / "series"))
     vs.save_series(SERIES + b"2026-09,A-1,9\n", 4, str(src / "series"))
     monkeypatch.setattr(vs, "SERIES_DIR", str(src / "series"))
+    # the comparator log and its metadata exist in the real output folder from vintage 3 on: point them at files that are not there, so the count below never depends on how many vintages the real folder holds
+    monkeypatch.setattr(mr, "COMPARATOR_LOG_PATH", str(src / "no_comparator_log.csv"))
+    monkeypatch.setattr(mr, "COMPARATOR_METADATA_PATH", str(src / "no_comparator_metadata.json"))
     return src, names
 
 
@@ -177,7 +180,7 @@ def test_backup_then_restore_gives_identical_sha256_for_every_file_and_nothing_i
     monkeypatch.setenv(cfg["backup"]["env_var"], str(drive))
     from datetime import datetime
     r = mr.run_backup(cfg, datetime(2026, 11, 5, 7, 30, 0))
-    assert r["files"] == 8 and r["all_sha256_match"] is True and r["folder"] == "%OneDriveCommercial%\\sale_forecast_backup\\2026-11-05"
+    assert r["files"] == len(mr.evidence_files()) == 8 and r["all_sha256_match"] is True and r["folder"] == "%OneDriveCommercial%\\sale_forecast_backup\\2026-11-05"
     assert str(drive) not in json.dumps(r)                                              # the resolved path is never in the result
     dest = drive / cfg["backup"]["subfolder"] / "2026-11-05"
     restored = tmp_path / "restored"
@@ -312,7 +315,7 @@ def test_the_comparator_log_and_its_metadata_are_in_the_backup_when_they_exist(t
     monkeypatch.setattr(mr, "COMPARATOR_METADATA_PATH", str(src / "forward_test_comparator_metadata.json"))
     from datetime import datetime
     absent = mr.run_backup(cfg, datetime(2026, 11, 5, 7, 0, 0))
-    assert absent["comparator_log"].startswith("not present yet") and absent["files"] == 8
+    assert absent["comparator_log"].startswith("not present yet") and absent["files"] == len(mr.evidence_files()) == 8
     (src / "forward_test_comparator_log.csv").write_bytes(b"comparator rows\n")
     with pytest.raises(mr.BackupError, match="comparator log does"):                  # a log without its metadata is an error, not a skip
         mr.run_backup(cfg, datetime(2026, 12, 5, 7, 0, 0))
