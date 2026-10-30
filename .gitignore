@@ -4,3 +4,6 @@ reference/
 __pycache__/
 *.pyc
 .venv/
+
+# A folder of files Claude made for the user, kept outside the project history (Prompt 64)
+Claude outputs/
