@@ -163,7 +163,9 @@ def exec_data(root: str = PROJECT_ROOT, plan_dir: str = None) -> dict:
     items = [("sales_round", facts["pulled_iso"], "round"), ("exec_calc", stock_pull, "computed"), ("peak", rng["last_date"], "file"), ("material", rm_pull, "data"), ("pem107_alert", alert_pull, "data"), ("plan_where", None, "note")]
     labels = {"header": rv.data_header(config, items, True, vf), "js": rv.data_age_js(config)}
     pending = [r for r in maxmin_v1.pending_criteria_rows() if r["who"] == "ผู้บริหาร"]
-    return {"data_month": data_month, "data_month_label": rv.thai_month_short(data_month), "year": year, "year_be": int(rv.thai_year_short(year)), "remaining_months": remaining, "booked_baht": booked_baht, "rows": rows, "total": tot, "monthly": monthly,
+    guard_days = int(config["leakage_guard"]["min_margin_days"])
+    nxt = rv.next_actual_info(data_month, vf["run_date"], guard_days)                  # why the last months are a forecast and when the next month's actual arrives (Prompt 64)
+    return {"guard_days": guard_days, "next_actual_month_label": rv.thai_month_short(nxt["month"]), "next_run_date_label": rv.thai_date_short(nxt["run_date"]), "data_month": data_month, "data_month_label": rv.thai_month_short(data_month), "year": year, "year_be": int(rv.thai_year_short(year)), "remaining_months": remaining, "booked_baht": booked_baht, "rows": rows, "total": tot, "monthly": monthly,
             "n_forecast_divisions": len(rows), "n_beat_naive": sum(1 for r in rows if r["relative_mae"] is not None and r["relative_mae"] < th["pass"]), "thresholds": th,
             "watch": watch, "pending": pending, "vintage_id": vf["vintage_id"], "labels": labels}
 
@@ -304,6 +306,7 @@ def exec_render(data: dict, config: dict) -> str:
     lab = d["labels"]
     return (f'{lab["header"]}<div class="kpis" id="execCards">{cards_html}</div>'
             f'{charts_html}'
+            f'<p class="hint" id="execWhyForecast">{esc(T["why_forecast"].format(guard_days=d["guard_days"], data_month=month, next_month=d["next_actual_month_label"], next_run=d["next_run_date_label"]))}</p>'
             f'<p class="hint" id="execUnit">{esc(T["unit_note"])}</p>'
             f'<div class="table-scroll"><table id="execTable"><thead><tr>{head}</tr></thead><tbody>{"".join(body)}</tbody></table></div>'
             f'<h3 id="execWatchTitle">{esc(T["watch_heading"])}</h3><ul id="execWatch">{watch_html}</ul>'

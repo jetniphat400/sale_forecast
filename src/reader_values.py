@@ -555,6 +555,21 @@ def fulfilment_min_signals() -> int:
     return int(m.group(1))
 
 
+def next_actual_info(data_month: str, run_date: str, guard_days: int, base_day: int = None) -> dict:
+    """{"month": 'YYYY-MM', "run_date": ISO date}: the month after `data_month` (the last month of actual sales a page shows, the fit window's last month of the latest vintage) and the date of
+    the monthly run that adds it. A month counts as complete `guard_days` after it ends (config leakage_guard.min_margin_days); the runs considered are the monthly run days
+    (`monthly_refresh.run_day`) of the months after `run_date`, the run date of the vintage the page uses, so the answer changes only when a monthly run makes a new vintage. Computed, never typed."""
+    import monthly_refresh
+    y, m = (int(x) for x in str(run_date)[:7].split("-"))
+    target = pd.Period(str(data_month), freq="M") + 1
+    for k in range(1, 25):
+        yy, mm0 = divmod(y * 12 + (m - 1) + k, 12)
+        rd = monthly_refresh.run_day(yy, mm0 + 1, base_day)
+        if (rd - target.end_time.date()).days >= guard_days:
+            return {"month": str(target), "run_date": rd.isoformat()}
+    raise ReaderValueError(f"no monthly run day within 24 months of {run_date} is {guard_days} days after the end of {target}")
+
+
 def months_of_lag(guard_days: int, base_day: int, reference: str = "2026-10") -> int:
     """How many months the newest usable month trails the month of the run: the latest month whose end is at least `guard_days` before that month's run day (monthly_refresh.run_day)."""
     import monthly_refresh

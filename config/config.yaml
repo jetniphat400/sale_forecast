@@ -1216,6 +1216,9 @@ exec_summary:
     # the two charts under the cards (Prompt 40); {braces} are filled at build time
     chart1_title: "ยอดขายรายเดือน (ล้านบาท) · สินค้าใน Price List ช่อง Omni Channel"
     chart1_note: "เส้นประ = คาดการณ์ ใช้กติกาเดียวกับการ์ดคาดการณ์ทั้งปี (ค่าที่มากกว่าระหว่าง Forecast กับออเดอร์ที่รับแล้ว)"
+    # why the last months of the chart are a forecast and when the next month's actual arrives (Prompt 64): the days come from leakage_guard.min_margin_days, the month and the date are computed
+    # from the latest vintage and the monthly run day (reader_values.next_actual_info), never typed
+    why_forecast: "ยอดขายของเดือนหนึ่งจะนับว่าครบเมื่อสิ้นเดือนนั้นแล้ว {guard_days} วัน ยอดจริงในหน้านี้จึงมีถึง {data_month} เดือนหลังจากนั้นที่เห็นในกราฟเป็นคาดการณ์ ยอดจริงของ {next_month} จะเข้ามาในการรันรายเดือนวันที่ {next_run}"
     chart1_unit: "ล้านบาท"
     chart1_legend_actual: "ปี {year} (ยอดจริง)"
     chart1_legend_proj: "ปี {year} (คาดการณ์)"

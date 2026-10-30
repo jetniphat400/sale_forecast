@@ -649,7 +649,7 @@ def _fixed_exec_data():
     rows = [{"division": "AAA", "ytd": 100e6, "last_ytd": 80e6, "change": 0.25, "forecast_remaining": 50e6, "projection": 150e6, "relative_mae": 0.6},
             {"division": "BBB", "ytd": 30e6, "last_ytd": 40e6, "change": -0.25, "forecast_remaining": 10e6, "projection": 40e6, "relative_mae": 1.2}]
     tot = {"ytd": 130e6, "last_ytd": 120e6, "forecast_remaining": 60e6, "projection": 190e6, "change": 130 / 120 - 1}
-    return {"data_month": "2026-08", "data_month_label": "ส.ค. 69", "year": 2026, "year_be": 69, "remaining_months": ["2026-09"], "rows": rows, "total": tot, "n_forecast_divisions": 2,
+    return {"guard_days": 30, "next_actual_month_label": "ก.ย. 69", "next_run_date_label": "5 พ.ย. 69", "data_month": "2026-08", "data_month_label": "ส.ค. 69", "year": 2026, "year_be": 69, "remaining_months": ["2026-09"], "rows": rows, "total": tot, "n_forecast_divisions": 2,
             "n_beat_naive": 1, "thresholds": {"good": 0.7, "pass": 1.0, "limit": 4.0}, "watch": [], "pending": [{"topic": "หัวข้อ", "to_decide": "ต้องตัดสินอะไร"}], "labels": _fixed_labels(cfg),
             "monthly": {"actual": {f"2026-{m:02d}": v * 1e6 for m, v in zip(range(1, 9), [10, 12, 14, 16, 18, 20, 20, 20])},
                         "last_year": {f"2025-{m:02d}": v * 1e6 for m, v in zip(range(1, 13), [15] * 8 + [10] * 4)}, "projection": {"2026-09": 60e6}}}
@@ -1102,3 +1102,66 @@ def test_the_executive_tab_and_the_min_max_page_state_their_scope():
     assert data["scope_line"] == scope
     template = open(os.path.join(root, "src", "build_inventory_page.py"), encoding="utf-8").read()
     assert 'id="scope-line"' in template and "DATA.scope_line" in template
+
+
+# ------------------------------------------------------------------ Prompt 64: why the last months of the executive tab are a forecast, and when the next month's actual arrives
+def _expected_next_actual(data_month, vintage_run_date, guard_days, base_day):
+    """The month after the data month and the date of the monthly run that adds it, worked out here from first principles (not with the project's helper): the monthly run is on the first Monday to
+    Friday on or after the base day; a month is complete `guard_days` after its last day; the runs considered are those of the months after the vintage's run month."""
+    import calendar
+    from datetime import date, timedelta
+    y, m = int(data_month[:4]), int(data_month[5:7])
+    ty, tm = (y + 1, 1) if m == 12 else (y, m + 1)
+    target_end = date(ty, tm, calendar.monthrange(ty, tm)[1])
+    ry, rm = int(vintage_run_date[:4]), int(vintage_run_date[5:7])
+    for k in range(1, 25):
+        yy, mm = ry + (rm - 1 + k) // 12, (rm - 1 + k) % 12 + 1
+        d = date(yy, mm, base_day)
+        while d.weekday() >= 5:
+            d += timedelta(days=1)
+        if (d - target_end).days >= guard_days:
+            return f"{ty}-{tm:02d}", d.isoformat()
+
+
+@pytest.mark.parametrize("data_month,run_date", [("2026-08", "2026-10-02"), ("2026-09", "2026-11-05"), ("2026-10", "2026-12-07"), ("2026-11", "2027-01-05"), ("2026-12", "2027-02-05")])
+def test_the_next_actual_month_and_run_date_are_computed_and_agree_with_a_first_principles_calculation(data_month, run_date):
+    import yaml
+    import reader_values as rv
+    cfg = yaml.safe_load(open(os.path.join(PROJECT_ROOT, "config", "config.yaml"), encoding="utf-8"))
+    guard, base = int(cfg["leakage_guard"]["min_margin_days"]), int(cfg["shadow"]["monthly_run_day_of_month"])
+    got = rv.next_actual_info(data_month, run_date, guard, base)
+    month, run = _expected_next_actual(data_month, run_date, guard, base)
+    assert (got["month"], got["run_date"]) == (month, run)
+    assert (date_from := __import__("datetime").date.fromisoformat(got["run_date"])).weekday() < 5 and date_from.day >= base
+    assert rv.next_actual_info(data_month, run_date, guard + 20, base)["run_date"] >= got["run_date"]          # a longer margin never brings the date forward
+
+
+def test_the_executive_tab_says_why_the_last_months_are_a_forecast_with_every_number_and_date_computed():
+    import yaml
+    import build_trend_tab as bt
+    import build_exec_summary as bx
+    import reader_values as rv
+    cfg = bt.load_config()
+    text = cfg["exec_summary"]["text"]["why_forecast"]
+    assert not re.search(r"\d", text) and text.count("{") == 4                                         # no typed day count, month or date: all four are filled at build time
+    d = _fixed_exec_data()
+    block = bx.exec_render(d, cfg)
+    line = re.search(r'<p class="hint" id="execWhyForecast">(.*?)</p>', block)
+    assert line and line.group(1) == text.format(guard_days=30, data_month="ส.ค. 69", next_month="ก.ย. 69", next_run="5 พ.ย. 69")
+    assert block.index('id="execCharts"') < block.index('id="execWhyForecast"') < block.index('id="execUnit"')    # right under the charts
+    if os.path.exists(os.path.join(PROJECT_ROOT, "data", "assumptions.json")):
+        real = bx.exec_data(PROJECT_ROOT)
+        vf = rv.vintage_facts(PROJECT_ROOT)
+        month, run = _expected_next_actual(real["data_month"], vf["run_date"], int(cfg["leakage_guard"]["min_margin_days"]), int(cfg["shadow"]["monthly_run_day_of_month"]))
+        shown = re.search(r'<p class="hint" id="execWhyForecast">(.*?)</p>', bx.exec_render(real, cfg)).group(1)
+        assert shown == text.format(guard_days=int(cfg["leakage_guard"]["min_margin_days"]), data_month=real["data_month_label"], next_month=rv.thai_month_short(month), next_run=rv.thai_date_short(run))
+
+
+def test_the_new_line_is_in_the_part_of_the_executive_block_the_daily_rebuild_compares_so_the_published_page_must_carry_it():
+    """The daily rebuild's gate 'executive model figures identical' compares everything of the block from the cards on except card 4 and the watch list. The line is inside that part, so a page
+    built before the line existed would fail the first rebuild after the builder changed: the published index.html is built with the line (this test), which is what keeps that gate passing."""
+    import daily_rebuild as dr
+    text = open(INDEX, encoding="utf-8").read()
+    rest, model = dr._index_parts(text)
+    assert 'id="execWhyForecast"' in model and 'id="execWhyForecast"' not in rest
+    assert model.count('id="execWhyForecast"') == 1
