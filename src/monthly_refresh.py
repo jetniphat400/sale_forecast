@@ -1911,30 +1911,45 @@ def step10_change_magnitude(config: dict, step4_result: dict, step5_result: dict
     violations = []
     gates = {}
 
-    # ---- (a) six-month total forecast per division, against vintage 1 ----
-    new_totals = step5_result.get("six_month_item_forecast_total_by_division", {})
+    # ---- (a) six-month total forecast per division, against the PREVIOUS vintage (Prompt 65; it was vintage 1 whatever the new vintage's number) ----
+    # The vintage judged is the one this run computed, or, on a re-run in the same month (step 5 skipped by the one-vintage-per-month guard), the vintage the month already holds: the gate is
+    # then evaluated on the stored vintage, so a hold cannot be lifted by running again.
+    new_totals, new_id = step5_result.get("six_month_item_forecast_total_by_division", {}), step5_result.get("vintage_id")
     six_mo_report = {}
-    if step5_result.get("skipped"):
-        gates["six_month_forecast"] = _gate(GATE_NOT_TESTED, "step 5 skipped, so no new vintage was computed to compare: "
-                                            + str(step5_result.get("reason", ""))[:200])
-    elif not new_totals or not os.path.exists(FORWARD_TEST_LOG_PATH):
-        gates["six_month_forecast"] = _gate(GATE_NOT_TESTED, "no new six-month totals or no forward-test log to compare with")
+    stored_rerun = bool(step5_result.get("skipped"))
+    if stored_rerun:
+        new_id = step5_result.get("existing_vintage_id_this_month")
+    if not os.path.exists(FORWARD_TEST_LOG_PATH):
+        gates["six_month_forecast"] = _gate(GATE_NOT_TESTED, "no forward-test log to compare with")
+    elif new_id is None or (not stored_rerun and not new_totals):
+        gates["six_month_forecast"] = _gate(GATE_NOT_TESTED, ("step 5 skipped and names no stored vintage of this month: " + str(step5_result.get("reason", ""))[:200]) if stored_rerun
+                                            else "no new six-month totals to compare")
     else:
         existing_log = pd.read_csv(FORWARD_TEST_LOG_PATH)
-        vintage_1 = existing_log[(existing_log["vintage_id"] == 1) & (existing_log["level"] == "Item")]
-        prev_totals = vintage_1.groupby("division")["forecast_qty"].sum().to_dict()
-        failed = []
-        for div, new_total in new_totals.items():
-            prev_total = prev_totals.get(div)
-            pct = 100 * (new_total - prev_total) / prev_total if prev_total else None
-            six_mo_report[div] = {"previous_vintage1_total": prev_total, "new_vintage_total": new_total, "change_pct": pct}
-            if pct is not None and abs(pct) > six_mo_threshold:
-                failed.append(f"{div}: six-month total forecast changed {pct:.1f}% (> {six_mo_threshold}% threshold)")
-        compared = [d for d, r in six_mo_report.items() if r["change_pct"] is not None]
-        violations += failed
-        gates["six_month_forecast"] = (_gate(GATE_FAILED, "; ".join(failed)) if failed else
-                                       _gate(GATE_PASSED, f"{len(compared)} divisions within {six_mo_threshold}% of vintage 1") if compared else
-                                       _gate(GATE_NOT_TESTED, "vintage 1 holds no total for any division in the new vintage"))
+        items_log = existing_log[existing_log["level"] == "Item"]
+        earlier = sorted(int(v) for v in items_log["vintage_id"].unique() if int(v) < int(new_id))
+        if stored_rerun:
+            new_totals = items_log[items_log["vintage_id"] == int(new_id)].groupby("division")["forecast_qty"].sum().to_dict()
+        if not earlier:
+            gates["six_month_forecast"] = _gate(GATE_NOT_TESTED, f"vintage {int(new_id)} is the first vintage in the log: no earlier vintage to compare with")
+        elif not new_totals:
+            gates["six_month_forecast"] = _gate(GATE_NOT_TESTED, f"the log holds no Item rows of vintage {int(new_id)} to compare")
+        else:
+            prev_id = earlier[-1]
+            prev_totals = items_log[items_log["vintage_id"] == prev_id].groupby("division")["forecast_qty"].sum().to_dict()
+            failed = []
+            for div, new_total in new_totals.items():
+                prev_total = prev_totals.get(div)
+                pct = 100 * (new_total - prev_total) / prev_total if prev_total else None
+                six_mo_report[div] = {"previous_vintage_id": prev_id, "previous_vintage_total": prev_total, "new_vintage_id": int(new_id), "new_vintage_total": new_total, "change_pct": pct}
+                if pct is not None and abs(pct) > six_mo_threshold:
+                    failed.append(f"{div}: six-month total forecast changed {pct:.1f}% against vintage {prev_id} (> {six_mo_threshold}% threshold)")
+            compared = [d for d, r in six_mo_report.items() if r["change_pct"] is not None]
+            violations += failed
+            where = f"vintage {int(new_id)} (stored, re-run)" if stored_rerun else f"vintage {int(new_id)}"
+            gates["six_month_forecast"] = (_gate(GATE_FAILED, "; ".join(failed)) if failed else
+                                           _gate(GATE_PASSED, f"{len(compared)} divisions of {where} within {six_mo_threshold}% of vintage {prev_id}") if compared else
+                                           _gate(GATE_NOT_TESTED, f"vintage {prev_id} holds no total for any division of {where}"))
 
     # ---- (b) backtest MAE per division (Top-down, transferability primary table) ----
     mae_report = {}
@@ -2040,6 +2055,89 @@ def _git_path_changed(path: str) -> bool:
     return any(_porcelain_path(l) == path for l in _git_status_lines())
 
 
+MONTHLY_COMMIT_MESSAGE = "Automated monthly refresh"
+SETTLE_FROM_STEP = "7_rebuild_pages"          # the first step that writes the tracked pages: an end state from here on can leave the clone modified
+
+
+def _git(*args, check: bool = False):
+    return run_process(["git", *args], cwd=PROJECT_ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", check=check)
+
+
+def settle_clone(run_id: str, reason: str) -> dict:
+    """Leaves the publishing clone in a state the task launcher accepts after a real run that did not publish (Prompt 65, RC-003). The launcher exits 95 while a tracked file is modified or staged
+    and 93 while HEAD is not origin/main, so a hold or a failure after step 7 used to stop every daily publish until a person cleaned the clone by hand.
+
+    What it does, in this order, and records in the run log (`clone_settled`):
+      1. every generated tracked file (GENERATED_PATHS) that is modified or staged is COPIED to output/runs/held/<run_id>/<path> for review, before anything is undone;
+      2. a commit that was made but not pushed (HEAD ahead of origin/main) is saved as a git bundle (held/<run_id>/unpushed_monthly_commit.bundle) and its files are copied out of the commit, and
+         only then is the clone reset to origin/main. It is reset ONLY when the commit is exactly one commit whose message is this runner's and no other tracked file is modified; any other
+         commit is not ours to discard and is left for a person (and reported);
+      3. the remaining modified generated files are restored to HEAD (`git checkout HEAD -- <file>`), which also clears the index.
+    A tracked file that is NOT generated by the run (a person's edit) is never touched and is reported in `left_for_a_person`; the launcher still exits 95 for it, as it should.
+    Never raises: a failure is recorded in `errors`. Used only for a real run (a dry run works in a copy)."""
+    report = {"reason": reason, "held_dir": None, "files_saved": [], "files_restored": [], "unpushed_commit": None, "left_for_a_person": [], "errors": []}
+    try:
+        held = os.path.join(RUNS_DIR, "held", run_id)
+        generated = [p for p in GENERATED_PATHS if _git_path_changed(p)]
+        strays = stray_changes_outside_generated_list()
+        ahead = int(_git("rev-list", "--count", "origin/main..HEAD").stdout.strip() or 0)
+        subjects = [s for s in _git("log", "--format=%s", "origin/main..HEAD").stdout.splitlines() if s.strip()] if ahead else []
+
+        def save(rel: str, from_commit: bool = False) -> None:
+            dst = os.path.join(held, *rel.split("/"))
+            os.makedirs(os.path.dirname(dst), exist_ok=True)
+            if from_commit:
+                blob = _git("show", f"HEAD:{rel}")
+                if blob.returncode == 0:
+                    with open(dst, "w", encoding="utf-8", newline="") as f:
+                        f.write(blob.stdout)
+                    report["files_saved"].append(rel)
+            else:
+                shutil.copy2(os.path.join(PROJECT_ROOT, *rel.split("/")), dst)
+                report["files_saved"].append(rel)
+
+        for rel in generated:
+            save(rel)
+        if ahead:
+            ours = ahead == 1 and subjects == [MONTHLY_COMMIT_MESSAGE]
+            os.makedirs(held, exist_ok=True)
+            bundle = os.path.join(held, "unpushed_monthly_commit.bundle")
+            made = _git("bundle", "create", bundle, "origin/main..HEAD")
+            report["unpushed_commit"] = {"commits_ahead": ahead, "subjects": subjects[:5], "bundle": os.path.relpath(bundle, PROJECT_ROOT).replace(os.sep, "/") if made.returncode == 0 else None,
+                                         "reset_to_origin": False}
+            if made.returncode != 0:
+                report["errors"].append("git bundle failed: " + (made.stderr or made.stdout)[-300:])
+            else:
+                for rel in GENERATED_PATHS:
+                    if rel not in report["files_saved"]:
+                        save(rel, from_commit=True)
+                if ours and not strays and _git("bundle", "verify", bundle).returncode == 0:
+                    reset = _git("reset", "--hard", "origin/main")
+                    report["unpushed_commit"]["reset_to_origin"] = reset.returncode == 0
+                    if reset.returncode != 0:
+                        report["errors"].append("git reset failed: " + (reset.stderr or reset.stdout)[-300:])
+                else:
+                    report["left_for_a_person"].append(f"HEAD is {ahead} commit(s) ahead of origin/main ({'; '.join(subjects[:3])}): not reset (" + ("another tracked file is modified" if strays else "not this runner's single commit") + ")")
+        remaining = [p for p in GENERATED_PATHS if _git_path_changed(p)]
+        if remaining:
+            done = _git("checkout", "HEAD", "--", *remaining)
+            if done.returncode == 0:
+                report["files_restored"] = remaining
+            else:
+                report["errors"].append("git checkout failed: " + (done.stderr or done.stdout)[-300:])
+        report["files_restored"] = sorted(set(report["files_restored"]) | set(generated))
+        if report["files_saved"] or report["unpushed_commit"]:
+            report["held_dir"] = os.path.relpath(held, PROJECT_ROOT).replace(os.sep, "/")
+        report["left_for_a_person"] += [f"modified tracked file not generated by the run: {p}" for p in stray_changes_outside_generated_list()]
+        head, origin = _git("rev-parse", "HEAD").stdout.strip(), _git("rev-parse", "origin/main").stdout.strip()
+        report["head"], report["origin_main"] = head, origin
+        report["clone_clean"] = not _git_status_lines() and head == origin
+    except Exception as e:      # noqa: BLE001 -- settling must never hide the failure that led to it
+        report["errors"].append(_mask(f"{type(e).__name__}: {e}")[:400])
+        report["clone_clean"] = False
+    return report
+
+
 def step11_commit_and_push(dry_run: bool, step8: dict, step9: dict, step10: dict) -> dict:
     gates_passed = bool(step8["passed"] and step9["passed"] and step10["passed"])
     if dry_run:
@@ -2081,7 +2179,7 @@ def _commit_and_push(gates_passed: bool) -> dict:
                 "reason": "nothing the run generates has changed -- no commit."}
     try:
         run_process(["git", "add", "--"] + to_stage, cwd=PROJECT_ROOT, check=True, capture_output=True, text=True, encoding="utf-8", errors="replace")
-        run_process(["git", "commit", "-m", "Automated monthly refresh"], cwd=PROJECT_ROOT, check=True, capture_output=True, text=True, encoding="utf-8", errors="replace")
+        run_process(["git", "commit", "-m", MONTHLY_COMMIT_MESSAGE], cwd=PROJECT_ROOT, check=True, capture_output=True, text=True, encoding="utf-8", errors="replace")
     except subprocess.CalledProcessError as e:
         return {"pushed": False, "held": True, "committed": False, "reason": _mask(f"git {e.cmd[1]} failed (exit {e.returncode}): {(e.stderr or '')[-800:]}")}
     push = run_process(["git", "push", "origin", "main"], cwd=PROJECT_ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace")
@@ -2202,6 +2300,7 @@ def main(dry_run: bool, force_new_vintage: bool = False, sandbox: bool = False, 
     config = load_config()
     # Inside a dry-run copy every step writes for real (into the copy); only step 11 stays a dry run.
     steps_dry = dry_run and not sandbox
+    real_run = not (dry_run or sandbox or offline)          # only a real run changes the publishing clone
 
     run_log = {"run_id": run_id, "dry_run": dry_run, "dry_run_in_temporary_copy": sandbox, "offline": offline,
                "force_new_vintage": force_new_vintage,
@@ -2239,6 +2338,8 @@ def main(dry_run: bool, force_new_vintage: bool = False, sandbox: bool = False, 
             run_log["steps_not_run"] = STEP_ORDER[STEP_ORDER.index(step_name) + 1:]
             run_log["committed"] = False
             run_log["pushed"] = False
+            if real_run and STEP_ORDER.index(step_name) >= STEP_ORDER.index(SETTLE_FROM_STEP):          # Prompt 65: leave the clone as the launcher accepts it
+                run_log["clone_settled"] = settle_clone(run_id, f"the run ended at {step_name} ({'aborted' if aborted else 'failed'})")
             run_log["finished_at"] = datetime.now().isoformat(timespec="seconds")
             _write_run_log(run_log, run_id, run_log_dir)
             raise
@@ -2248,6 +2349,9 @@ def main(dry_run: bool, force_new_vintage: bool = False, sandbox: bool = False, 
     record("3_frozen_snapshot", step3_frozen_snapshot)
     step4 = record("4_backtest", step4_backtest, run_id, offline)
     step5 = record("5_new_forward_test_vintage", step5_new_vintage, steps_dry, force_new_vintage)
+    for warning in model_count_warnings(step5.get("model_count")):          # never fails the run (Prompt 65, T2-004)
+        run_log.setdefault("model_count_warnings", []).append(warning)
+        logger.warning(warning)
     computed_vintage_for_preview = _LAST_COMPUTED_VINTAGE if steps_dry else None
     record("6_fill_and_score", step6_fill_and_score, steps_dry, computed_vintage_for_preview, offline, run_id)
     step7 = record("7_rebuild_pages", step7_rebuild_pages, steps_dry, staged_dir, step1)
@@ -2281,6 +2385,8 @@ def main(dry_run: bool, force_new_vintage: bool = False, sandbox: bool = False, 
         run_log["gates_failed"] = failed
     if failed or (step11.get("held") and not (dry_run or sandbox)):
         run_log["push_held"] = {"held": True, "gates": sorted(failed), "reason": step11.get("reason", "")}
+    if real_run and not (step11.get("pushed") is True or step11.get("nothing_to_commit") is True):          # held by step 8, 9 or 10, or step 11 could not publish: Prompt 65, RC-003
+        run_log["clone_settled"] = settle_clone(run_id, "step 11 did not publish: " + str(step11.get("reason", ""))[:200])
     run_log["finished_at"] = datetime.now().isoformat(timespec="seconds")
     _write_run_log(run_log, run_id, run_log_dir)
     return run_log
@@ -2338,7 +2444,22 @@ def cli(argv=None) -> int:
                               "output/data and the regenerations that connect are skipped and recorded.")
     parser.add_argument("--skip-tests", action="store_true",
                          help="Skip step 8 (for tests of the runner itself; recorded in the run log).")
+    parser.add_argument("--settle-clone", action="store_true",
+                         help="Leave the publishing clone as the task launcher accepts it after a run that ended without settling itself (a kill, a reboot): save the generated files modified by the run to output/runs/held/, "
+                              "restore them to HEAD, save and drop a commit that was not pushed. Makes no database connection and starts no run.")
     args = parser.parse_args(argv)
+    if args.settle_clone:           # a run that was killed (a reboot, a power cut) cannot settle itself: this does what the run does at its own end
+        import daily_stock_job
+        try:
+            with open(os.path.join(PROJECT_ROOT, load_config()["daily_stock"]["monthly_lock_file"]), encoding="utf-8") as f:
+                if daily_stock_job.pid_alive(int(json.load(f)["pid"])):
+                    logger.error("--settle-clone refused: the monthly runner's lock names a live process.")
+                    return EXIT_ABORTED
+        except (OSError, ValueError, KeyError):
+            pass
+        report = settle_clone(datetime.now().strftime("%Y%m%dT%H%M%S") + "_manual", "settled by hand (--settle-clone)")
+        print(json.dumps(report, indent=2, default=str))
+        return EXIT_OK if report["clone_clean"] else EXIT_ABORTED
     real_run = not (args.dry_run or args.in_sandbox or args.offline)
     if real_run and not args.ignore_run_day:        # the run-day gate comes first: before the lock check, the preflight and any login
         due, reason = monthly_run_due(date.today(), read_monthly_state())
@@ -2349,9 +2470,6 @@ def cli(argv=None) -> int:
         # Same-day attempt guard (Prompt 56): Task Scheduler restarts a task that ends non-zero, but a run that STARTED and ended 1, 2, 3 or 4 must not be repeated the same day (the next weekday makes it up).
         # A start that never reached Python writes no record, so a restart after it still runs. Before the refused-login lock, the publishing check, the runner lock, the preflight and any login.
         attempt = read_monthly_attempt()
-    for warning in model_count_warnings(step5.get("model_count")):          # never fails the run (Prompt 65, T2-004)
-        run_log.setdefault("model_count_warnings", []).append(warning)
-        logger.warning(warning)
         if attempt.get("date") == date.today().isoformat():
             if not args.ignore_attempt:
                 logger.info("Monthly refresh not started: already attempted today (run %s at %s); the next weekday start makes it up.", attempt.get("run_id"), attempt.get("started_at"))
