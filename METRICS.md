@@ -693,6 +693,12 @@ Every dashboard page and panel displays, near its title:
   actuals the fit used (vintage 1: 2026-07; vintage 2: 2026-08). Wherever a
   page or report shows a vintage's cutoff it shows `fit_last_month`, labelled
   as the last month of data used. No existing row was edited to change this.
+- Model count (Prompt 65): each vintage's metadata entry carries `model_count`: how many of the six
+  candidate models of the combination forecast (Naive, Croston, SBA and the moving averages of the
+  configured windows) produced a forecast, per series (items, Types, Categories): series checked, series
+  by number of models used, and the series with fewer with the models that failed. A model that cannot be
+  fitted is still left out of the average, as before; the run log gets `model_count_warnings` for any
+  series with fewer than six, and the run is not failed by it.
 - The log in existence today is vintage 1 and keeps its original cutoff.
 - Scores are kept in `output/summary/forward_test_scores.csv`, append-only: one
   row per vintage, division or focus code, target month and horizon, with
@@ -795,13 +801,28 @@ Every dashboard page and panel displays, near its title:
 - Step 10 gates (changed 2026-10-05). Each of the three checks records
   `passed`, `failed` or `not_tested` with a reason; a check that compared
   nothing is never `passed`:
-      six_month_forecast  not tested when step 5 skipped (the one-vintage-per-month
-                          guard) or vintage 1 holds no total to compare with
+      six_month_forecast  (Prompt 65) the vintage's six-month Item total per division against the PREVIOUS
+                          vintage (the latest vintage in the forward-test log with a smaller id; it was
+                          vintage 1); limit config six_month_forecast_change_pct (25). When step 5 was
+                          skipped by the one-vintage-per-month guard (a re-run) the gate judges the
+                          vintage the month already holds, so a hold survives a second run. Not tested
+                          for the first vintage (no earlier one), or when the stored vintage cannot be
+                          named or holds no Item rows
       backtest_mae        not tested when there is no earlier successful run log
       on_hand_stock       the monthly pull's total on-hand units against the total
                           the latest successful daily stock run published
                           (`output/runs/daily/last_success.json`); not tested
                           when there is no daily run or no saved pull
+  End states of a REAL run after step 7 (Prompt 65): a run that ends without publishing (held by step
+  8, 9 or 10; failed or aborted in steps 7 to 11; step 11 held or its commit or push failed) leaves the
+  publishing clone as the task launcher accepts it: `settle_clone` copies the generated tracked files
+  (GENERATED_PATHS) the run modified to `output/runs/held/<run_id>/`, saves a commit that was not pushed
+  as `unpushed_monthly_commit.bundle` there and resets the clone to origin/main only when that is exactly
+  the runner's own single commit, restores the generated files to HEAD, and records all of it as
+  `clone_settled` in the run log. A tracked file the run does not generate, and a commit that is not the
+  runner's, are never touched and are listed in `left_for_a_person`. A killed process cannot settle
+  itself: `python src/monthly_refresh.py --settle-clone` does it by hand. The monthly attempt guard and
+  `monthly_run_due` are unchanged: a run that ended without success is due again the next working day.
   The step passes when no gate failed. The run log's `gate_outcomes` lists every
   gate of the run (tests, sensitive-content scan, the three above) and counts
   passed, failed and not tested separately; a skipped test run is not tested.
