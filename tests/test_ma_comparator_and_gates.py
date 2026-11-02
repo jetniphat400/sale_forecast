@@ -148,7 +148,7 @@ def stock(monkeypatch, tmp_path):
 
 BASE = {"on_hand_total": 1000.0, "pull_time": "2026-10-05 11:12:26", "run_id": "d1"}
 STEP4_OK = {"per_division_comparison_topdown": [{"division": "PEM101", "MAE_change_pct": 1.0}]}
-STEP5_OK = {"six_month_item_forecast_total_by_division": {"PEM101": 105.0}}
+STEP5_OK = {"vintage_id": 2, "six_month_item_forecast_total_by_division": {"PEM101": 105.0}}
 
 
 def test_every_gate_passes_when_everything_is_within_threshold(stock):
@@ -161,7 +161,7 @@ def test_every_gate_passes_when_everything_is_within_threshold(stock):
 def test_each_gate_fails_when_its_threshold_is_exceeded(stock):
     stock(BASE, 2000.0)
     out = mr.step10_change_magnitude(CONFIG, {"per_division_comparison_topdown": [{"division": "PEM101", "MAE_change_pct": 50.0}]},
-                                     {"six_month_item_forecast_total_by_division": {"PEM101": 300.0}})
+                                     {"vintage_id": 2, "six_month_item_forecast_total_by_division": {"PEM101": 300.0}})
     assert {g["status"] for g in out["gates"].values()} == {"failed"}
     assert out["gate_counts"]["failed"] == 3 and out["passed"] is False and len(out["violations"]) == 3
 
