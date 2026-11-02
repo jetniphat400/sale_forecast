@@ -835,6 +835,29 @@ def find_existing_vintage_this_month(log_path: str, now: pd.Timestamp) -> dict:
     return {"vintage_id": int(row["vintage_id"]), "forecast_run_date": str(row["_run_date"].date())}
 
 
+def model_count_summary(usage: dict) -> dict:
+    """What the vintage records about the combination forecast (Prompt 65, T2-004): how many of the candidate models (Naive, Croston, SBA and one moving average per configured window) produced a
+    forecast for each series, summarised: series checked, how many series used each number of models, and, for every series that used fewer than the expected number, the models that failed.
+    A series with fewer models still gets its forecast (the others are averaged), as before; this only makes it visible. Series keys are 'item::', 'type::' and 'category::' + the code or name."""
+    expected = max((u["expected"] for u in usage.values()), default=0)
+    fewer = {k: {"used": u["used"], "expected": u["expected"], "failed": list(u["failed"])} for k, u in sorted(usage.items()) if u["used"] < u["expected"]}
+    histogram = {}
+    for u in usage.values():
+        histogram[str(u["used"])] = histogram.get(str(u["used"]), 0) + 1
+    return {"models_expected": int(expected), "series_checked": int(len(usage)), "series_by_models_used": dict(sorted(histogram.items())),
+            "series_with_fewer_models": int(len(fewer)), "fewer": fewer}
+
+
+def model_count_warnings(model_count: dict) -> list:
+    """The warnings for the run log (empty when every series used every model)."""
+    if not model_count or not model_count.get("series_with_fewer_models"):
+        return []
+    fewer = model_count["fewer"]
+    shown = "; ".join(f"{k} used {v['used']} of {v['expected']} (failed: {', '.join(v['failed'])})" for k, v in list(fewer.items())[:10])
+    return [f"WARN (model count): {model_count['series_with_fewer_models']} of {model_count['series_checked']} series combined fewer than {model_count['models_expected']} models; their forecast is the average of "
+            f"the models that ran: {shown}" + ("; more in the vintage metadata" if len(fewer) > 10 else "")]
+
+
 def compute_new_vintage() -> dict:
     """Mirrors src/forward_test_all_divisions.py's own generation logic (same imported functions:
     build_item_series_div/build_type_series_div/build_category_series_div, forecast_all_
@@ -881,15 +904,17 @@ def compute_new_vintage() -> dict:
     category_series = build_category_series_div(monthly, n_fit_months)
     no_history_codes = sorted(set(scope["code"]) - set(item_series.keys()))
 
-    approaches = forecast_all_approaches(item_series, type_series, n_fit_months, horizon)
+    model_usage = {}          # per series: how many of the candidate models produced a forecast (Prompt 65, T2-004)
+    approaches = forecast_all_approaches(item_series, type_series, n_fit_months, horizon, usage=model_usage)
     topdown_history = approaches["Top-down"]
     topdown_no_history = {code: np.zeros(horizon) for code in no_history_codes}
     topdown_all = {**topdown_history, **topdown_no_history}
 
-    type_forecast = {typ: np.clip(combination_forecast(qty[:n_fit_months], horizon, ma_windows), 0, None)
+    type_forecast = {typ: np.clip(combination_forecast(qty[:n_fit_months], horizon, ma_windows, model_usage, f"type::{typ}"), 0, None)
                       for typ, qty in type_series.items()}
-    category_forecast = {cat: np.clip(combination_forecast(qty[:n_fit_months], horizon, ma_windows), 0, None)
+    category_forecast = {cat: np.clip(combination_forecast(qty[:n_fit_months], horizon, ma_windows, model_usage, f"category::{cat}"), 0, None)
                           for cat, qty in category_series.items()}
+    model_count = model_count_summary(model_usage)
 
     item_to_info = scope.set_index("code")[["division", "category", "type"]].to_dict("index")
 
@@ -954,6 +979,7 @@ def compute_new_vintage() -> dict:
         "fit_first_month": fit_first_month, "fit_last_month": fit_last_month, "fit_n_months": n_fit_months,
         "horizon_months": horizon, "target_months": target_months,
         "leakage_guard_min_margin_days": min_margin_days, "leakage_guard_actual_margin_days": actual_margin_days,
+        "model_count": model_count,
         "n_total_rows": len(rows_df), "divisions": sorted(scope["division"].unique().tolist()),
         **vintage_series.metadata_fields(fit_series_bytes, next_vintage_id),
     }
@@ -972,7 +998,7 @@ def compute_new_vintage() -> dict:
                         "provenance": "computed at the vintage's run"}
     for k in ("n_type_rows", "n_category_rows", "n_items_with_history", "n_items_no_history_zero_forecast"):
         comparator_entry.pop(k, None)
-    return {"vintage_id": next_vintage_id, "rows_df": rows_df, "metadata_entry": metadata_entry,
+    return {"vintage_id": next_vintage_id, "rows_df": rows_df, "metadata_entry": metadata_entry, "model_count": model_count,
             "fit_series_bytes": fit_series_bytes,
             "comparator_rows_df": comparator_df, "comparator_metadata_entry": comparator_entry,
             "shadow_rows_df": shadow_df, "shadow_metadata_entry": shadow_entry,
@@ -1061,6 +1087,7 @@ def step5_new_vintage(dry_run: bool, force_new_vintage: bool = False) -> dict:
     result = {"skipped": False, "vintage_id": computed["vintage_id"], "n_rows_computed": computed["n_rows"],
               "comparator_n_rows_computed": int(len(computed["comparator_rows_df"])),
               "ma_window_by_division": computed["comparator_metadata_entry"]["ma_window_by_division"],
+              "model_count": computed.get("model_count"),
               "six_month_item_forecast_total_by_division": computed["six_month_item_forecast_total_by_division"],
               "written": False, "force_new_vintage": force_new_vintage}
     if existing_this_month is not None:
@@ -2322,6 +2349,9 @@ def cli(argv=None) -> int:
         # Same-day attempt guard (Prompt 56): Task Scheduler restarts a task that ends non-zero, but a run that STARTED and ended 1, 2, 3 or 4 must not be repeated the same day (the next weekday makes it up).
         # A start that never reached Python writes no record, so a restart after it still runs. Before the refused-login lock, the publishing check, the runner lock, the preflight and any login.
         attempt = read_monthly_attempt()
+    for warning in model_count_warnings(step5.get("model_count")):          # never fails the run (Prompt 65, T2-004)
+        run_log.setdefault("model_count_warnings", []).append(warning)
+        logger.warning(warning)
         if attempt.get("date") == date.today().isoformat():
             if not args.ignore_attempt:
                 logger.info("Monthly refresh not started: already attempted today (run %s at %s); the next weekday start makes it up.", attempt.get("run_id"), attempt.get("started_at"))

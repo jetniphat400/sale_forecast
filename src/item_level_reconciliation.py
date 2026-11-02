@@ -70,7 +70,7 @@ def build_type_series(monthly: pd.DataFrame) -> dict:
     return out
 
 
-def forecast_all_approaches(item_series: dict, type_series: dict, fit_end: int, horizon: int) -> dict:
+def forecast_all_approaches(item_series: dict, type_series: dict, fit_end: int, horizon: int, usage: dict = None) -> dict:
     """Returns {approach: {itemcode: forecast_array}} for the three approaches, fitting on
     qty[:fit_end] and forecasting `horizon` periods ahead. fit_end=TRAIN_MONTHS for the
     validation stage, fit_end=TRAIN_MONTHS+VAL_MONTHS for the test stage."""
@@ -78,13 +78,13 @@ def forecast_all_approaches(item_series: dict, type_series: dict, fit_end: int, 
     direct = {}
     for item, (qty, typ, cat) in item_series.items():
         train = qty[:fit_end]
-        direct[item] = np.clip(combination_forecast(train, horizon, MA_WINDOWS), 0, None)
+        direct[item] = np.clip(combination_forecast(train, horizon, MA_WINDOWS, usage, f"item::{item}"), 0, None)
 
     # Type-level combination forecast (needed for Top-down and Reconciled)
     type_forecast = {}
     for typ, qty in type_series.items():
         train = qty[:fit_end]
-        type_forecast[typ] = np.clip(combination_forecast(train, horizon, MA_WINDOWS), 0, None)
+        type_forecast[typ] = np.clip(combination_forecast(train, horizon, MA_WINDOWS, usage, f"type::{typ}"), 0, None)
 
     # Top-down: allocate Type forecast to items by historical share over the FITTING window
     topdown = {}
