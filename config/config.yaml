@@ -1526,9 +1526,9 @@ backtest:
 # ============================================================
 page_timestamps:
   daily_weekdays_back: 1
-  # When the plans are next calculated: the daily job's start (task SaleForecast_PostingDelaySnapshot, 08:00) on a weekday, the monthly runner's start (07:00) on the monthly run day. Mirrors the two
+  # When the plans are next calculated: the daily job's start (task SaleForecast_PostingDelaySnapshot, 10:30) on a weekday, the monthly runner's start (10:00) on the monthly run day (times moved from 08:00 and 07:00 on 2026-11-03, Prompt 66: the machine is on from about 09:00). Mirrors the two
   # tasks' triggers; reader_values.next_calc_text computes the date from them and from monthly_refresh.run_day.
-  calc_times: {daily: "08:00", monthly: "07:00"}
+  calc_times: {daily: "10:30", monthly: "10:00"}
   data_sources:
     - "stock (หน้า Min-Max และแผง stock)"
     - "ยอดจอง (หน้า Min-Max และแผง stock)"
@@ -1641,7 +1641,7 @@ daily_stock:
   # The monthly runner writes this file while it runs; the daily job skips publishing while it exists and its
   # process is alive.
   monthly_lock_file: output/runs/monthly_refresh.lock
-  # The task has two daily triggers, 08:00 and a retry at 12:00 (decided by the user 2026-10-06, after the 08:00 run stopped because a tracked file was
+  # The task has two daily triggers, 10:30 and a retry at 14:00 (08:00 and 12:00 until 2026-11-03; the retry was decided by the user 2026-10-06, after the first run stopped because a tracked file was
   # modified). A run that starts when a daily run of today already finished with one of these statuses exits at once and logs that it skipped.
   success_statuses: [published, nothing_to_publish]
   skip_status: skipped_success_exists_today

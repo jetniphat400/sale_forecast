@@ -392,20 +392,21 @@ def test_the_next_calculation_is_the_next_weekday_start_of_the_daily_job_except_
     import monthly_refresh as mr
     cfg = _cfg()
     assert mr.run_day(2026, 11).isoformat() == "2026-11-05"
-    assert rv.next_calc_text("2026-10-26 08:00:46", cfg) == "27 ต.ค. 69 08:00"            # after Monday's daily start: Tuesday's
-    assert rv.next_calc_text("2026-10-23 08:00:29", cfg) == "26 ต.ค. 69 08:00"            # Friday: the next weekday is Monday
-    assert rv.next_calc_text("2026-10-23 07:00:00", cfg) == "23 ต.ค. 69 08:00"            # before the day's start: the same day
-    assert rv.next_calc_text("2026-11-04 08:00:10", cfg) == "5 พ.ย. 69 07:00"              # the monthly run day is calculated by the monthly run
-    assert rv.next_calc_text("2026-11-05 07:20:00", cfg) == "6 พ.ย. 69 08:00"              # after it, the next daily start
-    assert rv.next_calc_text("2026-10-26", cfg) == "26 ต.ค. 69 08:00"                      # a date without a time counts from the start of that day
+    assert rv.next_calc_text("2026-10-26 10:30:46", cfg) == "27 ต.ค. 69 10:30"            # after Monday's daily start: Tuesday's
+    assert rv.next_calc_text("2026-10-23 10:30:29", cfg) == "26 ต.ค. 69 10:30"            # Friday: the next weekday is Monday
+    assert rv.next_calc_text("2026-10-23 07:00:00", cfg) == "23 ต.ค. 69 10:30"            # before the day's start: the same day
+    assert rv.next_calc_text("2026-11-04 10:30:10", cfg) == "5 พ.ย. 69 10:00"              # the monthly run day is calculated by the monthly run
+    assert rv.next_calc_text("2026-11-05 10:20:00", cfg) == "6 พ.ย. 69 10:30"              # after it, the next daily start
+    assert rv.next_calc_text("2026-10-26", cfg) == "26 ต.ค. 69 10:30"                      # a date without a time counts from the start of that day
+    assert cfg["page_timestamps"]["calc_times"] == {"daily": "10:30", "monthly": "10:00"}   # the two tasks' triggers (Prompt 66)
 
 
 def test_a_computed_header_line_states_its_calculation_date_and_next_calculation_and_has_no_status_and_a_note_has_no_date():
     import reader_values as rv
     cfg = _cfg()
     assert rv.source_class(cfg, "stock และออเดอร์ที่รับแล้ว (Production Plan)") == "computed"
-    h = rv.data_header(cfg, [("plan_calc", "2026-10-23 08:00:29", "computed"), ("material", "2026-10-20 09:42:00", "data"), ("plan_where", None, "note")], False, today="2026-10-26")
-    assert "Production Plan คำนวณจาก stock และออเดอร์ที่รับแล้ว ณ 23 ต.ค. 69 08:00 · คำนวณใหม่ทุกวันทำการ ครั้งถัดไป 26 ต.ค. 69 08:00" in h
+    h = rv.data_header(cfg, [("plan_calc", "2026-10-23 10:30:29", "computed"), ("material", "2026-10-20 09:42:00", "data"), ("plan_where", None, "note")], False, today="2026-10-26")
+    assert "Production Plan คำนวณจาก stock และออเดอร์ที่รับแล้ว ณ 23 ต.ค. 69 10:30 · คำนวณใหม่ทุกวันทำการ ครั้งถัดไป 26 ต.ค. 69 10:30" in h
     assert "stock ล่าสุดของวันนี้ดูที่แผง stock และหน้า Min-Max" in h
     computed = h.split("<br>")[0]
     assert "Fresh" not in computed and "Stale" not in computed and "data-age" not in computed       # the status stays on the line of the data pulled directly

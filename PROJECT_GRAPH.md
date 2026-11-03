@@ -477,7 +477,7 @@ scheduled as follow-up work, not yet done. **PEM101 value statement, refined 202
   measurement: STARTED 2026-09-22") — reaches 60 days around **2026-11-21**. Feeds Q10 (helps
   characterise real posting/entry lag, one input to the fulfilment-mechanism question).
 - **T3 -- daily stock, extra pulls and page rebuild (Prompts 53 to 58).** `src/snapshot_daily.py` with `src/daily_rebuild.py`, the same Scheduled Task as T2
-  (`SaleForecast_PostingDelaySnapshot`, weekdays 08:00 and 12:00). Status: **built, first real run 2026-10-27 09:11 (manual start after the 08:22 launch failure; log
+  (`SaleForecast_PostingDelaySnapshot`, weekdays 10:30 and 14:00 since 2026-11-03; 08:00 and 12:00 before). Status: **built, first real run 2026-10-27 09:11 (manual start after the 08:22 launch failure; log
   `output/runs/daily/daily_stock_20261027T091104.json`, rebuild commit `fdb29b6`)**. After the stock publish it pulls Trend sales, the PEM107 deliveries and raw-material
   stock with open purchase orders (each in its own try/except, row bands), then rebuilds the Trend tab, the Min-Max page, the Production Plan, the material plan and
   the executive tab behind gates and commits four pages; the model stays monthly. Open: the noon-retry and restore fixes of Prompt 58 are in code and tests; the

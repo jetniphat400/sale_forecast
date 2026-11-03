@@ -760,7 +760,7 @@ Every dashboard page and panel displays, near its title:
       10 check change magnitude against the previous run
       11 commit and push only if steps 8 to 10 all pass
 
-    where the jobs run (decision D1, option A, 2026-10-06): the scheduled daily stock job (SaleForecast_PostingDelaySnapshot, 08:00 and 12:00) and this runner
+    where the jobs run (decision D1, option A, 2026-10-06): the scheduled daily stock job (SaleForecast_PostingDelaySnapshot, 10:30 and 14:00 since 2026-11-03; 08:00 and 12:00 before) and this runner
       (SaleForecastMonthlyRefresh) run only from a separate clone of origin, `D:\sale_forecast_publish`, never from the working copy `D:\sale_forecast`. Each task first
       runs `git pull --ff-only origin main` in the clone and starts the job only if that succeeded. The clone's `output/` and `reference/` are junctions to the working copy's
       folders and its `.env` is a hard link to the working copy's, so saved pulls, snapshots, run logs and the lock file stay in one place (config `publishing`:
@@ -832,7 +832,7 @@ Every dashboard page and panel displays, near its title:
 The monthly cycle above is unchanged. Beside it, stock and reserved quantities refresh every day; forecasts, Min and
 Max and every sales-derived figure stay monthly.
 
-    scheduled task SaleForecast_PostingDelaySnapshot, 08:00 daily and a retry at 12:00 (2026-10-06), start-when-available;
+    scheduled task SaleForecast_PostingDelaySnapshot, weekdays 10:30 and a retry at 14:00 (08:00 and 12:00 until 2026-11-03, when the triggers moved to the hours the machine is on; the retry decided 2026-10-06), start-when-available;
       a run that starts when a daily run of today already finished as published or nothing_to_publish exits at once and logs the skip
       (no database connection); `--force` overrides; a failed, held or dry run never counts as a success
     src/snapshot_daily.py, one database session, in order:
@@ -1578,7 +1578,7 @@ evaluation run and the run at which a target month is scoreable are derived from
                    the run ends non-zero with the reason in the run log.
     daily job    = the same preflight before its single session; the second start of a day does not log in again when the server refused the login earlier today (log error.kind = login_refused); an unreachable host
                    (error.kind = unreachable, no login attempted) does not block it.
-    not covered  = the ODBC driver's own connection-resiliency default (not verified; no connection allowed in the task); the scheduled tasks themselves (RestartOnFailure 0 on both; the daily task's 12:00 trigger is the decided
+    not covered  = the ODBC driver's own connection-resiliency default (not verified; no connection allowed in the task); the scheduled tasks themselves (RestartOnFailure 0 on both; the daily task's retry trigger (14:00 since 2026-11-03, 12:00 before) is the decided
                    second start).
 
     Prompt 23 (2026-10-12), round 2:

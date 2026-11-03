@@ -86,7 +86,7 @@ def is_weekday(now=None) -> bool:
 def main():
     """The stock snapshot, then the daily stock job (published data files), all inside ONE database session
     (src/db.py session()). A failure of the stock job never loses the snapshot: the snapshot is written first, and the
-    stock job's failure is raised afterwards (non-zero exit, log under output/runs/daily/). The scheduled task starts it at 08:00 and again at 12:00; the second start does nothing when a successful
+    stock job's failure is raised afterwards (non-zero exit, log under output/runs/daily/). The scheduled task starts it at 10:30 and again at 14:00 (08:00 and 12:00 until 2026-11-03); the second start does nothing when a successful
     run of today already exists (--force overrides)."""
     import daily_stock_job as djob
     import db
@@ -107,7 +107,7 @@ def main():
         logger.error("Daily stock job stopped (%s): %s", exc.step, exc)
         djob.record_failure(PROJECT_ROOT, root_config, exc.step, exc)
         raise SystemExit(1)
-    # The task runs twice a day (08:00 and a 12:00 retry). A run that finds a successful daily run of today exits before it connects.
+    # The task runs twice a day (10:30 and a 14:00 retry). A run that finds a successful daily run of today exits before it connects.
     existing = None if "--force" in sys.argv[1:] else djob.successful_run_today(PROJECT_ROOT, root_config)
     if existing:
         logger.info("Skipped: a successful daily run of today exists (run %s, %s). Log: %s", existing.get("run_id"), existing.get("status"),

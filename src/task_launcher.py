@@ -9,7 +9,7 @@ param default, then "The argument ... to the -File parameter does not exist" for
 
 What it does, in order:
   0. (Prompt 60c) after taking the lock and BEFORE the pull: if the clone is in use (the monthly runner's lock names a live process, git's index.lock exists, or a tracked file is modified or staged) it
-     releases the lock, logs the reason and exits 95 without pulling and without starting Python: a pull must not rewrite files under a monthly run that began at 07:00 when the 08:00 daily task starts.
+     releases the lock, logs the reason and exits 95 without pulling and without starting Python: a pull must not rewrite files under a monthly run that began at 10:00 when the 10:30 daily task starts.
      The monthly-runner check applies to BOTH tasks: the runner takes its lock only after this launcher has finished, so the monthly launcher cannot block itself, while a second monthly start (a manual
      one) would otherwise pull under a running monthly run just as the daily one would. The only read-only git call before the pull is `git status`;
   1. takes the shared lock (output/runs/git_pull.lock, written atomically, holding PID, task and start time), waiting up to lock_wait_seconds; a lock whose PID is dead or that is older than
