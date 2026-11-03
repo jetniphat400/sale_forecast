@@ -360,3 +360,68 @@ def test_a_clean_tree_and_no_monthly_lock_pull_and_run_as_before(env, tmp_path):
     assert r.returncode == 0 and len(ran(clone)) == 1 and head(clone) == git(origin, "rev-parse", "main").stdout.strip()
     seen = _git_calls(calls)
     assert any("status" in c for c in seen) and any("pull" in c for c in seen) and "clone_in_use" not in log(clone)
+
+
+# ------------------------------------------------------------------ Prompt 66: a refused process creation is retried (the 10:00 start of 2026-11-03 died with WinError 5 at CreateProcess)
+def _launcher_module():
+    sys.path.insert(0, os.path.join(PROJECT_ROOT, "src"))
+    import importlib
+    import task_launcher
+    return importlib.reload(task_launcher)
+
+
+def test_a_directory_as_the_program_is_refused_by_the_operating_system_with_winerror_5_and_counts_as_a_refused_creation():
+    tl = _launcher_module()
+    try:
+        subprocess.call([os.path.dirname(sys.executable)])
+    except PermissionError as exc:
+        assert getattr(exc, "winerror", None) == 5 and tl.refused_at_process_creation(exc)
+    else:
+        pytest.skip("SKIPPED, not passed: this system does not refuse to run a directory with WinError 5")
+
+
+def test_the_creation_is_tried_again_up_to_the_attempts_with_the_wait_logged_and_the_last_refusal_is_raised():
+    tl = _launcher_module()
+    lines, waits = [], []
+    with pytest.raises(PermissionError):
+        tl.call_with_creation_retry([os.path.dirname(sys.executable)], os.getcwd(), lambda k, m: lines.append((k, m)), attempts=3, wait=7.0, sleep=waits.append)
+    assert waits == [7.0, 7.0] and [k for k, _ in lines] == ["python_start_retry"] * 2 and "attempt 1 of 3" in lines[0][1]
+
+
+def test_a_creation_that_works_on_the_second_try_returns_the_exit_code_of_the_process(monkeypatch):
+    tl = _launcher_module()
+    real, calls = subprocess.call, []
+
+    def flaky(cmd, cwd=None):
+        calls.append(cmd)
+        if len(calls) == 1:
+            return real([os.path.dirname(sys.executable)], cwd=cwd)                       # the real refusal, raised from CreateProcess
+        return real([sys.executable, "-c", "import sys; sys.exit(7)"], cwd=cwd)
+    monkeypatch.setattr(tl.subprocess, "call", flaky)
+    waits = []
+    assert tl.call_with_creation_retry(["x"], os.getcwd(), lambda k, m: None, attempts=3, wait=1.0, sleep=waits.append) == 7 and len(calls) == 2 and waits == [1.0]
+
+
+def test_a_non_zero_exit_of_a_process_that_ran_and_any_other_error_are_never_retried(monkeypatch):
+    tl = _launcher_module()
+    waits = []
+    assert tl.call_with_creation_retry([sys.executable, "-c", "import sys; sys.exit(3)"], os.getcwd(), lambda k, m: None, sleep=waits.append) == 3 and waits == []
+
+    def broken(cmd, cwd=None):
+        raise FileNotFoundError("no such program")
+    monkeypatch.setattr(tl.subprocess, "call", broken)
+    with pytest.raises(FileNotFoundError):
+        tl.call_with_creation_retry(["x"], os.getcwd(), lambda k, m: None, sleep=waits.append)
+    assert waits == []
+
+    def refused_elsewhere(cmd, cwd=None):
+        raise PermissionError(13, "denied")                                               # not WinError 5 and not from CreateProcess
+    monkeypatch.setattr(tl.subprocess, "call", refused_elsewhere)
+    with pytest.raises(PermissionError):
+        tl.call_with_creation_retry(["x"], os.getcwd(), lambda k, m: None, sleep=waits.append)
+    assert waits == []
+
+
+def test_the_launcher_starts_the_job_through_the_retrying_call():
+    src = open(LAUNCHER, encoding="utf-8").read()
+    assert "call_with_creation_retry([self.args.python, script_path, *self.args.script_args], self.clone, self.log)" in src and "subprocess.call([self.args.python" not in src

@@ -37,6 +37,7 @@ import os
 import random
 import subprocess
 import sys
+import linecache
 import tempfile
 import time
 import traceback
@@ -134,6 +135,39 @@ class NamedMutex:
             import ctypes
             ctypes.windll.kernel32.ReleaseMutex.argtypes = [ctypes.c_void_p]
             ctypes.windll.kernel32.ReleaseMutex(self.handle)
+
+
+PYTHON_START_ATTEMPTS = 3              # Prompt 66: tries in all to create the job's Python process
+PYTHON_START_WAIT_SECONDS = 15.0
+
+
+def refused_at_process_creation(exc):
+    """True when `exc` is the operating system refusing to CREATE the child (PermissionError, WinError 5, raised by CreateProcess inside subprocess._execute_child): nothing ran, so trying again cannot
+    repeat any work. Seen at the 10:00 start of 2026-11-03 and at 08:00 on 2026-10-15, a second after the pull rewrote files in the clone (STATUS.md, Prompt 45 and 66)."""
+    if not isinstance(exc, PermissionError) or getattr(exc, "winerror", None) != 5:
+        return False
+    tb = exc.__traceback__
+    while tb is not None:
+        code = tb.tb_frame.f_code
+        if code.co_name == "_execute_child" and code.co_filename == subprocess.__file__ and "CreateProcess" in linecache.getline(code.co_filename, tb.tb_lineno):
+            return True
+        tb = tb.tb_next
+    return False
+
+
+def call_with_creation_retry(cmd, cwd, log, attempts=None, wait=None, sleep=time.sleep):
+    """subprocess.call(cmd, cwd=cwd), tried at most `attempts` times in all, `wait` seconds apart, ONLY when the operating system refused to create the process (`refused_at_process_creation`).
+    Any other exception, the last refusal and a non-zero exit code of a process that ran are returned or raised unchanged, never retried."""
+    attempts = PYTHON_START_ATTEMPTS if attempts is None else attempts
+    wait = PYTHON_START_WAIT_SECONDS if wait is None else wait
+    for attempt in range(1, attempts + 1):
+        try:
+            return subprocess.call(cmd, cwd=cwd)
+        except PermissionError as exc:
+            if not refused_at_process_creation(exc) or attempt >= attempts:
+                raise
+            log("python_start_retry", "the operating system refused to create the process (attempt %d of %d: %s); trying again in %s s" % (attempt, attempts, exc, wait))
+            sleep(wait)
 
 
 def limit_text(text, n=1500):
@@ -335,7 +369,7 @@ class Launcher:
             self.log("launcher_stop", "script not found: %s" % script_path)
             return 94
         self.log("python_start", "%s %s %s" % (self.args.python, script_path, " ".join(self.args.script_args)))
-        code = subprocess.call([self.args.python, script_path, *self.args.script_args], cwd=self.clone)
+        code = call_with_creation_retry([self.args.python, script_path, *self.args.script_args], self.clone, self.log)
         self.log("python_exit", "code=%d" % code)
         return code
 
