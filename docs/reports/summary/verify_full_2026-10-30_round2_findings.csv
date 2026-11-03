@@ -1,0 +1,128 @@
+﻿id,area,team,check,verdict,severity,evidence,recommendation
+R2-A-001,Reserved de-dup (T1-001),DB+recheck,Cube_CES Backlog de-duplicated per contract+item keeping first row,wrong,High,"765 rows/47,349 units; 13 groups with >1 row (29 rows); dedup removes 16 rows/3,939 units (8.3%). DB: every row has own PlanID, delivery dates, plan qty and price; 0 true duplicates. Page Reserved understated, available overstated by 3,939 units (132,363 -> 128,424); 13 items change, 1 flips sign (+11 -> -19). Operation plan counts all lines (matches recorded file, diff 0), page dedups: the two outputs disagree; dedup on the plan would cut 5-month demand by 816.9 units. Re-check (no DB) reproduced all numbers but PlanID evidence is from one Validator only (saved pull has no PlanID).","Owner to confirm plan lines are separate (PlanID unique). If so: Critical (wrong published figure); stop contract+item dedup, key on PlanID, use one rule on page and plan, add PlanID to the pull, fix METRICS Sec.14."
+R2-A-002,Reserved de-dup (T1-001),recheck,Which row the dedup keeps,wrong,Medium,"query_backlog_ces has no ORDER BY and drop_duplicates keeps first-arrived row; units removed range 3,348-3,941 depending on row order.",Make dedup deterministic or remove it.
+R2-A-003,Reserved (T1-001),DB+recheck,ActualQty on Backlog rows,wrong,Low,"12 Backlog rows have ActualQty<>0: 10 rows from 2017-2019 count 122 units, 2 part-delivered 2026 rows over-counted by 42 units. Code comment says ActualQty is always 0; Sec.42 sums ActualQty+BacklogQty, Sec.14 silent.",Owner decision: BacklogQty only and drop rows with ActualDelDate; fix comment and Sec.14.
+R2-A-004,delivery_performance (T1-003),DB,ManuDivision filter and 2023 CtrDate floor,wrong,Medium,"128 pilot codes, 39,512 Omni Actual/Backlog rows. Script keeps 38,229. ManuDivision filter drops 984 rows (2.6%, 34,624 Actual units) that the Price List rule keeps; 2023 floor drops 206 PEM101 Actual rows (140,568 units). Total dropped 1,283 (3.2%). Investigation script, documented in docstring, but against Trap 2/18.","Use Price List division, no CtrDate floor at pull; window on ForecastDelDate afterwards."
+R2-A-005,Duplicate sales copies (T1-005),DB,"1,334 extra copies, every division",correct,Low,"Saved file reproduced: 1,334 extra, 976 groups, 35,995 units, THB 53.38M (PEM101 869, PEM107 368, PEM103 64, CI101 18, PEM102 15). Adding planid leaves 0 extra rows in every division; no rows identical apart from id/timeStamp. They are separate rows, not duplicates.","Keep as is; if a duplicate test is wanted, key on planid."
+R2-A-006,Completeness,DB,Raw sales pull vs source,correct,none,"Saved 38,013 rows vs DB (createDate<=10-03) 38,018: +5 rows/+55 units, ~669 MPS rows changed status; explained by age.",None.
+R2-A-007,Completeness,DB,Pilot pull vs source,correct,none,"28,668 saved vs 28,669 DB (createDate<=10-02); qty and sale equal; 381 rows changed MPS->Actual.",None.
+R2-A-008,Completeness,DB,Trend pull vs source,correct,none,"39,210 rows, qty 3,707,367, sale 2,227,220,843.55 exact match.",None.
+R2-A-009,Completeness,DB,Reserved and PEM107 pulls,correct,none,"Reserved 765 rows/47,349 exact; PEM107 12,108 rows/78,331 exact.",None.
+R2-A-010,Completeness,DB,Daily stock pull,unclear,Low,"2,499 rows equal; SUM(stock) DB 175,773 vs saved 175,747 (26 units, 0.015%) with same load time; not investigated.",Optional follow-up.
+R2-A-011,Completeness,DB,Production orders pull,unclear,Low,"Saved 4,719 rows; table now 5,983; start_date<=10-05 gives 4,434; table has no usable add date.",Keep pull hash beside file.
+R2-A-012,Completeness,DB,cube_final and material inputs,correct,none,"cube_final +50 late-arriving rows before pull time; BOM 25,843 vs 25,880, open orders 689 vs 760 etc.: DB>=saved by 0.05-10%, consistent with 3 days of new data.",None.
+R2-A-013,"Data rules (Trap 1, 4)",DB,Status counts and cost as line total,correct,none,"Cube_CES Status counts as documented (Actual 141,020; Backlog 3,083). Cost is a line total: median CV(cost/qty) 0.045 vs 0.90 for cost over 181 items.",None.
+R2B1-001,Stock value (Sec.6),B1+recheck,"Value of Min level box, PEM101",wrong,Critical,"Page JS run under node: 65,587,403.56. 15 of 92 stock_policy items have a Sec.1 cost but are left out (cost read only from the 128-item pilot file, build_inventory_page_data.py ~329-345). Min x cost of the 15 = 16,773,429, so Sec.6 value ~82.36M; page 20.4% low. Label says all codes; excluded count not shown anywhere on the page. Holding-cost box and value-at-risk inherit it. Browser display not viewed.",Price from the full-scope cost table or show count and Min of unpriced items beside the figure.
+R2B1-002,Stock value (Sec.6),B1+recheck,"'Today' stock value 15,491,483.08 labelled 92 items",wrong,High,"Covers 77 of 92 (n_items_with_unit_cost 77); 15 unpriced hold ~737-766 units (~1.65-1.77M); full figure ~17.1-17.3M (+11%). Recorded report discloses 77; page chart text does not. Curve comparison is like for like. Simulated value also called 'stock_value', which Sec.6 reserves for sum(Min x cost).",Correct the label/count; rename the simulated figure.
+R2B1-003,Unit cost,B1+recheck,Refresh of unit cost files,wrong,Medium,"phaseE1fix_2_unit_cost.csv (09-23) and phaseE2_0_unit_cost.csv (09-22) written only by scripts not in monthly/daily steps. Against 11-02 pull: 84/128 pilot costs match, stock value would move +1.0% to +6.6%. 11-05 run unaffected.",Decide monthly refresh or state the freeze date in METRICS and on the page.
+R2B1-004,Unit cost,B1,Source table append-only,wrong,Medium,MPS rows with old createDate appear with newer ids; 7 of 445 recorded costs not reproducible even at matching cut-off.,Keep pull file hash beside each cost output.
+R2B1-005,Docs vs code Sec.1/6,B1,"Config key, fallback, anchor, page scope",wrong,Medium,"METRICS names unit_cost_window_months; live key phase_e1_assumptions.unit_cost_median_window_months. Fallback is mean of rows on latest createDate, not 'most recent row'; anchor is max createDate of the pull; Sec.6 says finished_goods_stock but page sums stock_policy.",Edit METRICS or code.
+R2B1-006,Docs vs code,B1,Code comment,wrong,Low,build_inventory_page_data.py comment says 10 of 82 outside pilot; data now 15 of 92.,Update comment.
+R2B1-007,Unit cost (Sec.1),B1,16 items incl. fallback and no-cost,correct,none,"At cut-off 2026-09-22: 128/128 pilot costs and 438/445 full-scope costs match recorded files (7 drift). Fallback (<3 rows, 0 rows) and 3 no-cost items reproduced. Recorded stock values PEM101 65,102,763.08, PEM103 80,450,790.46 and current stock values 18,247,625.22 / 6,056,936.14 match exactly; PEM107 within 0.3%.",None.
+R2B2-001,PEM101 calibration,B2,Target vs curve window,wrong,Medium,"98.24% target is validation-only but curve window is combined 2024-07..2026-09. Like-for-like gives r=0.899, ~THB 15.37M; published Min ~15% lower.",State the window or use a like-for-like target.
+R2B2-002,PEM101 calibration,B2,Focus items not-late rate,unclear,Medium,Unit-weighted not-late: focus items 71.7% / 73.3% vs 97.2% for the division.,Show per-item rate beside the division figure.
+R2B2-003,PEM101 calibration,B2,Inventory position,wrong,Low,Inventory position ignores backorders.,Document.
+R2B2-004,PEM101 calibration,B2,Handling rules,wrong,Low,Handling rules not stated in docs.,Document.
+R2B2-005,Docs,B2,36-member figures,wrong,Low,Stale 36-member figures in DATA_MAP/STATUS (37 current).,Update.
+R2B2-006,PEM101 calibration,B2,Two further minor items,unclear,Low,"R2B2-006 and -007: minor wording points, see Validator report.",See report.
+R2B2-007,PEM101 calibration,B2,Simulation reproduction,correct,none,"Own simulator matched all 37 members, 4,130-point grid, targets 97.66%/98.24%, curve and default preset (r=0.7599, THB 14,170,763).",None.
+R2B3-001,Material plan,B3,'Too late' quantity,unclear,Medium,"Sec.43 and docstring say too-late quantity includes in-window months; code shows qty_late only (build_material_plan_page.py 102, 112). 660 of 708 late materials show smaller quantity, 555,387 units total.",Align doc and code; decide which quantity buyers need.
+R2B3-002,Material plan,B3,Meta text,wrong,Low,Meta text 'not netted'.,Reword.
+R2B3-003,Material plan,B3,Observed lead time 0,wrong,Low,117 materials with 0-day observed lead time shown as '-'.,Show or explain.
+R2B3-004,Material plan,B3,Wording,wrong,Low,Wording 'ใกล้เคียงกันจนบอกไม่ได้'.,Reword.
+R2B3-005,Config,B3,Comment,wrong,Low,Config comment says 58 Surge Arrester items; scope has 48.,Fix comment.
+R2B3-006,Material plan,B3,Info item,unclear,none,Informational.,None.
+R2B3-007,"Holt shadow, Sec.41, material lists",B3,Recompute,correct,none,"288 Holt shadow rows diff 0, hashes match, none scored yet; Sec.41 10 rows reproduce, only PEM101 significant; material lists 130 and 708, all 838 rows match.",None.
+R2C2-001,Tests,C2,Suite without .env,wrong,Medium,"20 tests fail without .env, pass with it. Scheduled task unaffected (hard link).",Make tests independent of .env.
+R2C2-002,Tests,C2+recheck,Step 10 gate tests guard sign/threshold,wrong,Medium,"All 12 mutants survive at 2a39447 (drop abs(), x2, /2, >= at limit on 3 gates); tests use only +5%/+200%. Code correct today. At HEAD 07a6e86 the six-month gate is covered, MAE and stock gates still unguarded. Original High downgraded by re-check.",Add negative-change and boundary tests for MAE and stock gates.
+R2C2-003,Tests,C2,Source-guard band boundary,wrong,Medium,Mutation <= vs < at limit survived.,Pin the boundary.
+R2C2-004,Tests,C2,Inventory JS in builder,unclear,Medium,Mutation of JS in build_inventory_page.py:103 survived neighbour tests; same break in committed page is caught.,Check a test regenerates the page.
+R2C2-005,Tests,C2,Regression-style tests,wrong,Low,Some expected values come from committed artefacts.,Prefer independent expected values.
+R2C2-006,Tests,C2,Full suite on 2a39447,correct,none,"1127 passed, 0 failed, 0 skipped, 26 min 18 s, 0 DB attempts; 28 mutations: 22 killed, 6 survived.",None.
+R2D-001,Hindcast,D,Horizon reading,wrong,Medium,"All forecasts flat across horizons (not disclosed), so 'improves with horizon, worse beyond 6 months' is confounded with calendar month.",State it.
+R2D-002,Hindcast,D,Wording,wrong,Low,'ใกล้เคียง' vs company-total Relative MAE 1.06.,Reword.
+R2D-003,execWhyForecast,D,Wording,wrong,Low,'การรันรายเดือน' vs 'รอบ'; run-on line.,Reword.
+R2D-004,Step 8 limit,D,Test and comment,wrong,Low,No test covers a real TimeoutExpired; 'twice the slowest' comment off.,"Add test, fix comment."
+R2D-005,execWhyForecast,D,Date,unclear,Low,Computed date can go stale if 11-05 is held.,Accept or compute from last good run.
+R2D-006,Prompt 64,D,"Step-8 limit 3600 s, execWhyForecast, .gitignore, hindcast figures",correct,none,"3600 s at config:1438 read at monthly_refresh.py:1780; execWhyForecast correct and byte-identical on daily rebuild; .gitignore adds only 'Claude outputs/'; hindcast: company total A 1.06, B 0.98; item-level 0.818 (PEM103 1.179, PEM107 1.055, PEM101 0.812, PEM102 0.95, CI101 0.882). 2026-09 actuals unverifiable (temporary series gone); without 2026-09 baht Relative MAE ~0.90.",None.
+R2C1a-001,Docs vs code,C1a,Sec.28 step 10 wording,wrong,Medium,Docs say compare with previous run; code at snapshot compared with vintage 1 (see RC-002; Prompt 65 fixed).,Update the document or mark as superseded.
+R2C1a-002,Docs vs code,C1a,Sec.22 de-dup key,wrong,Medium,"robust_minmax.dedup_ensemble_members keys on wh_set, the rule Sec.22 supersedes; only an investigation uses it but a test pins it.",Update the document or mark as superseded.
+R2C1a-003,Docs vs code,C1a,Sec.29-38 window and counts,wrong,Medium,Hard-coded 31 months/448 items; page has 34 months/445 items; index.html line cites ~300 lines out.,Update the document or mark as superseded.
+R2C1a-004,Docs vs code,C1a,"Sec.29,36-38 generator",wrong,Medium,Docs say no generator for Trend tab; src/build_trend_tab.py generates it.,Update the document or mark as superseded.
+R2C1a-005,Docs vs code,C1a,Trend tab dates,wrong,Low,data_pulled_at / page_built_at no longer in page.,Update the document or mark as superseded.
+R2C1a-006,Docs vs code,C1a,Config key Sec.1,wrong,Low,unit_cost_window_months does not exist.,Update the document or mark as superseded.
+R2C1a-007,Docs vs code,C1a,Config key Sec.7,wrong,Low,sellable_warehouses is sellable_warehouse_codes.,Update the document or mark as superseded.
+R2C1a-008,Docs vs code,C1a,Sec.14 overdue backlog,wrong,Low,Code places overdue in first horizon month; config comments stale.,Update the document or mark as superseded.
+R2C1a-009,Docs vs code,C1a,Sec.16 simulation text,wrong,Low,"Config text describes monthly arrival, code is daily.",Update the document or mark as superseded.
+R2C1a-010,Docs vs code,C1a,Sec.15 thresholds,wrong,Low,freq_cutoff hard-coded 6.0.,Update the document or mark as superseded.
+R2C1a-011,Docs vs code,C1a,Sec.5 members,wrong,Low,36 members/98.34% vs recorded 37/98.24%; Sec.19 note corrupted.,Update the document or mark as superseded.
+R2C1a-012,Docs vs code,C1a,Sec.5 vs Sec.43,wrong,Low,Machine Hour only vs any 'hour' type.,Update the document or mark as superseded.
+R2C1a-013,Docs vs code,C1a,Sec.28 step list,wrong,Low,Steps 7e/7f and backup missing; step 1 'one connection attempt' vs several stages.,Update the document or mark as superseded.
+R2C1a-014,Docs vs code,C1a,Sec.28 daily thresholds,wrong,Low,Pointer to daily_stock keys that moved to source_guard.,Update the document or mark as superseded.
+R2C1a-015,Docs vs code,C1a,Sec.53 RestartOnFailure,wrong,Medium,"Docs say 0 on both; monthly task has RestartCount 4, PT15M, 3 h limit.",Update the document or mark as superseded.
+R2C1a-016,Docs vs code,C1a,Sec.26 text,wrong,Low,Stale function and config key names.,Update the document or mark as superseded.
+R2C1a-017,Docs vs code,C1a,Sec.27 log,wrong,Low,Log holds vintages 1 and 2; column names and hash scheme wording.,Update the document or mark as superseded.
+R2C1a-018,Docs vs code,C1a,Sec.28 quarantine,wrong,Low,No quarantine code path; docstring cites non-existent function.,Update the document or mark as superseded.
+R2C1b-001,Docs vs code,C1b,PROJECT_GRAPH T2,wrong,Medium,Posting-delay measurement 'in progress' to 2026-11-21 but removed 2026-10-12; 60-day basis can never exist.,Update the document or mark as superseded.
+R2C1b-002,Docs vs code,C1b,STATUS line cites,wrong,Medium,94 DATA_MAP and 6 PROJECT_GRAPH 'STATUS.md:NNNN' cites mostly land on unrelated text.,Update the document or mark as superseded.
+R2C1b-003,Docs vs code,C1b,DATA_MAP assumptions.json,wrong,Medium,Schema 1/6 records vs actual schema 2/10 records.,Update the document or mark as superseded.
+R2C1b-004,Docs vs code,C1b,DATA_MAP Trap 23,wrong,Medium,Cited evidence (reserved_change_report) no longer in data/inventory.json.,Update the document or mark as superseded.
+R2C1b-005,Docs vs code,C1b,cube_final status,wrong,Medium,Q14/Q17 and Trap 7 contradict each other; no superseded marker.,Update the document or mark as superseded.
+R2C1b-006,Docs vs code,C1b,Trap 30 and 31,wrong,Medium,Baseline now returns None (step 10 MAE gate 'not tested' on 11-05); GENERATED_PATHS lists 8 files not 3.,Update the document or mark as superseded.
+R2C1b-007,Docs vs code,C1b,PROJECT_GRAPH diagram,wrong,Medium,Mermaid classes vs table disagree; D12-D15 and T3 missing; Part 3 header stale.,Update the document or mark as superseded.
+R2C1b-008,Docs vs code,C1b,PEM104 reason in config,wrong,Low,'only 12 transactions' still in config and build_report; internal only.,Update the document or mark as superseded.
+R2C1b-009,Docs vs code,C1b,Line cites,wrong,Low,Several code line cites out of date.,Update the document or mark as superseded.
+R2C1b-010,Docs vs code,C1b,Held files under output/,wrong,Low,DATA_MAP says one held file; test says none.,Update the document or mark as superseded.
+R2C1b-011,Docs vs code,C1b,Untracked output/ cites,wrong,Low,60 of 66 cited output/summary files exist only in untracked output/.,Update the document or mark as superseded.
+R2C1b-012,Docs vs code,C1b,Dated 'current' statements,wrong,Low,"Backtest window, vintage-2 hash, test counts old.",Update the document or mark as superseded.
+R2C1b-013,Docs vs code,C1b,Reserved rows range,wrong,Low,744-765 vs 769 on 10-23.,Update the document or mark as superseded.
+R2C1b-014,Docs vs code,C1b,No Prompt 64 entry in DATA_MAP,wrong,Low,Guard rehearsal counts not recorded; bases partly stale.,Update the document or mark as superseded.
+R2C1b-015,Docs vs code,C1b,Verification levels,wrong,Low,Mixed labelling (V2 beside H).,Update the document or mark as superseded.
+R2C1c-001,Docs vs code,C1c,Handover section 1,wrong,Medium,Names task_launcher.ps1 (not in git); exit codes 91-94 vs code 95; STATUS 395 self-contradicts; 11-05 instructions read as if no launcher.,Update the document or mark as superseded.
+R2C1c-002,Docs vs code,C1c,Step 1 empty source = exit 4,unclear,Medium,"Only after script exit 0; non-zero pull exit (e.g. empty Cube_CES in PEM107 stage) only warns -> exit 2 after push, stale alert kept. INFERRED from code, not executed.",Add test with empty PEM107 pull; correct the claim.
+R2C1c-003,Docs vs code,C1c,Code line cites,wrong,Low,"monthly_refresh, material_plan, models.py, daily_stock_job cites moved.",Update the document or mark as superseded.
+R2C1c-004,Docs vs code,C1c,Commit hash,wrong,Low,980d9e2 does not exist (a770fa4).,Update the document or mark as superseded.
+R2C1c-005,Docs vs code,C1c,Hindcast rounding,wrong,Low,PEM107 Relative MAE 1.06 recomputes to 1.0549.,Update the document or mark as superseded.
+R2C1c-006,Docs vs code,C1c,Week 3 block,wrong,Low,"703 to order now / 2,039 observed vs now 711 / 2,040.",Update the document or mark as superseded.
+R2C1c-007,Docs vs code,C1c,File names,wrong,Low,"forward_test_log.csv, target_data.xlsx names; items 99/89-99 not updated.",Update the document or mark as superseded.
+R2C1c-008,Docs vs code,C1c,Superseded heading,wrong,Low,Lines 1285-4100 under 'superseded' heading hold unmarked 'NOT STARTED' statements.,Update the document or mark as superseded.
+R2C1c-009,Docs vs code,C1c,Redacted figures,unclear,none,<target> placeholders make lines 636-716 unverifiable.,None.
+R2C1d-001,Docs vs code,C1d,Lead-time Locked Decision,wrong,Medium,45-60 days per item vs METRICS 2026-10-06 (calibration lead); no supersession note.,Update the document or mark as superseded.
+R2C1d-002,Docs vs code,C1d,Monthly task trigger,wrong,Medium,STATUS records schtasks /D 5; installed is Mon-Fri 07:00; a /D 5 trigger would skip weekend 5ths. Registered task not read from machine by this reader.,Update the document or mark as superseded.
+R2C1d-003,Docs vs code,C1d,Line cites monthly_refresh,wrong,Low,"143-151, 640-642 vs 484-489, 2042-2044.",Update the document or mark as superseded.
+R2C1d-004,Docs vs code,C1d,PEM104 reason,wrong,Medium,Config and builder still 'only 12 transactions'; Locked Decision not annotated.,Update the document or mark as superseded.
+R2C1d-005,Docs vs code,C1d,Phase C CI101,wrong,Medium,Final table says CI101 1.6% behind Naive; saved output shows Top-down 11.04 vs Naive 13.33; config rationale old.,Update the document or mark as superseded.
+R2C1d-006,Docs vs code,C1d,Config decision keys unread,wrong,Medium,"forecast_method_final, evaluation_policy, division_forecast_method etc. read by no code; combination_forecast skips failing models silently.",Update the document or mark as superseded.
+R2C1d-007,Docs vs code,C1d,Pending decisions,wrong,Medium,PEM107 41 items and PEM101 20 conflicts shown pending but decided 2026-10-05.,Update the document or mark as superseded.
+R2C1d-008,Docs vs code,C1d,Section 13 class counts,wrong,Low,82/21/41 vs current 92/33/40.,Update the document or mark as superseded.
+R2C1d-009,Docs vs code,C1d,Inventory panel text,wrong,Low,Warehouse role and Cube_Backlog descriptions old.,Update the document or mark as superseded.
+R2C1d-010,Docs vs code,C1d,Trend generator,wrong,Low,Recorded as missing; exists.,Update the document or mark as superseded.
+R2C1d-011,Docs vs code,C1d,Dated figures,wrong,Low,"Notice buckets, delivery split, paired t, PEM107 alert drifted.",Update the document or mark as superseded.
+R2C1d-012,Docs vs code,C1d,Two not_late series,wrong,Low,Row-weighted vs unit-weighted both shown; reader risk.,Update the document or mark as superseded.
+R2C1d-013,Docs vs code,C1d,Stale paths,wrong,Low,38 src/ paths moved to src/investigations; STATUS cites.,Update the document or mark as superseded.
+R2C1d-014,Docs vs code,C1d,S&OP tab labelling,wrong,Low,Recorded undecided; relabelled in Phase W3.,Update the document or mark as superseded.
+R2C1d-015,Docs vs code,C1d,Staleness wording,wrong,Low,7-day rule superseded by weekdays on data sources.,Update the document or mark as superseded.
+R2C1d-016,Docs vs code,C1d,requirements pinning,wrong,Low,Only pytest and websocket-client pinned.,Update the document or mark as superseded.
+R2C1d-017,Docs vs code,C1d,Item 9 open,wrong,Low,Tooltips exist; not closed.,Update the document or mark as superseded.
+R2C1d-018,Docs vs code,C1d,run_pipeline stage list,wrong,Low,Old forward_test_v2 names.,Update the document or mark as superseded.
+R2C1e-001,Docs vs code,C1e,Draft acceptance criteria,wrong,Medium,Names MASE (below 1 passes) though Relative MAE adopted; 'nothing passes or fails yet' stale.,Update the document or mark as superseded.
+R2C1e-002,Docs vs code,C1e,Test name,wrong,Low,test_pilot_data_age_drives_the_staleness_notice... no longer exists (Prompt 49).,Update the document or mark as superseded.
+R2C1e-003,Docs vs code,C1e,Material page omits,wrong,Low,139 vs 138.,Update the document or mark as superseded.
+R2C1e-004,Docs vs code,C1e,Line cites,wrong,Low,"daily_stock_job, compute_metrics, models.py.",Update the document or mark as superseded.
+R2C1e-005,Docs vs code,C1e,Quoted page notice,wrong,Low,Material-page notice text reworded and not recorded.,Update the document or mark as superseded.
+R2C1e-006,Docs vs code,C1e,inventory.json counts,wrong,Low,"166/222/57, 92 negative vs 161/227/57, 73.",Update the document or mark as superseded.
+R2C1e-007,Docs vs code,C1e,Untracked evidence reports,wrong,Medium,"~15 cited reports exist only as untracked local files (zero-P50 rule, PEM107 trace etc.).",Move to docs/reports or mark local.
+R2C1e-008,Docs vs code,C1e,Decision labels,wrong,Low,D1-D3 reused for different decisions.,Update the document or mark as superseded.
+R2C1e-009,Docs vs code,C1e,Historical test counts,wrong,Low,35 and 8 vs 44 and 7.,Update the document or mark as superseded.
+R2C1e-010,Docs vs code,C1e,October plan table,unclear,Low,Only two rows marked done.,Update the document or mark as superseded.
+R2C1f-001,Docs vs code,C1f,channel_scope / omni_tendering,wrong,Medium,STATUS says config key and option exist and are tested; removed 2026-10-12.,Update the document or mark as superseded.
+R2C1f-002,Docs vs code,C1f,Posting-delay snapshot entry,wrong,Medium,"Daily 06:00 task and 60-day rule stale; measurement removed, 11 days recorded.",Update the document or mark as superseded.
+R2C1f-003,Docs vs code,C1f,Smooth best model,wrong,Medium,STATUS MA6 106.17; saved file MA12 105.69 lowest.,Update the document or mark as superseded.
+R2C1f-004,Docs vs code,C1f,Overwritten saved outputs,wrong,Medium,"Cited files later regenerated (9,019 vs 9,117 rows etc.); figures no longer reproduce. Cause INFERRED from mtimes.",Update the document or mark as superseded.
+R2C1f-005,Docs vs code,C1f,cube_final blocked narrative,wrong,Medium,No [RESOLVED 2026-09-24] marker in STATUS.,Update the document or mark as superseded.
+R2C1f-006,Docs vs code,C1f,Phase J current on-hand,wrong,Medium,"Hard-coded 18.07M vs J3 recompute 18.25M; Validator used same constants, not independent on that input.",Update the document or mark as superseded.
+R2C1f-007,Docs vs code,C1f,PEM103 t range,wrong,Low,'1.88-1.98' unsupported; only 1.88 recorded.,Update the document or mark as superseded.
+R2C1f-008,Docs vs code,C1f,73.2% mention,wrong,Low,Line 3009 not tagged SUPERSEDED.,Update the document or mark as superseded.
+R2C1f-009,Docs vs code,C1f,Point-in-time counts,wrong,Low,Old test counts read as current.,Update the document or mark as superseded.
+R2C1f-010,Docs vs code,C1f,Cosmetic,wrong,Low,"Bitcoin sign used for baht, %% typos.",Update the document or mark as superseded.
+R2-OBS-001,Automation,orch+C1e,Daily run 2026-11-02 12:00,unclear,Medium,"Run log daily_stock_20261102T120020.json: stock published, rebuild stage failed at 'months and items unchanged' gate (published_partial); PostingDelaySnapshot task LastTaskResult 2. Prompt 65 mentions an '11-02 live finding'. Not investigated by a Validator.",Confirm it is the known finding and that it cannot recur on 11-05.
