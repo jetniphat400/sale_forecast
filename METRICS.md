@@ -1192,7 +1192,10 @@ pipeline — no new section is needed for this; it is already covered by section
     scope     : (first version, 2026-10-05) the forecast-status items of PEM101 and PEM107 (the item universe of the Min-Max page: 144 and 112), classes of section 23.
                 Since week 3 (2026-10-06) the plan covers every item of the six divisions, see "Week 3" below; corrected 2026-10-14 (Prompt 28).
     months    : the target months of the latest forward-test vintage (section 27, level Item) from the current month onward; the vintage's
-                rows are checked against the hash in its metadata before they are read
+                rows are checked against the hash in its metadata before they are read.
+                The daily rebuild gate checks the plan's months against exactly this rule (the latest vintage's target months from the current month onward), not against the previous
+                build, because the months roll at a month boundary (Prompt 66: the previous-build comparison failed every daily start from the 1st until the monthly run); the item count
+                is still compared with the previous build
     demand[item, month]   = max(forecast[item, month], backlog[item, month])
       backlog = sum of ActualQty + BacklogQty of the Cube_CES rows with Status 'Backlog' (every RevenueType: no channel filter, except PEM103, see Week 3) whose ForecastDelDate falls in the month;
                 a date before the first plan month goes into the first month; a date after the last month is not used and is counted

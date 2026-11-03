@@ -295,6 +295,17 @@ def _vintage_gate(root: str) -> None:
     monthly_refresh.step7d_vintage_gate(False, "")
 
 
+def months_and_items_check(root: str, op_cfg: dict, om: dict, snap_items, now=None) -> tuple:
+    """(ok, detail). The plan's months must be the target months of the latest vintage from the current month onward (METRICS Sec.42); they roll at a month boundary, so they are no longer
+    compared with the previous build (that failed every daily start from the 1st of a month until the monthly run: 2026-11-02, Prompt 66). The item count is still compared with the previous build."""
+    import operation_plan as op
+    now = now if now is not None else datetime.now()
+    _, vid, vintage_months, _ = op.latest_vintage_forecast(root, op_cfg)
+    expected = op.plan_months(vintage_months, pd.Timestamp(now.date()))
+    detail = f"months {om['months']} (expected {expected} from vintage {vid}), items {om['counts']['items']} against {snap_items}"
+    return list(om["months"]) == list(expected) and om["counts"]["items"] == snap_items, detail
+
+
 def check_gates(root: str, config: dict, snap: dict, git: bool = True) -> list:
     """Runs every gate after the rebuild steps; raises RebuildFailure on the first that fails; returns the names that passed."""
     import material_plan as mp
@@ -316,7 +327,8 @@ def check_gates(root: str, config: dict, snap: dict, git: bool = True) -> list:
     passed.append("vintage gate")
     stock_time = str(_read_json(os.path.join(root, "data", "stock_daily.json")).get("pull_time", ""))
     gate("plan stock time", str(om["stock_pull"]["pulled_at_local"])[:19] == stock_time[:19], f"plan {om['stock_pull']['pulled_at_local']}, published stock {stock_time}")
-    gate("months and items unchanged", om["months"] == snap["months"] and om["counts"]["items"] == snap["items"], f"months {om['months']} items {om['counts']['items']} against {snap['months']} {snap['items']}")
+    ok_mi, detail_mi = months_and_items_check(root, op_cfg, om, snap["items"])
+    gate("months are the latest vintage's from the current month; items unchanged", ok_mi, detail_mi)
     gate("material count band", abs(100.0 * (mm["n_materials"] - snap["n_materials"]) / snap["n_materials"]) <= rd["bands_pct"]["materials"] if snap.get("n_materials") else True, f"{mm['n_materials']} materials against {snap.get('n_materials')}")
     with open(os.path.join(root, "index.html"), encoding="utf-8") as f:
         rest, model = _index_parts(f.read())
