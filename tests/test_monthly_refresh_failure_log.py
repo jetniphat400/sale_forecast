@@ -321,9 +321,9 @@ def test_exit_code_3_from_a_stage_stops_every_later_database_stage_and_the_run(m
 
 def test_any_other_failure_of_an_auxiliary_pull_keeps_the_previous_file_and_warns_and_the_step_goes_on(monkeypatch):
     started = _step1_env(monkeypatch, run_rc=[0, 0, 1])                                      # the inventory pull fails, but not by a refused login
-    out = mr.step1_pull_data(False, offline=False)                                           # the step completes
+    with pytest.raises(mr.MonthlyGateFailed, match="pem107 pull.*did not refresh"):             # since Prompt 66 the fake PEM107 stage (exit 0, writes nothing) aborts step 1; the other stages still only warn
+        mr.step1_pull_data(False, offline=False)
     assert started == ["load_data_all_divisions.py", "load_data_full.py", "build_inventory_dataset.py", "material_plan.py", "build_trend_tab.py", "cube_ces_pull.py"]
-    assert out["inventory_pull"]["refreshed"] is False and "exited 1" in out["inventory_pull"]["not_refreshed_reason"]
     failed = [w for w in mr._PARTIAL_WARNINGS if "exited 1" in w]
     assert len(failed) == 1 and failed[0].startswith("WARN:") and "inventory.json pulls" in failed[0]
     assert all("was not rewritten" in w for w in mr._PARTIAL_WARNINGS if w not in failed)          # the fake stages exit 0 and write nothing: each is its own WARN since Prompt 30
