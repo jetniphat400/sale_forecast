@@ -165,12 +165,15 @@ function computeAll(controls, divisionData, checkedWarehouses) {
   const checked = checkedWarehouses || divisionData.sellable_warehouse_codes;
   const checkedSet = checked instanceof Set ? checked : new Set(checked);
   let stockValue = 0;
+  let valueCounted = 0;                 // items that show a Min and a unit cost: the items the value covers (Prompt 66, R2B1-001)
+  const valueNotCounted = [];           // items that show a Min and have no unit cost: left out of the value, listed on the page
   const perItem = [];
   for (const item of divisionData.items) {
     const inFg = getsMinMax(item);
     const r = inFg ? computeItemMinMax(item, controls) : { min: null, max: null, unreliable: true };
     const contribution = (inFg && !item.no_unit_cost_item && r.min !== null) ? r.min * item.unit_cost : 0;
     if (inFg) stockValue += contribution;
+    if (inFg && r.min !== null) { if (item.no_unit_cost_item) valueNotCounted.push(item.code); else valueCounted += 1; }
     const onHandSellable = onHandSellableFor(item, checkedSet);
     const hasForecast = r.meanMonthlyForecast && r.meanMonthlyForecast > 0;
     const monthsOfCover = hasForecast ? onHandSellable / r.meanMonthlyForecast : Infinity;
@@ -191,7 +194,7 @@ function computeAll(controls, divisionData, checkedWarehouses) {
   }
   const holdingCost = stockValue * controls.holding_cost_rate_annual;
   const excessCount = perItem.filter(r => r.excess).length;
-  return { stockValue, holdingCost, perItem, excessCount };
+  return { stockValue, holdingCost, perItem, excessCount, valueCounted, valueNotCounted };
 }
 if (typeof module !== 'undefined') { module.exports = { computeLTD, rollingWindowSums, percentile, computeItemMinMax, onHandSellableFor, applyStock, computeAll, DATA }; }
 // END_RECOMPUTE_JS
@@ -400,12 +403,13 @@ def build_page(**data_sources) -> str:
       <div class="summary-box" id="summary-box">
         <div class="summary-title">ผลจากตัวควบคุม</div>
         <div class="totals-box">
-          <div class="stat">มูลค่าตาม Min จำลอง (Value of Min level = Min × ต้นทุนต่อชิ้น รวมทุกรหัส)<b id="tot-stock-value">-</b></div>
+          <div class="stat">มูลค่าตาม Min จำลอง (Value of Min level = Min × ต้นทุนต่อชิ้น)<b id="tot-stock-value">-</b></div>
           <div class="stat">ต้นทุนถือของต่อปี (Holding cost)<b id="tot-holding-cost">-</b></div>
           <div class="stat">สินค้าที่มี Min/Max<b id="tot-n-items">-</b></div>
           <!-- previously: Excess stock items (METRICS.md §40) -->
           <div class="stat">สินค้าที่มี Excess stock<b id="tot-excess-count">-</b></div>
         </div>
+        <p class="hint" id="tot-stock-value-note"></p>
       </div>
     </div>
   </aside>
@@ -946,9 +950,10 @@ function renderCurveTarget(divisionData) {{
 
   document.getElementById('curve-target-summary').innerHTML =
     `คำนวณไว้ ${{ct.n_distinct_members}} ระดับของการสั่งเติม · วันนี้ ส่งทัน ${{ct.today_point.not_late_pct}}% ` +
-    `มูลค่า stock ${{Math.round(ct.today_point.stock_value_thb).toLocaleString()}} บาท` +
+    `มูลค่า stock ${{Math.round(ct.today_point.stock_value_thb).toLocaleString()}} บาท (นับ ${{ct.today_point.n_items_valued}} จาก ${{ct.today_point.n_items_calibrated}} รายการ)` +
     htmlComment('previous English wording: N distinct ensemble members (deduplicated on reorder level, order-up-to level, review interval and replenishment lead time). Today point: not_late, stock value in baht. Sources: METRICS.md Sec.22, ' + ct.source_report + '; today point: ' + ct.today_point.source) +
-    `<br><span style="color:#b45309;">${{ct.item_set_note}}</span>` + htmlComment(ct.item_set_ref || '');
+    `<br><span style="color:#b45309;">${{ct.item_set_note}}</span>` + htmlComment(ct.item_set_ref || '') +
+    (ct.today_point.not_valued_items.length ? `<br><span style="color:#b45309;">มูลค่า stock นี้ไม่รวม ${{ct.today_point.not_valued_items.length}} รายการที่ไม่มีต้นทุนต่อชิ้นในข้อมูลที่ใช้ Calibration: ${{ct.today_point.not_valued_items.join(', ')}}</span>` : '');
 
   // Two approved lines; the numbers come from the section's own data (lead range across the members; median slowest-material lead time over the items with observed purchase records, their count and the items shown).
   document.getElementById('curve-demand-note').textContent = ct.demand_input_note;
@@ -1087,6 +1092,9 @@ function onControlChange(noFlash) {{
   const checked = checkedWarehouseCodes();
   const result = computeAll(controls, divisionData, checked);
   document.getElementById('tot-stock-value').textContent = fmtTHB(result.stockValue);
+  const nValued = result.valueCounted + result.valueNotCounted.length;
+  document.getElementById('tot-stock-value-note').textContent = 'มูลค่าตาม Min รวม ' + result.valueCounted + ' จาก ' + nValued + ' รายการที่มี Min' +
+    (result.valueNotCounted.length ? ' · ไม่รวม ' + result.valueNotCounted.length + ' รายการที่ไม่มีต้นทุนต่อชิ้น: ' + result.valueNotCounted.join(', ') : '');
   document.getElementById('tot-holding-cost').textContent = fmtTHB(result.holdingCost);
   document.getElementById('tot-n-items').textContent = result.perItem.filter(showsMinMax).length;
   document.getElementById('tot-excess-count').textContent = STOCK_OK ? result.excessCount : STOCK_UNKNOWN;

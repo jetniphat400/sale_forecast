@@ -84,6 +84,7 @@ def compute_all(division_data, controls, days_per_month, checked_warehouses=None
         checked_warehouses = division_data["sellable_warehouse_codes"]
     checked_set = set(checked_warehouses)
     stock_value = 0.0
+    value_counted, value_not_counted = 0, []             # as the page script (Prompt 66): the items the value covers and the items with a Min and no unit cost
     per_item = []
     for item in division_data["items"]:
         in_fg = gets_min_max(item)
@@ -91,6 +92,11 @@ def compute_all(division_data, controls, days_per_month, checked_warehouses=None
         contribution = (r["min"] * item["unit_cost"]) if (in_fg and not item["no_unit_cost_item"] and r["min"] is not None) else 0.0
         if in_fg:
             stock_value += contribution
+        if in_fg and r["min"] is not None:
+            if item["no_unit_cost_item"]:
+                value_not_counted.append(item["code"])
+            else:
+                value_counted += 1
         on_hand_sellable = on_hand_sellable_for(item, checked_set)
         mf = r.get("mean_monthly_forecast")
         has_forecast = bool(mf) and mf == mf and mf > 0              # as the page script: an item with no forecast month (mean not a number) has no forecast demand
@@ -105,4 +111,4 @@ def compute_all(division_data, controls, days_per_month, checked_warehouses=None
     holding_cost = stock_value * controls["holding_cost_rate_annual"]
     excess_count = sum(1 for r in per_item if r["excess"])
     return {"stock_value": stock_value, "holding_cost": holding_cost, "per_item": per_item,
-            "excess_count": excess_count}
+            "excess_count": excess_count, "value_counted": value_counted, "value_not_counted": value_not_counted}

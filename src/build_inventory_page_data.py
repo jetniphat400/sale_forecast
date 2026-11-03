@@ -285,12 +285,37 @@ def _build_curve_target_pem101() -> dict:
                                "material_lead_median_observed": lead["median_observed_days"], "n_observed": lead["n_observed"],
                                "n_items": lead["n_items_shown"]}
     data["item_material_lead"] = lead["per_item"]
+    # Prompt 66 (R2B1-002): the recorded "today" stock value covers only the calibration items that have a unit cost in the calibration's cost file (the 128-item pilot's). The page states that count
+    # and lists the others; the number itself is the recorded one and is not recomputed here (a recalibration is a separate task).
+    summary = maxmin_v1.ensemble_summary(cfg)
+    pilot_priced = set(pd.read_csv(os.path.join(SUMMARY_DIR, "phaseE1fix_2_unit_cost.csv")).dropna(subset=["unit_cost"])["itemcode"])
+    not_valued = sorted(c for c in data["items_order"] if c not in pilot_priced)
+    n_valued = int(summary["n_item_matched_unit_cost"])
+    if len(data["items_order"]) - len(not_valued) != n_valued:
+        raise ValueError(f"the calibration's recorded stock value covers {n_valued} items but {len(data['items_order']) - len(not_valued)} of the {len(data['items_order'])} items have a cost in the calibration's cost file: "
+                         "the page cannot say which items the value leaves out")
+    data["today_point"] = {**data["today_point"], "n_items_valued": n_valued, "n_items_calibrated": int(data["n_items_calibrated"]), "not_valued_items": not_valued}
     data["material_lead_label_counts"] = lead["label_counts"]
     data["lead_time_ref"] = ("lead_min and lead_max: smallest and largest lead_time_days over the distinct members of the lead-time-free "
                              "calibration (week1_recal_control_members_PEM101_92.csv); material_lead_median_observed: median of the slowest "
                              "material's lead time, production time excluded, over the shown items whose value comes from observed purchase records only; n_observed: "
                              "their count; n_items: the stock_policy items shown (item_lead_time_v1.csv, METRICS.md Sec.5); decisions D2, 2026-10-05, and D3, 2026-10-06")
     return data
+
+
+def unit_cost_for(code: str, pilot_df: pd.DataFrame, full_df: pd.DataFrame) -> dict:
+    """The unit cost fields of one PEM101 item (METRICS.md Sec.1). The 128-item pilot's cost file is used where it has the item (its values are unchanged); an item outside the pilot takes the
+    full-scope cost table (output/summary/phaseE2_0_unit_cost.csv, the same method on all 445 items) instead of being left unpriced (Prompt 66, R2B1-001: 15 of the 92 stock_policy items were
+    left out of the Value of Min level box although they have a cost). An item in neither table has no unit cost and the page lists it."""
+    unpriced = None
+    for source, df in (("pilot", pilot_df), ("full_scope", full_df)):
+        row = df[df["itemcode"] == code]
+        if not len(row):
+            continue
+        if pd.notna(row["unit_cost"].iloc[0]):
+            return {"unit_cost": float(row["unit_cost"].iloc[0]), "unit_cost_fallback": bool(row["unit_cost_fallback"].iloc[0]), "no_unit_cost_item": False, "unit_cost_source": source}
+        unpriced = unpriced or {"unit_cost": None, "unit_cost_fallback": bool(row["unit_cost_fallback"].iloc[0]), "no_unit_cost_item": True, "unit_cost_source": source}
+    return unpriced or {"unit_cost": None, "unit_cost_fallback": None, "no_unit_cost_item": True, "unit_cost_source": None}
 
 
 def _build_pem101_division(config: dict, inventory_source=None) -> dict:
@@ -303,6 +328,7 @@ def _build_pem101_division(config: dict, inventory_source=None) -> dict:
 
     policy_df = pd.read_csv(os.path.join(SUMMARY_DIR, "phaseE1fix_1_item_policy.csv"))
     unit_cost_df = pd.read_csv(os.path.join(SUMMARY_DIR, "phaseE1fix_2_unit_cost.csv"))
+    full_cost_df = pd.read_csv(os.path.join(SUMMARY_DIR, "phaseE2_0_unit_cost.csv"))             # the full 445-item scope, same method (Sec.1), frozen at the 2026-09-22 pull
     inv_summary = pd.read_csv(os.path.join(SUMMARY_DIR, "phaseE1fix_2_current_stock_value_inputs.csv"))
 
     fc_all, _vintage = latest_vintage_item_forecasts(FORECAST_HORIZON_MONTHS)
@@ -327,7 +353,6 @@ def _build_pem101_division(config: dict, inventory_source=None) -> dict:
     for code, seg_row in seg.iterrows():
         fulfilment_class = seg_row["class"]
         in_pilot_scope = code in unit_cost_df["itemcode"].values
-        uc_row = unit_cost_df[unit_cost_df["itemcode"] == code]
         oh_row = inv_summary[inv_summary["code"] == code]
         qty_hist = series[code][0].tolist() if code in series else []
         forecast = fc_all[code].tolist() if code in fc_all else []
@@ -340,9 +365,7 @@ def _build_pem101_division(config: dict, inventory_source=None) -> dict:
             "min_max_computable": in_pilot_scope,
             "actual_history": [round(x, 3) for x in qty_hist],
             "forecast": [round(x, 3) for x in forecast],
-            "unit_cost": float(uc_row["unit_cost"].iloc[0]) if len(uc_row) and pd.notna(uc_row["unit_cost"].iloc[0]) else None,
-            "unit_cost_fallback": bool(uc_row["unit_cost_fallback"].iloc[0]) if len(uc_row) else None,
-            "no_unit_cost_item": bool(uc_row["no_unit_cost_item"].iloc[0]) if len(uc_row) else True,
+            **unit_cost_for(code, unit_cost_df, full_cost_df),
             "on_hand_sellable": float(oh_row["sellable_stock"].iloc[0]) if len(oh_row) else 0.0,
             "by_warehouse": by_wh.get(code, []),
         })
