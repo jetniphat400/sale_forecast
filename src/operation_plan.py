@@ -193,7 +193,8 @@ def sellable_on_hand(inventory: pd.DataFrame, division_items: dict, sellable: di
 def backlog_by_month(backlog: pd.DataFrame, months: list) -> pd.DataFrame:
     """Confirmed quantity (ActualQty + BacklogQty) of Cube_CES Status = 'Backlog' rows per item and plan month by ForecastDelDate month;
     a date before the first plan month goes into it; a date after the last month is left out and counted. Returns (frame item x month, n_after)."""
-    b = backlog.copy()
+    import build_inventory_dataset as bid
+    b = bid.backlog_lines(backlog, require_plan_id=False).copy()            # the one rule the stock page uses (Prompt 66, T1-001)
     b["qty"] = b["ActualQty"].fillna(0) + b["BacklogQty"].fillna(0)
     b["ym"] = pd.to_datetime(b["ForecastDelDate"]).dt.strftime("%Y-%m")
     n_after = int((b["ym"] > months[-1]).sum())

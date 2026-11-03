@@ -149,6 +149,8 @@ def frame_stats(df: pd.DataFrame, key_cols=(), load_col: str = None) -> dict:
         if col in df.columns:
             s = df[col]
             key_nulls[col] = int(s.isna().sum() + (s.dropna().astype(str).str.strip() == "").sum())
+        else:
+            key_nulls[col] = max(int(len(df)), 1)           # a key column the pull does not have is a failed key check (Prompt 66: a Reserved pull without PlanID)
     load = None
     if load_col and load_col in df.columns and len(df):
         ts = pd.to_datetime(df[load_col], errors="coerce").dropna()

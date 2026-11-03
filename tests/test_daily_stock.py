@@ -34,7 +34,7 @@ def _frames(rows=100, stock=10.0, null_code=False, null_ces=False):
     if null_code:
         codes[3] = None
     inv = pd.DataFrame({"itemcode": codes, "warehouse": "WH01", "stock": stock, "timestamp": "2026-10-05 01:00:00"})
-    ces = pd.DataFrame({"ItemCode": ["I1", None if null_ces else "I2"], "Timestamp": ["2026-10-05 02:00:00"] * 2})
+    ces = pd.DataFrame({"ItemCode": ["I1", None if null_ces else "I2"], "PlanID": ["P1", "P2"], "Timestamp": ["2026-10-05 02:00:00"] * 2})
     return inv, ces
 
 
@@ -90,7 +90,7 @@ BASE = {"inventory_rows": 100, "on_hand_total": 1000.0, "backlog_rows": 2, "sour
 def test_every_gate_passes_on_a_normal_day():
     inv, ces = _frames()
     res = djob.check_gates(_payload("2026-10-06 08:00:05"), inv, ces, BASE, _payload("2026-10-05 07:41:40"), CONFIG)
-    assert [r["gate"] for r in res] == ["row_count_band", "on_hand_total_band", "no_null_item_codes", "pull_newer_than_published", "stock_load_time_present", "reserved_rows_band", "reserved_load_time_present"]
+    assert [r["gate"] for r in res] == ["row_count_band", "on_hand_total_band", "no_null_item_codes", "pull_newer_than_published", "stock_load_time_present", "reserved_rows_band", "reserved_load_time_present", "reserved_key_columns"]
     assert all(r["passed"] for r in res), res
 
 
@@ -392,7 +392,7 @@ def _synthetic_pull(tmp_path):
     inv = pd.DataFrame({"company": ["PEM", "CI", "PEM"], "warehouse": ["FG01", "FG01", "WH21"], "itemcode": ["AA-1", "AA-1", "BB-2"],
                         "unit": "pcs", "stock": [10.0, 2.5, 4.0], "reserve_bywa": 0.0,
                         "timestamp": pd.to_datetime(["2026-10-05 21:41:03", "2026-10-05 21:42:10", "2026-10-05 21:41:30"])})
-    ces = pd.DataFrame({"ContractID": ["C1"], "ItemCode": ["AA-1"], "CustomerID": ["X"], "ForecastDelDate": pd.to_datetime(["2026-10-01"]),
+    ces = pd.DataFrame({"ContractID": ["C1"], "ItemCode": ["AA-1"], "PlanID": ["P1"], "CustomerID": ["X"], "ForecastDelDate": pd.to_datetime(["2026-10-01"]),
                         "PlanDelDate": pd.to_datetime(["2026-10-01"]), "ActualQty": [0.0], "BacklogQty": [3.0],
                         "Timestamp": pd.to_datetime(["2026-10-05 07:35:30"])})
     for name, df in (("inventory", inv), ("backlog_ces", ces)):
@@ -559,8 +559,8 @@ def test_the_daily_backlog_query_selects_revenue_type_and_changes_no_row_or_filt
     monkeypatch.setattr(bid, "run_query", lambda sql: captured.setdefault("sql", sql) and pd.DataFrame())
     bid.query_backlog_ces(["A", "B"])
     sql = " ".join(captured["sql"].split())
-    assert sql == ("SELECT ContractID, ItemCode, CustomerID, ForecastDelDate, PlanDelDate, ActualQty, BacklogQty, Timestamp, RevenueType "
-                   "FROM [salewarehouse].[dbo].[Cube_CES] WHERE ItemCode IN ('A','B') AND Status = 'Backlog'")
+    assert sql == ("SELECT ContractID, ItemCode, PlanID, CustomerID, ForecastDelDate, PlanDelDate, ActualQty, BacklogQty, Timestamp, RevenueType "
+                   "FROM [salewarehouse].[dbo].[Cube_CES] WHERE ItemCode IN ('A','B') AND Status = 'Backlog' ORDER BY ContractID, ItemCode, PlanID")
 
 
 def test_the_daily_job_builds_its_files_from_a_pull_whose_backlog_has_the_revenue_type_column(tmp_path, monkeypatch):

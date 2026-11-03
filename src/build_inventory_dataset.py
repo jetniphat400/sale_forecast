@@ -236,17 +236,38 @@ def query_backlog_ces(item_codes: list) -> pd.DataFrame:
     RevenueType is carried so the operation plan can apply PEM103's Omni Channel limit to the latest pull (Prompt 29)."""
     code_list = "','".join(sorted(item_codes))
     sql = f"""
-        SELECT ContractID, ItemCode, CustomerID, ForecastDelDate, PlanDelDate, ActualQty, BacklogQty, Timestamp, RevenueType
+        SELECT ContractID, ItemCode, PlanID, CustomerID, ForecastDelDate, PlanDelDate, ActualQty, BacklogQty, Timestamp, RevenueType
         FROM {CES_TABLE}
         WHERE ItemCode IN ('{code_list}') AND Status = 'Backlog'
+        ORDER BY ContractID, ItemCode, PlanID
     """
     df = run_query(sql)
     logger.info("Pulled %d Cube_CES Status='Backlog' rows for %d item codes.", len(df), len(item_codes))
     return df
 
 
+BACKLOG_LINE_KEY = ["ContractID", "ItemCode", "PlanID"]
+
+
+def backlog_lines(ces: pd.DataFrame, require_plan_id: bool = True) -> pd.DataFrame:
+    """THE rule for which Cube_CES Backlog rows are Reserved lines, shared by the stock page (`dedup_and_aggregate_ces_backlog`) and the operation plan (`operation_plan.backlog_by_month`)
+    (Prompt 66, T1-001). A plan line is one (ContractID, ItemCode, PlanID): the verification of 2026-11-02 found that the 13 groups the old contract + item rule merged (16 rows, 3,939 units, 8.3%)
+    were separate plan lines, each with its own PlanID, delivery dates, quantity and price, and no true duplicate. So every row counts; a row is dropped only when the same
+    (ContractID, ItemCode, PlanID) appears again (a true duplicate), and which of the two is kept does not depend on the order the source returned them in: the rows are sorted first.
+    A row with no PlanID is never dropped (an older saved pull has none). `require_plan_id` False lets the plan read such an older pull, counting every row as before; the page requires it."""
+    if "PlanID" not in ces.columns:
+        if require_plan_id:
+            raise ValueError("the Cube_CES Backlog pull has no PlanID column: Reserved lines cannot be told apart (pull again with the current query)")
+        return ces
+    order = [c for c in BACKLOG_LINE_KEY + ["ForecastDelDate", "PlanDelDate", "BacklogQty", "ActualQty"] if c in ces.columns]
+    ordered = ces.sort_values(order, kind="mergesort", na_position="last").reset_index(drop=True)
+    repeated = ordered["PlanID"].notna() & ordered.duplicated(subset=BACKLOG_LINE_KEY, keep="first")
+    return ordered[~repeated].reset_index(drop=True)
+
+
 def dedup_and_aggregate_ces_backlog(ces: pd.DataFrame) -> tuple:
-    """METRICS.md Sec.14: confirmed demand is 'deduplicated on contract + item'. Returns
+    """METRICS.md Sec.14: confirmed demand is every plan line of Cube_CES Status 'Backlog' (`backlog_lines`: one (ContractID, ItemCode, PlanID) each; was 'deduplicated on contract + item' until
+    Prompt 66, which dropped 3,939 units of separate plan lines). Returns
     (per_code totals df with columns [code, backlog], {code: [row dicts]} in the SAME field
     shape the old Cube_Backlog-based backlog_rows carried, so index.html's modal needs no
     structural change) -- `backlog_from` is repurposed to name the actual source table, since
@@ -260,12 +281,11 @@ def dedup_and_aggregate_ces_backlog(ces: pd.DataFrame) -> tuple:
     # (STATUS.md:2084-2091), so this is BacklogQty in practice; the +ActualQty term is kept for
     # consistency with that already-tested pattern, not because it changes any value here.
     df["qty"] = df["ActualQty"].fillna(0) + df["BacklogQty"].fillna(0)
-    df["dedupe_key"] = df["ItemCode"].astype(str) + "::" + df["ContractID"].astype(str)
     n_before = len(df)
-    df = df.drop_duplicates(subset="dedupe_key").copy()
+    df = backlog_lines(df).copy()
     n_dropped = n_before - len(df)
     if n_dropped:
-        logger.info("Dedup on (contract, item) per METRICS.md Sec.14: dropped %d duplicate "
+        logger.info("Backlog lines (METRICS.md Sec.14): dropped %d repeated (contract, item, plan) "
                     "Cube_CES Backlog rows of %d.", n_dropped, n_before)
 
     per_code = df.groupby("ItemCode", as_index=False)["qty"].sum().rename(

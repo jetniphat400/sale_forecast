@@ -384,7 +384,7 @@ def _guard_plan() -> dict:
                   "sources": [("pilot_sales", "csv", raw_pilot, None, ("itemcode",), None)]},
         "inventory": {"files": [f"{inv}/{n}" for n in ("inventory.pkl", "backlog_ces.pkl", "pull_meta.json")],            # the two frames `build_inventory_dataset.py --save-pulls` writes (PULL_NAMES)
                       "sources": [("stock", "pkl", os.path.join(INVENTORY_PULL_DIR, "inventory.pkl"), None, ("itemcode",), "timestamp"),
-                                  ("reserved", "pkl", os.path.join(INVENTORY_PULL_DIR, "backlog_ces.pkl"), None, ("ItemCode",), "Timestamp")]},
+                                  ("reserved", "pkl", os.path.join(INVENTORY_PULL_DIR, "backlog_ces.pkl"), None, ("ItemCode", "PlanID"), "Timestamp")]},
         "material": {"files": files["material"],
                      "sources": [("material_rm_inventory", "bundle", bundle, "rm_inventory", (), None), ("material_open_orders", "bundle", bundle, "open_orders", (), None),
                                  ("material_bom_tree", "bundle", bundle, "bom_tree", (), None), ("material_po_lines", "bundle", bundle, "po_lines", (), None),
@@ -448,13 +448,22 @@ class _StageGuard:
         return findings
 
 
-def _guarded_pull_stage(stage: str, label: str, script: str, output_path: str, args: list = None) -> dict:
+def _guarded_pull_stage(stage: str, label: str, script: str, output_path: str, args: list = None, abort_if_not_refreshed: bool = False) -> dict:
+    """One pull stage behind the source guard. A stage that wrote its output is checked by the guard (empty, out of band, no load time, null keys: abort). A stage that did NOT refresh (its script exited
+    non-zero, or exited 0 without rewriting its output) keeps the earlier files and is a WARN that makes the run partial, unless `abort_if_not_refreshed` (Prompt 66, item 4): then its files are put
+    back (the script may have overwritten its raw pull before it failed) and the run ABORTS at step 1 like a guard failure, before any fit, vintage, build or publish, so it cannot end after a push with
+    exit 2. A login refusal (exit 3) and a stage skipped after one keep their own handling (MonthlyLoginRefused after the stage group)."""
     guard = _StageGuard(stage)
     out = _pull_stage(label, script, output_path, args)
     if out.get("refreshed"):
         guard.check()
         out["source_guard"] = "passed"
         out["_guard_rows"] = guard.rows
+    elif abort_if_not_refreshed and out.get("returncode") not in (None, EXIT_LOGIN_REFUSED):
+        errors = guard.backup.restore()
+        guard.backup.close()
+        raise MonthlyGateFailed(f"Step 1 (pull data) ABORTED at the {stage} pull, before any fit, vintage, build or publish; {label} did not refresh ({out['not_refreshed_reason']}); the stage's files were put back"
+                                + (f" (NOT all: {errors})" if errors else "") + ".")
     else:
         guard.discard()
     return out
@@ -532,9 +541,9 @@ def step1_pull_data(dry_run: bool, offline: bool = False) -> dict:
     result["trend_tab_pull"] = _guarded_pull_stage("trend", "Trend tab pull", "build_trend_tab.py", os.path.join(PROJECT_ROOT, *load_config()["trend_tab"]["pull_dir"].split("/"), "completeness.json"),
                                                    args=["--pull"])
     # the PEM107 delivery-decline alert of the Min-Max page (src/cube_ces_pull.py, Prompt 35): Cube_CES, Omni Channel in the SQL, in its own session; its output carries its pull time, so the page
-    # judges its freshness by the monthly cadence. A failure keeps the earlier alert, is a WARN and makes the run partial (exit code 2).
+    # judges its freshness by the monthly cadence. A stage that does not refresh aborts the run here with the stage's files put back (Prompt 66: it used to be a WARN that ended the run with exit 2 after the push).
     result["pem107_alert_pull"] = _guarded_pull_stage("pem107", "PEM107 alert pull", "cube_ces_pull.py", os.path.join(PROJECT_ROOT, "output", "summary", "task2b_part4_pem107_alert.json"),
-                                                      args=["--pem107-alert"])
+                                                      args=["--pem107-alert"], abort_if_not_refreshed=True)
     _abort_if_a_database_stage_failed("Step 1 (pull data)")
     import source_guard as sg
     for stage_result in result.values():                  # the counts of every source that passed become the stored base of the next run; the private key is not logged

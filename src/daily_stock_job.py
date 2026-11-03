@@ -203,15 +203,19 @@ def published_backlog_rows(root: str) -> int:
         return None
 
 
+RESERVED_KEY_COLUMNS = ("ItemCode", "PlanID")
+
+
 def reserved_gates(payload: dict, backlog_ces, base: dict, config: dict, published_rows: int = None) -> list:
     """The gates on the reserved (Cube_CES Status='Backlog') pull (Prompt 60c; since Prompt 63 the shared source guard, config `source_guard.sources.reserved`, with the same behaviour). A pull of 0
     rows reached the dashboard on 2026-10-29 12:00 (the source returned nothing; every item then read reserved 0 and available = on hand) because no gate looked at this pull. A zero count is never
     published unless the source's zero_allowed says so; otherwise the row count is held to a band against the last successful run's count (last_success.json `backlog_rows`) or, when that record has
     none (it was written before this gate existed), the count the published data/inventory.json was built from; with neither the band FAILS CLOSED. The source's own load time must exist and be
-    recent (the page shows 'unknown' for a missing one). Gate names: reserved_rows_band, reserved_load_time_present."""
+    recent (the page shows 'unknown' for a missing one). Gate names: reserved_rows_band, reserved_load_time_present, reserved_key_columns (ItemCode and PlanID not null, and present)."""
     rows = int(len(backlog_ces)) if backlog_ces is not None else 0
+    keys = sg.frame_stats(backlog_ces, RESERVED_KEY_COLUMNS)["key_nulls"] if backlog_ces is not None and rows else None          # Prompt 66: ItemCode and PlanID (a plan line is told apart by its PlanID)
     return sg.evaluate("reserved", config, rows=rows, bases=[((base or {}).get("backlog_rows"), (base or {}).get("source") or "last successful daily run"), (published_rows, "published data/inventory.json")],
-                       load_time=payload.get("reserved_source_load_time"), reference_time=payload.get("pull_time"))
+                       load_time=payload.get("reserved_source_load_time"), reference_time=payload.get("pull_time"), key_nulls=keys)
 
 
 def failed_gates(results: list) -> list:

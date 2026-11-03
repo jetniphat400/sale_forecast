@@ -9,6 +9,7 @@ import contextlib
 import json
 import os
 import sys
+from pathlib import Path
 from datetime import date, datetime, timedelta
 
 import pandas as pd
@@ -281,7 +282,7 @@ def monthly(monkeypatch, tmp_path):
         elif script == "build_inventory_dataset.py":
             d = data / "inventory_pull"
             pd.DataFrame({"itemcode": codes(c["stock"]), "timestamp": state["load"]}).to_pickle(d / "inventory.pkl")
-            pd.DataFrame({"ItemCode": codes(c["reserved"]), "Timestamp": state["load"]}).to_pickle(d / "backlog_ces.pkl")
+            pd.DataFrame({"ItemCode": codes(c["reserved"]), "PlanID": [f"P{i}" for i in range(c["reserved"])], "Timestamp": state["load"]}).to_pickle(d / "backlog_ces.pkl")
             (d / "pull_meta.json").write_text(json.dumps({"n": c["stock"], "t": state["load"]}), encoding="utf-8")
         elif script == "material_plan.py":
             frames = {k: pd.DataFrame({"x": range(c[f"material_{k}"])}) for k in ("rm_inventory", "open_orders", "bom_tree", "po_lines", "receipts", "price", "item_names")}
@@ -423,3 +424,76 @@ def test_an_empty_source_ends_the_monthly_run_at_step_1_with_exit_4_nothing_afte
     assert _run_cli(monkeypatch, tmp_path, monthly, date(2026, 11, 6), called) == 0
     assert called[0] == "2" and called[-1] in ("11", "backup")
     assert json.loads((tmp_path / "state" / "monthly_run_state.json").read_text(encoding="utf-8"))["last_success_month"] == "2026-11"
+
+
+# ------------------------------------------------------------------ Prompt 66, item 4: a PEM107 stage that fails or does not refresh aborts at step 1, with its files put back
+def _fail_pem107(monthly, monkeypatch, code, write_raw_first=True):
+    """The PEM107 stage's script crashes after it overwrote its raw pull with an empty file (the worst case: the raw file is already changed when the script dies)."""
+    real = mr.run_script
+
+    def run_script(script, args=None):
+        proc = real(script, args)
+        if script == "cube_ces_pull.py":
+            if write_raw_first:
+                (Path(monthly["root"]) / "output" / "summary" / "task2b_part4_cube_ces_raw.csv").write_text("ItemCode\n", encoding="utf-8")
+            return _Proc(code)
+        return proc
+    monkeypatch.setattr(mr, "run_script", run_script)
+
+
+def test_a_pem107_stage_that_exits_non_zero_aborts_step_1_and_puts_its_overwritten_files_back(monthly, monkeypatch):
+    stage_files = ("task2b_part4_cube_ces_raw.csv", "task2b_part4_pem107_alert.json", "task2b_part4_pem107_alert_items.csv")
+    summary = Path(monthly["root"]) / "output" / "summary"
+    before = {f: (summary / f).read_bytes() for f in stage_files}
+    _fail_pem107(monthly, monkeypatch, 1)
+    with pytest.raises(mr.MonthlyGateFailed, match="pem107 pull.*did not refresh.*script exited 1.*put back"):
+        mr.step1_pull_data(False, offline=False)
+    assert {f: (summary / f).read_bytes() for f in stage_files} == before                       # the raw pull the script had overwritten is the old one again
+    assert not os.path.exists(os.path.join(monthly["root"], "output", "state", "source_guard_base.json"))
+
+
+def test_a_pem107_stage_that_exits_0_without_rewriting_its_output_aborts_step_1_too(monthly, monkeypatch):
+    real = mr.run_script
+
+    def run_script(script, args=None):
+        if script == "cube_ces_pull.py":
+            monthly["ran"].append(script)
+            return _Proc(0)                                                                    # writes nothing
+        return real(script, args)
+    monkeypatch.setattr(mr, "run_script", run_script)
+    with pytest.raises(mr.MonthlyGateFailed, match="did not refresh.*output file not rewritten"):
+        mr.step1_pull_data(False, offline=False)
+
+
+def test_a_login_refusal_in_the_pem107_stage_keeps_its_own_handling(monthly, monkeypatch):
+    _fail_pem107(monthly, monkeypatch, mr.EXIT_LOGIN_REFUSED, write_raw_first=False)
+    with pytest.raises(mr.MonthlyLoginRefused):
+        mr.step1_pull_data(False, offline=False)
+
+
+def test_the_other_stages_still_only_warn_when_they_fail(monthly, monkeypatch):
+    real = mr.run_script
+
+    def run_script(script, args=None):
+        if script == "build_trend_tab.py":
+            monthly["ran"].append(script)
+            return _Proc(1)
+        return real(script, args)
+    monkeypatch.setattr(mr, "run_script", run_script)
+    result = mr.step1_pull_data(False, offline=False)
+    assert result["trend_tab_pull"]["refreshed"] is False and any("trend" in w.lower() or "Trend" in w for w in mr._PARTIAL_WARNINGS)
+
+
+def test_a_failing_pem107_stage_ends_the_run_at_step_1_with_exit_4_and_no_push_and_the_next_working_day_makes_it_up(monkeypatch, tmp_path, monthly):
+    (tmp_path / "state").mkdir()
+    (tmp_path / "state" / "monthly_run_state.json").write_text(json.dumps({"last_success_month": "2026-10"}), encoding="utf-8")
+    _fail_pem107(monthly, monkeypatch, 1)
+    called = []
+    assert _run_cli(monkeypatch, tmp_path, monthly, date(2026, 11, 5), called) == mr.EXIT_GATE_HELD == 4          # was: the run went on, pushed, and ended with exit 2
+    assert called == []
+    state = json.loads((tmp_path / "state" / "monthly_run_state.json").read_text(encoding="utf-8"))
+    assert state["last_success_month"] == "2026-10"
+    log = json.loads(next((tmp_path / "runs").glob("monthly_refresh_*.json")).read_text(encoding="utf-8"))
+    assert log["aborted_at_step"] == "1_pull_data" and log["pushed"] is False and "pem107" in log["error"]["message"]
+    pulled = list(monthly["ran"])
+    assert _run_cli(monkeypatch, tmp_path, monthly, date(2026, 11, 5), called) == 0 and monthly["ran"] == pulled and called == []      # the same day: the attempt guard, nothing pulled again
