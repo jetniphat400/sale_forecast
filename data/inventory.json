@@ -1,22 +1,22 @@
 {
   "snapshot": {
     "source_table": "[salewarehouse].[dbo].[Cube_Inventory_Exact]",
-    "loaded_at": "2026-11-09 21:42:51.807000",
-    "generated_at": "2026-11-10T07:00:29Z",
+    "loaded_at": "2026-11-10 21:41:52.410000",
+    "generated_at": "2026-11-11T07:00:36Z",
     "refresh_cadence": "unknown"
   },
   "backlog": {
     "source_table": "[salewarehouse].[dbo].[Cube_CES]",
     "status_filter": "Backlog",
-    "loaded_at": "2026-11-10 07:09:32.303000",
+    "loaded_at": "2026-11-11 07:33:42.173000",
     "scope_note": "SWITCHED 2026-09-25 (task 2a, Part 5; DATA_MAP.md Trap 23) from the Cube_Backlog TABLE to Cube_CES rows with Status='Backlog' -- METRICS.md Sec.14's literal confirmed-demand source. Cube_Backlog is known to lag Cube_CES by ~14 hours and can hold already-delivered pairs (DATA_MAP.md Trap 5). Deduplicated on (contract, item) per METRICS.md Sec.14's exact text -- see reserved_change_report below for the before/after total and the list of codes whose value changed.",
-    "rows_used": 132,
-    "raw_rows_before_dedup": 790,
+    "rows_used": 124,
+    "raw_rows_before_dedup": 777,
     "reserved_change_report": {
-      "new_total_cube_ces_backlog": 41885.0,
-      "new_codes_with_reserved": 132
+      "new_total_cube_ces_backlog": 34664.0,
+      "new_codes_with_reserved": 124
     },
-    "detail_rows_written": 790,
+    "detail_rows_written": 777,
     "detail_note": "Every item's backlog_rows are its Cube_CES Status='Backlog' rows, deduplicated on (contract, item) per METRICS.md Sec.14 -- 'backlog_from' names the source table (Cube_CES), replacing the old Cube_Backlog-specific column of the same name."
   },
   "warehouses": [
@@ -155,32 +155,32 @@
   ],
   "totals": {
     "codes": 445,
-    "has_stock": 174,
-    "zero_stock": 214,
-    "no_db_record": 57,
-    "codes_with_backlog": 132,
-    "backlog_total": 41885.0,
-    "available_positive": 123,
-    "available_zero": 202,
-    "available_negative": 63,
-    "available_unknown": 57,
-    "available_total": 136775.0
+    "has_stock": 172,
+    "zero_stock": 217,
+    "no_db_record": 56,
+    "codes_with_backlog": 124,
+    "backlog_total": 34664.0,
+    "available_positive": 119,
+    "available_zero": 205,
+    "available_negative": 65,
+    "available_unknown": 56,
+    "available_total": 137666.0
   },
   "sellable_split_totals": {
     "by_division": {
       "PEM101": {
-        "sellable_total": 174176.0,
-        "staging_total": 2738.0,
+        "sellable_total": 167414.0,
+        "staging_total": 3174.0,
         "elsewhere_total": 326.0
       },
       "PEM107": {
-        "sellable_total": 578.0,
-        "staging_total": 713.0,
+        "sellable_total": 568.0,
+        "staging_total": 711.0,
         "elsewhere_total": 1.0
       },
       "PEM103": {
         "sellable_total": 26.0,
-        "staging_total": 20.0,
+        "staging_total": 34.0,
         "elsewhere_total": 0.0
       }
     },
@@ -958,14 +958,14 @@
       "type": "Fuse Holder",
       "description": "22kV 12kA 100A",
       "state": "has_stock",
-      "qty": 9827.0,
-      "backlog": 105.0,
-      "available": 9722.0,
+      "qty": 9208.0,
+      "backlog": 86.0,
+      "available": 9122.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
           "code": "FG01",
-          "qty": 594.0
+          "qty": 844.0
         },
         {
           "code": "W121",
@@ -973,20 +973,10 @@
         },
         {
           "code": "WH21",
-          "qty": 8933.0
+          "qty": 8064.0
         }
       ],
       "backlog_rows": [
-        {
-          "doc_id": "CTR-2026-07076",
-          "job": null,
-          "customer": "CS08333",
-          "quantity": 50.0,
-          "status": "Backlog",
-          "delivery_date": "2026-11-13",
-          "plan_delivery_date": "2026-11-13",
-          "backlog_from": "Cube_CES"
-        },
         {
           "doc_id": "CTR-2026-07082",
           "job": null,
@@ -996,11 +986,21 @@
           "delivery_date": "2026-11-13",
           "plan_delivery_date": "2026-11-13",
           "backlog_from": "Cube_CES"
+        },
+        {
+          "doc_id": "CTR-2026-07156",
+          "job": null,
+          "customer": "CS10221",
+          "quantity": 31.0,
+          "status": "Backlog",
+          "delivery_date": "2026-11-17",
+          "plan_delivery_date": "2026-11-17",
+          "backlog_from": "Cube_CES"
         }
       ],
       "sellable_split": {
         "not_assessed": false,
-        "sellable_qty": 9527.0,
+        "sellable_qty": 8908.0,
         "staging_qty": 0.0,
         "elsewhere_qty": 300.0
       }
@@ -1037,14 +1037,18 @@
       "type": "Fuse Holder",
       "description": "38kV Old 100A",
       "state": "has_stock",
-      "qty": 1942.0,
+      "qty": 3142.0,
       "backlog": 0.0,
-      "available": 1942.0,
+      "available": 3142.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
           "code": "FG01",
           "qty": 16.0
+        },
+        {
+          "code": "QA",
+          "qty": 1200.0
         },
         {
           "code": "WH21",
@@ -1055,7 +1059,7 @@
       "sellable_split": {
         "not_assessed": false,
         "sellable_qty": 1942.0,
-        "staging_qty": 0.0,
+        "staging_qty": 1200.0,
         "elsewhere_qty": 0.0
       }
     },
@@ -1066,9 +1070,9 @@
       "type": "Fuse Holder",
       "description": "38kV New 100A",
       "state": "has_stock",
-      "qty": 2937.0,
+      "qty": 2569.0,
       "backlog": 0.0,
-      "available": 2937.0,
+      "available": 2569.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
@@ -1077,13 +1081,13 @@
         },
         {
           "code": "WH21",
-          "qty": 2926.0
+          "qty": 2558.0
         }
       ],
       "backlog_rows": [],
       "sellable_split": {
         "not_assessed": false,
-        "sellable_qty": 2937.0,
+        "sellable_qty": 2569.0,
         "staging_qty": 0.0,
         "elsewhere_qty": 0.0
       }
@@ -1117,7 +1121,7 @@
           "quantity": 3.0,
           "status": "Backlog",
           "delivery_date": "2026-11-06",
-          "plan_delivery_date": "2026-11-11",
+          "plan_delivery_date": "2026-11-13",
           "backlog_from": "Cube_CES"
         }
       ],
@@ -1135,14 +1139,14 @@
       "type": "High Voltage Distribution Fuse Cutout",
       "description": "22kV 8kA 100Amp",
       "state": "has_stock",
-      "qty": 472.0,
-      "backlog": 2164.0,
-      "available": -1692.0,
+      "qty": 446.0,
+      "backlog": 2212.0,
+      "available": -1766.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
           "code": "FG01",
-          "qty": 409.0
+          "qty": 383.0
         },
         {
           "code": "FG21",
@@ -1393,11 +1397,41 @@
           "delivery_date": "2026-11-30",
           "plan_delivery_date": "2026-11-30",
           "backlog_from": "Cube_CES"
+        },
+        {
+          "doc_id": "CTR-2026-07140",
+          "job": null,
+          "customer": "CS02411",
+          "quantity": 42.0,
+          "status": "Backlog",
+          "delivery_date": "2026-11-13",
+          "plan_delivery_date": "2026-11-13",
+          "backlog_from": "Cube_CES"
+        },
+        {
+          "doc_id": "CTR-2026-07163",
+          "job": null,
+          "customer": "CS09004",
+          "quantity": 3.0,
+          "status": "Backlog",
+          "delivery_date": "2026-11-18",
+          "plan_delivery_date": "2026-11-18",
+          "backlog_from": "Cube_CES"
+        },
+        {
+          "doc_id": "CTR-2026-07169",
+          "job": null,
+          "customer": "CS07785",
+          "quantity": 3.0,
+          "status": "Backlog",
+          "delivery_date": "2026-11-30",
+          "plan_delivery_date": "2026-11-30",
+          "backlog_from": "Cube_CES"
         }
       ],
       "sellable_split": {
         "not_assessed": false,
-        "sellable_qty": 465.0,
+        "sellable_qty": 439.0,
         "staging_qty": 0.0,
         "elsewhere_qty": 7.0
       }
@@ -1409,18 +1443,14 @@
       "type": "High Voltage Distribution Fuse Cutout",
       "description": "22kV 12kA 100Amp",
       "state": "has_stock",
-      "qty": 670.0,
-      "backlog": 1731.0,
-      "available": -1061.0,
+      "qty": 274.0,
+      "backlog": 1632.0,
+      "available": -1358.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
           "code": "FG01",
-          "qty": 352.0
-        },
-        {
-          "code": "FMTO",
-          "qty": 318.0
+          "qty": 274.0
         }
       ],
       "backlog_rows": [
@@ -1435,33 +1465,13 @@
           "backlog_from": "Cube_CES"
         },
         {
-          "doc_id": "CTR-2026-06874",
-          "job": null,
-          "customer": "CS07924",
-          "quantity": 20.0,
-          "status": "Backlog",
-          "delivery_date": "2026-11-10",
-          "plan_delivery_date": "2026-11-10",
-          "backlog_from": "Cube_CES"
-        },
-        {
           "doc_id": "CTR-2026-06894",
           "job": null,
           "customer": "CS08224",
           "quantity": 60.0,
           "status": "Backlog",
-          "delivery_date": "2026-11-10",
-          "plan_delivery_date": "2026-11-10",
-          "backlog_from": "Cube_CES"
-        },
-        {
-          "doc_id": "CTR-2026-06943",
-          "job": null,
-          "customer": "CS06091",
-          "quantity": 170.0,
-          "status": "Backlog",
-          "delivery_date": "2026-11-10",
-          "plan_delivery_date": "2026-11-10",
+          "delivery_date": "2026-11-17",
+          "plan_delivery_date": "2026-11-17",
           "backlog_from": "Cube_CES"
         },
         {
@@ -1469,36 +1479,6 @@
           "job": null,
           "customer": "CS08224",
           "quantity": 140.0,
-          "status": "Backlog",
-          "delivery_date": "2026-11-12",
-          "plan_delivery_date": "2026-11-12",
-          "backlog_from": "Cube_CES"
-        },
-        {
-          "doc_id": "CTR-2026-07009",
-          "job": null,
-          "customer": "CS07897",
-          "quantity": 150.0,
-          "status": "Backlog",
-          "delivery_date": "2026-11-12",
-          "plan_delivery_date": "2026-11-12",
-          "backlog_from": "Cube_CES"
-        },
-        {
-          "doc_id": "CTR-2026-07039",
-          "job": null,
-          "customer": "CS09012",
-          "quantity": 80.0,
-          "status": "Backlog",
-          "delivery_date": "2026-11-13",
-          "plan_delivery_date": "2026-11-13",
-          "backlog_from": "Cube_CES"
-        },
-        {
-          "doc_id": "CTR-2026-07042",
-          "job": null,
-          "customer": "CS10170",
-          "quantity": 26.0,
           "status": "Backlog",
           "delivery_date": "2026-11-12",
           "plan_delivery_date": "2026-11-12",
@@ -1522,16 +1502,6 @@
           "status": "Backlog",
           "delivery_date": "2026-11-25",
           "plan_delivery_date": "2026-11-25",
-          "backlog_from": "Cube_CES"
-        },
-        {
-          "doc_id": "CTR-2026-07076",
-          "job": null,
-          "customer": "CS08333",
-          "quantity": 100.0,
-          "status": "Backlog",
-          "delivery_date": "2026-11-13",
-          "plan_delivery_date": "2026-11-13",
           "backlog_from": "Cube_CES"
         },
         {
@@ -1603,12 +1573,52 @@
           "delivery_date": "2026-11-17",
           "plan_delivery_date": "2026-11-17",
           "backlog_from": "Cube_CES"
+        },
+        {
+          "doc_id": "CTR-2026-07155",
+          "job": null,
+          "customer": "CS07619",
+          "quantity": 170.0,
+          "status": "Backlog",
+          "delivery_date": "2026-11-17",
+          "plan_delivery_date": "2026-11-17",
+          "backlog_from": "Cube_CES"
+        },
+        {
+          "doc_id": "CTR-2026-07156",
+          "job": null,
+          "customer": "CS10221",
+          "quantity": 57.0,
+          "status": "Backlog",
+          "delivery_date": "2026-11-17",
+          "plan_delivery_date": "2026-11-17",
+          "backlog_from": "Cube_CES"
+        },
+        {
+          "doc_id": "CTR-2026-07158",
+          "job": null,
+          "customer": "CS04704",
+          "quantity": 100.0,
+          "status": "Backlog",
+          "delivery_date": "2026-11-18",
+          "plan_delivery_date": "2026-11-18",
+          "backlog_from": "Cube_CES"
+        },
+        {
+          "doc_id": "CTR-2026-07159",
+          "job": null,
+          "customer": "CS04704",
+          "quantity": 120.0,
+          "status": "Backlog",
+          "delivery_date": "2026-11-17",
+          "plan_delivery_date": "2026-11-17",
+          "backlog_from": "Cube_CES"
         }
       ],
       "sellable_split": {
         "not_assessed": false,
-        "sellable_qty": 352.0,
-        "staging_qty": 318.0,
+        "sellable_qty": 274.0,
+        "staging_qty": 0.0,
         "elsewhere_qty": 0.0
       }
     },
@@ -1619,14 +1629,14 @@
       "type": "High Voltage Distribution Fuse Cutout",
       "description": "22kV 12kA 200Amp",
       "state": "has_stock",
-      "qty": 78.0,
-      "backlog": 253.0,
+      "qty": 75.0,
+      "backlog": 250.0,
       "available": -175.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
           "code": "FG01",
-          "qty": 63.0
+          "qty": 60.0
         },
         {
           "code": "FG21",
@@ -1663,21 +1673,11 @@
           "delivery_date": "2026-11-17",
           "plan_delivery_date": "2026-11-17",
           "backlog_from": "Cube_CES"
-        },
-        {
-          "doc_id": "CTR-2026-06419",
-          "job": null,
-          "customer": "CS06416",
-          "quantity": 3.0,
-          "status": "Backlog",
-          "delivery_date": "2026-10-22",
-          "plan_delivery_date": "2026-11-19",
-          "backlog_from": "Cube_CES"
         }
       ],
       "sellable_split": {
         "not_assessed": false,
-        "sellable_qty": 78.0,
+        "sellable_qty": 75.0,
         "staging_qty": 0.0,
         "elsewhere_qty": 0.0
       }
@@ -1810,22 +1810,18 @@
       "type": "High Voltage Distribution Fuse Cutout",
       "description": "33kV 8kA 100Amp",
       "state": "has_stock",
-      "qty": 400.0,
-      "backlog": 21.0,
-      "available": 379.0,
+      "qty": 422.0,
+      "backlog": 48.0,
+      "available": 374.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
           "code": "FG01",
-          "qty": 355.0
+          "qty": 380.0
         },
         {
           "code": "FG21",
           "qty": 42.0
-        },
-        {
-          "code": "FMTO",
-          "qty": 3.0
         }
       ],
       "backlog_rows": [
@@ -1868,12 +1864,22 @@
           "delivery_date": "2026-11-25",
           "plan_delivery_date": "2026-11-25",
           "backlog_from": "Cube_CES"
+        },
+        {
+          "doc_id": "CTR-2026-07184",
+          "job": null,
+          "customer": "CS09978",
+          "quantity": 27.0,
+          "status": "Backlog",
+          "delivery_date": "2026-11-12",
+          "plan_delivery_date": "2026-11-12",
+          "backlog_from": "Cube_CES"
         }
       ],
       "sellable_split": {
         "not_assessed": false,
-        "sellable_qty": 397.0,
-        "staging_qty": 3.0,
+        "sellable_qty": 422.0,
+        "staging_qty": 0.0,
         "elsewhere_qty": 0.0
       }
     },
@@ -1884,14 +1890,14 @@
       "type": "High Voltage Distribution Fuse Cutout",
       "description": "33kV 8kA 100Amp New",
       "state": "has_stock",
-      "qty": 48.0,
+      "qty": 88.0,
       "backlog": 6.0,
-      "available": 42.0,
+      "available": 82.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
           "code": "FG01",
-          "qty": 42.0
+          "qty": 82.0
         },
         {
           "code": "FG21",
@@ -1922,7 +1928,7 @@
       ],
       "sellable_split": {
         "not_assessed": false,
-        "sellable_qty": 48.0,
+        "sellable_qty": 88.0,
         "staging_qty": 0.0,
         "elsewhere_qty": 0.0
       }
@@ -1994,7 +2000,7 @@
       "in_forecast_scope": true,
       "by_warehouse": [
         {
-          "code": "FMTO",
+          "code": "FG01",
           "qty": 3.0
         }
       ],
@@ -2012,8 +2018,8 @@
       ],
       "sellable_split": {
         "not_assessed": false,
-        "sellable_qty": 0.0,
-        "staging_qty": 3.0,
+        "sellable_qty": 3.0,
+        "staging_qty": 0.0,
         "elsewhere_qty": 0.0
       }
     },
@@ -2078,14 +2084,14 @@
       "type": "High Voltage Distribution Fuse link",
       "description": "22kV 3 Amp",
       "state": "has_stock",
-      "qty": 3714.0,
-      "backlog": 3057.0,
-      "available": 657.0,
+      "qty": 4337.0,
+      "backlog": 2456.0,
+      "available": 1881.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
           "code": "FG01",
-          "qty": 3647.0
+          "qty": 4270.0
         },
         {
           "code": "FG21",
@@ -2282,26 +2288,6 @@
           "backlog_from": "Cube_CES"
         },
         {
-          "doc_id": "CTR-2026-06867",
-          "job": null,
-          "customer": "CS08093",
-          "quantity": 100.0,
-          "status": "Backlog",
-          "delivery_date": "2026-11-13",
-          "plan_delivery_date": "2026-11-13",
-          "backlog_from": "Cube_CES"
-        },
-        {
-          "doc_id": "CTR-2026-06874",
-          "job": null,
-          "customer": "CS07924",
-          "quantity": 260.0,
-          "status": "Backlog",
-          "delivery_date": "2026-11-10",
-          "plan_delivery_date": "2026-11-10",
-          "backlog_from": "Cube_CES"
-        },
-        {
           "doc_id": "CTR-2026-06902",
           "job": null,
           "customer": "CS10774",
@@ -2327,8 +2313,8 @@
           "customer": "CS08896",
           "quantity": 500.0,
           "status": "Backlog",
-          "delivery_date": "2026-11-11",
-          "plan_delivery_date": "2026-11-11",
+          "delivery_date": "2026-11-20",
+          "plan_delivery_date": "2026-11-20",
           "backlog_from": "Cube_CES"
         },
         {
@@ -2362,16 +2348,6 @@
           "backlog_from": "Cube_CES"
         },
         {
-          "doc_id": "CTR-2026-07039",
-          "job": null,
-          "customer": "CS09012",
-          "quantity": 200.0,
-          "status": "Backlog",
-          "delivery_date": "2026-11-13",
-          "plan_delivery_date": "2026-11-13",
-          "backlog_from": "Cube_CES"
-        },
-        {
           "doc_id": "CTR-2026-07041",
           "job": null,
           "customer": "CS02411",
@@ -2379,16 +2355,6 @@
           "status": "Backlog",
           "delivery_date": "2026-11-20",
           "plan_delivery_date": "2026-11-20",
-          "backlog_from": "Cube_CES"
-        },
-        {
-          "doc_id": "CTR-2026-07042",
-          "job": null,
-          "customer": "CS10170",
-          "quantity": 47.0,
-          "status": "Backlog",
-          "delivery_date": "2026-11-12",
-          "plan_delivery_date": "2026-11-12",
           "backlog_from": "Cube_CES"
         },
         {
@@ -2429,16 +2395,6 @@
           "status": "Backlog",
           "delivery_date": "2026-11-20",
           "plan_delivery_date": "2026-11-20",
-          "backlog_from": "Cube_CES"
-        },
-        {
-          "doc_id": "CTR-2026-07076",
-          "job": null,
-          "customer": "CS08333",
-          "quantity": 300.0,
-          "status": "Backlog",
-          "delivery_date": "2026-11-13",
-          "plan_delivery_date": "2026-11-13",
           "backlog_from": "Cube_CES"
         },
         {
@@ -2510,11 +2466,71 @@
           "delivery_date": "2026-11-24",
           "plan_delivery_date": "2026-11-24",
           "backlog_from": "Cube_CES"
+        },
+        {
+          "doc_id": "CTR-2026-07156",
+          "job": null,
+          "customer": "CS10221",
+          "quantity": 280.0,
+          "status": "Backlog",
+          "delivery_date": "2026-11-17",
+          "plan_delivery_date": "2026-11-17",
+          "backlog_from": "Cube_CES"
+        },
+        {
+          "doc_id": "CTR-2026-07163",
+          "job": null,
+          "customer": "CS09004",
+          "quantity": 3.0,
+          "status": "Backlog",
+          "delivery_date": "2026-11-18",
+          "plan_delivery_date": "2026-11-18",
+          "backlog_from": "Cube_CES"
+        },
+        {
+          "doc_id": "CTR-2026-07166",
+          "job": null,
+          "customer": "CS10728",
+          "quantity": 10.0,
+          "status": "Backlog",
+          "delivery_date": "2026-11-20",
+          "plan_delivery_date": "2026-11-20",
+          "backlog_from": "Cube_CES"
+        },
+        {
+          "doc_id": "CTR-2026-07167",
+          "job": null,
+          "customer": "CS07785",
+          "quantity": 6.0,
+          "status": "Backlog",
+          "delivery_date": "2026-11-30",
+          "plan_delivery_date": "2026-11-30",
+          "backlog_from": "Cube_CES"
+        },
+        {
+          "doc_id": "CTR-2026-07169",
+          "job": null,
+          "customer": "CS07785",
+          "quantity": 3.0,
+          "status": "Backlog",
+          "delivery_date": "2026-11-30",
+          "plan_delivery_date": "2026-11-30",
+          "backlog_from": "Cube_CES"
+        },
+        {
+          "doc_id": "CTR-2026-07184",
+          "job": null,
+          "customer": "CS09978",
+          "quantity": 4.0,
+          "status": "Backlog",
+          "delivery_date": "2026-11-12",
+          "plan_delivery_date": "2026-11-12",
+          "backlog_from": "Cube_CES"
         }
       ],
       "sellable_split": {
         "not_assessed": false,
-        "sellable_qty": 3704.0,
+        "sellable_qty": 4327.0,
         "staging_qty": 3.0,
         "elsewhere_qty": 7.0
       }
@@ -2526,22 +2542,18 @@
       "type": "High Voltage Distribution Fuse link",
       "description": "22kV 6 Amp",
       "state": "has_stock",
-      "qty": 5474.0,
-      "backlog": 1915.0,
-      "available": 3559.0,
+      "qty": 5336.0,
+      "backlog": 2270.0,
+      "available": 3066.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
           "code": "FG01",
-          "qty": 4990.0
+          "qty": 4855.0
         },
         {
           "code": "FG21",
           "qty": 481.0
-        },
-        {
-          "code": "FMTS",
-          "qty": 3.0
         }
       ],
       "backlog_rows": [
@@ -2596,16 +2608,6 @@
           "backlog_from": "Cube_CES"
         },
         {
-          "doc_id": "CTR-2026-06874",
-          "job": null,
-          "customer": "CS07924",
-          "quantity": 30.0,
-          "status": "Backlog",
-          "delivery_date": "2026-11-10",
-          "plan_delivery_date": "2026-11-10",
-          "backlog_from": "Cube_CES"
-        },
-        {
           "doc_id": "CTR-2026-06946",
           "job": null,
           "customer": "CS08193",
@@ -2631,18 +2633,8 @@
           "customer": "CS08896",
           "quantity": 500.0,
           "status": "Backlog",
-          "delivery_date": "2026-11-11",
-          "plan_delivery_date": "2026-11-11",
-          "backlog_from": "Cube_CES"
-        },
-        {
-          "doc_id": "CTR-2026-07042",
-          "job": null,
-          "customer": "CS10170",
-          "quantity": 15.0,
-          "status": "Backlog",
-          "delivery_date": "2026-11-12",
-          "plan_delivery_date": "2026-11-12",
+          "delivery_date": "2026-11-20",
+          "plan_delivery_date": "2026-11-20",
           "backlog_from": "Cube_CES"
         },
         {
@@ -2694,12 +2686,32 @@
           "delivery_date": "2026-11-17",
           "plan_delivery_date": "2026-11-17",
           "backlog_from": "Cube_CES"
+        },
+        {
+          "doc_id": "CTR-2026-07156",
+          "job": null,
+          "customer": "CS10221",
+          "quantity": 150.0,
+          "status": "Backlog",
+          "delivery_date": "2026-11-17",
+          "plan_delivery_date": "2026-11-17",
+          "backlog_from": "Cube_CES"
+        },
+        {
+          "doc_id": "CTR-2026-07159",
+          "job": null,
+          "customer": "CS04704",
+          "quantity": 250.0,
+          "status": "Backlog",
+          "delivery_date": "2026-11-17",
+          "plan_delivery_date": "2026-11-17",
+          "backlog_from": "Cube_CES"
         }
       ],
       "sellable_split": {
         "not_assessed": false,
-        "sellable_qty": 5471.0,
-        "staging_qty": 3.0,
+        "sellable_qty": 5336.0,
+        "staging_qty": 0.0,
         "elsewhere_qty": 0.0
       }
     },
@@ -2710,14 +2722,14 @@
       "type": "High Voltage Distribution Fuse link",
       "description": "22kV 8 Amp",
       "state": "has_stock",
-      "qty": 4910.0,
-      "backlog": 1425.0,
-      "available": 3485.0,
+      "qty": 6375.0,
+      "backlog": 1450.0,
+      "available": 4925.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
           "code": "FG01",
-          "qty": 4590.0
+          "qty": 6055.0
         },
         {
           "code": "FG21",
@@ -2736,33 +2748,13 @@
           "backlog_from": "Cube_CES"
         },
         {
-          "doc_id": "CTR-2026-06874",
-          "job": null,
-          "customer": "CS07924",
-          "quantity": 25.0,
-          "status": "Backlog",
-          "delivery_date": "2026-11-10",
-          "plan_delivery_date": "2026-11-10",
-          "backlog_from": "Cube_CES"
-        },
-        {
           "doc_id": "CTR-2026-06977",
           "job": null,
           "customer": "CS08896",
           "quantity": 300.0,
           "status": "Backlog",
-          "delivery_date": "2026-11-11",
-          "plan_delivery_date": "2026-11-11",
-          "backlog_from": "Cube_CES"
-        },
-        {
-          "doc_id": "CTR-2026-07039",
-          "job": null,
-          "customer": "CS09012",
-          "quantity": 200.0,
-          "status": "Backlog",
-          "delivery_date": "2026-11-13",
-          "plan_delivery_date": "2026-11-13",
+          "delivery_date": "2026-11-20",
+          "plan_delivery_date": "2026-11-20",
           "backlog_from": "Cube_CES"
         },
         {
@@ -2804,11 +2796,21 @@
           "delivery_date": "2026-11-16",
           "plan_delivery_date": "2026-11-16",
           "backlog_from": "Cube_CES"
+        },
+        {
+          "doc_id": "CTR-2026-07159",
+          "job": null,
+          "customer": "CS04704",
+          "quantity": 250.0,
+          "status": "Backlog",
+          "delivery_date": "2026-11-17",
+          "plan_delivery_date": "2026-11-17",
+          "backlog_from": "Cube_CES"
         }
       ],
       "sellable_split": {
         "not_assessed": false,
-        "sellable_qty": 4910.0,
+        "sellable_qty": 6375.0,
         "staging_qty": 0.0,
         "elsewhere_qty": 0.0
       }
@@ -2820,18 +2822,18 @@
       "type": "High Voltage Distribution Fuse link",
       "description": "22kV 10 Amp",
       "state": "has_stock",
-      "qty": 5201.0,
-      "backlog": 1740.0,
-      "available": 3461.0,
+      "qty": 4875.0,
+      "backlog": 1690.0,
+      "available": 3185.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
           "code": "FG01",
-          "qty": 4393.0
+          "qty": 4767.0
         },
         {
           "code": "FG21",
-          "qty": 808.0
+          "qty": 108.0
         }
       ],
       "backlog_rows": [
@@ -2851,18 +2853,8 @@
           "customer": "CS08896",
           "quantity": 500.0,
           "status": "Backlog",
-          "delivery_date": "2026-11-11",
-          "plan_delivery_date": "2026-11-11",
-          "backlog_from": "Cube_CES"
-        },
-        {
-          "doc_id": "CTR-2026-07076",
-          "job": null,
-          "customer": "CS08333",
-          "quantity": 300.0,
-          "status": "Backlog",
-          "delivery_date": "2026-11-13",
-          "plan_delivery_date": "2026-11-13",
+          "delivery_date": "2026-11-20",
+          "plan_delivery_date": "2026-11-20",
           "backlog_from": "Cube_CES"
         },
         {
@@ -2884,11 +2876,21 @@
           "delivery_date": "2026-11-16",
           "plan_delivery_date": "2026-11-16",
           "backlog_from": "Cube_CES"
+        },
+        {
+          "doc_id": "CTR-2026-07159",
+          "job": null,
+          "customer": "CS04704",
+          "quantity": 250.0,
+          "status": "Backlog",
+          "delivery_date": "2026-11-17",
+          "plan_delivery_date": "2026-11-17",
+          "backlog_from": "Cube_CES"
         }
       ],
       "sellable_split": {
         "not_assessed": false,
-        "sellable_qty": 5201.0,
+        "sellable_qty": 4875.0,
         "staging_qty": 0.0,
         "elsewhere_qty": 0.0
       }
@@ -2900,14 +2902,14 @@
       "type": "High Voltage Distribution Fuse link",
       "description": "22kV 15 Amp",
       "state": "has_stock",
-      "qty": 6337.0,
-      "backlog": 1892.0,
-      "available": 4445.0,
+      "qty": 5704.0,
+      "backlog": 1813.0,
+      "available": 3891.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
           "code": "FG01",
-          "qty": 5057.0
+          "qty": 4424.0
         },
         {
           "code": "FG21",
@@ -2940,16 +2942,6 @@
           "backlog_from": "Cube_CES"
         },
         {
-          "doc_id": "CTR-2026-06602",
-          "job": null,
-          "customer": "CS07577",
-          "quantity": 3.0,
-          "status": "Backlog",
-          "delivery_date": "2026-11-05",
-          "plan_delivery_date": "2026-11-05",
-          "backlog_from": "Cube_CES"
-        },
-        {
           "doc_id": "CTR-2026-06781",
           "job": null,
           "customer": "CS07050",
@@ -2970,26 +2962,6 @@
           "backlog_from": "Cube_CES"
         },
         {
-          "doc_id": "CTR-2026-07039",
-          "job": null,
-          "customer": "CS09012",
-          "quantity": 200.0,
-          "status": "Backlog",
-          "delivery_date": "2026-11-13",
-          "plan_delivery_date": "2026-11-13",
-          "backlog_from": "Cube_CES"
-        },
-        {
-          "doc_id": "CTR-2026-07042",
-          "job": null,
-          "customer": "CS10170",
-          "quantity": 18.0,
-          "status": "Backlog",
-          "delivery_date": "2026-11-12",
-          "plan_delivery_date": "2026-11-12",
-          "backlog_from": "Cube_CES"
-        },
-        {
           "doc_id": "CTR-2026-07052",
           "job": null,
           "customer": "CS08695",
@@ -2997,16 +2969,6 @@
           "status": "Backlog",
           "delivery_date": "2026-11-25",
           "plan_delivery_date": "2026-11-25",
-          "backlog_from": "Cube_CES"
-        },
-        {
-          "doc_id": "CTR-2026-07076",
-          "job": null,
-          "customer": "CS08333",
-          "quantity": 300.0,
-          "status": "Backlog",
-          "delivery_date": "2026-11-13",
-          "plan_delivery_date": "2026-11-13",
           "backlog_from": "Cube_CES"
         },
         {
@@ -3038,11 +3000,41 @@
           "delivery_date": "2026-11-16",
           "plan_delivery_date": "2026-11-16",
           "backlog_from": "Cube_CES"
+        },
+        {
+          "doc_id": "CTR-2026-07156",
+          "job": null,
+          "customer": "CS10221",
+          "quantity": 200.0,
+          "status": "Backlog",
+          "delivery_date": "2026-11-17",
+          "plan_delivery_date": "2026-11-17",
+          "backlog_from": "Cube_CES"
+        },
+        {
+          "doc_id": "CTR-2026-07159",
+          "job": null,
+          "customer": "CS04704",
+          "quantity": 230.0,
+          "status": "Backlog",
+          "delivery_date": "2026-11-17",
+          "plan_delivery_date": "2026-11-17",
+          "backlog_from": "Cube_CES"
+        },
+        {
+          "doc_id": "CTR-2026-07184",
+          "job": null,
+          "customer": "CS09978",
+          "quantity": 12.0,
+          "status": "Backlog",
+          "delivery_date": "2026-11-12",
+          "plan_delivery_date": "2026-11-12",
+          "backlog_from": "Cube_CES"
         }
       ],
       "sellable_split": {
         "not_assessed": false,
-        "sellable_qty": 6334.0,
+        "sellable_qty": 5701.0,
         "staging_qty": 3.0,
         "elsewhere_qty": 0.0
       }
@@ -3054,14 +3046,14 @@
       "type": "High Voltage Distribution Fuse link",
       "description": "22kV 20 Amp",
       "state": "has_stock",
-      "qty": 8623.0,
-      "backlog": 1170.0,
-      "available": 7453.0,
+      "qty": 8263.0,
+      "backlog": 1070.0,
+      "available": 7193.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
           "code": "FG01",
-          "qty": 7023.0
+          "qty": 6663.0
         },
         {
           "code": "FG21",
@@ -3079,18 +3071,8 @@
           "customer": "CS08896",
           "quantity": 500.0,
           "status": "Backlog",
-          "delivery_date": "2026-11-11",
-          "plan_delivery_date": "2026-11-11",
-          "backlog_from": "Cube_CES"
-        },
-        {
-          "doc_id": "CTR-2026-07076",
-          "job": null,
-          "customer": "CS08333",
-          "quantity": 300.0,
-          "status": "Backlog",
-          "delivery_date": "2026-11-13",
-          "plan_delivery_date": "2026-11-13",
+          "delivery_date": "2026-11-20",
+          "plan_delivery_date": "2026-11-20",
           "backlog_from": "Cube_CES"
         },
         {
@@ -3112,11 +3094,21 @@
           "delivery_date": "2026-11-16",
           "plan_delivery_date": "2026-11-16",
           "backlog_from": "Cube_CES"
+        },
+        {
+          "doc_id": "CTR-2026-07159",
+          "job": null,
+          "customer": "CS04704",
+          "quantity": 200.0,
+          "status": "Backlog",
+          "delivery_date": "2026-11-17",
+          "plan_delivery_date": "2026-11-17",
+          "backlog_from": "Cube_CES"
         }
       ],
       "sellable_split": {
         "not_assessed": false,
-        "sellable_qty": 7823.0,
+        "sellable_qty": 7463.0,
         "staging_qty": 800.0,
         "elsewhere_qty": 0.0
       }
@@ -3128,14 +3120,14 @@
       "type": "High Voltage Distribution Fuse link",
       "description": "22kV 25 Amp",
       "state": "has_stock",
-      "qty": 4389.0,
-      "backlog": 1600.0,
-      "available": 2789.0,
+      "qty": 4069.0,
+      "backlog": 2057.0,
+      "available": 2012.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
           "code": "FG01",
-          "qty": 3550.0
+          "qty": 3230.0
         },
         {
           "code": "FG21",
@@ -3159,8 +3151,8 @@
           "customer": "CS08896",
           "quantity": 500.0,
           "status": "Backlog",
-          "delivery_date": "2026-11-11",
-          "plan_delivery_date": "2026-11-11",
+          "delivery_date": "2026-11-20",
+          "plan_delivery_date": "2026-11-20",
           "backlog_from": "Cube_CES"
         },
         {
@@ -3171,16 +3163,6 @@
           "status": "Backlog",
           "delivery_date": "2026-11-25",
           "plan_delivery_date": "2026-11-25",
-          "backlog_from": "Cube_CES"
-        },
-        {
-          "doc_id": "CTR-2026-07076",
-          "job": null,
-          "customer": "CS08333",
-          "quantity": 300.0,
-          "status": "Backlog",
-          "delivery_date": "2026-11-13",
-          "plan_delivery_date": "2026-11-13",
           "backlog_from": "Cube_CES"
         },
         {
@@ -3202,11 +3184,41 @@
           "delivery_date": "2026-11-16",
           "plan_delivery_date": "2026-11-16",
           "backlog_from": "Cube_CES"
+        },
+        {
+          "doc_id": "CTR-2026-07154",
+          "job": null,
+          "customer": "CS07924",
+          "quantity": 566.0,
+          "status": "Backlog",
+          "delivery_date": "2026-11-18",
+          "plan_delivery_date": "2026-11-18",
+          "backlog_from": "Cube_CES"
+        },
+        {
+          "doc_id": "CTR-2026-07156",
+          "job": null,
+          "customer": "CS10221",
+          "quantity": 180.0,
+          "status": "Backlog",
+          "delivery_date": "2026-11-17",
+          "plan_delivery_date": "2026-11-17",
+          "backlog_from": "Cube_CES"
+        },
+        {
+          "doc_id": "CTR-2026-07184",
+          "job": null,
+          "customer": "CS09978",
+          "quantity": 11.0,
+          "status": "Backlog",
+          "delivery_date": "2026-11-12",
+          "plan_delivery_date": "2026-11-12",
+          "backlog_from": "Cube_CES"
         }
       ],
       "sellable_split": {
         "not_assessed": false,
-        "sellable_qty": 4389.0,
+        "sellable_qty": 4069.0,
         "staging_qty": 0.0,
         "elsewhere_qty": 0.0
       }
@@ -3218,14 +3230,14 @@
       "type": "High Voltage Distribution Fuse link",
       "description": "22kV 30 Amp",
       "state": "has_stock",
-      "qty": 7060.0,
-      "backlog": 700.0,
-      "available": 6360.0,
+      "qty": 6792.0,
+      "backlog": 510.0,
+      "available": 6282.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
           "code": "FG01",
-          "qty": 7032.0
+          "qty": 6764.0
         },
         {
           "code": "FG21",
@@ -3253,24 +3265,24 @@
           "customer": "CS08896",
           "quantity": 300.0,
           "status": "Backlog",
-          "delivery_date": "2026-11-11",
-          "plan_delivery_date": "2026-11-11",
+          "delivery_date": "2026-11-20",
+          "plan_delivery_date": "2026-11-20",
           "backlog_from": "Cube_CES"
         },
         {
-          "doc_id": "CTR-2026-07076",
+          "doc_id": "CTR-2026-07166",
           "job": null,
-          "customer": "CS08333",
-          "quantity": 200.0,
+          "customer": "CS10728",
+          "quantity": 10.0,
           "status": "Backlog",
-          "delivery_date": "2026-11-13",
-          "plan_delivery_date": "2026-11-13",
+          "delivery_date": "2026-11-20",
+          "plan_delivery_date": "2026-11-20",
           "backlog_from": "Cube_CES"
         }
       ],
       "sellable_split": {
         "not_assessed": false,
-        "sellable_qty": 7057.0,
+        "sellable_qty": 6789.0,
         "staging_qty": 3.0,
         "elsewhere_qty": 0.0
       }
@@ -3282,14 +3294,14 @@
       "type": "High Voltage Distribution Fuse link",
       "description": "22kV 40 Amp",
       "state": "has_stock",
-      "qty": 6136.0,
-      "backlog": 475.0,
-      "available": 5661.0,
+      "qty": 6114.0,
+      "backlog": 586.0,
+      "available": 5528.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
           "code": "FG01",
-          "qty": 4556.0
+          "qty": 4534.0
         },
         {
           "code": "FG21",
@@ -3317,8 +3329,8 @@
           "customer": "CS08896",
           "quantity": 300.0,
           "status": "Backlog",
-          "delivery_date": "2026-11-11",
-          "plan_delivery_date": "2026-11-11",
+          "delivery_date": "2026-11-20",
+          "plan_delivery_date": "2026-11-20",
           "backlog_from": "Cube_CES"
         },
         {
@@ -3340,11 +3352,21 @@
           "delivery_date": "2026-11-16",
           "plan_delivery_date": "2026-11-16",
           "backlog_from": "Cube_CES"
+        },
+        {
+          "doc_id": "CTR-2026-07154",
+          "job": null,
+          "customer": "CS07924",
+          "quantity": 111.0,
+          "status": "Backlog",
+          "delivery_date": "2026-11-18",
+          "plan_delivery_date": "2026-11-18",
+          "backlog_from": "Cube_CES"
         }
       ],
       "sellable_split": {
         "not_assessed": false,
-        "sellable_qty": 6130.0,
+        "sellable_qty": 6108.0,
         "staging_qty": 6.0,
         "elsewhere_qty": 0.0
       }
@@ -3356,14 +3378,14 @@
       "type": "High Voltage Distribution Fuse link",
       "description": "22kV 50 Amp",
       "state": "has_stock",
-      "qty": 3091.0,
-      "backlog": 6.0,
-      "available": 3085.0,
+      "qty": 3075.0,
+      "backlog": 12.0,
+      "available": 3063.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
           "code": "FG01",
-          "qty": 3085.0
+          "qty": 3069.0
         },
         {
           "code": "FMTS",
@@ -3380,11 +3402,21 @@
           "delivery_date": "2026-11-27",
           "plan_delivery_date": "2026-11-27",
           "backlog_from": "Cube_CES"
+        },
+        {
+          "doc_id": "CTR-2026-07184",
+          "job": null,
+          "customer": "CS09978",
+          "quantity": 6.0,
+          "status": "Backlog",
+          "delivery_date": "2026-11-12",
+          "plan_delivery_date": "2026-11-12",
+          "backlog_from": "Cube_CES"
         }
       ],
       "sellable_split": {
         "not_assessed": false,
-        "sellable_qty": 3085.0,
+        "sellable_qty": 3069.0,
         "staging_qty": 6.0,
         "elsewhere_qty": 0.0
       }
@@ -3396,14 +3428,14 @@
       "type": "High Voltage Distribution Fuse link",
       "description": "22kV 65 Amp",
       "state": "has_stock",
-      "qty": 1875.0,
+      "qty": 1865.0,
       "backlog": 0.0,
-      "available": 1875.0,
+      "available": 1865.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
           "code": "FG01",
-          "qty": 1778.0
+          "qty": 1768.0
         },
         {
           "code": "FG21",
@@ -3413,7 +3445,7 @@
       "backlog_rows": [],
       "sellable_split": {
         "not_assessed": false,
-        "sellable_qty": 1875.0,
+        "sellable_qty": 1865.0,
         "staging_qty": 0.0,
         "elsewhere_qty": 0.0
       }
@@ -3425,18 +3457,18 @@
       "type": "High Voltage Distribution Fuse link",
       "description": "22kV 100 Amp",
       "state": "has_stock",
-      "qty": 431.0,
+      "qty": 402.0,
       "backlog": 9.0,
-      "available": 422.0,
+      "available": 393.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
           "code": "FG01",
-          "qty": 267.0
+          "qty": 338.0
         },
         {
           "code": "FG21",
-          "qty": 164.0
+          "qty": 64.0
         }
       ],
       "backlog_rows": [
@@ -3453,7 +3485,7 @@
       ],
       "sellable_split": {
         "not_assessed": false,
-        "sellable_qty": 431.0,
+        "sellable_qty": 402.0,
         "staging_qty": 0.0,
         "elsewhere_qty": 0.0
       }
@@ -3494,35 +3526,24 @@
       "type": "High Voltage Distribution Fuse link",
       "description": "22kV 200 Amp",
       "state": "has_stock",
-      "qty": 403.0,
-      "backlog": 3.0,
+      "qty": 400.0,
+      "backlog": 0.0,
       "available": 400.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
           "code": "FG01",
-          "qty": 202.0
+          "qty": 299.0
         },
         {
           "code": "FG21",
-          "qty": 201.0
+          "qty": 101.0
         }
       ],
-      "backlog_rows": [
-        {
-          "doc_id": "CTR-2026-06419",
-          "job": null,
-          "customer": "CS06416",
-          "quantity": 3.0,
-          "status": "Backlog",
-          "delivery_date": "2026-10-22",
-          "plan_delivery_date": "2026-11-19",
-          "backlog_from": "Cube_CES"
-        }
-      ],
+      "backlog_rows": [],
       "sellable_split": {
         "not_assessed": false,
-        "sellable_qty": 403.0,
+        "sellable_qty": 400.0,
         "staging_qty": 0.0,
         "elsewhere_qty": 0.0
       }
@@ -3541,11 +3562,11 @@
       "by_warehouse": [
         {
           "code": "FG01",
-          "qty": 269.0
+          "qty": 319.0
         },
         {
           "code": "FG21",
-          "qty": 243.0
+          "qty": 193.0
         }
       ],
       "backlog_rows": [],
@@ -3603,22 +3624,18 @@
       "type": "High Voltage Distribution Fuse link",
       "description": "33kV 3 Amp",
       "state": "has_stock",
-      "qty": 3807.0,
+      "qty": 3804.0,
       "backlog": 12.0,
-      "available": 3795.0,
+      "available": 3792.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
           "code": "FG01",
-          "qty": 3081.0
+          "qty": 3681.0
         },
         {
           "code": "FG21",
-          "qty": 721.0
-        },
-        {
-          "code": "FMTO",
-          "qty": 3.0
+          "qty": 121.0
         },
         {
           "code": "W4-1",
@@ -3650,7 +3667,7 @@
       "sellable_split": {
         "not_assessed": false,
         "sellable_qty": 3802.0,
-        "staging_qty": 3.0,
+        "staging_qty": 0.0,
         "elsewhere_qty": 2.0
       }
     },
@@ -3668,11 +3685,11 @@
       "by_warehouse": [
         {
           "code": "FG01",
-          "qty": 2722.0
+          "qty": 3622.0
         },
         {
           "code": "FG21",
-          "qty": 952.0
+          "qty": 52.0
         }
       ],
       "backlog_rows": [],
@@ -3719,24 +3736,35 @@
       "type": "High Voltage Distribution Fuse link",
       "description": "33kV 10 Amp",
       "state": "has_stock",
-      "qty": 2303.0,
-      "backlog": 0.0,
-      "available": 2303.0,
+      "qty": 2903.0,
+      "backlog": 80.0,
+      "available": 2823.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
           "code": "FG01",
-          "qty": 2300.0
+          "qty": 2900.0
         },
         {
           "code": "FG21",
           "qty": 3.0
         }
       ],
-      "backlog_rows": [],
+      "backlog_rows": [
+        {
+          "doc_id": "CTR-2026-07154",
+          "job": null,
+          "customer": "CS07924",
+          "quantity": 80.0,
+          "status": "Backlog",
+          "delivery_date": "2026-11-18",
+          "plan_delivery_date": "2026-11-18",
+          "backlog_from": "Cube_CES"
+        }
+      ],
       "sellable_split": {
         "not_assessed": false,
-        "sellable_qty": 2303.0,
+        "sellable_qty": 2903.0,
         "staging_qty": 0.0,
         "elsewhere_qty": 0.0
       }
@@ -3748,18 +3776,18 @@
       "type": "High Voltage Distribution Fuse link",
       "description": "33kV 15 Amp",
       "state": "has_stock",
-      "qty": 2971.0,
+      "qty": 3771.0,
       "backlog": 6.0,
-      "available": 2965.0,
+      "available": 3765.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
           "code": "FG01",
-          "qty": 2673.0
+          "qty": 3573.0
         },
         {
           "code": "FG21",
-          "qty": 298.0
+          "qty": 198.0
         }
       ],
       "backlog_rows": [
@@ -3786,7 +3814,7 @@
       ],
       "sellable_split": {
         "not_assessed": false,
-        "sellable_qty": 2971.0,
+        "sellable_qty": 3771.0,
         "staging_qty": 0.0,
         "elsewhere_qty": 0.0
       }
@@ -3798,14 +3826,14 @@
       "type": "High Voltage Distribution Fuse link",
       "description": "33kV 20 Amp",
       "state": "has_stock",
-      "qty": 4009.0,
-      "backlog": 1003.0,
-      "available": 3006.0,
+      "qty": 3409.0,
+      "backlog": 3.0,
+      "available": 3406.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
           "code": "FG01",
-          "qty": 3632.0
+          "qty": 3032.0
         },
         {
           "code": "FG21",
@@ -3826,21 +3854,11 @@
           "delivery_date": "2026-11-27",
           "plan_delivery_date": "2026-11-27",
           "backlog_from": "Cube_CES"
-        },
-        {
-          "doc_id": "CTR-2026-06763",
-          "job": null,
-          "customer": "CS08053",
-          "quantity": 1000.0,
-          "status": "Backlog",
-          "delivery_date": "2026-11-10",
-          "plan_delivery_date": "2026-11-10",
-          "backlog_from": "Cube_CES"
         }
       ],
       "sellable_split": {
         "not_assessed": false,
-        "sellable_qty": 4006.0,
+        "sellable_qty": 3406.0,
         "staging_qty": 3.0,
         "elsewhere_qty": 0.0
       }
@@ -3852,35 +3870,24 @@
       "type": "High Voltage Distribution Fuse link",
       "description": "33kV 25 Amp",
       "state": "has_stock",
-      "qty": 4314.0,
-      "backlog": 900.0,
+      "qty": 3414.0,
+      "backlog": 0.0,
       "available": 3414.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
           "code": "FG01",
-          "qty": 3627.0
+          "qty": 2727.0
         },
         {
           "code": "FG21",
           "qty": 687.0
         }
       ],
-      "backlog_rows": [
-        {
-          "doc_id": "CTR-2026-06763",
-          "job": null,
-          "customer": "CS08053",
-          "quantity": 900.0,
-          "status": "Backlog",
-          "delivery_date": "2026-11-10",
-          "plan_delivery_date": "2026-11-10",
-          "backlog_from": "Cube_CES"
-        }
-      ],
+      "backlog_rows": [],
       "sellable_split": {
         "not_assessed": false,
-        "sellable_qty": 4314.0,
+        "sellable_qty": 3414.0,
         "staging_qty": 0.0,
         "elsewhere_qty": 0.0
       }
@@ -3892,14 +3899,14 @@
       "type": "High Voltage Distribution Fuse link",
       "description": "33kV 30 Amp",
       "state": "has_stock",
-      "qty": 5617.0,
-      "backlog": 500.0,
-      "available": 5117.0,
+      "qty": 5114.0,
+      "backlog": 60.0,
+      "available": 5054.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
           "code": "FG01",
-          "qty": 4086.0
+          "qty": 3583.0
         },
         {
           "code": "FG21",
@@ -3908,19 +3915,19 @@
       ],
       "backlog_rows": [
         {
-          "doc_id": "CTR-2026-06763",
+          "doc_id": "CTR-2026-07154",
           "job": null,
-          "customer": "CS08053",
-          "quantity": 500.0,
+          "customer": "CS07924",
+          "quantity": 60.0,
           "status": "Backlog",
-          "delivery_date": "2026-11-10",
-          "plan_delivery_date": "2026-11-10",
+          "delivery_date": "2026-11-18",
+          "plan_delivery_date": "2026-11-18",
           "backlog_from": "Cube_CES"
         }
       ],
       "sellable_split": {
         "not_assessed": false,
-        "sellable_qty": 5617.0,
+        "sellable_qty": 5114.0,
         "staging_qty": 0.0,
         "elsewhere_qty": 0.0
       }
@@ -3932,35 +3939,24 @@
       "type": "High Voltage Distribution Fuse link",
       "description": "33kV 40 Amp",
       "state": "has_stock",
-      "qty": 3767.0,
-      "backlog": 500.0,
+      "qty": 3267.0,
+      "backlog": 0.0,
       "available": 3267.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
           "code": "FG01",
-          "qty": 3506.0
+          "qty": 3006.0
         },
         {
           "code": "FG21",
           "qty": 261.0
         }
       ],
-      "backlog_rows": [
-        {
-          "doc_id": "CTR-2026-06763",
-          "job": null,
-          "customer": "CS08053",
-          "quantity": 500.0,
-          "status": "Backlog",
-          "delivery_date": "2026-11-10",
-          "plan_delivery_date": "2026-11-10",
-          "backlog_from": "Cube_CES"
-        }
-      ],
+      "backlog_rows": [],
       "sellable_split": {
         "not_assessed": false,
-        "sellable_qty": 3767.0,
+        "sellable_qty": 3267.0,
         "staging_qty": 0.0,
         "elsewhere_qty": 0.0
       }
@@ -3972,14 +3968,14 @@
       "type": "High Voltage Distribution Fuse link",
       "description": "33kV 50 Amp",
       "state": "has_stock",
-      "qty": 3497.0,
+      "qty": 3494.0,
       "backlog": 0.0,
-      "available": 3497.0,
+      "available": 3494.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
           "code": "FG01",
-          "qty": 2997.0
+          "qty": 2994.0
         },
         {
           "code": "FG21",
@@ -3989,7 +3985,7 @@
       "backlog_rows": [],
       "sellable_split": {
         "not_assessed": false,
-        "sellable_qty": 3497.0,
+        "sellable_qty": 3494.0,
         "staging_qty": 0.0,
         "elsewhere_qty": 0.0
       }
@@ -4208,35 +4204,24 @@
       "type": "HRC fuse",
       "description": "HRC fuse 32A ",
       "state": "has_stock",
-      "qty": 3207.0,
-      "backlog": 100.0,
+      "qty": 3107.0,
+      "backlog": 0.0,
       "available": 3107.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
           "code": "FG01",
-          "qty": 3192.0
+          "qty": 3092.0
         },
         {
           "code": "FG21",
           "qty": 15.0
         }
       ],
-      "backlog_rows": [
-        {
-          "doc_id": "CTR-2026-07038",
-          "job": null,
-          "customer": "CS06836",
-          "quantity": 100.0,
-          "status": "Backlog",
-          "delivery_date": "2026-11-13",
-          "plan_delivery_date": "2026-11-13",
-          "backlog_from": "Cube_CES"
-        }
-      ],
+      "backlog_rows": [],
       "sellable_split": {
         "not_assessed": false,
-        "sellable_qty": 3207.0,
+        "sellable_qty": 3107.0,
         "staging_qty": 0.0,
         "elsewhere_qty": 0.0
       }
@@ -4248,45 +4233,24 @@
       "type": "HRC fuse",
       "description": "HRC fuse 50A ",
       "state": "has_stock",
-      "qty": 3357.0,
-      "backlog": 319.0,
+      "qty": 3038.0,
+      "backlog": 0.0,
       "available": 3038.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
           "code": "FG01",
-          "qty": 3291.0
+          "qty": 2972.0
         },
         {
           "code": "FG21",
           "qty": 66.0
         }
       ],
-      "backlog_rows": [
-        {
-          "doc_id": "CTR-2026-07038",
-          "job": null,
-          "customer": "CS06836",
-          "quantity": 300.0,
-          "status": "Backlog",
-          "delivery_date": "2026-11-13",
-          "plan_delivery_date": "2026-11-13",
-          "backlog_from": "Cube_CES"
-        },
-        {
-          "doc_id": "CTR-2026-07042",
-          "job": null,
-          "customer": "CS10170",
-          "quantity": 19.0,
-          "status": "Backlog",
-          "delivery_date": "2026-11-12",
-          "plan_delivery_date": "2026-11-12",
-          "backlog_from": "Cube_CES"
-        }
-      ],
+      "backlog_rows": [],
       "sellable_split": {
         "not_assessed": false,
-        "sellable_qty": 3357.0,
+        "sellable_qty": 3038.0,
         "staging_qty": 0.0,
         "elsewhere_qty": 0.0
       }
@@ -4298,14 +4262,14 @@
       "type": "HRC fuse",
       "description": "HRC fuse 80A ",
       "state": "has_stock",
-      "qty": 4354.0,
-      "backlog": 1711.0,
-      "available": 2643.0,
+      "qty": 3359.0,
+      "backlog": 956.0,
+      "available": 2403.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
           "code": "FG01",
-          "qty": 4222.0
+          "qty": 3227.0
         },
         {
           "code": "FG21",
@@ -4314,33 +4278,13 @@
       ],
       "backlog_rows": [
         {
-          "doc_id": "CTR-2026-06867",
-          "job": null,
-          "customer": "CS08093",
-          "quantity": 112.0,
-          "status": "Backlog",
-          "delivery_date": "2026-11-13",
-          "plan_delivery_date": "2026-11-13",
-          "backlog_from": "Cube_CES"
-        },
-        {
-          "doc_id": "CTR-2026-06874",
-          "job": null,
-          "customer": "CS07924",
-          "quantity": 71.0,
-          "status": "Backlog",
-          "delivery_date": "2026-11-10",
-          "plan_delivery_date": "2026-11-10",
-          "backlog_from": "Cube_CES"
-        },
-        {
           "doc_id": "CTR-2026-06894",
           "job": null,
           "customer": "CS08224",
           "quantity": 100.0,
           "status": "Backlog",
-          "delivery_date": "2026-11-10",
-          "plan_delivery_date": "2026-11-10",
+          "delivery_date": "2026-11-17",
+          "plan_delivery_date": "2026-11-17",
           "backlog_from": "Cube_CES"
         },
         {
@@ -4349,28 +4293,8 @@
           "customer": "CS08896",
           "quantity": 100.0,
           "status": "Backlog",
-          "delivery_date": "2026-11-11",
-          "plan_delivery_date": "2026-11-11",
-          "backlog_from": "Cube_CES"
-        },
-        {
-          "doc_id": "CTR-2026-07038",
-          "job": null,
-          "customer": "CS06836",
-          "quantity": 500.0,
-          "status": "Backlog",
-          "delivery_date": "2026-11-13",
-          "plan_delivery_date": "2026-11-13",
-          "backlog_from": "Cube_CES"
-        },
-        {
-          "doc_id": "CTR-2026-07042",
-          "job": null,
-          "customer": "CS10170",
-          "quantity": 12.0,
-          "status": "Backlog",
-          "delivery_date": "2026-11-12",
-          "plan_delivery_date": "2026-11-12",
+          "delivery_date": "2026-11-20",
+          "plan_delivery_date": "2026-11-20",
           "backlog_from": "Cube_CES"
         },
         {
@@ -4381,16 +4305,6 @@
           "status": "Backlog",
           "delivery_date": "2026-11-25",
           "plan_delivery_date": "2026-11-25",
-          "backlog_from": "Cube_CES"
-        },
-        {
-          "doc_id": "CTR-2026-07076",
-          "job": null,
-          "customer": "CS08333",
-          "quantity": 300.0,
-          "status": "Backlog",
-          "delivery_date": "2026-11-13",
-          "plan_delivery_date": "2026-11-13",
           "backlog_from": "Cube_CES"
         },
         {
@@ -4422,11 +4336,21 @@
           "delivery_date": "2026-11-17",
           "plan_delivery_date": "2026-11-17",
           "backlog_from": "Cube_CES"
+        },
+        {
+          "doc_id": "CTR-2026-07156",
+          "job": null,
+          "customer": "CS10221",
+          "quantity": 240.0,
+          "status": "Backlog",
+          "delivery_date": "2026-11-17",
+          "plan_delivery_date": "2026-11-17",
+          "backlog_from": "Cube_CES"
         }
       ],
       "sellable_split": {
         "not_assessed": false,
-        "sellable_qty": 4354.0,
+        "sellable_qty": 3359.0,
         "staging_qty": 0.0,
         "elsewhere_qty": 0.0
       }
@@ -4438,14 +4362,14 @@
       "type": "HRC fuse",
       "description": "HRC fuse 100A ",
       "state": "has_stock",
-      "qty": 4714.0,
-      "backlog": 1188.0,
-      "available": 3526.0,
+      "qty": 4044.0,
+      "backlog": 1206.0,
+      "available": 2838.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
           "code": "FG01",
-          "qty": 4182.0
+          "qty": 3512.0
         },
         {
           "code": "FG21",
@@ -4458,23 +4382,13 @@
       ],
       "backlog_rows": [
         {
-          "doc_id": "CTR-2026-06874",
-          "job": null,
-          "customer": "CS07924",
-          "quantity": 20.0,
-          "status": "Backlog",
-          "delivery_date": "2026-11-10",
-          "plan_delivery_date": "2026-11-10",
-          "backlog_from": "Cube_CES"
-        },
-        {
           "doc_id": "CTR-2026-06894",
           "job": null,
           "customer": "CS08224",
           "quantity": 100.0,
           "status": "Backlog",
-          "delivery_date": "2026-11-10",
-          "plan_delivery_date": "2026-11-10",
+          "delivery_date": "2026-11-17",
+          "plan_delivery_date": "2026-11-17",
           "backlog_from": "Cube_CES"
         },
         {
@@ -4483,18 +4397,8 @@
           "customer": "CS08896",
           "quantity": 100.0,
           "status": "Backlog",
-          "delivery_date": "2026-11-11",
-          "plan_delivery_date": "2026-11-11",
-          "backlog_from": "Cube_CES"
-        },
-        {
-          "doc_id": "CTR-2026-07038",
-          "job": null,
-          "customer": "CS06836",
-          "quantity": 500.0,
-          "status": "Backlog",
-          "delivery_date": "2026-11-13",
-          "plan_delivery_date": "2026-11-13",
+          "delivery_date": "2026-11-20",
+          "plan_delivery_date": "2026-11-20",
           "backlog_from": "Cube_CES"
         },
         {
@@ -4505,16 +4409,6 @@
           "status": "Backlog",
           "delivery_date": "2026-11-25",
           "plan_delivery_date": "2026-11-25",
-          "backlog_from": "Cube_CES"
-        },
-        {
-          "doc_id": "CTR-2026-07076",
-          "job": null,
-          "customer": "CS08333",
-          "quantity": 150.0,
-          "status": "Backlog",
-          "delivery_date": "2026-11-13",
-          "plan_delivery_date": "2026-11-13",
           "backlog_from": "Cube_CES"
         },
         {
@@ -4536,11 +4430,31 @@
           "delivery_date": "2026-11-17",
           "plan_delivery_date": "2026-11-17",
           "backlog_from": "Cube_CES"
+        },
+        {
+          "doc_id": "CTR-2026-07154",
+          "job": null,
+          "customer": "CS07924",
+          "quantity": 508.0,
+          "status": "Backlog",
+          "delivery_date": "2026-11-18",
+          "plan_delivery_date": "2026-11-18",
+          "backlog_from": "Cube_CES"
+        },
+        {
+          "doc_id": "CTR-2026-07156",
+          "job": null,
+          "customer": "CS10221",
+          "quantity": 180.0,
+          "status": "Backlog",
+          "delivery_date": "2026-11-17",
+          "plan_delivery_date": "2026-11-17",
+          "backlog_from": "Cube_CES"
         }
       ],
       "sellable_split": {
         "not_assessed": false,
-        "sellable_qty": 4708.0,
+        "sellable_qty": 4038.0,
         "staging_qty": 6.0,
         "elsewhere_qty": 0.0
       }
@@ -4552,14 +4466,14 @@
       "type": "HRC fuse",
       "description": "HRC fuse 160A ",
       "state": "has_stock",
-      "qty": 6878.0,
-      "backlog": 1477.0,
-      "available": 5401.0,
+      "qty": 5641.0,
+      "backlog": 390.0,
+      "available": 5251.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
           "code": "FG01",
-          "qty": 4512.0
+          "qty": 3275.0
         },
         {
           "code": "FG21",
@@ -4577,8 +4491,8 @@
           "customer": "CS08224",
           "quantity": 100.0,
           "status": "Backlog",
-          "delivery_date": "2026-11-10",
-          "plan_delivery_date": "2026-11-10",
+          "delivery_date": "2026-11-17",
+          "plan_delivery_date": "2026-11-17",
           "backlog_from": "Cube_CES"
         },
         {
@@ -4587,38 +4501,8 @@
           "customer": "CS08896",
           "quantity": 100.0,
           "status": "Backlog",
-          "delivery_date": "2026-11-11",
-          "plan_delivery_date": "2026-11-11",
-          "backlog_from": "Cube_CES"
-        },
-        {
-          "doc_id": "CTR-2026-07038",
-          "job": null,
-          "customer": "CS06836",
-          "quantity": 800.0,
-          "status": "Backlog",
-          "delivery_date": "2026-11-13",
-          "plan_delivery_date": "2026-11-13",
-          "backlog_from": "Cube_CES"
-        },
-        {
-          "doc_id": "CTR-2026-07039",
-          "job": null,
-          "customer": "CS09012",
-          "quantity": 200.0,
-          "status": "Backlog",
-          "delivery_date": "2026-11-13",
-          "plan_delivery_date": "2026-11-13",
-          "backlog_from": "Cube_CES"
-        },
-        {
-          "doc_id": "CTR-2026-07042",
-          "job": null,
-          "customer": "CS10170",
-          "quantity": 37.0,
-          "status": "Backlog",
-          "delivery_date": "2026-11-12",
-          "plan_delivery_date": "2026-11-12",
+          "delivery_date": "2026-11-20",
+          "plan_delivery_date": "2026-11-20",
           "backlog_from": "Cube_CES"
         },
         {
@@ -4632,19 +4516,19 @@
           "backlog_from": "Cube_CES"
         },
         {
-          "doc_id": "CTR-2026-07076",
+          "doc_id": "CTR-2026-07156",
           "job": null,
-          "customer": "CS08333",
-          "quantity": 200.0,
+          "customer": "CS10221",
+          "quantity": 150.0,
           "status": "Backlog",
-          "delivery_date": "2026-11-13",
-          "plan_delivery_date": "2026-11-13",
+          "delivery_date": "2026-11-17",
+          "plan_delivery_date": "2026-11-17",
           "backlog_from": "Cube_CES"
         }
       ],
       "sellable_split": {
         "not_assessed": false,
-        "sellable_qty": 6872.0,
+        "sellable_qty": 5635.0,
         "staging_qty": 6.0,
         "elsewhere_qty": 0.0
       }
@@ -4656,14 +4540,14 @@
       "type": "HRC fuse",
       "description": "HRC fuse 200A ",
       "state": "has_stock",
-      "qty": 3119.0,
-      "backlog": 800.0,
+      "qty": 2419.0,
+      "backlog": 100.0,
       "available": 2319.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
           "code": "FG01",
-          "qty": 3093.0
+          "qty": 2393.0
         },
         {
           "code": "FG21",
@@ -4681,24 +4565,14 @@
           "customer": "CS08224",
           "quantity": 100.0,
           "status": "Backlog",
-          "delivery_date": "2026-11-10",
-          "plan_delivery_date": "2026-11-10",
-          "backlog_from": "Cube_CES"
-        },
-        {
-          "doc_id": "CTR-2026-07038",
-          "job": null,
-          "customer": "CS06836",
-          "quantity": 700.0,
-          "status": "Backlog",
-          "delivery_date": "2026-11-13",
-          "plan_delivery_date": "2026-11-13",
+          "delivery_date": "2026-11-17",
+          "plan_delivery_date": "2026-11-17",
           "backlog_from": "Cube_CES"
         }
       ],
       "sellable_split": {
         "not_assessed": false,
-        "sellable_qty": 3111.0,
+        "sellable_qty": 2411.0,
         "staging_qty": 8.0,
         "elsewhere_qty": 0.0
       }
@@ -4710,35 +4584,24 @@
       "type": "HRC fuse",
       "description": "HRC fuse 250A ",
       "state": "has_stock",
-      "qty": 2904.0,
-      "backlog": 700.0,
-      "available": 2204.0,
+      "qty": 2192.0,
+      "backlog": 0.0,
+      "available": 2192.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
           "code": "FG01",
-          "qty": 2872.0
+          "qty": 2160.0
         },
         {
           "code": "FG21",
           "qty": 32.0
         }
       ],
-      "backlog_rows": [
-        {
-          "doc_id": "CTR-2026-07038",
-          "job": null,
-          "customer": "CS06836",
-          "quantity": 700.0,
-          "status": "Backlog",
-          "delivery_date": "2026-11-13",
-          "plan_delivery_date": "2026-11-13",
-          "backlog_from": "Cube_CES"
-        }
-      ],
+      "backlog_rows": [],
       "sellable_split": {
         "not_assessed": false,
-        "sellable_qty": 2904.0,
+        "sellable_qty": 2192.0,
         "staging_qty": 0.0,
         "elsewhere_qty": 0.0
       }
@@ -4750,35 +4613,24 @@
       "type": "HRC fuse",
       "description": "HRC fuse 315A ",
       "state": "has_stock",
-      "qty": 2396.0,
-      "backlog": 200.0,
-      "available": 2196.0,
+      "qty": 2184.0,
+      "backlog": 0.0,
+      "available": 2184.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
           "code": "FG01",
-          "qty": 2327.0
+          "qty": 2115.0
         },
         {
           "code": "FG21",
           "qty": 69.0
         }
       ],
-      "backlog_rows": [
-        {
-          "doc_id": "CTR-2026-07038",
-          "job": null,
-          "customer": "CS06836",
-          "quantity": 200.0,
-          "status": "Backlog",
-          "delivery_date": "2026-11-13",
-          "plan_delivery_date": "2026-11-13",
-          "backlog_from": "Cube_CES"
-        }
-      ],
+      "backlog_rows": [],
       "sellable_split": {
         "not_assessed": false,
-        "sellable_qty": 2396.0,
+        "sellable_qty": 2184.0,
         "staging_qty": 0.0,
         "elsewhere_qty": 0.0
       }
@@ -4819,35 +4671,24 @@
       "type": "HRC fuse",
       "description": "HRC fuse 400A",
       "state": "has_stock",
-      "qty": 2273.0,
-      "backlog": 150.0,
+      "qty": 2123.0,
+      "backlog": 0.0,
       "available": 2123.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
           "code": "FG01",
-          "qty": 2174.0
+          "qty": 2024.0
         },
         {
           "code": "FG21",
           "qty": 99.0
         }
       ],
-      "backlog_rows": [
-        {
-          "doc_id": "CTR-2026-07038",
-          "job": null,
-          "customer": "CS06836",
-          "quantity": 150.0,
-          "status": "Backlog",
-          "delivery_date": "2026-11-13",
-          "plan_delivery_date": "2026-11-13",
-          "backlog_from": "Cube_CES"
-        }
-      ],
+      "backlog_rows": [],
       "sellable_split": {
         "not_assessed": false,
-        "sellable_qty": 2273.0,
+        "sellable_qty": 2123.0,
         "staging_qty": 0.0,
         "elsewhere_qty": 0.0
       }
@@ -4859,14 +4700,14 @@
       "type": "Low Tension Fuse Switch",
       "description": "500V 400Amp Private",
       "state": "has_stock",
-      "qty": 1208.0,
+      "qty": 1182.0,
       "backlog": 3500.0,
-      "available": -2292.0,
+      "available": -2318.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
           "code": "FG01",
-          "qty": 792.0
+          "qty": 766.0
         },
         {
           "code": "FG21",
@@ -4917,7 +4758,7 @@
       ],
       "sellable_split": {
         "not_assessed": false,
-        "sellable_qty": 1208.0,
+        "sellable_qty": 1182.0,
         "staging_qty": 0.0,
         "elsewhere_qty": 0.0
       }
@@ -4929,14 +4770,14 @@
       "type": "Low Tension Fuse Switch",
       "description": "500V 400Amp PEA",
       "state": "has_stock",
-      "qty": 1636.0,
-      "backlog": 683.0,
+      "qty": 1543.0,
+      "backlog": 590.0,
       "available": 953.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
           "code": "FG01",
-          "qty": 1391.0
+          "qty": 1298.0
         },
         {
           "code": "FG21",
@@ -4944,16 +4785,6 @@
         }
       ],
       "backlog_rows": [
-        {
-          "doc_id": "CTR-2026-07042",
-          "job": null,
-          "customer": "CS10170",
-          "quantity": 93.0,
-          "status": "Backlog",
-          "delivery_date": "2026-11-12",
-          "plan_delivery_date": "2026-11-12",
-          "backlog_from": "Cube_CES"
-        },
         {
           "doc_id": "CTR-2026-07054",
           "job": null,
@@ -4987,7 +4818,7 @@
       ],
       "sellable_split": {
         "not_assessed": false,
-        "sellable_qty": 1636.0,
+        "sellable_qty": 1543.0,
         "staging_qty": 0.0,
         "elsewhere_qty": 0.0
       }
@@ -4999,14 +4830,14 @@
       "type": "Low Voltage Surge Arrester",
       "description": "LOZA, Silicone Housing",
       "state": "has_stock",
-      "qty": 4800.0,
-      "backlog": 1737.0,
+      "qty": 4700.0,
+      "backlog": 1637.0,
       "available": 3063.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
           "code": "FG01",
-          "qty": 3560.0
+          "qty": 3500.0
         },
         {
           "code": "FG21",
@@ -5014,28 +4845,18 @@
         },
         {
           "code": "FMTO",
-          "qty": 1040.0
+          "qty": 1000.0
         }
       ],
       "backlog_rows": [
-        {
-          "doc_id": "CTR-2026-06874",
-          "job": null,
-          "customer": "CS07924",
-          "quantity": 50.0,
-          "status": "Backlog",
-          "delivery_date": "2026-11-10",
-          "plan_delivery_date": "2026-11-10",
-          "backlog_from": "Cube_CES"
-        },
         {
           "doc_id": "CTR-2026-06981",
           "job": null,
           "customer": "CS06091",
           "quantity": 250.0,
           "status": "Backlog",
-          "delivery_date": "2026-11-10",
-          "plan_delivery_date": "2026-11-10",
+          "delivery_date": "2026-11-12",
+          "plan_delivery_date": "2026-11-12",
           "backlog_from": "Cube_CES"
         },
         {
@@ -5046,16 +4867,6 @@
           "status": "Backlog",
           "delivery_date": "2026-11-17",
           "plan_delivery_date": "2026-11-17",
-          "backlog_from": "Cube_CES"
-        },
-        {
-          "doc_id": "CTR-2026-07039",
-          "job": null,
-          "customer": "CS09012",
-          "quantity": 50.0,
-          "status": "Backlog",
-          "delivery_date": "2026-11-13",
-          "plan_delivery_date": "2026-11-13",
           "backlog_from": "Cube_CES"
         },
         {
@@ -5111,8 +4922,8 @@
       ],
       "sellable_split": {
         "not_assessed": false,
-        "sellable_qty": 3760.0,
-        "staging_qty": 1040.0,
+        "sellable_qty": 3700.0,
+        "staging_qty": 1000.0,
         "elsewhere_qty": 0.0
       }
     },
@@ -5123,22 +4934,22 @@
       "type": "Low Voltage Surge Arrester",
       "description": "LAS-002, ABS Housing",
       "state": "has_stock",
-      "qty": 3656.0,
-      "backlog": 1000.0,
-      "available": 2656.0,
+      "qty": 3841.0,
+      "backlog": 1027.0,
+      "available": 2814.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
           "code": "FG01",
-          "qty": 3207.0
+          "qty": 3392.0
         },
         {
           "code": "FG21",
-          "qty": 143.0
+          "qty": 443.0
         },
         {
           "code": "FMTS",
-          "qty": 306.0
+          "qty": 6.0
         }
       ],
       "backlog_rows": [
@@ -5151,12 +4962,22 @@
           "delivery_date": "2026-11-16",
           "plan_delivery_date": "2026-11-16",
           "backlog_from": "Cube_CES"
+        },
+        {
+          "doc_id": "CTR-2026-07184",
+          "job": null,
+          "customer": "CS09978",
+          "quantity": 27.0,
+          "status": "Backlog",
+          "delivery_date": "2026-11-12",
+          "plan_delivery_date": "2026-11-12",
+          "backlog_from": "Cube_CES"
         }
       ],
       "sellable_split": {
         "not_assessed": false,
-        "sellable_qty": 3350.0,
-        "staging_qty": 306.0,
+        "sellable_qty": 3835.0,
+        "staging_qty": 6.0,
         "elsewhere_qty": 0.0
       }
     },
@@ -5208,22 +5029,11 @@
       "description": "9kV 5kA type LAZ-P09",
       "state": "zero_stock",
       "qty": 0.0,
-      "backlog": 9.0,
-      "available": -9.0,
+      "backlog": 0.0,
+      "available": 0.0,
       "in_forecast_scope": true,
       "by_warehouse": [],
-      "backlog_rows": [
-        {
-          "doc_id": "CTR-2026-06966",
-          "job": null,
-          "customer": "CS10585",
-          "quantity": 9.0,
-          "status": "Backlog",
-          "delivery_date": "2026-11-09",
-          "plan_delivery_date": "2026-11-09",
-          "backlog_from": "Cube_CES"
-        }
-      ],
+      "backlog_rows": [],
       "sellable_split": {
         "not_assessed": false,
         "sellable_qty": 0.0,
@@ -5298,14 +5108,14 @@
       "type": "Medium Voltage Surge Arrester",
       "description": "21kV 5kA type LAZ-P21 Private",
       "state": "has_stock",
-      "qty": 548.0,
-      "backlog": 188.0,
-      "available": 360.0,
+      "qty": 649.0,
+      "backlog": 267.0,
+      "available": 382.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
           "code": "FG01",
-          "qty": 434.0
+          "qty": 580.0
         },
         {
           "code": "FG21",
@@ -5313,7 +5123,7 @@
         },
         {
           "code": "FMTS",
-          "qty": 53.0
+          "qty": 8.0
         }
       ],
       "backlog_rows": [
@@ -5458,26 +5268,6 @@
           "backlog_from": "Cube_CES"
         },
         {
-          "doc_id": "CTR-2026-06419",
-          "job": null,
-          "customer": "CS06416",
-          "quantity": 3.0,
-          "status": "Backlog",
-          "delivery_date": "2026-10-22",
-          "plan_delivery_date": "2026-11-19",
-          "backlog_from": "Cube_CES"
-        },
-        {
-          "doc_id": "CTR-2026-06602",
-          "job": null,
-          "customer": "CS07577",
-          "quantity": 3.0,
-          "status": "Backlog",
-          "delivery_date": "2026-11-05",
-          "plan_delivery_date": "2026-11-05",
-          "backlog_from": "Cube_CES"
-        },
-        {
           "doc_id": "CTR-2026-06848",
           "job": null,
           "customer": "CS07577",
@@ -5506,12 +5296,42 @@
           "delivery_date": "2026-11-30",
           "plan_delivery_date": "2026-11-30",
           "backlog_from": "Cube_CES"
+        },
+        {
+          "doc_id": "CTR-2026-07140",
+          "job": null,
+          "customer": "CS02411",
+          "quantity": 73.0,
+          "status": "Backlog",
+          "delivery_date": "2026-11-13",
+          "plan_delivery_date": "2026-11-13",
+          "backlog_from": "Cube_CES"
+        },
+        {
+          "doc_id": "CTR-2026-07166",
+          "job": null,
+          "customer": "CS10728",
+          "quantity": 9.0,
+          "status": "Backlog",
+          "delivery_date": "2026-11-20",
+          "plan_delivery_date": "2026-11-20",
+          "backlog_from": "Cube_CES"
+        },
+        {
+          "doc_id": "CTR-2026-07169",
+          "job": null,
+          "customer": "CS07785",
+          "quantity": 3.0,
+          "status": "Backlog",
+          "delivery_date": "2026-11-30",
+          "plan_delivery_date": "2026-11-30",
+          "backlog_from": "Cube_CES"
         }
       ],
       "sellable_split": {
         "not_assessed": false,
-        "sellable_qty": 495.0,
-        "staging_qty": 53.0,
+        "sellable_qty": 641.0,
+        "staging_qty": 8.0,
         "elsewhere_qty": 0.0
       }
     },
@@ -5523,8 +5343,8 @@
       "description": "21kV 5kA type LAZ-P21 Transformer (PEA)",
       "state": "has_stock",
       "qty": 10.0,
-      "backlog": 830.0,
-      "available": -820.0,
+      "backlog": 757.0,
+      "available": -747.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
@@ -5551,26 +5371,6 @@
           "status": "Backlog",
           "delivery_date": "2026-11-13",
           "plan_delivery_date": "2026-11-13",
-          "backlog_from": "Cube_CES"
-        },
-        {
-          "doc_id": "CTR-2026-07039",
-          "job": null,
-          "customer": "CS09012",
-          "quantity": 50.0,
-          "status": "Backlog",
-          "delivery_date": "2026-11-13",
-          "plan_delivery_date": "2026-11-13",
-          "backlog_from": "Cube_CES"
-        },
-        {
-          "doc_id": "CTR-2026-07042",
-          "job": null,
-          "customer": "CS10170",
-          "quantity": 23.0,
-          "status": "Backlog",
-          "delivery_date": "2026-11-12",
-          "plan_delivery_date": "2026-11-12",
           "backlog_from": "Cube_CES"
         },
         {
@@ -5629,8 +5429,8 @@
       "description": "21kV 5kA type LAZ-P21 PEA",
       "state": "has_stock",
       "qty": 199.0,
-      "backlog": 251.0,
-      "available": -52.0,
+      "backlog": 141.0,
+      "available": 58.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
@@ -5640,23 +5440,13 @@
       ],
       "backlog_rows": [
         {
-          "doc_id": "CTR-2026-06867",
-          "job": null,
-          "customer": "CS08093",
-          "quantity": 110.0,
-          "status": "Backlog",
-          "delivery_date": "2026-11-13",
-          "plan_delivery_date": "2026-11-13",
-          "backlog_from": "Cube_CES"
-        },
-        {
           "doc_id": "CTR-2026-06894",
           "job": null,
           "customer": "CS08224",
           "quantity": 30.0,
           "status": "Backlog",
-          "delivery_date": "2026-11-10",
-          "plan_delivery_date": "2026-11-10",
+          "delivery_date": "2026-11-17",
+          "plan_delivery_date": "2026-11-17",
           "backlog_from": "Cube_CES"
         },
         {
@@ -5770,14 +5560,14 @@
       "type": "Medium Voltage Surge Arrester",
       "description": "24kV 5kA type LAZ-P24 Private",
       "state": "has_stock",
-      "qty": 566.0,
-      "backlog": 96.0,
-      "available": 470.0,
+      "qty": 745.0,
+      "backlog": 99.0,
+      "available": 646.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
           "code": "FG01",
-          "qty": 546.0
+          "qty": 725.0
         },
         {
           "code": "FG21",
@@ -5918,11 +5708,21 @@
           "delivery_date": "2026-11-11",
           "plan_delivery_date": "2026-11-11",
           "backlog_from": "Cube_CES"
+        },
+        {
+          "doc_id": "CTR-2026-07167",
+          "job": null,
+          "customer": "CS07785",
+          "quantity": 3.0,
+          "status": "Backlog",
+          "delivery_date": "2026-11-30",
+          "plan_delivery_date": "2026-11-30",
+          "backlog_from": "Cube_CES"
         }
       ],
       "sellable_split": {
         "not_assessed": false,
-        "sellable_qty": 562.0,
+        "sellable_qty": 741.0,
         "staging_qty": 0.0,
         "elsewhere_qty": 4.0
       }
@@ -6028,14 +5828,14 @@
       "type": "Medium Voltage Surge Arrester",
       "description": "30kV 5kA type LAZ-P30 Private",
       "state": "has_stock",
-      "qty": 407.0,
-      "backlog": 31.0,
-      "available": 376.0,
+      "qty": 392.0,
+      "backlog": 28.0,
+      "available": 364.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
           "code": "FG01",
-          "qty": 267.0
+          "qty": 252.0
         },
         {
           "code": "FG21",
@@ -6051,16 +5851,6 @@
           "status": "Backlog",
           "delivery_date": "2018-04-23",
           "plan_delivery_date": "2018-04-23",
-          "backlog_from": "Cube_CES"
-        },
-        {
-          "doc_id": "CTR-2026-06048",
-          "job": null,
-          "customer": "CS00618",
-          "quantity": 3.0,
-          "status": "Backlog",
-          "delivery_date": "2026-11-11",
-          "plan_delivery_date": "2026-11-11",
           "backlog_from": "Cube_CES"
         },
         {
@@ -6106,7 +5896,7 @@
       ],
       "sellable_split": {
         "not_assessed": false,
-        "sellable_qty": 407.0,
+        "sellable_qty": 392.0,
         "staging_qty": 0.0,
         "elsewhere_qty": 0.0
       }
@@ -6238,22 +6028,28 @@
       "category": "Surge Arrester",
       "type": "Medium Voltage Surge Arrester",
       "description": "33kV 5kA type LAZ-P33",
-      "state": "has_stock",
-      "qty": 3.0,
-      "backlog": 0.0,
-      "available": 3.0,
+      "state": "zero_stock",
+      "qty": 0.0,
+      "backlog": 6.0,
+      "available": -6.0,
       "in_forecast_scope": true,
-      "by_warehouse": [
+      "by_warehouse": [],
+      "backlog_rows": [
         {
-          "code": "FMTO",
-          "qty": 3.0
+          "doc_id": "CTR-2026-07140",
+          "job": null,
+          "customer": "CS02411",
+          "quantity": 6.0,
+          "status": "Backlog",
+          "delivery_date": "2026-11-13",
+          "plan_delivery_date": "2026-11-13",
+          "backlog_from": "Cube_CES"
         }
       ],
-      "backlog_rows": [],
       "sellable_split": {
         "not_assessed": false,
         "sellable_qty": 0.0,
-        "staging_qty": 3.0,
+        "staging_qty": 0.0,
         "elsewhere_qty": 0.0
       }
     },
@@ -6404,22 +6200,18 @@
       "type": "Medium Voltage Surge Arrester",
       "description": "21kV 10kA Cl.1 type PAZ-P21-1",
       "state": "has_stock",
-      "qty": 169.0,
-      "backlog": 11.0,
-      "available": 158.0,
+      "qty": 161.0,
+      "backlog": 12.0,
+      "available": 149.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
           "code": "FG01",
-          "qty": 116.0
+          "qty": 114.0
         },
         {
           "code": "FG21",
           "qty": 41.0
-        },
-        {
-          "code": "FMTS",
-          "qty": 6.0
         },
         {
           "code": "W4-1",
@@ -6438,16 +6230,6 @@
           "backlog_from": "Cube_CES"
         },
         {
-          "doc_id": "CTR-2026-06764",
-          "job": null,
-          "customer": "CS02411",
-          "quantity": 2.0,
-          "status": "Backlog",
-          "delivery_date": "2026-11-10",
-          "plan_delivery_date": "2026-11-11",
-          "backlog_from": "Cube_CES"
-        },
-        {
           "doc_id": "CTR-2026-07096",
           "job": null,
           "customer": "CS07785",
@@ -6456,12 +6238,22 @@
           "delivery_date": "2026-11-30",
           "plan_delivery_date": "2026-11-30",
           "backlog_from": "Cube_CES"
+        },
+        {
+          "doc_id": "CTR-2026-07163",
+          "job": null,
+          "customer": "CS09004",
+          "quantity": 3.0,
+          "status": "Backlog",
+          "delivery_date": "2026-11-18",
+          "plan_delivery_date": "2026-11-18",
+          "backlog_from": "Cube_CES"
         }
       ],
       "sellable_split": {
         "not_assessed": false,
-        "sellable_qty": 157.0,
-        "staging_qty": 6.0,
+        "sellable_qty": 155.0,
+        "staging_qty": 0.0,
         "elsewhere_qty": 6.0
       }
     },
@@ -6493,8 +6285,8 @@
       "description": "24kV 10kA Cl.1 type PAZ-P24-1",
       "state": "has_stock",
       "qty": 137.0,
-      "backlog": 0.0,
-      "available": 137.0,
+      "backlog": 6.0,
+      "available": 131.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
@@ -6510,7 +6302,18 @@
           "qty": 9.0
         }
       ],
-      "backlog_rows": [],
+      "backlog_rows": [
+        {
+          "doc_id": "CTR-2026-07167",
+          "job": null,
+          "customer": "CS07785",
+          "quantity": 6.0,
+          "status": "Backlog",
+          "delivery_date": "2026-11-30",
+          "plan_delivery_date": "2026-11-30",
+          "backlog_from": "Cube_CES"
+        }
+      ],
       "sellable_split": {
         "not_assessed": false,
         "sellable_qty": 128.0,
@@ -6951,14 +6754,14 @@
       "type": "Medium Voltage Surge Arrester",
       "description": "24kV 10kA Cl.2 type SA224 Private",
       "state": "has_stock",
-      "qty": 166.0,
+      "qty": 154.0,
       "backlog": 83.0,
-      "available": 83.0,
+      "available": 71.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
           "code": "FG01",
-          "qty": 80.0
+          "qty": 68.0
         },
         {
           "code": "FMTO",
@@ -6993,7 +6796,7 @@
       ],
       "sellable_split": {
         "not_assessed": false,
-        "sellable_qty": 80.0,
+        "sellable_qty": 68.0,
         "staging_qty": 86.0,
         "elsewhere_qty": 0.0
       }
@@ -7154,32 +6957,16 @@
       "category": "Surge Arrester",
       "type": "Medium Voltage Surge Arrester",
       "description": "12kV 10kA Cl.3 type PAZ-P12-3",
-      "state": "has_stock",
-      "qty": 3.0,
-      "backlog": 3.0,
+      "state": "zero_stock",
+      "qty": 0.0,
+      "backlog": 0.0,
       "available": 0.0,
       "in_forecast_scope": false,
-      "by_warehouse": [
-        {
-          "code": "FG01",
-          "qty": 3.0
-        }
-      ],
-      "backlog_rows": [
-        {
-          "doc_id": "CTR-2026-06901",
-          "job": null,
-          "customer": "CS08856",
-          "quantity": 3.0,
-          "status": "Backlog",
-          "delivery_date": "2026-11-11",
-          "plan_delivery_date": "2026-11-11",
-          "backlog_from": "Cube_CES"
-        }
-      ],
+      "by_warehouse": [],
+      "backlog_rows": [],
       "sellable_split": {
         "not_assessed": false,
-        "sellable_qty": 3.0,
+        "sellable_qty": 0.0,
         "staging_qty": 0.0,
         "elsewhere_qty": 0.0
       }
@@ -7543,31 +7330,17 @@
       "type": "LED Street light",
       "description": "20 Watt Model Complete set",
       "state": "has_stock",
-      "qty": 104.0,
-      "backlog": 179.0,
-      "available": -75.0,
+      "qty": 4.0,
+      "backlog": 124.0,
+      "available": -120.0,
       "in_forecast_scope": true,
       "by_warehouse": [
-        {
-          "code": "FG01",
-          "qty": 100.0
-        },
         {
           "code": "FG21",
           "qty": 4.0
         }
       ],
       "backlog_rows": [
-        {
-          "doc_id": "CTR-2026-06936",
-          "job": null,
-          "customer": "CS03214",
-          "quantity": 100.0,
-          "status": "Backlog",
-          "delivery_date": "2026-11-10",
-          "plan_delivery_date": "2026-11-10",
-          "backlog_from": "Cube_CES"
-        },
         {
           "doc_id": "CTR-2026-07100",
           "job": null,
@@ -7577,11 +7350,21 @@
           "delivery_date": "2026-11-13",
           "plan_delivery_date": "2026-11-13",
           "backlog_from": "Cube_CES"
+        },
+        {
+          "doc_id": "CTR-2026-07160",
+          "job": null,
+          "customer": "CS04704",
+          "quantity": 45.0,
+          "status": "Backlog",
+          "delivery_date": "2026-11-17",
+          "plan_delivery_date": "2026-11-17",
+          "backlog_from": "Cube_CES"
         }
       ],
       "sellable_split": {
         "not_assessed": false,
-        "sellable_qty": 104.0,
+        "sellable_qty": 4.0,
         "staging_qty": 0.0,
         "elsewhere_qty": 0.0
       }
@@ -7761,11 +7544,7 @@
       "by_warehouse": [
         {
           "code": "FG01",
-          "qty": 3.0
-        },
-        {
-          "code": "FMTO",
-          "qty": 40.0
+          "qty": 43.0
         }
       ],
       "backlog_rows": [
@@ -7832,8 +7611,8 @@
       ],
       "sellable_split": {
         "not_assessed": false,
-        "sellable_qty": 3.0,
-        "staging_qty": 40.0,
+        "sellable_qty": 43.0,
+        "staging_qty": 0.0,
         "elsewhere_qty": 0.0
       }
     },
@@ -7863,28 +7642,13 @@
       "category": "Fuse",
       "type": "Low Voltage Fuse Switch Disconectors",
       "description": "500V 400A PEA",
-      "state": "has_stock",
-      "qty": 40.0,
-      "backlog": 52.0,
+      "state": "zero_stock",
+      "qty": 0.0,
+      "backlog": 12.0,
       "available": -12.0,
       "in_forecast_scope": true,
-      "by_warehouse": [
-        {
-          "code": "FG01",
-          "qty": 40.0
-        }
-      ],
+      "by_warehouse": [],
       "backlog_rows": [
-        {
-          "doc_id": "CTR-2026-06867",
-          "job": null,
-          "customer": "CS08093",
-          "quantity": 40.0,
-          "status": "Backlog",
-          "delivery_date": "2026-11-13",
-          "plan_delivery_date": "2026-11-13",
-          "backlog_from": "Cube_CES"
-        },
         {
           "doc_id": "CTR-2026-07129",
           "job": null,
@@ -7898,7 +7662,7 @@
       ],
       "sellable_split": {
         "not_assessed": false,
-        "sellable_qty": 40.0,
+        "sellable_qty": 0.0,
         "staging_qty": 0.0,
         "elsewhere_qty": 0.0
       }
@@ -7909,12 +7673,17 @@
       "category": "Load Break Switch",
       "type": "24kV SF6 Gas Load Break Switch",
       "description": "SF6 GAS Load Break Switch 22kV 630A 12.5kA Option 1",
-      "state": "zero_stock",
-      "qty": 0.0,
-      "backlog": 6.0,
-      "available": -6.0,
+      "state": "has_stock",
+      "qty": 3.0,
+      "backlog": 5.0,
+      "available": -2.0,
       "in_forecast_scope": true,
-      "by_warehouse": [],
+      "by_warehouse": [
+        {
+          "code": "FMTO",
+          "qty": 3.0
+        }
+      ],
       "backlog_rows": [
         {
           "doc_id": "CTR-2026-03144",
@@ -7924,16 +7693,6 @@
           "status": "Backlog",
           "delivery_date": "2026-11-17",
           "plan_delivery_date": "2026-11-17",
-          "backlog_from": "Cube_CES"
-        },
-        {
-          "doc_id": "CTR-2026-07135",
-          "job": null,
-          "customer": "CS03888",
-          "quantity": 1.0,
-          "status": "Backlog",
-          "delivery_date": "2026-11-11",
-          "plan_delivery_date": "2026-11-11",
           "backlog_from": "Cube_CES"
         }
       ],
@@ -7950,12 +7709,17 @@
       "category": "Load Break Switch",
       "type": "24kV SF6 Gas Load Break Switch",
       "description": "SF6 GAS Load Break Switch 22kV 630A 12.5kA Option 4 ",
-      "state": "zero_stock",
-      "qty": 0.0,
+      "state": "has_stock",
+      "qty": 6.0,
       "backlog": 12.0,
-      "available": -12.0,
+      "available": -6.0,
       "in_forecast_scope": true,
-      "by_warehouse": [],
+      "by_warehouse": [
+        {
+          "code": "FMTO",
+          "qty": 6.0
+        }
+      ],
       "backlog_rows": [
         {
           "doc_id": "CTR-2026-04680",
@@ -8023,8 +7787,8 @@
       "description": "SF6 GAS Load Break Switch 22kV 630A 12.5kA Option 5 ",
       "state": "has_stock",
       "qty": 2.0,
-      "backlog": 19.0,
-      "available": -17.0,
+      "backlog": 20.0,
+      "available": -18.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
@@ -8122,6 +7886,16 @@
           "delivery_date": "2026-11-30",
           "plan_delivery_date": "2026-11-30",
           "backlog_from": "Cube_CES"
+        },
+        {
+          "doc_id": "CTR-2026-07164",
+          "job": null,
+          "customer": "CS07785",
+          "quantity": 1.0,
+          "status": "Backlog",
+          "delivery_date": "2026-12-04",
+          "plan_delivery_date": "2026-12-04",
+          "backlog_from": "Cube_CES"
         }
       ],
       "sellable_split": {
@@ -8158,22 +7932,14 @@
       "type": "24kV SF6 Gas Load Break Switch",
       "description": "SF6 GAS Load Break Switch 22kV 630A 12.5kA Option 7",
       "state": "has_stock",
-      "qty": 6.0,
-      "backlog": 16.0,
-      "available": -10.0,
+      "qty": 4.0,
+      "backlog": 15.0,
+      "available": -11.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
-          "code": "FG01",
-          "qty": 1.0
-        },
-        {
           "code": "FG22",
           "qty": 3.0
-        },
-        {
-          "code": "FMTO",
-          "qty": 1.0
         },
         {
           "code": "W4-1",
@@ -8249,16 +8015,6 @@
           "status": "Backlog",
           "delivery_date": "2026-12-07",
           "plan_delivery_date": "2026-12-07",
-          "backlog_from": "Cube_CES"
-        },
-        {
-          "doc_id": "CTR-2026-06798",
-          "job": null,
-          "customer": "CS10766",
-          "quantity": 1.0,
-          "status": "Backlog",
-          "delivery_date": "2026-11-04",
-          "plan_delivery_date": "2026-11-11",
           "backlog_from": "Cube_CES"
         },
         {
@@ -8612,10 +8368,10 @@
       "category": "Load Break Switch",
       "type": "24kV Solid Load Break Switch",
       "description": "Solid Dielectric Load Break Switch 24kV 600A Electrical Type Option 5 (Without VT)",
-      "state": "no_db_record",
-      "qty": null,
+      "state": "zero_stock",
+      "qty": 0.0,
       "backlog": 1.0,
-      "available": null,
+      "available": -1.0,
       "in_forecast_scope": false,
       "by_warehouse": [],
       "backlog_rows": [
@@ -9861,22 +9617,17 @@
       "category": "Distribution Transformer",
       "type": "3 Phase Distribution Transformer",
       "description": "3 Phase 500kVA 24kV 416/240V Dyn1 Normal loss",
-      "state": "has_stock",
-      "qty": 1.0,
+      "state": "zero_stock",
+      "qty": 0.0,
       "backlog": 0.0,
-      "available": 1.0,
+      "available": 0.0,
       "in_forecast_scope": true,
-      "by_warehouse": [
-        {
-          "code": "FMTS",
-          "qty": 1.0
-        }
-      ],
+      "by_warehouse": [],
       "backlog_rows": [],
       "sellable_split": {
         "not_assessed": false,
         "sellable_qty": 0.0,
-        "staging_qty": 1.0,
+        "staging_qty": 0.0,
         "elsewhere_qty": 0.0
       }
     },
@@ -10528,17 +10279,12 @@
       "category": "Distribution Transformer",
       "type": "1 Phase Distribution Transformer",
       "description": "1 Phase 30kVA 19kV 480/240V Low Loss SC New Spec 047/2568",
-      "state": "has_stock",
-      "qty": 8.0,
-      "backlog": 54.0,
-      "available": -46.0,
+      "state": "zero_stock",
+      "qty": 0.0,
+      "backlog": 47.0,
+      "available": -47.0,
       "in_forecast_scope": true,
-      "by_warehouse": [
-        {
-          "code": "FMTS",
-          "qty": 8.0
-        }
-      ],
+      "by_warehouse": [],
       "backlog_rows": [
         {
           "doc_id": "CTR-2026-05824",
@@ -10561,16 +10307,6 @@
           "backlog_from": "Cube_CES"
         },
         {
-          "doc_id": "CTR-2026-06062",
-          "job": null,
-          "customer": "CS05661",
-          "quantity": 4.0,
-          "status": "Backlog",
-          "delivery_date": "2026-11-25",
-          "plan_delivery_date": "2026-11-25",
-          "backlog_from": "Cube_CES"
-        },
-        {
           "doc_id": "CTR-2026-06236",
           "job": null,
           "customer": "CS08738",
@@ -10578,16 +10314,6 @@
           "status": "Backlog",
           "delivery_date": "2026-11-27",
           "plan_delivery_date": "2026-11-27",
-          "backlog_from": "Cube_CES"
-        },
-        {
-          "doc_id": "CTR-2026-06274",
-          "job": null,
-          "customer": "CS08333",
-          "quantity": 4.0,
-          "status": "Backlog",
-          "delivery_date": "2026-11-13",
-          "plan_delivery_date": "2026-11-13",
           "backlog_from": "Cube_CES"
         },
         {
@@ -10606,8 +10332,8 @@
           "customer": "CS10212",
           "quantity": 4.0,
           "status": "Backlog",
-          "delivery_date": "2026-11-12",
-          "plan_delivery_date": "2026-11-12",
+          "delivery_date": "2026-12-11",
+          "plan_delivery_date": "2026-12-11",
           "backlog_from": "Cube_CES"
         },
         {
@@ -10679,12 +10405,22 @@
           "delivery_date": "2026-12-18",
           "plan_delivery_date": "2026-12-18",
           "backlog_from": "Cube_CES"
+        },
+        {
+          "doc_id": "CTR-2026-07148",
+          "job": null,
+          "customer": "CS06544",
+          "quantity": 1.0,
+          "status": "Backlog",
+          "delivery_date": "2026-12-04",
+          "plan_delivery_date": "2026-12-04",
+          "backlog_from": "Cube_CES"
         }
       ],
       "sellable_split": {
         "not_assessed": false,
         "sellable_qty": 0.0,
-        "staging_qty": 8.0,
+        "staging_qty": 0.0,
         "elsewhere_qty": 0.0
       }
     },
@@ -10694,12 +10430,17 @@
       "category": "Distribution Transformer",
       "type": "1 Phase Distribution Transformer",
       "description": "1 Phase 30kVA 22kV 480/240V Low Loss SC New Spec 047/2568",
-      "state": "zero_stock",
-      "qty": 0.0,
-      "backlog": 107.0,
-      "available": -107.0,
+      "state": "has_stock",
+      "qty": 8.0,
+      "backlog": 112.0,
+      "available": -104.0,
       "in_forecast_scope": true,
-      "by_warehouse": [],
+      "by_warehouse": [
+        {
+          "code": "FMTS",
+          "qty": 8.0
+        }
+      ],
       "backlog_rows": [
         {
           "doc_id": "CTR-2026-04828",
@@ -10747,8 +10488,8 @@
           "customer": "CS03214",
           "quantity": 3.0,
           "status": "Backlog",
-          "delivery_date": "2026-11-13",
-          "plan_delivery_date": "2026-11-13",
+          "delivery_date": "2026-11-30",
+          "plan_delivery_date": "2026-11-30",
           "backlog_from": "Cube_CES"
         },
         {
@@ -10867,8 +10608,8 @@
           "customer": "CS07050",
           "quantity": 1.0,
           "status": "Backlog",
-          "delivery_date": "2026-11-12",
-          "plan_delivery_date": "2026-11-12",
+          "delivery_date": "2026-11-30",
+          "plan_delivery_date": "2026-11-30",
           "backlog_from": "Cube_CES"
         },
         {
@@ -10877,8 +10618,8 @@
           "customer": "CS06091",
           "quantity": 5.0,
           "status": "Backlog",
-          "delivery_date": "2026-11-12",
-          "plan_delivery_date": "2026-11-12",
+          "delivery_date": "2026-11-23",
+          "plan_delivery_date": "2026-11-23",
           "backlog_from": "Cube_CES"
         },
         {
@@ -10897,8 +10638,8 @@
           "customer": "CS06091",
           "quantity": 5.0,
           "status": "Backlog",
-          "delivery_date": "2026-11-13",
-          "plan_delivery_date": "2026-11-13",
+          "delivery_date": "2026-12-04",
+          "plan_delivery_date": "2026-12-04",
           "backlog_from": "Cube_CES"
         },
         {
@@ -11100,12 +10841,22 @@
           "delivery_date": "2026-12-04",
           "plan_delivery_date": "2026-12-04",
           "backlog_from": "Cube_CES"
+        },
+        {
+          "doc_id": "CTR-2026-07147",
+          "job": null,
+          "customer": "CS06764",
+          "quantity": 5.0,
+          "status": "Backlog",
+          "delivery_date": "2026-12-24",
+          "plan_delivery_date": "2026-12-24",
+          "backlog_from": "Cube_CES"
         }
       ],
       "sellable_split": {
         "not_assessed": false,
         "sellable_qty": 0.0,
-        "staging_qty": 0.0,
+        "staging_qty": 8.0,
         "elsewhere_qty": 0.0
       }
     },
@@ -11148,8 +10899,8 @@
           "customer": "CS09901",
           "quantity": 1.0,
           "status": "Backlog",
-          "delivery_date": "2026-11-12",
-          "plan_delivery_date": "2026-11-12",
+          "delivery_date": "2026-11-23",
+          "plan_delivery_date": "2026-11-23",
           "backlog_from": "Cube_CES"
         },
         {
@@ -11227,14 +10978,14 @@
       "type": "3 Phase Distribution Transformer",
       "description": "3 Phase 100kVA 22kV 416/240V Dyn11 Very Low Loss SC New Spec 035/2568",
       "state": "has_stock",
-      "qty": 2.0,
-      "backlog": 123.0,
-      "available": -121.0,
+      "qty": 11.0,
+      "backlog": 124.0,
+      "available": -113.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
           "code": "FMTS",
-          "qty": 2.0
+          "qty": 11.0
         }
       ],
       "backlog_rows": [
@@ -11254,8 +11005,8 @@
           "customer": "CS03214",
           "quantity": 2.0,
           "status": "Backlog",
-          "delivery_date": "2026-11-13",
-          "plan_delivery_date": "2026-11-13",
+          "delivery_date": "2026-11-30",
+          "plan_delivery_date": "2026-11-30",
           "backlog_from": "Cube_CES"
         },
         {
@@ -11274,8 +11025,8 @@
           "customer": "CS08308",
           "quantity": 2.0,
           "status": "Backlog",
-          "delivery_date": "2026-11-13",
-          "plan_delivery_date": "2026-11-13",
+          "delivery_date": "2026-11-20",
+          "plan_delivery_date": "2026-11-20",
           "backlog_from": "Cube_CES"
         },
         {
@@ -11283,16 +11034,6 @@
           "job": null,
           "customer": "CS10221",
           "quantity": 2.0,
-          "status": "Backlog",
-          "delivery_date": "2026-11-20",
-          "plan_delivery_date": "2026-11-20",
-          "backlog_from": "Cube_CES"
-        },
-        {
-          "doc_id": "CTR-2026-05981",
-          "job": null,
-          "customer": "CS08296",
-          "quantity": 1.0,
           "status": "Backlog",
           "delivery_date": "2026-11-20",
           "plan_delivery_date": "2026-11-20",
@@ -11379,16 +11120,6 @@
           "backlog_from": "Cube_CES"
         },
         {
-          "doc_id": "CTR-2026-06220",
-          "job": null,
-          "customer": "CS08224",
-          "quantity": 1.0,
-          "status": "Backlog",
-          "delivery_date": "2026-11-13",
-          "plan_delivery_date": "2026-11-13",
-          "backlog_from": "Cube_CES"
-        },
-        {
           "doc_id": "CTR-2026-06223",
           "job": null,
           "customer": "CS10496",
@@ -11464,8 +11195,8 @@
           "customer": "CS07050",
           "quantity": 1.0,
           "status": "Backlog",
-          "delivery_date": "2026-11-12",
-          "plan_delivery_date": "2026-11-12",
+          "delivery_date": "2026-11-30",
+          "plan_delivery_date": "2026-11-30",
           "backlog_from": "Cube_CES"
         },
         {
@@ -11474,8 +11205,8 @@
           "customer": "CS09901",
           "quantity": 1.0,
           "status": "Backlog",
-          "delivery_date": "2026-11-12",
-          "plan_delivery_date": "2026-11-12",
+          "delivery_date": "2026-11-23",
+          "plan_delivery_date": "2026-11-23",
           "backlog_from": "Cube_CES"
         },
         {
@@ -11484,8 +11215,8 @@
           "customer": "CS09901",
           "quantity": 2.0,
           "status": "Backlog",
-          "delivery_date": "2026-11-12",
-          "plan_delivery_date": "2026-11-12",
+          "delivery_date": "2026-12-11",
+          "plan_delivery_date": "2026-12-11",
           "backlog_from": "Cube_CES"
         },
         {
@@ -11494,8 +11225,8 @@
           "customer": "CS08228",
           "quantity": 2.0,
           "status": "Backlog",
-          "delivery_date": "2026-11-12",
-          "plan_delivery_date": "2026-11-12",
+          "delivery_date": "2026-11-27",
+          "plan_delivery_date": "2026-11-27",
           "backlog_from": "Cube_CES"
         },
         {
@@ -11504,8 +11235,8 @@
           "customer": "CS09784",
           "quantity": 2.0,
           "status": "Backlog",
-          "delivery_date": "2026-11-12",
-          "plan_delivery_date": "2026-11-12",
+          "delivery_date": "2026-11-27",
+          "plan_delivery_date": "2026-11-27",
           "backlog_from": "Cube_CES"
         },
         {
@@ -11514,8 +11245,8 @@
           "customer": "CS08093",
           "quantity": 2.0,
           "status": "Backlog",
-          "delivery_date": "2026-11-12",
-          "plan_delivery_date": "2026-11-12",
+          "delivery_date": "2026-11-27",
+          "plan_delivery_date": "2026-11-27",
           "backlog_from": "Cube_CES"
         },
         {
@@ -11524,8 +11255,8 @@
           "customer": "CS08093",
           "quantity": 2.0,
           "status": "Backlog",
-          "delivery_date": "2026-11-12",
-          "plan_delivery_date": "2026-11-12",
+          "delivery_date": "2026-11-27",
+          "plan_delivery_date": "2026-11-27",
           "backlog_from": "Cube_CES"
         },
         {
@@ -11987,12 +11718,32 @@
           "delivery_date": "2026-12-04",
           "plan_delivery_date": "2026-12-04",
           "backlog_from": "Cube_CES"
+        },
+        {
+          "doc_id": "CTR-2026-07145",
+          "job": null,
+          "customer": "CS08292",
+          "quantity": 1.0,
+          "status": "Backlog",
+          "delivery_date": "2026-12-24",
+          "plan_delivery_date": "2026-12-24",
+          "backlog_from": "Cube_CES"
+        },
+        {
+          "doc_id": "CTR-2026-07165",
+          "job": null,
+          "customer": "CS07449",
+          "quantity": 2.0,
+          "status": "Backlog",
+          "delivery_date": "2026-12-24",
+          "plan_delivery_date": "2026-12-24",
+          "backlog_from": "Cube_CES"
         }
       ],
       "sellable_split": {
         "not_assessed": false,
         "sellable_qty": 0.0,
-        "staging_qty": 2.0,
+        "staging_qty": 11.0,
         "elsewhere_qty": 0.0
       }
     },
@@ -12004,8 +11755,8 @@
       "description": "3 Phase 160kVA 22kV 416/240V Dyn11 Very Low Loss SC New Spec 035/2568",
       "state": "has_stock",
       "qty": 1.0,
-      "backlog": 29.0,
-      "available": -28.0,
+      "backlog": 32.0,
+      "available": -31.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
@@ -12300,8 +12051,38 @@
           "customer": "CS09784",
           "quantity": 1.0,
           "status": "Backlog",
-          "delivery_date": "2026-12-04",
-          "plan_delivery_date": "2026-12-04",
+          "delivery_date": "2026-12-22",
+          "plan_delivery_date": "2026-12-22",
+          "backlog_from": "Cube_CES"
+        },
+        {
+          "doc_id": "CTR-2026-07146",
+          "job": null,
+          "customer": "CS10685",
+          "quantity": 1.0,
+          "status": "Backlog",
+          "delivery_date": "2026-12-24",
+          "plan_delivery_date": "2026-12-24",
+          "backlog_from": "Cube_CES"
+        },
+        {
+          "doc_id": "CTR-2026-07149",
+          "job": null,
+          "customer": "CS04138",
+          "quantity": 1.0,
+          "status": "Backlog",
+          "delivery_date": "2026-12-10",
+          "plan_delivery_date": "2026-12-10",
+          "backlog_from": "Cube_CES"
+        },
+        {
+          "doc_id": "CTR-2026-07151",
+          "job": null,
+          "customer": "CS08613",
+          "quantity": 1.0,
+          "status": "Backlog",
+          "delivery_date": "2026-12-24",
+          "plan_delivery_date": "2026-12-24",
           "backlog_from": "Cube_CES"
         }
       ],
@@ -12318,12 +12099,17 @@
       "category": "Distribution Transformer",
       "type": "3 Phase Distribution Transformer",
       "description": "3 Phase 250kVA 22kV 416/240V Dyn11 Very Low Loss SC New Spec 035/2568",
-      "state": "zero_stock",
-      "qty": 0.0,
+      "state": "has_stock",
+      "qty": 2.0,
       "backlog": 13.0,
-      "available": -13.0,
+      "available": -11.0,
       "in_forecast_scope": true,
-      "by_warehouse": [],
+      "by_warehouse": [
+        {
+          "code": "FMTS",
+          "qty": 2.0
+        }
+      ],
       "backlog_rows": [
         {
           "doc_id": "CTR-2026-05962",
@@ -12459,7 +12245,7 @@
       "sellable_split": {
         "not_assessed": false,
         "sellable_qty": 0.0,
-        "staging_qty": 0.0,
+        "staging_qty": 2.0,
         "elsewhere_qty": 0.0
       }
     },
@@ -12490,14 +12276,14 @@
       "type": "3 Phase Distribution Transformer",
       "description": "3 Phase 100kVA 33kV 416/240V Dyn11 Very Low Loss SC New Spec 035/2568",
       "state": "has_stock",
-      "qty": 4.0,
-      "backlog": 48.0,
-      "available": -44.0,
+      "qty": 9.0,
+      "backlog": 46.0,
+      "available": -37.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
           "code": "FMTS",
-          "qty": 4.0
+          "qty": 9.0
         }
       ],
       "backlog_rows": [
@@ -12505,16 +12291,6 @@
           "doc_id": "CTR-2026-05941",
           "job": null,
           "customer": "CS10221",
-          "quantity": 2.0,
-          "status": "Backlog",
-          "delivery_date": "2026-11-20",
-          "plan_delivery_date": "2026-11-20",
-          "backlog_from": "Cube_CES"
-        },
-        {
-          "doc_id": "CTR-2026-06030",
-          "job": null,
-          "customer": "CS07221",
           "quantity": 2.0,
           "status": "Backlog",
           "delivery_date": "2026-11-20",
@@ -12607,8 +12383,8 @@
           "customer": "CS06836",
           "quantity": 2.0,
           "status": "Backlog",
-          "delivery_date": "2026-11-12",
-          "plan_delivery_date": "2026-11-12",
+          "delivery_date": "2026-11-27",
+          "plan_delivery_date": "2026-11-27",
           "backlog_from": "Cube_CES"
         },
         {
@@ -12617,8 +12393,8 @@
           "customer": "CS09849",
           "quantity": 2.0,
           "status": "Backlog",
-          "delivery_date": "2026-11-13",
-          "plan_delivery_date": "2026-11-13",
+          "delivery_date": "2026-11-27",
+          "plan_delivery_date": "2026-11-27",
           "backlog_from": "Cube_CES"
         },
         {
@@ -12785,7 +12561,7 @@
       "sellable_split": {
         "not_assessed": false,
         "sellable_qty": 0.0,
-        "staging_qty": 4.0,
+        "staging_qty": 9.0,
         "elsewhere_qty": 0.0
       }
     },
@@ -12796,14 +12572,14 @@
       "type": "3 Phase Distribution Transformer",
       "description": "3 Phase 160kVA 33kV 416/240V Dyn11 Very Low Loss SC New Spec 035/2568",
       "state": "has_stock",
-      "qty": 1.0,
-      "backlog": 37.0,
-      "available": -36.0,
+      "qty": 2.0,
+      "backlog": 36.0,
+      "available": -34.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
           "code": "FMTS",
-          "qty": 1.0
+          "qty": 2.0
         }
       ],
       "backlog_rows": [
@@ -12825,16 +12601,6 @@
           "status": "Backlog",
           "delivery_date": "2026-11-20",
           "plan_delivery_date": "2026-11-20",
-          "backlog_from": "Cube_CES"
-        },
-        {
-          "doc_id": "CTR-2026-06057",
-          "job": null,
-          "customer": "CS09167",
-          "quantity": 1.0,
-          "status": "Backlog",
-          "delivery_date": "2026-11-18",
-          "plan_delivery_date": "2026-11-18",
           "backlog_from": "Cube_CES"
         },
         {
@@ -12903,8 +12669,8 @@
           "customer": "CS07782",
           "quantity": 1.0,
           "status": "Backlog",
-          "delivery_date": "2026-11-12",
-          "plan_delivery_date": "2026-11-12",
+          "delivery_date": "2026-11-27",
+          "plan_delivery_date": "2026-11-27",
           "backlog_from": "Cube_CES"
         },
         {
@@ -12913,8 +12679,8 @@
           "customer": "CS07782",
           "quantity": 1.0,
           "status": "Backlog",
-          "delivery_date": "2026-11-12",
-          "plan_delivery_date": "2026-11-12",
+          "delivery_date": "2026-11-27",
+          "plan_delivery_date": "2026-11-27",
           "backlog_from": "Cube_CES"
         },
         {
@@ -13181,7 +12947,7 @@
       "sellable_split": {
         "not_assessed": false,
         "sellable_qty": 0.0,
-        "staging_qty": 1.0,
+        "staging_qty": 2.0,
         "elsewhere_qty": 0.0
       }
     },
@@ -13191,17 +12957,12 @@
       "category": "Distribution Transformer",
       "type": "3 Phase Distribution Transformer",
       "description": "3 Phase 250kVA 33kV 416/240V Dyn11 Very Low Loss SC New Spec 035/2568",
-      "state": "has_stock",
-      "qty": 2.0,
-      "backlog": 19.0,
-      "available": -17.0,
+      "state": "zero_stock",
+      "qty": 0.0,
+      "backlog": 18.0,
+      "available": -18.0,
       "in_forecast_scope": true,
-      "by_warehouse": [
-        {
-          "code": "FMTS",
-          "qty": 2.0
-        }
-      ],
+      "by_warehouse": [],
       "backlog_rows": [
         {
           "doc_id": "CTR-2026-05635",
@@ -13209,8 +12970,8 @@
           "customer": "CS00276",
           "quantity": 1.0,
           "status": "Backlog",
-          "delivery_date": "2026-11-13",
-          "plan_delivery_date": "2026-11-13",
+          "delivery_date": "2026-11-18",
+          "plan_delivery_date": "2026-11-18",
           "backlog_from": "Cube_CES"
         },
         {
@@ -13219,8 +12980,8 @@
           "customer": "CS07924",
           "quantity": 1.0,
           "status": "Backlog",
-          "delivery_date": "2026-11-13",
-          "plan_delivery_date": "2026-11-13",
+          "delivery_date": "2026-11-27",
+          "plan_delivery_date": "2026-11-27",
           "backlog_from": "Cube_CES"
         },
         {
@@ -13231,26 +12992,6 @@
           "status": "Backlog",
           "delivery_date": "2026-11-25",
           "plan_delivery_date": "2026-11-25",
-          "backlog_from": "Cube_CES"
-        },
-        {
-          "doc_id": "CTR-2026-06083",
-          "job": null,
-          "customer": "CS09784",
-          "quantity": 1.0,
-          "status": "Backlog",
-          "delivery_date": "2026-11-25",
-          "plan_delivery_date": "2026-11-25",
-          "backlog_from": "Cube_CES"
-        },
-        {
-          "doc_id": "CTR-2026-06101",
-          "job": null,
-          "customer": "CS10142",
-          "quantity": 1.0,
-          "status": "Backlog",
-          "delivery_date": "2026-11-18",
-          "plan_delivery_date": "2026-11-18",
           "backlog_from": "Cube_CES"
         },
         {
@@ -13289,8 +13030,8 @@
           "customer": "CS07050",
           "quantity": 1.0,
           "status": "Backlog",
-          "delivery_date": "2026-11-12",
-          "plan_delivery_date": "2026-11-12",
+          "delivery_date": "2026-12-11",
+          "plan_delivery_date": "2026-12-11",
           "backlog_from": "Cube_CES"
         },
         {
@@ -13299,8 +13040,8 @@
           "customer": "CS08695",
           "quantity": 1.0,
           "status": "Backlog",
-          "delivery_date": "2026-11-13",
-          "plan_delivery_date": "2026-11-13",
+          "delivery_date": "2026-12-04",
+          "plan_delivery_date": "2026-12-04",
           "backlog_from": "Cube_CES"
         },
         {
@@ -13382,12 +13123,22 @@
           "delivery_date": "2026-12-16",
           "plan_delivery_date": "2026-12-16",
           "backlog_from": "Cube_CES"
+        },
+        {
+          "doc_id": "CTR-2026-07162",
+          "job": null,
+          "customer": "CS05661",
+          "quantity": 1.0,
+          "status": "Backlog",
+          "delivery_date": "2026-12-24",
+          "plan_delivery_date": "2026-12-24",
+          "backlog_from": "Cube_CES"
         }
       ],
       "sellable_split": {
         "not_assessed": false,
         "sellable_qty": 0.0,
-        "staging_qty": 2.0,
+        "staging_qty": 0.0,
         "elsewhere_qty": 0.0
       }
     },
@@ -13836,36 +13587,21 @@
       "type": "Current Transformer Type LDB",
       "description": "LDB-35 : 400/5A, 5VA, Cl.0.5",
       "state": "has_stock",
-      "qty": 104.0,
-      "backlog": 3.0,
+      "qty": 101.0,
+      "backlog": 0.0,
       "available": 101.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
           "code": "FG01",
           "qty": 101.0
-        },
-        {
-          "code": "FMTS",
-          "qty": 3.0
         }
       ],
-      "backlog_rows": [
-        {
-          "doc_id": "CTR-2026-06954",
-          "job": null,
-          "customer": "CS04745",
-          "quantity": 3.0,
-          "status": "Backlog",
-          "delivery_date": "2026-11-09",
-          "plan_delivery_date": "2026-11-09",
-          "backlog_from": "Cube_CES"
-        }
-      ],
+      "backlog_rows": [],
       "sellable_split": {
         "not_assessed": false,
         "sellable_qty": 101.0,
-        "staging_qty": 3.0,
+        "staging_qty": 0.0,
         "elsewhere_qty": 0.0
       }
     },
@@ -15203,22 +14939,22 @@
       "type": "Voltage Transformer Type VOL",
       "description": "VOL-24 : 22000/110V, 50VA, Cl.0.5 (Private)",
       "state": "has_stock",
-      "qty": 84.0,
-      "backlog": 433.0,
+      "qty": 82.0,
+      "backlog": 431.0,
       "available": -349.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
           "code": "FG01",
-          "qty": 6.0
-        },
-        {
-          "code": "FG27",
           "qty": 4.0
         },
         {
+          "code": "FG27",
+          "qty": 2.0
+        },
+        {
           "code": "FMTS",
-          "qty": 72.0
+          "qty": 74.0
         },
         {
           "code": "WH24",
@@ -15307,23 +15043,13 @@
           "backlog_from": "Cube_CES"
         },
         {
-          "doc_id": "CTR-2026-06764",
-          "job": null,
-          "customer": "CS02411",
-          "quantity": 2.0,
-          "status": "Backlog",
-          "delivery_date": "2026-11-10",
-          "plan_delivery_date": "2026-11-11",
-          "backlog_from": "Cube_CES"
-        },
-        {
           "doc_id": "CTR-2026-06836",
           "job": null,
           "customer": "CS02411",
           "quantity": 2.0,
           "status": "Backlog",
           "delivery_date": "2026-11-02",
-          "plan_delivery_date": "2026-11-10",
+          "plan_delivery_date": "2026-11-14",
           "backlog_from": "Cube_CES"
         },
         {
@@ -15359,8 +15085,8 @@
       ],
       "sellable_split": {
         "not_assessed": false,
-        "sellable_qty": 12.0,
-        "staging_qty": 72.0,
+        "sellable_qty": 8.0,
+        "staging_qty": 74.0,
         "elsewhere_qty": 0.0
       }
     },
@@ -15411,9 +15137,9 @@
       "type": "Voltage Transformer Type VOL",
       "description": "VOL-24 : 22000/110V, 500VA, Cl.3 For LBS Op.4",
       "state": "has_stock",
-      "qty": 16.0,
+      "qty": 11.0,
       "backlog": 0.0,
-      "available": 16.0,
+      "available": 11.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
@@ -15422,13 +15148,13 @@
         },
         {
           "code": "WH22",
-          "qty": 15.0
+          "qty": 10.0
         }
       ],
       "backlog_rows": [],
       "sellable_split": {
         "not_assessed": false,
-        "sellable_qty": 16.0,
+        "sellable_qty": 11.0,
         "staging_qty": 0.0,
         "elsewhere_qty": 0.0
       }
@@ -15440,18 +15166,14 @@
       "type": "Voltage Transformer Type VOL",
       "description": "VOL-24 : 22000/230V, 500VA, Cl.3",
       "state": "has_stock",
-      "qty": 6.0,
+      "qty": 5.0,
       "backlog": 2.0,
-      "available": 4.0,
+      "available": 3.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
-          "code": "FG27",
-          "qty": 2.0
-        },
-        {
           "code": "WH22",
-          "qty": 4.0
+          "qty": 5.0
         }
       ],
       "backlog_rows": [
@@ -15468,7 +15190,7 @@
       ],
       "sellable_split": {
         "not_assessed": false,
-        "sellable_qty": 6.0,
+        "sellable_qty": 5.0,
         "staging_qty": 0.0,
         "elsewhere_qty": 0.0
       }
@@ -15683,9 +15405,9 @@
       "type": "Voltage Transformer Type VOG",
       "description": "VOG-242 : 22000/√3:110/√3&110/√3V 50VA, Cl.0.5&3P (yn0&yn0)",
       "state": "has_stock",
-      "qty": 16.0,
-      "backlog": 26.0,
-      "available": -10.0,
+      "qty": 14.0,
+      "backlog": 29.0,
+      "available": -15.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
@@ -15698,11 +15420,11 @@
         },
         {
           "code": "FMTO",
-          "qty": 4.0
+          "qty": 3.0
         },
         {
           "code": "FMTS",
-          "qty": 4.0
+          "qty": 3.0
         },
         {
           "code": "WH24",
@@ -15959,12 +15681,42 @@
           "delivery_date": "2026-11-07",
           "plan_delivery_date": "2026-11-07",
           "backlog_from": "Cube_CES"
+        },
+        {
+          "doc_id": "CTR-2026-07163",
+          "job": null,
+          "customer": "CS09004",
+          "quantity": 1.0,
+          "status": "Backlog",
+          "delivery_date": "2026-11-18",
+          "plan_delivery_date": "2026-11-18",
+          "backlog_from": "Cube_CES"
+        },
+        {
+          "doc_id": "CTR-2026-07164",
+          "job": null,
+          "customer": "CS07785",
+          "quantity": 1.0,
+          "status": "Backlog",
+          "delivery_date": "2026-12-04",
+          "plan_delivery_date": "2026-12-04",
+          "backlog_from": "Cube_CES"
+        },
+        {
+          "doc_id": "CTR-2026-07169",
+          "job": null,
+          "customer": "CS07785",
+          "quantity": 1.0,
+          "status": "Backlog",
+          "delivery_date": "2026-11-30",
+          "plan_delivery_date": "2026-11-30",
+          "backlog_from": "Cube_CES"
         }
       ],
       "sellable_split": {
         "not_assessed": false,
         "sellable_qty": 8.0,
-        "staging_qty": 8.0,
+        "staging_qty": 6.0,
         "elsewhere_qty": 0.0
       }
     },
@@ -15976,8 +15728,8 @@
       "description": "VOG-242 : 22000/√3:110/√3V 50VA, Cl.0.5",
       "state": "has_stock",
       "qty": 4.0,
-      "backlog": 3.0,
-      "available": 1.0,
+      "backlog": 5.0,
+      "available": -1.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
@@ -16014,6 +15766,16 @@
           "status": "Backlog",
           "delivery_date": "2026-11-09",
           "plan_delivery_date": "2026-11-09",
+          "backlog_from": "Cube_CES"
+        },
+        {
+          "doc_id": "CTR-2026-07166",
+          "job": null,
+          "customer": "CS10728",
+          "quantity": 2.0,
+          "status": "Backlog",
+          "delivery_date": "2026-11-20",
+          "plan_delivery_date": "2026-11-20",
           "backlog_from": "Cube_CES"
         }
       ],
@@ -16056,20 +15818,20 @@
       "type": "Voltage Transformer Type VOG",
       "description": "VOG-242-P : For LBS Op.7",
       "state": "has_stock",
-      "qty": 4.0,
+      "qty": 3.0,
       "backlog": 0.0,
-      "available": 4.0,
+      "available": 3.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
           "code": "WH22",
-          "qty": 4.0
+          "qty": 3.0
         }
       ],
       "backlog_rows": [],
       "sellable_split": {
         "not_assessed": false,
-        "sellable_qty": 4.0,
+        "sellable_qty": 3.0,
         "staging_qty": 0.0,
         "elsewhere_qty": 0.0
       }
@@ -16081,17 +15843,13 @@
       "type": "Voltage Transformer Type VOG",
       "description": "VOG-362 : 33000/√3:110/√3&110/√3V 50VA, Cl.0.5&3P (yn0&yn0)",
       "state": "has_stock",
-      "qty": 2.0,
+      "qty": 1.0,
       "backlog": 5.0,
-      "available": -3.0,
+      "available": -4.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
           "code": "FG01",
-          "qty": 1.0
-        },
-        {
-          "code": "FMTS",
           "qty": 1.0
         }
       ],
@@ -16150,7 +15908,7 @@
       "sellable_split": {
         "not_assessed": false,
         "sellable_qty": 1.0,
-        "staging_qty": 1.0,
+        "staging_qty": 0.0,
         "elsewhere_qty": 0.0
       }
     },
@@ -16218,8 +15976,8 @@
       "description": "VOG-362-P : For LBS Op.7",
       "state": "has_stock",
       "qty": 3.0,
-      "backlog": 2.0,
-      "available": 1.0,
+      "backlog": 4.0,
+      "available": -1.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
@@ -16236,6 +15994,16 @@
           "status": "Backlog",
           "delivery_date": "2026-12-08",
           "plan_delivery_date": "2026-12-08",
+          "backlog_from": "Cube_CES"
+        },
+        {
+          "doc_id": "CTR-2026-07152",
+          "job": null,
+          "customer": "CS06544",
+          "quantity": 2.0,
+          "status": "Backlog",
+          "delivery_date": "2026-12-09",
+          "plan_delivery_date": "2026-12-09",
           "backlog_from": "Cube_CES"
         }
       ],
@@ -16260,7 +16028,11 @@
       "by_warehouse": [
         {
           "code": "FG27",
-          "qty": 3.0
+          "qty": 1.0
+        },
+        {
+          "code": "FMTS",
+          "qty": 2.0
         }
       ],
       "backlog_rows": [
@@ -16297,8 +16069,8 @@
       ],
       "sellable_split": {
         "not_assessed": false,
-        "sellable_qty": 3.0,
-        "staging_qty": 0.0,
+        "sellable_qty": 1.0,
+        "staging_qty": 2.0,
         "elsewhere_qty": 0.0
       }
     },
@@ -16354,22 +16126,22 @@
       "type": "Current Transformer Type COL",
       "description": "COL-24 : 30/5A, 30VA, Cl.0.5",
       "state": "has_stock",
-      "qty": 23.0,
+      "qty": 20.0,
       "backlog": 14.0,
-      "available": 9.0,
+      "available": 6.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
           "code": "FG01",
-          "qty": 6.0
+          "qty": 3.0
         },
         {
           "code": "FG27",
-          "qty": 7.0
+          "qty": 4.0
         },
         {
           "code": "FMTS",
-          "qty": 10.0
+          "qty": 13.0
         }
       ],
       "backlog_rows": [
@@ -16394,23 +16166,13 @@
           "backlog_from": "Cube_CES"
         },
         {
-          "doc_id": "CTR-2026-06602",
-          "job": null,
-          "customer": "CS07577",
-          "quantity": 3.0,
-          "status": "Backlog",
-          "delivery_date": "2026-11-05",
-          "plan_delivery_date": "2026-11-05",
-          "backlog_from": "Cube_CES"
-        },
-        {
           "doc_id": "CTR-2026-06836",
           "job": null,
           "customer": "CS02411",
           "quantity": 2.0,
           "status": "Backlog",
           "delivery_date": "2026-11-02",
-          "plan_delivery_date": "2026-11-10",
+          "plan_delivery_date": "2026-11-14",
           "backlog_from": "Cube_CES"
         },
         {
@@ -16422,12 +16184,22 @@
           "delivery_date": "2026-11-10",
           "plan_delivery_date": "2026-11-10",
           "backlog_from": "Cube_CES"
+        },
+        {
+          "doc_id": "CTR-2026-07166",
+          "job": null,
+          "customer": "CS10728",
+          "quantity": 3.0,
+          "status": "Backlog",
+          "delivery_date": "2026-11-20",
+          "plan_delivery_date": "2026-11-20",
+          "backlog_from": "Cube_CES"
         }
       ],
       "sellable_split": {
         "not_assessed": false,
-        "sellable_qty": 13.0,
-        "staging_qty": 10.0,
+        "sellable_qty": 7.0,
+        "staging_qty": 13.0,
         "elsewhere_qty": 0.0
       }
     },
@@ -16439,8 +16211,8 @@
       "description": "COL-24 : 50/5A, 30VA, Cl.0.5",
       "state": "has_stock",
       "qty": 29.0,
-      "backlog": 40.0,
-      "available": -11.0,
+      "backlog": 43.0,
+      "available": -14.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
@@ -16596,6 +16368,16 @@
           "delivery_date": "2026-11-30",
           "plan_delivery_date": "2026-11-30",
           "backlog_from": "Cube_CES"
+        },
+        {
+          "doc_id": "CTR-2026-07163",
+          "job": null,
+          "customer": "CS09004",
+          "quantity": 3.0,
+          "status": "Backlog",
+          "delivery_date": "2026-11-18",
+          "plan_delivery_date": "2026-11-18",
+          "backlog_from": "Cube_CES"
         }
       ],
       "sellable_split": {
@@ -16673,8 +16455,8 @@
       "description": "COL-24 : 100/5A, 30VA, Cl.0.5",
       "state": "has_stock",
       "qty": 27.0,
-      "backlog": 14.0,
-      "available": 13.0,
+      "backlog": 17.0,
+      "available": 10.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
@@ -16740,6 +16522,16 @@
           "delivery_date": "2026-11-30",
           "plan_delivery_date": "2026-11-30",
           "backlog_from": "Cube_CES"
+        },
+        {
+          "doc_id": "CTR-2026-07166",
+          "job": null,
+          "customer": "CS10728",
+          "quantity": 3.0,
+          "status": "Backlog",
+          "delivery_date": "2026-11-20",
+          "plan_delivery_date": "2026-11-20",
+          "backlog_from": "Cube_CES"
         }
       ],
       "sellable_split": {
@@ -16756,14 +16548,18 @@
       "type": "Current Transformer Type COL",
       "description": "COL-24 : 150/5A, 30VA, Cl.0.5",
       "state": "has_stock",
-      "qty": 5.0,
-      "backlog": 6.0,
-      "available": -1.0,
+      "qty": 20.0,
+      "backlog": 9.0,
+      "available": 11.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
           "code": "FG27",
-          "qty": 5.0
+          "qty": 17.0
+        },
+        {
+          "code": "FMTO",
+          "qty": 3.0
         }
       ],
       "backlog_rows": [
@@ -16778,9 +16574,19 @@
           "backlog_from": "Cube_CES"
         },
         {
-          "doc_id": "CTR-2026-06724",
+          "doc_id": "CTR-2026-07169",
           "job": null,
-          "customer": "CS05529",
+          "customer": "CS07785",
+          "quantity": 3.0,
+          "status": "Backlog",
+          "delivery_date": "2026-11-30",
+          "plan_delivery_date": "2026-11-30",
+          "backlog_from": "Cube_CES"
+        },
+        {
+          "doc_id": "CTR-2026-07171",
+          "job": null,
+          "customer": "CS07785",
           "quantity": 3.0,
           "status": "Backlog",
           "delivery_date": "2026-11-30",
@@ -16790,8 +16596,8 @@
       ],
       "sellable_split": {
         "not_assessed": false,
-        "sellable_qty": 5.0,
-        "staging_qty": 0.0,
+        "sellable_qty": 17.0,
+        "staging_qty": 3.0,
         "elsewhere_qty": 0.0
       }
     },
@@ -16802,31 +16608,17 @@
       "type": "Current Transformer Type COL",
       "description": "COL-24 : 200/5A, 30VA, Cl.0.5",
       "state": "has_stock",
-      "qty": 16.0,
-      "backlog": 6.0,
+      "qty": 13.0,
+      "backlog": 3.0,
       "available": 10.0,
       "in_forecast_scope": true,
       "by_warehouse": [
-        {
-          "code": "FG01",
-          "qty": 3.0
-        },
         {
           "code": "FG27",
           "qty": 13.0
         }
       ],
       "backlog_rows": [
-        {
-          "doc_id": "CTR-2026-06419",
-          "job": null,
-          "customer": "CS06416",
-          "quantity": 3.0,
-          "status": "Backlog",
-          "delivery_date": "2026-11-10",
-          "plan_delivery_date": "2026-11-19",
-          "backlog_from": "Cube_CES"
-        },
         {
           "doc_id": "CTR-2026-07060",
           "job": null,
@@ -16840,7 +16632,7 @@
       ],
       "sellable_split": {
         "not_assessed": false,
-        "sellable_qty": 16.0,
+        "sellable_qty": 13.0,
         "staging_qty": 0.0,
         "elsewhere_qty": 0.0
       }
@@ -16888,9 +16680,9 @@
       "type": "Current Transformer Type COL",
       "description": "COL-24 : 300/5A, 30VA, Cl.0.5",
       "state": "has_stock",
-      "qty": 13.0,
+      "qty": 10.0,
       "backlog": 6.0,
-      "available": 7.0,
+      "available": 4.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
@@ -16900,10 +16692,6 @@
         {
           "code": "FG27",
           "qty": 7.0
-        },
-        {
-          "code": "FMTO",
-          "qty": 3.0
         }
       ],
       "backlog_rows": [
@@ -16931,7 +16719,7 @@
       "sellable_split": {
         "not_assessed": false,
         "sellable_qty": 10.0,
-        "staging_qty": 3.0,
+        "staging_qty": 0.0,
         "elsewhere_qty": 0.0
       }
     },
@@ -17210,8 +16998,8 @@
       "description": "COL-24 : 200:5/5A, 30VA, Cl.0.5&5P20 (2 Core)",
       "state": "has_stock",
       "qty": 2.0,
-      "backlog": 6.0,
-      "available": -4.0,
+      "backlog": 9.0,
+      "available": -7.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
@@ -17238,6 +17026,16 @@
           "status": "Backlog",
           "delivery_date": "2026-11-30",
           "plan_delivery_date": "2026-11-30",
+          "backlog_from": "Cube_CES"
+        },
+        {
+          "doc_id": "CTR-2026-07164",
+          "job": null,
+          "customer": "CS07785",
+          "quantity": 3.0,
+          "status": "Backlog",
+          "delivery_date": "2026-12-04",
+          "plan_delivery_date": "2026-12-04",
           "backlog_from": "Cube_CES"
         }
       ],
@@ -17276,8 +17074,8 @@
       "description": "COL-24 : 300:5/5A, 30VA, Cl.0.5&5P20 (2 Core)",
       "state": "has_stock",
       "qty": 5.0,
-      "backlog": 9.0,
-      "available": -4.0,
+      "backlog": 12.0,
+      "available": -7.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
@@ -17318,6 +17116,16 @@
           "status": "Backlog",
           "delivery_date": "2026-11-06",
           "plan_delivery_date": "2026-11-06",
+          "backlog_from": "Cube_CES"
+        },
+        {
+          "doc_id": "CTR-2026-07167",
+          "job": null,
+          "customer": "CS07785",
+          "quantity": 3.0,
+          "status": "Backlog",
+          "delivery_date": "2026-11-30",
+          "plan_delivery_date": "2026-11-30",
           "backlog_from": "Cube_CES"
         }
       ],
@@ -17502,17 +17310,13 @@
       "type": "Current Transformer Type COL",
       "description": "COL-36 : 50/5A, 30VA, Cl.0.5",
       "state": "has_stock",
-      "qty": 6.0,
+      "qty": 3.0,
       "backlog": 3.0,
-      "available": 3.0,
+      "available": 0.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
           "code": "FG01",
-          "qty": 3.0
-        },
-        {
-          "code": "FMTS",
           "qty": 3.0
         }
       ],
@@ -17531,7 +17335,7 @@
       "sellable_split": {
         "not_assessed": false,
         "sellable_qty": 3.0,
-        "staging_qty": 3.0,
+        "staging_qty": 0.0,
         "elsewhere_qty": 0.0
       }
     },
@@ -17987,8 +17791,8 @@
           "customer": "CS00523",
           "quantity": 60.0,
           "status": "Backlog",
-          "delivery_date": "2026-10-16",
-          "plan_delivery_date": "2026-10-16",
+          "delivery_date": "2026-11-11",
+          "plan_delivery_date": "2026-11-11",
           "backlog_from": "Cube_CES"
         }
       ],
@@ -18006,14 +17810,14 @@
       "type": "SLOC/D",
       "description": "22 kV DS 630A type: SLOC/D 27-630 (PEA) 1040050001",
       "state": "has_stock",
-      "qty": 37.0,
+      "qty": 25.0,
       "backlog": 33.0,
-      "available": 4.0,
+      "available": -8.0,
       "in_forecast_scope": true,
       "by_warehouse": [
         {
           "code": "FG01",
-          "qty": 37.0
+          "qty": 25.0
         }
       ],
       "backlog_rows": [
@@ -18205,8 +18009,8 @@
           "customer": "CS00946",
           "quantity": 16.0,
           "status": "Backlog",
-          "delivery_date": "2026-10-23",
-          "plan_delivery_date": "2026-10-23",
+          "delivery_date": "2026-11-23",
+          "plan_delivery_date": "2026-11-23",
           "backlog_from": "Cube_CES"
         },
         {
@@ -18276,8 +18080,8 @@
           "customer": "CS00946",
           "quantity": 8.0,
           "status": "Backlog",
-          "delivery_date": "2026-10-23",
-          "plan_delivery_date": "2026-10-23",
+          "delivery_date": "2026-12-25",
+          "plan_delivery_date": "2026-12-25",
           "backlog_from": "Cube_CES"
         }
       ],
@@ -18347,8 +18151,8 @@
           "customer": "CS07727",
           "quantity": 3.0,
           "status": "Backlog",
-          "delivery_date": "2026-10-30",
-          "plan_delivery_date": "2026-10-30",
+          "delivery_date": "2026-11-30",
+          "plan_delivery_date": "2026-11-30",
           "backlog_from": "Cube_CES"
         },
         {
@@ -18367,8 +18171,8 @@
           "customer": "CS02411",
           "quantity": 1.0,
           "status": "Backlog",
-          "delivery_date": "2026-10-29",
-          "plan_delivery_date": "2026-10-29",
+          "delivery_date": "2026-12-15",
+          "plan_delivery_date": "2026-12-15",
           "backlog_from": "Cube_CES"
         },
         {
@@ -18377,8 +18181,8 @@
           "customer": "CS02411",
           "quantity": 1.0,
           "status": "Backlog",
-          "delivery_date": "2026-10-29",
-          "plan_delivery_date": "2026-10-29",
+          "delivery_date": "2027-01-29",
+          "plan_delivery_date": "2027-01-29",
           "backlog_from": "Cube_CES"
         },
         {
@@ -18397,8 +18201,8 @@
           "customer": "CS00946",
           "quantity": 2.0,
           "status": "Backlog",
-          "delivery_date": "2026-10-23",
-          "plan_delivery_date": "2026-10-23",
+          "delivery_date": "2026-12-25",
+          "plan_delivery_date": "2026-12-25",
           "backlog_from": "Cube_CES"
         },
         {
@@ -18427,8 +18231,8 @@
           "customer": "CS00523",
           "quantity": 2.0,
           "status": "Backlog",
-          "delivery_date": "2026-10-30",
-          "plan_delivery_date": "2026-10-30",
+          "delivery_date": "2026-11-17",
+          "plan_delivery_date": "2026-11-17",
           "backlog_from": "Cube_CES"
         },
         {
@@ -18497,8 +18301,8 @@
           "customer": "CS00523",
           "quantity": 1.0,
           "status": "Backlog",
-          "delivery_date": "2026-10-30",
-          "plan_delivery_date": "2026-10-30",
+          "delivery_date": "2027-03-31",
+          "plan_delivery_date": "2027-03-31",
           "backlog_from": "Cube_CES"
         },
         {
